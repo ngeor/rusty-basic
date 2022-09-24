@@ -2,7 +2,7 @@ use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, KeepRightTrait, Parser};
 use crate::parser::name::bare_name_p;
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{keyword, keyword_followed_by_whitespace_p, OrSyntaxErrorTrait};
+use crate::parser::specific::{keyword, keyword_followed_by_whitespace_p, OrErrorTrait};
 use crate::parser::{Keyword, Statement};
 
 pub fn statement_go_sub_p() -> impl Parser<Output = Statement> {

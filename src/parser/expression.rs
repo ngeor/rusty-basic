@@ -13,7 +13,7 @@ use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
 use crate::parser::specific::token_type_map::TokenTypeMap;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{item_p, keyword, OrSyntaxErrorTrait, TokenType};
+use crate::parser::specific::{item_p, keyword, OrErrorTrait, TokenType};
 use crate::parser::types::*;
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -416,7 +416,7 @@ pub mod word {
     use crate::parser::specific::csv::csv_zero_or_more;
     use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
     use crate::parser::specific::{
-        identifier_or_keyword_without_dot, item_p, OrSyntaxErrorTrait, TokenType,
+        identifier_or_keyword_without_dot, item_p, OrErrorTrait, TokenType,
     };
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
@@ -428,6 +428,7 @@ pub mod word {
         name_with_dot_p()
             .and_opt(parenthesis_with_zero_or_more_expressions_p())
             .and_opt(
+                // TODO rewrite this
                 dot_property_name()
                     .one_or_more()
                     .and_opt(type_qualifier_p()),
@@ -522,6 +523,7 @@ pub mod word {
         in_parenthesis_non_opt(csv_zero_or_more(lazy_expression_node_p()))
     }
 
+    // TODO rewrite this
     fn dot_property_name() -> impl Parser<Output = Token> {
         item_p('.')
             .and_demand(

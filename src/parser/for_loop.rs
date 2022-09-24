@@ -7,7 +7,7 @@ use crate::parser::expression;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
-    item_p, keyword, keyword_followed_by_whitespace_p, MapErrTrait, OrSyntaxErrorTrait,
+    item_p, keyword, keyword_followed_by_whitespace_p, MapErrTrait, OrErrorTrait,
 };
 use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;

@@ -491,6 +491,31 @@ impl<S> MapErrTrait for S {
 }
 
 //
+// OrError
+//
+
+pub struct OrError<P>(P, QError);
+
+impl<P> HasOutput for OrError<P>
+where
+    P: HasOutput,
+{
+    type Output = P::Output;
+}
+
+impl<P> NonOptParser for OrError<P>
+where
+    P: Parser,
+{
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        match self.0.parse(tokenizer)? {
+            Some(value) => Ok(value),
+            _ => Err(self.1.clone()),
+        }
+    }
+}
+
+//
 // Or Syntax Error
 //
 
@@ -515,17 +540,21 @@ where
     }
 }
 
-pub trait OrSyntaxErrorTrait {
-    fn or_syntax_error(self, msg: &str) -> OrSyntaxError<Self>
-    where
-        Self: Sized;
+pub trait OrErrorTrait
+where
+    Self: Sized,
+{
+    fn or_error(self, err: QError) -> OrError<Self>;
+
+    fn or_syntax_error(self, msg: &str) -> OrSyntaxError<Self>;
 }
 
-impl<S> OrSyntaxErrorTrait for S {
-    fn or_syntax_error(self, msg: &str) -> OrSyntaxError<Self>
-    where
-        Self: Sized,
-    {
+impl<S> OrErrorTrait for S {
+    fn or_error(self, err: QError) -> OrError<Self> {
+        OrError(self, err)
+    }
+
+    fn or_syntax_error(self, msg: &str) -> OrSyntaxError<Self> {
         OrSyntaxError(self, msg)
     }
 }

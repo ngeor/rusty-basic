@@ -43,7 +43,7 @@
 // Type must be defined Before DECLARE SUB
 
 use crate::common::{Locatable, QError};
-use crate::parser::base::and_pc::AndDemandTrait;
+use crate::parser::base::and_pc::{seq5, AndDemandTrait};
 use crate::parser::base::and_then_pc::AndThenTrait;
 use crate::parser::base::or_pc::alt3;
 use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, ManyTrait, NonOptParser, Parser};
@@ -54,8 +54,7 @@ use crate::parser::specific::keyword_choice::keyword_choice;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
-    item_p, keyword, keyword_followed_by_whitespace_p, keyword_pair, MapErrTrait,
-    OrSyntaxErrorTrait,
+    item_p, keyword, keyword_followed_by_whitespace_p, keyword_pair, OrErrorTrait,
 };
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
@@ -63,18 +62,16 @@ use crate::parser::types::{
 };
 
 pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
-    keyword_followed_by_whitespace_p(Keyword::Type)
-        .and_demand(
-            bare_name_without_dot_p()
-                .with_pos()
-                .or_syntax_error("Expected: name after TYPE"),
-        )
-        .and_demand(comment::comments_and_whitespace_p())
-        .and_demand(element_nodes_p().or_syntax_error("Expected elements nodes"))
-        .and_demand(keyword_pair(Keyword::End, Keyword::Type))
-        .fn_map(|((((_, name), comments), elements), _)| {
-            UserDefinedType::new(name, comments, elements)
-        })
+    seq5(
+        keyword_followed_by_whitespace_p(Keyword::Type),
+        bare_name_without_dot_p()
+            .with_pos()
+            .or_syntax_error("Expected: name after TYPE"),
+        comment::comments_and_whitespace_p(),
+        element_nodes_p(),
+        keyword_pair(Keyword::End, Keyword::Type),
+        |_, name, comments, elements, _| UserDefinedType::new(name, comments, elements),
+    )
 }
 
 fn bare_name_without_dot_p() -> impl Parser<Output = BareName> {
@@ -92,10 +89,10 @@ fn bare_name_without_dot_p() -> impl Parser<Output = BareName> {
     })
 }
 
-fn element_nodes_p() -> impl Parser<Output = Vec<ElementNode>> {
+fn element_nodes_p() -> impl NonOptParser<Output = Vec<ElementNode>> {
     element_node_p()
         .one_or_more()
-        .map_err(QError::ElementNotDefined)
+        .or_error(QError::ElementNotDefined)
 }
 
 fn element_node_p() -> impl Parser<Output = ElementNode> {

@@ -4,7 +4,7 @@ use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, NonOptParser, Par
 use crate::parser::expression::guarded_expression_node_p;
 use crate::parser::specific::keyword_choice::keyword_choice;
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{keyword, OrSyntaxErrorTrait};
+use crate::parser::specific::{keyword, OrErrorTrait};
 use crate::parser::statements::*;
 use crate::parser::types::*;
 

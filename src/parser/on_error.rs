@@ -6,7 +6,7 @@ use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
 use crate::parser::expression::expression_node_p;
 use crate::parser::name::bare_name_p;
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{keyword_followed_by_whitespace_p, keyword_pair, OrSyntaxErrorTrait};
+use crate::parser::specific::{keyword_followed_by_whitespace_p, keyword_pair, OrErrorTrait};
 use crate::parser::{Expression, Keyword, OnErrorOption, Statement};
 
 pub fn statement_on_error_go_to_p() -> impl Parser<Output = Statement> {

@@ -4,7 +4,7 @@ pub mod parser {
     use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
     use crate::parser::specific::csv::csv_one_or_more;
     use crate::parser::specific::in_parenthesis::in_parenthesis_non_opt;
-    use crate::parser::specific::{keyword, OrSyntaxErrorTrait};
+    use crate::parser::specific::{keyword, OrErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Expression> {

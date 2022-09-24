@@ -1,7 +1,7 @@
 use crate::parser::base::and_pc::AndDemandTrait;
 use crate::parser::base::parsers::{AndOptTrait, FnMapTrait, Parser};
 use crate::parser::specific::csv::csv_one_or_more;
-use crate::parser::specific::{keyword_followed_by_whitespace_p, OrSyntaxErrorTrait};
+use crate::parser::specific::{keyword_followed_by_whitespace_p, OrErrorTrait};
 use crate::parser::{dim_name, DimList, Keyword, Statement};
 
 /// Parses DIM statement

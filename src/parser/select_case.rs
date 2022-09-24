@@ -11,7 +11,7 @@ use crate::parser::expression;
 use crate::parser::specific::csv::csv_one_or_more;
 use crate::parser::specific::keyword_choice::keyword_choice;
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{keyword, keyword_pair, OrSyntaxErrorTrait, TokenType};
+use crate::parser::specific::{keyword, keyword_pair, OrErrorTrait, TokenType};
 use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
 
@@ -30,17 +30,19 @@ use crate::parser::types::*;
 pub fn select_case_p() -> impl Parser<Output = Statement> {
     select_case_expr_p()
         .and_demand(comment::comments_and_whitespace_p())
-        .and_opt(case_blocks())
+        .and_demand(case_blocks())
         .and_opt(case_else())
         .and_demand(keyword_pair(Keyword::End, Keyword::Select))
-        .fn_map(|((((expr, inline_comments), opt_blocks), else_block), _)| {
-            Statement::SelectCase(SelectCaseNode {
-                expr,
-                case_blocks: opt_blocks.unwrap_or_default(),
-                else_block,
-                inline_comments,
-            })
-        })
+        .fn_map(
+            |((((expr, inline_comments), case_blocks), else_block), _)| {
+                Statement::SelectCase(SelectCaseNode {
+                    expr,
+                    case_blocks,
+                    else_block,
+                    inline_comments,
+                })
+            },
+        )
 }
 
 /// Parses the `SELECT CASE expression` part
@@ -68,8 +70,8 @@ fn select_case_expr_p() -> impl Parser<Output = ExpressionNode> {
 //
 // For range-expression, no space is needed before TO if the first expression is in parenthesis
 
-fn case_blocks() -> impl Parser<Output = Vec<CaseBlockNode>> {
-    case_block().one_or_more()
+fn case_blocks() -> impl NonOptParser<Output = Vec<CaseBlockNode>> {
+    case_block().zero_or_more()
 }
 
 fn case_block() -> impl Parser<Output = CaseBlockNode> {

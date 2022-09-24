@@ -136,3 +136,16 @@ where
 {
     AndDemandPC::new(a, b.and(c)).fn_map(move |(x, (y, z))| f(x, y, z))
 }
+
+pub fn seq5<A, B, C, D, E, F, U>(a: A, b: B, c: C, d: D, e: E, f: F) -> impl Parser<Output = U>
+where
+    A: Parser,
+    B: NonOptParser,
+    C: NonOptParser,
+    D: NonOptParser,
+    E: NonOptParser,
+    F: Fn(A::Output, B::Output, C::Output, D::Output, E::Output) -> U,
+{
+    AndDemandPC::new(a, b.and(c.and(d.and(e))))
+        .fn_map(move |(o1, (o2, (o3, (o4, o5))))| f(o1, o2, o3, o4, o5))
+}

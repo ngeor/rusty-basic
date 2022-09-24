@@ -5,7 +5,7 @@ pub mod parser {
     use crate::parser::base::parsers::{FnMapTrait, Parser};
     use crate::parser::specific::whitespace::WhitespaceTrait;
     use crate::parser::specific::with_pos::WithPosTrait;
-    use crate::parser::specific::{item_p, keyword_followed_by_whitespace_p, OrSyntaxErrorTrait};
+    use crate::parser::specific::{item_p, keyword_followed_by_whitespace_p, OrErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {

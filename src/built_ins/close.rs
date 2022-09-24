@@ -9,6 +9,7 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
+        // TODO rewrite this
         keyword(Keyword::Close)
             .and_opt(
                 expression::guarded_file_handle_or_expression_p().and_opt(

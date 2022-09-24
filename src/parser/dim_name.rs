@@ -14,7 +14,7 @@ use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
 use crate::parser::specific::{
     identifier_or_keyword_without_dot, item_p, keyword, keyword_followed_by_whitespace_p,
-    OrSyntaxErrorTrait,
+    OrErrorTrait,
 };
 use crate::parser::types::*;
 

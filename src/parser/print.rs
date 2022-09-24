@@ -9,7 +9,7 @@ use crate::parser::expression;
 use crate::parser::specific::csv::comma_surrounded_by_opt_ws;
 use crate::parser::specific::try_from_token_type::TryFromParser;
 use crate::parser::specific::whitespace::WhitespaceTrait;
-use crate::parser::specific::{item_p, keyword, OrSyntaxErrorTrait, TokenType};
+use crate::parser::specific::{item_p, keyword, OrErrorTrait, TokenType};
 use crate::parser::types::*;
 use std::convert::TryFrom;
 

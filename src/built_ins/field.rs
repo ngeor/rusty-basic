@@ -6,7 +6,7 @@ pub mod parser {
     use crate::parser::specific::csv::{comma_surrounded_by_opt_ws, csv_one_or_more};
     use crate::parser::specific::whitespace::WhitespaceTrait;
     use crate::parser::specific::with_pos::WithPosTrait;
-    use crate::parser::specific::{keyword, OrSyntaxErrorTrait};
+    use crate::parser::specific::{keyword, OrErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {

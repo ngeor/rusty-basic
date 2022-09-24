@@ -4,7 +4,7 @@ use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{item_p, keyword_followed_by_whitespace_p, OrSyntaxErrorTrait};
+use crate::parser::specific::{item_p, keyword_followed_by_whitespace_p, OrErrorTrait};
 use crate::parser::types::{Keyword, Statement};
 
 pub fn constant_p() -> impl Parser<Output = Statement> {

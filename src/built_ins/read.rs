@@ -2,7 +2,7 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::parser::base::and_pc::AndDemandTrait;
     use crate::parser::base::parsers::{FnMapTrait, KeepRightTrait, Parser};
-    use crate::parser::specific::{keyword, OrSyntaxErrorTrait};
+    use crate::parser::specific::{keyword, OrErrorTrait};
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {

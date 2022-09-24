@@ -7,7 +7,7 @@ use crate::parser::specific::csv::csv_one_or_more;
 use crate::parser::specific::in_parenthesis::in_parenthesis_opt;
 use crate::parser::specific::whitespace::WhitespaceTrait;
 use crate::parser::specific::with_pos::WithPosTrait;
-use crate::parser::specific::{keyword_followed_by_whitespace_p, OrSyntaxErrorTrait};
+use crate::parser::specific::{keyword_followed_by_whitespace_p, OrErrorTrait};
 use crate::parser::types::*;
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)

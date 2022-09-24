@@ -30,11 +30,15 @@ pub fn single_line_statements_p() -> impl Parser<Output = StatementNodes> {
         .preceded_by_req_ws()
 }
 
-pub struct ZeroOrMoreStatements<S>(NegateParser<S>);
+pub struct ZeroOrMoreStatements<S>(NegateParser<S>, Option<QError>);
 
 impl<S> ZeroOrMoreStatements<S> {
     pub fn new(exit_source: S) -> Self {
-        Self(NegateParser(exit_source))
+        Self(NegateParser(exit_source), None)
+    }
+
+    pub fn new_with_custom_error(exit_source: S, err: QError) -> Self {
+        Self(NegateParser(exit_source), Some(err))
     }
 }
 
@@ -64,7 +68,12 @@ where
                     result.push(statement_node);
                     state = 1;
                 } else {
-                    return Err(QError::syntax_error("Expected: statement"));
+                    return Err(
+                        match &self.1 {
+                            Some(custom_error) => custom_error.clone(),
+                            _ => QError::syntax_error("Expected: statement")
+                        }
+                    );
                 }
             } else if state == 1 {
                 // looking for separator after statement

@@ -478,6 +478,8 @@ where
     }
 }
 
+// TODO remove MapErrTrait
+
 pub trait MapErrTrait {
     fn map_err(self, err: QError) -> MapErrParser<Self>
     where

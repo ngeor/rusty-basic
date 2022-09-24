@@ -9,7 +9,7 @@ use crate::parser::types::*;
 pub fn while_wend_p() -> impl Parser<Output = Statement> {
     keyword(Keyword::While)
         .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression after WHILE"))
-        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::Wend)))
+        .and_demand(ZeroOrMoreStatements::new_with_custom_error(keyword(Keyword::Wend), QError::WhileWithoutWend))
         .and_demand(keyword(Keyword::Wend).map_err(QError::WhileWithoutWend))
         .fn_map(|(((_, condition), statements), _)| {
             Statement::While(ConditionalBlockNode {

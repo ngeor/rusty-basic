@@ -2,6 +2,26 @@ use crate::common::QError;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 
+type CsvParser<P> = DelimitedPC<P, CommaSurroundedByOptWhitespace>;
+
+pub trait CsvTrait
+where
+    Self: Sized,
+{
+    /// Returns one or more items when used as a `Parser`,
+    /// or zero or more when used as a `NonOptParser`.
+    fn csv(self) -> CsvParser<Self>;
+}
+
+impl<S> CsvTrait for S {
+    fn csv(self) -> CsvParser<Self> {
+        self.one_or_more_delimited_by(
+            comma_surrounded_by_opt_ws(),
+            QError::syntax_error("Trailing comma"),
+        )
+    }
+}
+
 pub fn csv_one_or_more_non_opt<P>(parser: P) -> impl NonOptParser<Output = Vec<P::Output>>
 where
     P: NonOptParser,

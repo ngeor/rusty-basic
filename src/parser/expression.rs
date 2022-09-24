@@ -960,6 +960,11 @@ mod tests {
         assert_literal_expression!("-42", -42);
     }
 
+    #[test]
+    fn test_special_characters() {
+        assert_literal_expression!(r#""┘""#, "┘");
+    }
+
     mod variable_expressions {
         use super::*;
 

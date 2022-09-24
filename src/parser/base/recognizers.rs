@@ -13,7 +13,7 @@ struct AnySingleCharRecognizer {}
 
 impl Recognizer for AnySingleCharRecognizer {
     fn recognize(&self, buffer: &str) -> Recognition {
-        if buffer.len() == 1 {
+        if buffer.chars().count() == 1 {
             Recognition::Positive
         } else {
             Recognition::Negative

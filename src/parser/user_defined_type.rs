@@ -102,7 +102,7 @@ fn element_node_p() -> impl Parser<Output = ElementNode> {
 }
 
 fn element_type_p() -> impl Parser<Output = ElementType> {
-    alt3(
+    Alt3::new(
         keyword_choice(&[
             Keyword::Integer,
             Keyword::Long,

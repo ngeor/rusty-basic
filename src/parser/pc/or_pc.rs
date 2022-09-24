@@ -1,122 +1,129 @@
 use crate::common::QError;
 use crate::parser::pc::*;
 
-//
-// Or
-//
+macro_rules! alt_pc {
+    ($name:ident ; $($generics:tt),+) => {
 
-pub struct OrPC<L, R>(L, R);
+        #[allow(non_snake_case)]
+        pub struct $name <OUT, $($generics),+> {
+            _output_type: std::marker::PhantomData<OUT>,
 
-impl<L, R> HasOutput for OrPC<L, R>
-where
-    L: HasOutput,
-    R: HasOutput<Output = L::Output>,
-{
-    type Output = L::Output;
-}
+            $(
+                $generics: $generics,
+            )+
+        }
 
-impl<L, R> Parser for OrPC<L, R>
-where
-    L: Parser,
-    R: Parser<Output = L::Output>,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        or_parse(&self.0, &self.1, tokenizer)
-    }
-}
+        impl <OUT, $($generics),+> $name <OUT, $($generics),+> {
+            #[allow(non_snake_case)]
+            pub fn new(
+                $(
+                    $generics: $generics,
+                )+
 
-impl<L, R> NonOptParser for OrPC<L, R>
-where
-    L: Parser,
-    R: NonOptParser<Output = L::Output>,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match self.0.parse(tokenizer)? {
-            Some(left) => Ok(left),
-            _ => self.1.parse_non_opt(tokenizer),
+            ) -> Self {
+                Self {
+                    _output_type: std::marker::PhantomData,
+                    $(
+                        $generics,
+                    )+
+                }
+            }
+        }
+
+        impl <OUT, $($generics),+> HasOutput for $name <OUT, $($generics),+> {
+            type Output = OUT;
+        }
+
+        impl <OUT, $($generics),+> Parser for $name <OUT, $($generics),+>
+        where $(
+            $generics: Parser<Output = OUT>,
+        )+
+        {
+            fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<OUT>, QError> {
+                $(
+                    if let Some(value) = self.$generics.parse(tokenizer)? {
+                        return Ok(Some(value));
+                    }
+                )+
+                Ok(None)
+            }
         }
     }
 }
 
-fn or_parse<A, B>(a: &A, b: &B, tokenizer: &mut impl Tokenizer) -> Result<Option<A::Output>, QError>
+alt_pc!(
+    Alt2 ; A, B
+);
+alt_pc!(
+    Alt3 ; A, B, C
+);
+alt_pc!(
+    Alt4 ; A, B, C, D
+);
+alt_pc!(
+    Alt5 ; A, B, C, D, E
+);
+alt_pc!(
+    Alt6 ; A, B, C, D, E, F
+);
+alt_pc!(
+    Alt7 ; A, B, C, D, E, F, G
+);
+alt_pc!(
+    Alt8 ; A, B, C, D, E, F, G, H
+);
+alt_pc!(
+    Alt9 ; A, B, C, D, E, F, G, H, I
+);
+alt_pc!(
+    Alt10 ; A, B, C, D, E, F, G, H, I, J
+);
+alt_pc!(
+    Alt11 ; A, B, C, D, E, F, G, H, I, J, K
+);
+alt_pc!(
+    Alt12 ; A, B, C, D, E, F, G, H, I, J, K, L
+);
+alt_pc!(
+    Alt13 ; A, B, C, D, E, F, G, H, I, J, K, L, M
+);
+alt_pc!(
+    Alt14 ; A, B, C, D, E, F, G, H, I, J, K, L, M, N
+);
+alt_pc!(
+    Alt15 ; A, B, C, D, E, F, G, H, I, J, K, L, M, N, O
+);
+alt_pc!(
+    Alt16 ; A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P
+);
+
+impl<O, L, R> NonOptParser for Alt2<O, L, R>
 where
-    A: Parser,
-    B: Parser<Output = A::Output>,
+    L: Parser<Output = O>,
+    R: NonOptParser<Output = O>,
 {
-    match a.parse(tokenizer)? {
-        Some(first) => Ok(Some(first)),
-        None => b.parse(tokenizer),
-    }
-}
-
-// Or3
-
-pub struct Or3PC<A, B, C>(A, B, C);
-
-impl<A, B, C> HasOutput for Or3PC<A, B, C>
-where
-    A: HasOutput,
-    B: HasOutput<Output = A::Output>,
-    C: HasOutput<Output = A::Output>,
-{
-    type Output = A::Output;
-}
-
-impl<A, B, C> Parser for Or3PC<A, B, C>
-where
-    A: Parser,
-    B: Parser<Output = A::Output>,
-    C: Parser<Output = A::Output>,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.0.parse(tokenizer)? {
-            Some(first) => Ok(Some(first)),
-            None => or_parse(&self.1, &self.2, tokenizer),
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        match self.A.parse(tokenizer)? {
+            Some(left) => Ok(left),
+            _ => self.B.parse_non_opt(tokenizer),
         }
     }
 }
 
 // OrTrait
 
-pub trait OrTrait<P> {
-    fn or(self, other: P) -> OrPC<Self, P>
+pub trait OrTrait<O, P> {
+    fn or(self, other: P) -> Alt2<O, Self, P>
     where
         Self: Sized;
 }
 
-impl<S, P> OrTrait<P> for S
+impl<O, S, P> OrTrait<O, P> for S
 where
-    S: Parser,
-    P: HasOutput<Output = S::Output>,
+    S: Parser<Output = O>,
+    P: HasOutput<Output = O>,
 {
-    fn or(self, other: P) -> OrPC<Self, P> {
-        OrPC(self, other)
+    fn or(self, other: P) -> Alt2<O, Self, P> {
+        Alt2::new(self, other)
     }
-}
-
-pub fn alt2<L, R>(left: L, right: R) -> OrPC<L, R> {
-    OrPC(left, right)
-}
-
-pub fn alt3<A, B, C>(a: A, b: B, c: C) -> Or3PC<A, B, C> {
-    Or3PC(a, b, c)
-}
-
-pub fn alt4<A, B, C, D>(a: A, b: B, c: C, d: D) -> OrPC<A, Or3PC<B, C, D>> {
-    alt2(a, alt3(b, c, d))
-}
-
-pub fn alt5<A, B, C, D, E>(a: A, b: B, c: C, d: D, e: E) -> OrPC<OrPC<A, B>, Or3PC<C, D, E>> {
-    alt2(alt2(a, b), alt3(c, d, e))
-}
-
-pub fn alt6<A, B, C, D, E, F>(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-) -> OrPC<Or3PC<A, B, C>, Or3PC<D, E, F>> {
-    alt2(alt3(a, b, c), alt3(d, e, f))
 }

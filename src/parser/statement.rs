@@ -19,48 +19,37 @@ use crate::parser::types::*;
 use crate::parser::while_wend;
 
 pub fn statement_p() -> impl Parser<Output = Statement> {
-    alt3(
-        alt3(
-            statement_label_p(),
-            single_line_statement_p(),
-            if_block::if_block_p(),
-        ),
-        alt3(
-            for_loop::for_loop_p(),
-            select_case::select_case_p(),
-            while_wend::while_wend_p(),
-        ),
-        alt2(do_loop::do_loop_p(), illegal_starting_keywords()),
+    Alt8::new(
+        statement_label_p(),
+        single_line_statement_p(),
+        if_block::if_block_p(),
+        for_loop::for_loop_p(),
+        select_case::select_case_p(),
+        while_wend::while_wend_p(),
+        do_loop::do_loop_p(),
+        illegal_starting_keywords(),
     )
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// excluding comments.
 pub fn single_line_non_comment_statement_p() -> impl Parser<Output = Statement> {
-    alt4(
-        alt4(
-            dim::dim_p(),
-            dim::redim_p(),
-            constant::constant_p(),
-            crate::built_ins::parser::parse(),
-        ),
-        alt4(
-            print::parse_print_p(),
-            print::parse_lprint_p(),
-            sub_call::sub_call_or_assignment_p(),
-            statement_go_to_p(),
-        ),
-        alt4(
-            statement_go_sub_p(),
-            statement_return_p(),
-            statement_exit_p(),
-            statement_on_error_go_to_p(),
-        ),
-        alt3(
-            statement_resume_p(),
-            end::parse_end_p(),
-            system::parse_system_p(),
-        ),
+    Alt15::new(
+        dim::dim_p(),
+        dim::redim_p(),
+        constant::constant_p(),
+        crate::built_ins::parser::parse(),
+        print::parse_print_p(),
+        print::parse_lprint_p(),
+        sub_call::sub_call_or_assignment_p(),
+        statement_go_to_p(),
+        statement_go_sub_p(),
+        statement_return_p(),
+        statement_exit_p(),
+        statement_on_error_go_to_p(),
+        statement_resume_p(),
+        end::parse_end_p(),
+        system::parse_system_p(),
     )
 }
 

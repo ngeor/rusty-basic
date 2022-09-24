@@ -14,6 +14,8 @@ pub trait NonOptParser: HasOutput {
 // TODO rename to OptParser
 /// A parser that either succeeds, or returns nothing, or returns an error.
 pub trait Parser: HasOutput {
+    // note that because of the mut impl parameter, Rust can't convert this trait into
+    // an object
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError>;
 }
 

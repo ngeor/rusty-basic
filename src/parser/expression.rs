@@ -106,21 +106,17 @@ pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
 }
 
 fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
-    alt2(
-        alt6(
-            string_literal::string_literal_p().with_pos(),
-            built_in_function_call_p().with_pos(),
-            word::word_p().with_pos(),
-            number_literal::number_literal_p(),
-            number_literal::float_without_leading_zero_p(),
-            number_literal::hexadecimal_literal_p().with_pos(),
-        ),
-        alt4(
-            number_literal::octal_literal_p().with_pos(),
-            parenthesis_p().with_pos(),
-            unary_not_p(),
-            unary_minus_p(),
-        ),
+    Alt10::new(
+        string_literal::string_literal_p().with_pos(),
+        built_in_function_call_p().with_pos(),
+        word::word_p().with_pos(),
+        number_literal::number_literal_p(),
+        number_literal::float_without_leading_zero_p(),
+        number_literal::hexadecimal_literal_p().with_pos(),
+        number_literal::octal_literal_p().with_pos(),
+        parenthesis_p().with_pos(),
+        unary_not_p(),
+        unary_minus_p(),
     )
 }
 
@@ -843,7 +839,7 @@ pub mod word {
 }
 
 fn operator_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
-    alt5(
+    Alt5::new(
         relational_operator_p().preceded_by_opt_ws(),
         arithmetic_op_p().with_pos().preceded_by_opt_ws(),
         modulo_op_p(had_parenthesis_before),

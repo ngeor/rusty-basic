@@ -414,31 +414,23 @@ pub mod parser {
 
     /// Parses built-in subs which have a special syntax.
     pub fn parse() -> impl Parser<Output = Statement> {
-        alt4(
-            alt4(
-                crate::built_ins::close::parser::parse(),
-                crate::built_ins::color::parser::parse(),
-                crate::built_ins::data::parser::parse(),
-                crate::built_ins::def_seg::parser::parse(),
-            ),
-            alt4(
-                crate::built_ins::field::parser::parse(),
-                crate::built_ins::get::parser::parse(),
-                crate::built_ins::input::parser::parse(),
-                crate::built_ins::line_input::parser::parse(),
-            ),
-            alt4(
-                crate::built_ins::locate::parser::parse(),
-                crate::built_ins::lset::parser::parse(),
-                crate::built_ins::name::parser::parse(),
-                crate::built_ins::open::parser::parse(),
-            ),
-            alt4(
-                crate::built_ins::put::parser::parse(),
-                crate::built_ins::read::parser::parse(),
-                crate::built_ins::view_print::parser::parse(),
-                crate::built_ins::width::parser::parse(),
-            ),
+        Alt16::new(
+            crate::built_ins::close::parser::parse(),
+            crate::built_ins::color::parser::parse(),
+            crate::built_ins::data::parser::parse(),
+            crate::built_ins::def_seg::parser::parse(),
+            crate::built_ins::field::parser::parse(),
+            crate::built_ins::get::parser::parse(),
+            crate::built_ins::input::parser::parse(),
+            crate::built_ins::line_input::parser::parse(),
+            crate::built_ins::locate::parser::parse(),
+            crate::built_ins::lset::parser::parse(),
+            crate::built_ins::name::parser::parse(),
+            crate::built_ins::open::parser::parse(),
+            crate::built_ins::put::parser::parse(),
+            crate::built_ins::read::parser::parse(),
+            crate::built_ins::view_print::parser::parse(),
+            crate::built_ins::width::parser::parse(),
         )
     }
 

@@ -63,13 +63,11 @@ impl Parser for TopLevelTokensParser {
 }
 
 fn top_level_token_one_p() -> impl Parser<Output = TopLevelTokenNode> {
-    alt2(
-        alt4(
-            def_type::def_type_p().map(TopLevelToken::DefType),
-            declaration::declaration_p(),
-            implementation::implementation_p(),
-            statement::statement_p().map(TopLevelToken::Statement),
-        ),
+    Alt5::new(
+        def_type::def_type_p().map(TopLevelToken::DefType),
+        declaration::declaration_p(),
+        implementation::implementation_p(),
+        statement::statement_p().map(TopLevelToken::Statement),
         user_defined_type::user_defined_type_p().map(TopLevelToken::UserDefinedType),
     )
     .with_pos()

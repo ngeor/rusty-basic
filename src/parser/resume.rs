@@ -17,7 +17,7 @@ pub fn statement_resume_p() -> impl Parser<Output = Statement> {
 }
 
 fn resume_option_p() -> impl Parser<Output = ResumeOption> {
-    blank_resume().or(resume_next()).or(resume_label())
+    Alt3::new(blank_resume(), resume_next(), resume_label())
 }
 
 fn blank_resume() -> impl Parser<Output = ResumeOption> {

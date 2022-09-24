@@ -99,6 +99,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "readers"
+version = "0.1.0"
+
+[[package]]
+name = "recognizers"
+version = "0.1.0"
+
+[[package]]
 name = "redox_syscall"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -109,9 +117,11 @@ dependencies = [
 
 [[package]]
 name = "rusty_basic"
-version = "0.7.0"
+version = "0.1.0"
 dependencies = [
  "crossterm",
+ "recognizers",
+ "tokenizers",
  "winapi",
 ]
 
@@ -156,6 +166,14 @@ name = "smallvec"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
+
+[[package]]
+name = "tokenizers"
+version = "0.1.0"
+dependencies = [
+ "readers",
+ "recognizers",
+]
 
 [[package]]
 name = "wasi"

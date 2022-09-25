@@ -83,11 +83,10 @@ fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_utils::*;
     use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::types::*;
-
-    use super::super::test_utils::*;
 
     #[test]
     fn test_for_loop() {

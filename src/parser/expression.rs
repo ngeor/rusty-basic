@@ -549,8 +549,8 @@ pub mod word {
 
     #[cfg(test)]
     mod tests {
-        use crate::parser::test_utils::ExpressionNodeLiteralFactory;
         use crate::parser::pc_specific::test_helper::create_string_tokenizer;
+        use crate::parser::test_utils::ExpressionNodeLiteralFactory;
 
         use super::*;
 

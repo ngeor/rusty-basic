@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod tests {
+    use super::super::test_utils::*;
     use crate::assert_parser_err;
     use crate::common::{AtRowCol, QError};
     use crate::parser::types::*;
-
-    use super::super::test_utils::*;
 
     macro_rules! assert_top_level_assignment {
         ($input:expr, $name_expr:expr) => {

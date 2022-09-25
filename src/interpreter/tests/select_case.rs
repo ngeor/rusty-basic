@@ -159,7 +159,6 @@ fn test_select_double_range_of_integers() {
     assert_prints!(input, "pi");
 }
 
-// TODO copy to parser tests
 #[test]
 fn test_select_parenthesis_expressions() {
     let input = "

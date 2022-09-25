@@ -209,11 +209,10 @@ fn case_else() -> impl Parser<Output = StatementNodes> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_utils::*;
     use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::types::*;
-
-    use super::super::test_utils::*;
 
     #[test]
     fn test_select_case_inline_comment() {
@@ -308,6 +307,87 @@ mod tests {
                 }))
                 .at_rc(2, 9)
             ]
+        );
+    }
+
+    // TODO move macros up and use them more
+
+    macro_rules! int_lit {
+        ($value: literal) => {
+            Expression::IntegerLiteral($value)
+        };
+
+        ($value: literal at $row: literal:$col: literal) => {
+            Locatable::new(int_lit!($value), Location::new($row, $col))
+        };
+    }
+
+    macro_rules! bin_exp {
+        ($left: expr ; plus $right: expr) => {
+            Expression::BinaryExpression(
+                Operator::Plus,
+                Box::new($left),
+                Box::new($right),
+                ExpressionType::Unresolved,
+            )
+        };
+
+        ($left: expr ; plus $right: expr ; at $row: literal:$col: literal) => {
+            Locatable::new(bin_exp!($left ; plus $right), Location::new($row, $col))
+        };
+    }
+
+    macro_rules! paren_exp {
+        ($child: expr ; at $row: literal:$col: literal) => {
+            Locatable::new(Expression::Parenthesis(Box::new($child)), Location::new($row, $col))
+        };
+    }
+
+    #[test]
+    fn test_parenthesis() {
+        let input = "
+        SELECT CASE(5+2)
+        CASE(6+5)
+            PRINT 11
+        CASE(2)TO(5)
+            PRINT 2
+        END SELECT
+        ";
+        let result = parse(input).demand_single_statement();
+        assert_eq!(
+            result,
+            Statement::SelectCase(SelectCaseNode {
+                expr: paren_exp!( bin_exp!( int_lit!(5 at 2:21) ; plus int_lit!(2 at 2:23) ; at 2:22 ) ; at 2:20 ),
+                inline_comments: vec![],
+                case_blocks: vec![
+                    CaseBlockNode {
+                        expression_list: vec![CaseExpression::Simple(
+                            paren_exp!( bin_exp!( int_lit!(6 at 3:14) ; plus int_lit!(5 at 3:16) ; at 3:15 ) ; at 3:13 )
+                        )],
+                        statements: vec![Statement::Print(PrintNode {
+                            file_number: None,
+                            lpt1: false,
+                            format_string: None,
+                            args: vec![PrintArg::Expression(11.as_lit_expr(4, 19))]
+                        })
+                        .at_rc(4, 13)]
+                    },
+                    CaseBlockNode {
+                        expression_list: vec![CaseExpression::Range(
+                            Expression::Parenthesis(Box::new(2.as_lit_expr(5, 14))).at_rc(5, 13),
+                            Expression::Parenthesis(Box::new(5.as_lit_expr(5, 19))).at_rc(5, 18)
+                        )],
+                        statements: vec![Statement::Print(PrintNode {
+                            file_number: None,
+                            lpt1: false,
+                            format_string: None,
+                            args: vec![PrintArg::Expression(2.as_lit_expr(6, 19))]
+                        })
+                        .at_rc(6, 13)]
+                    },
+                ],
+                else_block: None
+            })
         );
     }
 

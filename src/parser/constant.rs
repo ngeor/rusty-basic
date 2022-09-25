@@ -26,10 +26,9 @@ pub fn constant_p() -> impl Parser<Output = Statement> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::test_utils::*;
     use crate::common::*;
     use crate::parser::{Expression, Name, Statement, TopLevelToken};
-
-    use super::super::test_utils::*;
 
     #[test]
     fn parse_const() {

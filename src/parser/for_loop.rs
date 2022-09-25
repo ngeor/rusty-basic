@@ -42,13 +42,12 @@ fn parse_for_step_p() -> impl Parser<
 > {
     parse_for_p()
         .and_opt_factory(|(_, _, upper)| {
-            keyword(Keyword::Step)
-                .preceded_by_ws(!upper.is_parenthesis())
-                .and_demand(
-                    expression::guarded_expression_node_p()
-                        .or_syntax_error("Expected: expression after STEP"),
-                )
-                .keep_right()
+            seq2(
+                whitespace_boundary_after_expr(upper).and(keyword(Keyword::Step)),
+                expression::guarded_expression_node_p()
+                    .or_syntax_error("Expected: expression after STEP"),
+                |_, step_expr| step_expr,
+            )
         })
         .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
 }

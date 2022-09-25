@@ -6,6 +6,7 @@ mod specific;
 mod token_type_map;
 mod try_from_token_type;
 mod whitespace;
+mod whitespace_boundary;
 mod with_pos;
 
 pub use csv::*;
@@ -16,4 +17,5 @@ pub use specific::*;
 pub use token_type_map::*;
 pub use try_from_token_type::*;
 pub use whitespace::*;
+pub use whitespace_boundary::*;
 pub use with_pos::*;

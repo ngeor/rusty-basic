@@ -8,7 +8,7 @@ use std::convert::TryFrom;
 pub fn parse_print_p() -> impl Parser<Output = Statement> {
     keyword(Keyword::Print)
         .and_opt(ws_file_handle_comma_p())
-        .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_none()))
+        .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_some()))
         .and_opt_factory(|((_, opt_file_number), opt_using)|
                 // we're just past PRINT. No need for space for ; or , but we need it for expressions
                 PrintArgsParser::new(opt_file_number.is_none() && opt_using.is_none()))
@@ -39,16 +39,13 @@ pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
         })
 }
 
-fn using_p(needs_leading_whitespace: bool) -> impl Parser<Output = ExpressionNode> {
-    keyword(Keyword::Using)
-        .preceded_by_ws(needs_leading_whitespace)
-        .and_demand(
-            expression::guarded_expression_node_p()
-                .or_syntax_error("Expected: expression after USING"),
-        )
-        .and_demand(item_p(';'))
-        .keep_left()
-        .keep_right()
+fn using_p(is_leading_whitespace_optional: bool) -> impl Parser<Output = ExpressionNode> {
+    seq3(
+        whitespace_boundary(is_leading_whitespace_optional).and(keyword(Keyword::Using)),
+        expression::guarded_expression_node_p().or_syntax_error("Expected: expression after USING"),
+        item_p(';'),
+        |_, using_expr, _| using_expr,
+    )
 }
 
 struct FirstPrintArg {

@@ -35,12 +35,12 @@ pub fn demand_expression_node_p(err_msg: &str) -> impl NonOptParser<Output = Exp
 }
 
 // TODO check if all usages are "demand"
+// TODO rename to expression_preceded_by_ws
 pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr
-    lazy_expression_node_p()
-        .preceded_by_ws_preserving()
-        .and_then(|(opt_leading_whitespace, expression)| {
+    OptAndPC::new(whitespace(), lazy_expression_node_p()).and_then(
+        |(opt_leading_whitespace, expression)| {
             let needs_leading_whitespace = !expression.is_parenthesis();
             let has_leading_whitespace = opt_leading_whitespace.is_some();
             if has_leading_whitespace || !needs_leading_whitespace {
@@ -50,23 +50,17 @@ pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
                     "Expected: whitespace before expression",
                 ))
             }
-        })
+        },
+    )
 }
 
+// TODO rename to expression_surrounded_by_ws
 pub fn back_guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
-    // ws* ( expr )
+    // ws* ( expr ) ws*
     // ws+ expr ws+
-    lazy_expression_node_p()
-        .surrounded_by_ws_preserving()
-        .and_then(|(l, expr, r)| {
-            if expr.is_parenthesis() || (l.is_some() && r.is_some()) {
-                Ok(expr)
-            } else {
-                Err(QError::syntax_error(
-                    "Expected: whitespace around expression",
-                ))
-            }
-        })
+    guarded_expression_node_p()
+        .and_demand_looking_back(whitespace_boundary_after_expr)
+        .keep_left()
 }
 
 /// Parses an expression

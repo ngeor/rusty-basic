@@ -1,4 +1,5 @@
 use crate::common::QError;
+use crate::parser::pc::AndDemandLookingBack;
 
 use super::tokenizers::{Token, Tokenizer};
 
@@ -17,6 +18,13 @@ pub trait Parser: HasOutput {
     // note that because of the mut impl parameter, Rust can't convert this trait into
     // an object
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError>;
+
+    fn and_demand_looking_back<F>(self, factory: F) -> AndDemandLookingBack<Self, F>
+    where
+        Self: Sized,
+    {
+        AndDemandLookingBack::new(self, factory)
+    }
 }
 
 pub fn to_impl_parser<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {

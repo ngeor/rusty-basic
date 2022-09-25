@@ -1,5 +1,6 @@
 //! base module contains functionality that can be extracted into a library,
 //! it's generic and not specific to QBasic
+mod and_demand_looking_back;
 mod and_pc;
 mod and_then_pc;
 mod delimited_pc;
@@ -13,6 +14,7 @@ mod tokenizers;
 mod undo_pc;
 mod validate;
 
+pub use and_demand_looking_back::*;
 pub use and_pc::*;
 pub use and_then_pc::*;
 pub use delimited_pc::*;

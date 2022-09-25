@@ -59,17 +59,19 @@ fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
     )
 }
 
+// expr (e.g. 10)
+// expr ws+ TO ws+ expr (e.g. 1 TO 10)
+// paren_expr ws* TO ws* paren_expr
 fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
     expression::expression_node_p()
-        .and_opt(
-            keyword(Keyword::To)
-                .preceded_by_req_ws()
-                .and_demand(
-                    expression::guarded_expression_node_p()
-                        .or_syntax_error("Expected: expression after TO"),
-                )
-                .keep_right(),
-        )
+        .and_opt_factory(|lower_bound_expr| {
+            seq2(
+                whitespace_boundary_after_expr(lower_bound_expr).and(keyword(Keyword::To)),
+                expression::guarded_expression_node_p()
+                    .or_syntax_error("Expected: expression after TO"),
+                |_, upper_bound_expr| upper_bound_expr,
+            )
+        })
         .map(|(l, opt_r)| match opt_r {
             Some(r) => ArrayDimension {
                 lbound: Some(l),

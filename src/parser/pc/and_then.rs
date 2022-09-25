@@ -36,10 +36,7 @@ where
     }
 }
 
-pub trait AndThenTrait<F>
-where
-    Self: Sized,
-{
+pub trait AndThenTrait<F>: Sized + HasOutput {
     fn and_then(self, mapper: F) -> AndThen<Self, F>;
 }
 

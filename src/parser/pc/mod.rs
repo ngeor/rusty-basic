@@ -11,6 +11,7 @@ mod recognizers;
 mod surrounded_by;
 mod tokenizers;
 mod undo_pc;
+mod validate;
 
 pub use and_pc::*;
 pub use and_then_pc::*;
@@ -23,3 +24,4 @@ pub use recognizers::*;
 pub use surrounded_by::*;
 pub use tokenizers::*;
 pub use undo_pc::*;
+pub use validate::*;

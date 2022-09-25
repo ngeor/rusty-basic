@@ -186,6 +186,30 @@ where
 }
 
 //
+// unary no-arg parser macro
+//
+
+#[macro_export]
+macro_rules! parser_decorator {
+    (struct $name: ident $(<$($var_name: tt: $generics:tt),*>)?) => {
+        pub struct $name<P$(, $($generics),*)?>(P$(, $($generics),*)?);
+
+        impl<P$(, $($generics),*)?> $name<P$(, $($generics),*)?> {
+            pub fn new(parser: P$(, $($var_name: $generics),*)?) -> Self {
+                Self(parser$(, $($var_name),*)?)
+            }
+        }
+
+        impl<P$(, $($generics),*)?> HasOutput for $name<P$(, $($generics),*)?>
+        where
+            P: HasOutput,
+        {
+            type Output = P::Output;
+        }
+    };
+}
+
+//
 // Keep Left
 //
 

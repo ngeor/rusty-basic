@@ -6,7 +6,11 @@ use crate::parser::types::*;
 
 /// `( expr [, expr]* )`
 pub fn expressions_non_opt(err_msg: &str) -> impl NonOptParser<Output = ExpressionNodes> + '_ {
-    in_parenthesis_non_opt(lazy_expression_node_p().csv().or_syntax_error(err_msg))
+    in_parenthesis(lazy_expression_node_p().csv().or_syntax_error(err_msg))
+}
+
+fn parenthesis_with_zero_or_more_expressions_p() -> impl Parser<Output = ExpressionNodes> {
+    in_parenthesis(lazy_expression_node_p().csv())
 }
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -183,7 +187,7 @@ pub fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
 }
 
 pub fn parenthesis_p() -> impl Parser<Output = Expression> {
-    in_parenthesis_non_opt(
+    in_parenthesis(
         lazy_expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
     )
     .map(|child| Expression::Parenthesis(Box::new(child)))
@@ -388,14 +392,13 @@ mod number_literal {
 
 pub mod word {
     use crate::common::*;
+    use crate::parser::expression::parenthesis_with_zero_or_more_expressions_p;
     use crate::parser::name::name_with_dot_p;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::type_qualifier::type_qualifier_p;
     use crate::parser::types::*;
     use std::convert::TryFrom;
-
-    use super::lazy_expression_node_p;
 
     pub fn word_p() -> impl Parser<Output = Expression> {
         name_with_dot_p()
@@ -488,10 +491,6 @@ pub mod word {
             }
         }
         (parts, opt_q)
-    }
-
-    fn parenthesis_with_zero_or_more_expressions_p() -> impl Parser<Output = ExpressionNodes> {
-        in_parenthesis_non_opt(lazy_expression_node_p().csv())
     }
 
     // TODO rewrite this

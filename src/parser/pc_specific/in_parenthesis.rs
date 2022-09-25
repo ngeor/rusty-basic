@@ -1,20 +1,68 @@
-//
-// In Parenthesis
-//
+//! In Parenthesis
 
 use crate::common::QError;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::TokenType;
+use crate::parser_decorator;
 
-pub fn in_parenthesis_opt<P>(parser: P, accept_empty_parenthesis: bool) -> InParenthesisOpt<P> {
-    InParenthesisOpt {
-        parser,
-        accept_empty_parenthesis,
+/// In parser mode, returns Some if the opening parenthesis is present
+/// AND the decorated parser has a value.
+pub fn in_parenthesis<P>(parser: P) -> InParenthesisParser<P> {
+    InParenthesisParser::new(parser)
+}
+
+parser_decorator!(struct InParenthesisParser);
+
+impl<P> Parser for InParenthesisParser<P>
+where
+    P: NonOptParser,
+{
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        if let Some(_) = left_paren(tokenizer)? {
+            let value = self.0.parse_non_opt(tokenizer)?;
+            right_paren(tokenizer)?;
+            Ok(Some(value))
+        } else {
+            Ok(None)
+        }
     }
 }
 
-pub fn in_parenthesis_non_opt<P>(parser: P) -> InParenthesisNonOpt<P> {
-    InParenthesisNonOpt { parser }
+impl<P> NonOptParser for InParenthesisParser<P>
+where
+    P: NonOptParser,
+{
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        if let Some(_) = left_paren(tokenizer)? {
+            let value = self.0.parse_non_opt(tokenizer)?;
+            right_paren(tokenizer)?;
+            Ok(value)
+        } else {
+            Err(QError::syntax_error("Expected: ("))
+        }
+    }
+}
+
+/// Allows missing left parenthesis and allows zero elements inside the parenthesis
+pub fn in_parenthesis_allow_no_elements<P>(parser: P) -> InParenthesisAllowNoElements<P> {
+    InParenthesisAllowNoElements::new(parser)
+}
+
+parser_decorator!(struct InParenthesisAllowNoElements);
+
+impl<P> Parser for InParenthesisAllowNoElements<P>
+where
+    P: Parser,
+{
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        if let Some(_) = left_paren(tokenizer)? {
+            let opt_value = self.0.parse(tokenizer)?;
+            right_paren(tokenizer)?;
+            Ok(opt_value)
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 fn left_paren(tokenizer: &mut impl Tokenizer) -> Result<Option<Token>, QError> {
@@ -42,81 +90,5 @@ fn right_paren(tokenizer: &mut impl Tokenizer) -> Result<Token, QError> {
             }
         }
         None => Err(QError::InputPastEndOfFile),
-    }
-}
-
-pub struct InParenthesisOpt<P> {
-    parser: P,
-    accept_empty_parenthesis: bool,
-}
-
-impl<P> HasOutput for InParenthesisOpt<P>
-where
-    P: HasOutput,
-{
-    type Output = P::Output;
-}
-
-impl<P> Parser for InParenthesisOpt<P>
-where
-    P: Parser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match left_paren(tokenizer)? {
-            Some(token) => {
-                let opt_result = self.parser.parse(tokenizer)?;
-                if opt_result.is_none() && !self.accept_empty_parenthesis {
-                    tokenizer.unread(token);
-                    Ok(None)
-                } else {
-                    right_paren(tokenizer)?;
-                    Ok(opt_result)
-                }
-            }
-            None => Ok(None),
-        }
-    }
-}
-
-pub struct InParenthesisNonOpt<P> {
-    parser: P,
-}
-
-impl<P> HasOutput for InParenthesisNonOpt<P>
-where
-    P: HasOutput,
-{
-    type Output = P::Output;
-}
-
-impl<P> Parser for InParenthesisNonOpt<P>
-where
-    P: NonOptParser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match left_paren(tokenizer)? {
-            Some(_) => {
-                let result = self.parser.parse_non_opt(tokenizer)?;
-                right_paren(tokenizer)?;
-                Ok(Some(result))
-            }
-            None => Ok(None),
-        }
-    }
-}
-
-impl<P> NonOptParser for InParenthesisNonOpt<P>
-where
-    P: NonOptParser,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match left_paren(tokenizer)? {
-            Some(_) => {
-                let result = self.parser.parse_non_opt(tokenizer)?;
-                right_paren(tokenizer)?;
-                Ok(result)
-            }
-            _ => Err(QError::syntax_error("Expected: (")),
-        }
     }
 }

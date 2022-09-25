@@ -33,8 +33,11 @@ pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNode
                 .with_pos()
                 .or_syntax_error("Expected: function name"),
         )
+        .and_opt(whitespace())
         .and_opt(declaration_parameters_p().preceded_by_opt_ws())
-        .map(|((_, function_name_node), opt_p)| (function_name_node, opt_p.unwrap_or_default()))
+        .map(|(((_, function_name_node), _), opt_p)| {
+            (function_name_node, opt_p.unwrap_or_default())
+        })
 }
 
 pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes)> {
@@ -44,12 +47,13 @@ pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes
                 .with_pos()
                 .or_syntax_error("Expected: sub name"),
         )
-        .and_opt(declaration_parameters_p().preceded_by_opt_ws())
-        .map(|((_, sub_name_node), opt_p)| (sub_name_node, opt_p.unwrap_or_default()))
+        .and_opt(whitespace())
+        .and_opt(declaration_parameters_p())
+        .map(|(((_, sub_name_node), _), opt_p)| (sub_name_node, opt_p.unwrap_or_default()))
 }
 
 fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> {
-    in_parenthesis_opt(param_name_node_p().csv(), true)
+    in_parenthesis_allow_no_elements(param_name_node_p().csv())
 }
 
 #[cfg(test)]

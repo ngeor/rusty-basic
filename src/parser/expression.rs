@@ -30,10 +30,6 @@ impl Parser for LazyExpressionParser {
     }
 }
 
-pub fn demand_expression_node_p(err_msg: &str) -> impl NonOptParser<Output = ExpressionNode> + '_ {
-    expression_node_p().or_syntax_error(err_msg)
-}
-
 // TODO check if all usages are "demand"
 // TODO rename to expression_preceded_by_ws
 pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
@@ -93,7 +89,7 @@ pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
     guarded_expression_node_p()
         .and_demand(
             comma_surrounded_by_opt_ws()
-                .and_demand(demand_expression_node_p("Expected: expression after comma"))
+                .and_demand(expression_node_p().or_syntax_error("Expected: expression after comma"))
                 .keep_right()
                 .zero_or_more(),
         )

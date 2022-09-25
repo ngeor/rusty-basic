@@ -176,3 +176,4 @@ macro_rules! seq_fn {
 seq_fn!(seq3 ; NonOptSeq2 ; A, B);
 seq_fn!(seq4 ; NonOptSeq3 ; A, B, C);
 seq_fn!(seq5 ; NonOptSeq4 ; A, B, C, D);
+seq_fn!(seq6 ; NonOptSeq5 ; A, B, C, D, E);

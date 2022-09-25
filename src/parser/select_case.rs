@@ -131,7 +131,7 @@ fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
 }
 
 fn case_expression_list() -> impl Parser<Output = Vec<CaseExpression>> {
-    csv_one_or_more(CaseExpressionParser::new())
+    CaseExpressionParser::new().csv()
 }
 
 struct CaseExpressionParser;

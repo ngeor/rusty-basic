@@ -405,7 +405,7 @@ pub fn parse_built_in_sub_with_opt_args(
     built_in_sub: BuiltInSub,
 ) -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(keyword)
-        .and_demand(csv_zero_or_more_allow_missing(expression_node_p()))
+        .and_demand(expression_node_p().csv_allow_missing())
         .keep_right()
         .map(move |opt_args| {
             Statement::BuiltInSubCall(built_in_sub, map_opt_args_to_flags(opt_args))

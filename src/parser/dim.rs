@@ -7,7 +7,8 @@ pub fn dim_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Dim)
         .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
         .and_demand(
-            csv_one_or_more(dim_name::dim_name_node_p())
+            dim_name::dim_name_node_p()
+                .csv()
                 .or_syntax_error("Expected: name after DIM"),
         )
         .map(|((_, opt_shared), variables)| {
@@ -23,7 +24,8 @@ pub fn redim_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Redim)
         .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
         .and_demand(
-            csv_one_or_more(dim_name::redim_name_node_p())
+            dim_name::redim_name_node_p()
+                .csv()
                 .or_syntax_error("Expected: name after REDIM"),
         )
         .map(|((_, opt_shared), variables)| {

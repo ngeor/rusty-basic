@@ -3,6 +3,9 @@ use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 
 type CsvParser<P> = DelimitedPC<P, CommaSurroundedByOptWhitespace>;
+// allow missing between delimiters
+type CsvAllowMissingParser<P> = DelimitedAllowMissingPC<P, CommaSurroundedByOptWhitespace>;
+type NonOptCsvParser<P> = NonOptDelimitedPC<P, CommaSurroundedByOptWhitespace>;
 
 pub trait CsvTrait
 where
@@ -11,6 +14,10 @@ where
     /// Returns one or more items when used as a `Parser`,
     /// or zero or more when used as a `NonOptParser`.
     fn csv(self) -> CsvParser<Self>;
+
+    fn csv_allow_missing(self) -> CsvAllowMissingParser<Self>;
+
+    fn csv_demand(self) -> NonOptCsvParser<Self>;
 }
 
 impl<S> CsvTrait for S {
@@ -20,42 +27,14 @@ impl<S> CsvTrait for S {
             QError::syntax_error("Trailing comma"),
         )
     }
-}
 
-pub fn csv_one_or_more_non_opt<P>(parser: P) -> impl NonOptParser<Output = Vec<P::Output>>
-where
-    P: NonOptParser,
-{
-    parser.one_or_more_delimited_by_non_opt(comma_surrounded_by_opt_ws())
-}
+    fn csv_allow_missing(self) -> CsvAllowMissingParser<Self> {
+        self.one_or_more_delimited_by_allow_missing(comma_surrounded_by_opt_ws())
+    }
 
-pub fn csv_one_or_more<P>(parser: P) -> impl Parser<Output = Vec<P::Output>>
-where
-    P: Parser,
-{
-    parser.one_or_more_delimited_by(
-        comma_surrounded_by_opt_ws(),
-        QError::syntax_error("Trailing comma"),
-    )
-}
-
-pub fn csv_zero_or_more<P>(parser: P) -> impl NonOptParser<Output = Vec<P::Output>>
-where
-    P: Parser,
-{
-    parser.one_or_more_delimited_by(
-        comma_surrounded_by_opt_ws(),
-        QError::syntax_error("Trailing comma"),
-    )
-}
-
-pub fn csv_zero_or_more_allow_missing<P>(
-    parser: P,
-) -> impl NonOptParser<Output = Vec<Option<P::Output>>>
-where
-    P: Parser,
-{
-    parser.one_or_more_delimited_by_allow_missing(comma_surrounded_by_opt_ws())
+    fn csv_demand(self) -> NonOptCsvParser<Self> {
+        self.one_or_more_delimited_by_non_opt(comma_surrounded_by_opt_ws())
+    }
 }
 
 pub fn comma_surrounded_by_opt_ws() -> CommaSurroundedByOptWhitespace {

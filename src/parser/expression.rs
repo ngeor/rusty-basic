@@ -489,7 +489,7 @@ pub mod word {
     }
 
     fn parenthesis_with_zero_or_more_expressions_p() -> impl Parser<Output = ExpressionNodes> {
-        in_parenthesis_non_opt(csv_zero_or_more(lazy_expression_node_p()))
+        in_parenthesis_non_opt(lazy_expression_node_p().csv())
     }
 
     // TODO rewrite this

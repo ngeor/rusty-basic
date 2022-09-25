@@ -53,7 +53,9 @@ pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
 
 fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
     in_parenthesis_non_opt(
-        csv_one_or_more(array_dimension_p()).or_syntax_error("Expected: array dimension"),
+        array_dimension_p()
+            .csv()
+            .or_syntax_error("Expected: array dimension"),
     )
 }
 

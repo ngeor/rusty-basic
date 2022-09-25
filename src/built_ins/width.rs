@@ -7,9 +7,7 @@ pub mod parser {
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_followed_by_whitespace_p(Keyword::Width)
-            .and_demand(csv_zero_or_more_allow_missing(
-                expression::expression_node_p(),
-            ))
+            .and_demand(expression::expression_node_p().csv_allow_missing())
             .keep_right()
             .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args)))
     }

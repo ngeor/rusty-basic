@@ -37,7 +37,7 @@ fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
 }
 
 fn letter_ranges() -> impl NonOptParser<Output = Vec<LetterRange>> {
-    csv_one_or_more_non_opt(letter_range())
+    letter_range().csv_demand()
 }
 
 fn letter_range() -> impl NonOptParser<Output = LetterRange> {

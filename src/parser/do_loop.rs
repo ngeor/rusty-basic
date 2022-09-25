@@ -12,12 +12,12 @@ pub fn do_loop_p() -> impl Parser<Output = Statement> {
 }
 
 fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
-    keyword_choice(&[Keyword::Until, Keyword::While])
-        .preceded_by_req_ws()
-        .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))
-        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::Loop)))
-        .and_demand(keyword(Keyword::Loop))
-        .map(|((((k, _), condition), statements), _)| DoLoopNode {
+    seq4(
+        whitespace().and(keyword_choice(&[Keyword::Until, Keyword::While])),
+        guarded_expression_node_p().or_syntax_error("Expected: expression"),
+        ZeroOrMoreStatements::new(keyword(Keyword::Loop)),
+        keyword(Keyword::Loop),
+        |(_, (k, _)), condition, statements, _| DoLoopNode {
             condition,
             statements,
             position: DoLoopConditionPosition::Top,
@@ -26,22 +26,26 @@ fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
             } else {
                 DoLoopConditionKind::Until
             },
-        })
+        },
+    )
 }
 
 fn do_condition_bottom() -> impl NonOptParser<Output = DoLoopNode> {
-    ZeroOrMoreStatements::new(keyword(Keyword::Loop))
-        .and_demand(keyword(Keyword::Loop))
-        .and_demand(keyword_choice(&[Keyword::Until, Keyword::While]).preceded_by_req_ws())
-        .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression"))
-        .map(|(((statements, _), (k, _)), condition)| DoLoopNode {
-            condition,
-            statements,
-            position: DoLoopConditionPosition::Bottom,
-            kind: if k == Keyword::While {
-                DoLoopConditionKind::While
-            } else {
-                DoLoopConditionKind::Until
-            },
-        })
+    NonOptSeq5::new(
+        ZeroOrMoreStatements::new(keyword(Keyword::Loop)),
+        keyword(Keyword::Loop),
+        whitespace(),
+        keyword_choice(&[Keyword::Until, Keyword::While]),
+        guarded_expression_node_p().or_syntax_error("Expected: expression"),
+    )
+    .map(|(statements, _, _, (k, _), condition)| DoLoopNode {
+        condition,
+        statements,
+        position: DoLoopConditionPosition::Bottom,
+        kind: if k == Keyword::While {
+            DoLoopConditionKind::While
+        } else {
+            DoLoopConditionKind::Until
+        },
+    })
 }

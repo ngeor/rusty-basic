@@ -6,17 +6,12 @@ pub fn statement_exit_p() -> impl Parser<Output = Statement> {
     seq3(
         keyword(Keyword::Exit),
         whitespace(),
-        keyword_choice(&[Keyword::Function, Keyword::Sub]),
-        |_, _, (k, _)| Statement::Exit(keyword_to_exit_object(k)),
+        keyword_map(&[
+            (Keyword::Function, ExitObject::Function),
+            (Keyword::Sub, ExitObject::Sub),
+        ]),
+        |_, _, exit_object| Statement::Exit(exit_object),
     )
-}
-
-fn keyword_to_exit_object(keyword: Keyword) -> ExitObject {
-    match keyword {
-        Keyword::Function => ExitObject::Function,
-        Keyword::Sub => ExitObject::Sub,
-        _ => panic!("Unsupported keyword {}", keyword),
-    }
 }
 
 #[cfg(test)]

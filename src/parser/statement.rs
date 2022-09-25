@@ -73,13 +73,14 @@ fn statement_go_to_p() -> impl Parser<Output = Statement> {
         .map(|(_, l)| Statement::GoTo(l))
 }
 
-fn illegal_starting_keywords() -> impl Parser<Output = Statement> {
-    keyword_choice(&[Keyword::Wend, Keyword::Else, Keyword::Loop]).and_then(|(k, _)| match k {
-        Keyword::Wend => Err(QError::WendWithoutWhile),
-        Keyword::Else => Err(QError::ElseWithoutIf),
-        Keyword::Loop => Err(QError::syntax_error("LOOP without DO")),
-        _ => panic!("Parser should not have parsed {}", k),
-    })
+/// A parser that fails if an illegal starting keyword is found.
+fn illegal_starting_keywords() -> impl Parser<Output = Statement> + 'static {
+    keyword_map(&[
+        (Keyword::Wend, QError::WendWithoutWhile),
+        (Keyword::Else, QError::ElseWithoutIf),
+        (Keyword::Loop, QError::syntax_error("LOOP without DO")),
+    ])
+    .and_then(Err)
 }
 
 mod end {

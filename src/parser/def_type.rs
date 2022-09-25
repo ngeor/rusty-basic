@@ -15,25 +15,14 @@ pub fn def_type_p() -> impl Parser<Output = DefType> {
     })
 }
 
-// TODO in this case keyword_choice does not need to carry the keyword _AND_ the token
-// TODO implement the TokenTypeMap for Keywords too
-
 fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
-    keyword_choice(&[
-        Keyword::DefDbl,
-        Keyword::DefInt,
-        Keyword::DefLng,
-        Keyword::DefSng,
-        Keyword::DefStr,
+    keyword_map(&[
+        (Keyword::DefInt, TypeQualifier::PercentInteger),
+        (Keyword::DefLng, TypeQualifier::AmpersandLong),
+        (Keyword::DefSng, TypeQualifier::BangSingle),
+        (Keyword::DefDbl, TypeQualifier::HashDouble),
+        (Keyword::DefStr, TypeQualifier::DollarString),
     ])
-    .map(|(k, _)| match k {
-        Keyword::DefInt => TypeQualifier::PercentInteger,
-        Keyword::DefLng => TypeQualifier::AmpersandLong,
-        Keyword::DefSng => TypeQualifier::BangSingle,
-        Keyword::DefDbl => TypeQualifier::HashDouble,
-        Keyword::DefStr => TypeQualifier::DollarString,
-        _ => panic!("Should not have parsed keyword {} in def_keyword_p", k),
-    })
 }
 
 fn letter_ranges() -> impl NonOptParser<Output = Vec<LetterRange>> {
@@ -85,12 +74,11 @@ fn token_to_char(token: Token) -> char {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::types::{Statement, TopLevelToken};
-
-    use super::*;
 
     /// Asserts that the given input program contains a def type top level token.
     macro_rules! assert_def_type {

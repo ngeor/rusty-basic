@@ -33,33 +33,18 @@ pub mod parser {
 
     // FOR <ws+> INPUT <ws+>
     fn parse_open_mode_p() -> impl Parser<Output = Locatable<FileMode>> {
-        keyword_followed_by_whitespace_p(Keyword::For)
-            .and_demand(
-                keyword_choice(&[
-                    Keyword::Append,
-                    Keyword::Input,
-                    Keyword::Output,
-                    Keyword::Random,
-                ])
-                .with_pos(),
-            )
-            .keep_right()
-            .followed_by_req_ws()
-            .map(
-                |Locatable {
-                     element: (file_mode, _),
-                     pos,
-                 }| {
-                    (match file_mode {
-                        Keyword::Append => FileMode::Append,
-                        Keyword::Input => FileMode::Input,
-                        Keyword::Output => FileMode::Output,
-                        Keyword::Random => FileMode::Random,
-                        _ => panic!("Parser should not have parsed {}", file_mode),
-                    })
-                    .at(pos)
-                },
-            )
+        seq3(
+            keyword_followed_by_whitespace_p(Keyword::For),
+            keyword_map(&[
+                (Keyword::Append, FileMode::Append),
+                (Keyword::Input, FileMode::Input),
+                (Keyword::Output, FileMode::Output),
+                (Keyword::Random, FileMode::Random),
+            ])
+            .with_pos(),
+            whitespace(),
+            |_, file_mode, _| file_mode,
+        )
     }
 
     // ACCESS <ws+> READ <ws+>

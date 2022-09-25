@@ -63,14 +63,7 @@ impl<'a> KeywordChoice<'a> {
 
 impl<'a> ErrorProvider for KeywordChoice<'a> {
     fn provide_error(&self) -> QError {
-        let mut s = String::new();
-        for keyword in self.keywords.iter() {
-            if !s.is_empty() {
-                s.push_str(" or ");
-            }
-            s.push_str(keyword.as_str());
-        }
-        QError::SyntaxError(format!("Expected: {}", s))
+        keyword_syntax_error(self.keywords.iter())
     }
 }
 
@@ -78,4 +71,15 @@ pub fn keyword_choice(
     keywords: &[Keyword],
 ) -> impl Parser<Output = (Keyword, Token)> + NonOptParser<Output = (Keyword, Token)> + '_ {
     KeywordChoice { keywords }
+}
+
+pub fn keyword_syntax_error<'a>(keywords: impl Iterator<Item = &'a Keyword>) -> QError {
+    let mut s = String::new();
+    for keyword in keywords {
+        if !s.is_empty() {
+            s.push_str(" or ");
+        }
+        s.push_str(keyword.as_str());
+    }
+    QError::SyntaxError(format!("Expected: {}", s))
 }

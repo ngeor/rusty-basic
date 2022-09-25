@@ -103,19 +103,12 @@ fn element_node_p() -> impl Parser<Output = ElementNode> {
 
 fn element_type_p() -> impl Parser<Output = ElementType> {
     Alt3::new(
-        keyword_choice(&[
-            Keyword::Integer,
-            Keyword::Long,
-            Keyword::Single,
-            Keyword::Double,
-        ])
-        .map(|(k, _)| match k {
-            Keyword::Integer => ElementType::Integer,
-            Keyword::Long => ElementType::Long,
-            Keyword::Single => ElementType::Single,
-            Keyword::Double => ElementType::Double,
-            _ => panic!("Parser should not have parsed this"),
-        }),
+        keyword_map(&[
+            (Keyword::Integer, ElementType::Integer),
+            (Keyword::Long, ElementType::Long),
+            (Keyword::Single, ElementType::Single),
+            (Keyword::Double, ElementType::Double),
+        ]),
         keyword(Keyword::String_)
             .and_demand(
                 item_p('*')

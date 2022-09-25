@@ -44,6 +44,7 @@ macro_rules! non_opt_seq_pc {
 non_opt_seq_pc!(NonOptSeq2; A, B);
 non_opt_seq_pc!(NonOptSeq3; A, B, C);
 non_opt_seq_pc!(NonOptSeq4; A, B, C, D);
+non_opt_seq_pc!(NonOptSeq5; A, B, C, D, E);
 
 //
 // And (with undo if the left parser supports it)

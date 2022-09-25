@@ -1,5 +1,5 @@
 mod assignment;
-mod char_readers;
+mod char_reader;
 mod comment;
 mod constant;
 mod declaration;

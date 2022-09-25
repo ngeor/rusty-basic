@@ -83,18 +83,13 @@ pub mod parser {
     }
 
     fn parse_len_p() -> impl Parser<Output = ExpressionNode> {
-        keyword(Keyword::Len)
-            .preceded_by_req_ws()
-            .and_demand(
-                item_p('=')
-                    .preceded_by_opt_ws()
-                    .or_syntax_error("Expected: = after LEN"),
-            )
-            .and_demand(
-                expression::guarded_expression_node_p()
-                    .or_syntax_error("Expected: expression after LEN ="),
-            )
-            .keep_right()
+        seq3(
+            whitespace().and(keyword(Keyword::Len)),
+            item_p('=').preceded_by_opt_ws(),
+            expression::guarded_expression_node_p()
+                .or_syntax_error("Expected: expression after LEN ="),
+            |_, _, e| e,
+        )
     }
 
     fn map_opt_locatable_enum<T>(

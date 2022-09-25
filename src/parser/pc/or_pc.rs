@@ -8,24 +8,17 @@ macro_rules! alt_pc {
         pub struct $name <OUT, $($generics),+> {
             _output_type: std::marker::PhantomData<OUT>,
 
-            $(
-                $generics: $generics,
-            )+
+            $($generics: $generics),+
         }
 
         impl <OUT, $($generics),+> $name <OUT, $($generics),+> {
             #[allow(non_snake_case)]
             pub fn new(
-                $(
-                    $generics: $generics,
-                )+
-
+                $($generics: $generics),+
             ) -> Self {
                 Self {
                     _output_type: std::marker::PhantomData,
-                    $(
-                        $generics,
-                    )+
+                    $($generics),+
                 }
             }
         }
@@ -34,11 +27,7 @@ macro_rules! alt_pc {
             type Output = OUT;
         }
 
-        impl <OUT, $($generics),+> Parser for $name <OUT, $($generics),+>
-        where $(
-            $generics: Parser<Output = OUT>,
-        )+
-        {
+        impl <OUT, $($generics : Parser<Output=OUT>),+> Parser for $name <OUT, $($generics),+> {
             fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<OUT>, QError> {
                 $(
                     if let Some(value) = self.$generics.parse(tokenizer)? {
@@ -112,17 +101,14 @@ where
 
 // OrTrait
 
-pub trait OrTrait<O, P> {
-    fn or(self, other: P) -> Alt2<O, Self, P>
-    where
-        Self: Sized;
+pub trait OrTrait<O, P>
+where
+    Self: Sized,
+{
+    fn or(self, other: P) -> Alt2<O, Self, P>;
 }
 
-impl<O, S, P> OrTrait<O, P> for S
-where
-    S: Parser<Output = O>,
-    P: HasOutput<Output = O>,
-{
+impl<O, S, P> OrTrait<O, P> for S {
     fn or(self, other: P) -> Alt2<O, Self, P> {
         Alt2::new(self, other)
     }

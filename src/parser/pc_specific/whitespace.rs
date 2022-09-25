@@ -215,6 +215,7 @@ where
     }
 }
 
+// TODO delete the `preceded_by_req_ws and preceded_by_opt_ws` traits
 pub trait WhitespaceTrait
 where
     Self: Sized + HasOutput,

@@ -1,8 +1,7 @@
 use crate::common::Location;
 use std::iter;
-
-use super::readers::CharReader;
-use super::recognizers::{Recognition, Recognizer};
+use crate::parser::char_readers::CharReader;
+use crate::parser::pc::{Recognition, Recognizer};
 
 pub struct Position {
     pub begin: Location,
@@ -197,9 +196,9 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::readers::string_char_reader;
-    use super::super::recognizers::{many_digits_recognizer, many_letters_recognizer};
-    use super::{Tokenizer, TokenizerImpl, UndoTokenizerImpl};
+    use crate::parser::char_readers::string_char_reader;
+    use crate::parser::pc::*;
+    use crate::parser::pc::tokenizers::{TokenizerImpl, UndoTokenizerImpl};
 
     #[test]
     fn test_digits() {

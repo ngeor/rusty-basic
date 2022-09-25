@@ -9,6 +9,9 @@ use crate::parser::{
 use std::convert::TryFrom;
 use std::fs::File;
 use std::str::Chars;
+use crate::parser::char_readers::file_char_reader;
+#[cfg(test)]
+use crate::parser::char_readers::string_char_reader;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TokenType {

@@ -34,7 +34,7 @@ pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNode
                 .or_syntax_error("Expected: function name"),
         )
         .and_opt(whitespace())
-        .and_opt(declaration_parameters_p().preceded_by_opt_ws())
+        .and_opt(declaration_parameters_p())
         .map(|(((_, function_name_node), _), opt_p)| {
             (function_name_node, opt_p.unwrap_or_default())
         })

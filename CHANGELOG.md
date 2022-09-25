@@ -1,13 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.8.0] - 2022-09-25
 
 ### Miscellaneous Tasks
 
 - Updated copyright year in LICENSE
 - Use cliff.toml from instarepo
 - Upgrade to crossterm 0.23
+- Update rust crate crossterm to 0.24
+- Update rust crate crossterm to 0.25 (#108)
+
+### Refactor
+
+- Using tokenizers (#110)
 
 ## [0.7.0] - 2021-12-11
 

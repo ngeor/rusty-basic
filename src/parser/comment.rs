@@ -1,7 +1,6 @@
 use crate::common::*;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
-use crate::parser::statement_separator::Separator;
 use crate::parser::types::*;
 
 /// Tries to read a comment.
@@ -9,41 +8,7 @@ pub fn comment_p() -> impl Parser<Output = Statement> {
     CommentAsString.map(Statement::Comment)
 }
 
-/// Reads multiple comments and the surrounding whitespace.
-pub fn comments_and_whitespace_p() -> impl NonOptParser<Output = Vec<Locatable<String>>> {
-    CommentsAndWhitespace.preceded_by_opt_ws()
-}
-
-struct CommentsAndWhitespace;
-
-impl HasOutput for CommentsAndWhitespace {
-    type Output = Vec<Locatable<String>>;
-}
-
-impl NonOptParser for CommentsAndWhitespace {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let mut result: Vec<Locatable<String>> = vec![];
-        let sep = Separator::Comment;
-        let parser = CommentAsString.with_pos();
-        let mut found_separator = true;
-        let mut found_comment = true;
-        while found_separator || found_comment {
-            found_separator = sep.parse(tokenizer)?.is_some();
-            match parser.parse(tokenizer)? {
-                Some(comment) => {
-                    result.push(comment);
-                    found_comment = true;
-                }
-                _ => {
-                    found_comment = false;
-                }
-            }
-        }
-        Ok(result)
-    }
-}
-
-struct CommentAsString;
+pub struct CommentAsString;
 
 impl HasOutput for CommentAsString {
     type Output = String;

@@ -48,6 +48,7 @@ use crate::parser::expression::expression_node_p;
 use crate::parser::name;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
+use crate::parser::statement_separator::comments_and_whitespace_p;
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
     UserDefinedType,
@@ -59,7 +60,7 @@ pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
         bare_name_without_dot_p()
             .with_pos()
             .or_syntax_error("Expected: name after TYPE"),
-        comment::comments_and_whitespace_p(),
+        comments_and_whitespace_p(),
         element_nodes_p(),
         keyword_pair(Keyword::End, Keyword::Type),
         |_, name, comments, elements, _| UserDefinedType::new(name, comments, elements),
@@ -93,7 +94,7 @@ fn element_node_p() -> impl Parser<Output = ElementNode> {
         .with_pos()
         .and_demand(keyword_followed_by_whitespace_p(Keyword::As).or_syntax_error("Expected: AS"))
         .and_demand(element_type_p().or_syntax_error("Expected: element type"))
-        .and_demand(comment::comments_and_whitespace_p())
+        .and_demand(comments_and_whitespace_p())
         .map(
             |(((Locatable { element, pos }, _), element_type), comments)| {
                 Locatable::new(Element::new(element, element_type, comments), pos)

@@ -1,8 +1,8 @@
 use crate::common::*;
-use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
+use crate::parser::statement_separator::comments_and_whitespace_p;
 use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
 
@@ -20,7 +20,7 @@ use crate::parser::types::*;
 
 pub fn select_case_p() -> impl Parser<Output = Statement> {
     select_case_expr_p()
-        .and_demand(comment::comments_and_whitespace_p())
+        .and_demand(comments_and_whitespace_p())
         .and_demand(case_blocks())
         .and_opt(case_else())
         .and_demand(keyword_pair(Keyword::End, Keyword::Select))

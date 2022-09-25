@@ -6,42 +6,33 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword(Keyword::Field)
-            .and_demand(field_node_p())
-            .keep_right()
-    }
-
-    fn field_node_p() -> impl NonOptParser<Output = Statement> {
-        // TODO move the file handle logic into the built_ins as it is only used there
-        expression::file_handle_p()
-            .preceded_by_req_ws()
-            .or_syntax_error("Expected: file-number")
-            .and_demand(comma_surrounded_by_opt_ws())
-            .and_demand(
-                field_item_p()
-                    .csv()
-                    .or_syntax_error("Expected: field width"),
-            )
-            .map(|((file_number, _), fields)| {
+        seq5(
+            keyword(Keyword::Field),
+            whitespace(),
+            expression::file_handle_p().or_syntax_error("Expected: file-number"),
+            comma_surrounded_by_opt_ws(),
+            field_item_p()
+                .csv()
+                .or_syntax_error("Expected: field width"),
+            |_, _, file_number, _, fields| {
                 Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
-            })
+            },
+        )
     }
 
     fn field_item_p() -> impl Parser<Output = (ExpressionNode, NameNode)> {
-        expression::expression_node_p()
-            // TODO 'AS' does not need leading whitespace if expression has parenthesis
-            // TODO solve this not by peeking the previous but with a new expression:: function
-            .and_demand(
-                keyword(Keyword::As)
-                    .surrounded_by_opt_ws()
-                    .or_syntax_error("Expected: AS"),
-            )
-            .and_demand(
-                name::name_with_dot_p()
-                    .with_pos()
-                    .or_syntax_error("Expected: variable name"),
-            )
-            .map(|((width, _), name)| (width, name))
+        // TODO 'AS' does not need leading whitespace if expression has parenthesis
+        // TODO solve this not by peeking the previous but with a new expression:: function
+        seq3(
+            expression::expression_node_p(),
+            keyword(Keyword::As)
+                .surrounded_by_opt_ws()
+                .or_syntax_error("Expected: AS"),
+            name::name_with_dot_p()
+                .with_pos()
+                .or_syntax_error("Expected: variable name"),
+            |width, _, name| (width, name),
+        )
     }
 
     fn build_args(

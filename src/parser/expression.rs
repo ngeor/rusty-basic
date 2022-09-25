@@ -136,6 +136,8 @@ pub fn unary_not_p() -> impl Parser<Output = ExpressionNode> {
         .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()))
 }
 
+// TODO move the file handle logic into the built_ins as it is only used there
+
 pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
     FileHandleParser
 }

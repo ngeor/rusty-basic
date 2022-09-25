@@ -86,10 +86,12 @@ fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
 
 fn type_definition_extended_p() -> impl Parser<Output = DimType> {
     // <ws+> AS <ws+> identifier
-    keyword_followed_by_whitespace_p(Keyword::As)
-        .preceded_by_req_ws()
-        .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
-        .keep_right()
+    seq3(
+        whitespace().and(keyword(Keyword::As)),
+        whitespace(),
+        extended_type_p().or_syntax_error("Expected: type after AS"),
+        |_, _, identifier| identifier,
+    )
 }
 
 fn extended_type_p() -> impl Parser<Output = DimType> {
@@ -104,6 +106,8 @@ impl HasOutput for ExtendedTypeParser {
 
 impl Parser for ExtendedTypeParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        // TODO rewrite this
+        // TODO only try to parse keyword if the token kind matches
         let opt_identifier = identifier_or_keyword_without_dot()
             .with_pos()
             .parse(reader)?;
@@ -118,7 +122,7 @@ impl Parser for ExtendedTypeParser {
                     "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
                 )),
                 Err(_) => {
-                    if x.text.len() > name::MAX_LENGTH {
+                    if x.text.chars().count() > name::MAX_LENGTH {
                         Err(QError::IdentifierTooLong)
                     } else {
                         Ok(Some(DimType::UserDefined(BareName::from(x.text).at(pos))))
@@ -136,10 +140,11 @@ impl ExtendedTypeParser {
     }
 
     fn string(reader: &mut impl Tokenizer) -> Result<Option<DimType>, QError> {
-        let opt_len = item_p('*')
-            .surrounded_by_opt_ws()
+        let opt_len = whitespace_boundary(true)
+            .and(item_p('*'))
             .and_demand(
-                expression::expression_node_p().or_syntax_error("Expected: string length after *"),
+                expression::guarded_expression_node_p()
+                    .or_syntax_error("Expected: string length after *"),
             )
             .keep_right()
             .parse(reader)?;

@@ -127,7 +127,7 @@ fn extended_type_p() -> impl Parser<Output = ParamType> {
                     "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
                 )),
                 Err(_) => {
-                    if x.text.len() > MAX_LENGTH {
+                    if x.text.chars().count() > MAX_LENGTH {
                         Err(QError::IdentifierTooLong)
                     } else {
                         let type_name: BareName = x.text.into();

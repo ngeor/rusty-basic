@@ -83,7 +83,7 @@ where
 pub const MAX_LENGTH: usize = 40;
 
 fn ensure_length_and_not_keyword(token: &Token) -> Result<bool, QError> {
-    if token.text.len() > MAX_LENGTH {
+    if token.text.chars().count() > MAX_LENGTH {
         Err(QError::IdentifierTooLong)
     } else {
         match Keyword::from_str(&token.text) {
@@ -94,7 +94,7 @@ fn ensure_length_and_not_keyword(token: &Token) -> Result<bool, QError> {
 }
 
 fn ensure_token_list_length(token: Token) -> Result<Token, QError> {
-    if token.text.len() > MAX_LENGTH {
+    if token.text.chars().count() > MAX_LENGTH {
         Err(QError::IdentifierTooLong)
     } else {
         Ok(token)

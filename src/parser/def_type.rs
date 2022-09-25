@@ -53,7 +53,7 @@ struct LetterToken;
 impl TokenPredicate for LetterToken {
     fn test(&self, token: &Token) -> bool {
         token.kind == TokenType::Identifier as i32
-            && token.text.len() == 1
+            && token.text.chars().count() == 1
             && is_letter(token_ref_to_char(token))
     }
 }

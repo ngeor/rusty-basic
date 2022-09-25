@@ -568,9 +568,8 @@ pub mod word {
             use super::*;
 
             mod no_dots {
-                use crate::parser::pc_specific::create_string_tokenizer;
-
                 use super::*;
+                use crate::parser::pc_specific::test_helper::create_string_tokenizer;
 
                 #[test]
                 fn test_any_word_without_dot() {
@@ -595,9 +594,8 @@ pub mod word {
             }
 
             mod dots {
-                use crate::parser::pc_specific::create_string_tokenizer;
-
                 use super::*;
+                use crate::parser::pc_specific::test_helper::create_string_tokenizer;
 
                 #[test]
                 fn test_trailing_dot() {
@@ -680,9 +678,8 @@ pub mod word {
             use super::*;
 
             mod no_dots {
-                use crate::parser::pc_specific::create_string_tokenizer;
-
                 use super::*;
+                use crate::parser::pc_specific::test_helper::create_string_tokenizer;
 
                 #[test]
                 fn test_qualified_var_without_dot() {
@@ -716,9 +713,8 @@ pub mod word {
             }
 
             mod dots {
-                use crate::parser::pc_specific::create_string_tokenizer;
-
                 use super::*;
+                use crate::parser::pc_specific::test_helper::create_string_tokenizer;
 
                 #[test]
                 fn test_possible_qualified_property() {

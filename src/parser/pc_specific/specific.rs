@@ -1,5 +1,6 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, Location, QError};
+use crate::parser::char_reader::file_char_reader;
 use crate::parser::expression::expression_node_p;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
@@ -9,9 +10,6 @@ use crate::parser::{
 use std::convert::TryFrom;
 use std::fs::File;
 use std::str::Chars;
-use crate::parser::char_reader::file_char_reader;
-#[cfg(test)]
-use crate::parser::char_reader::string_char_reader;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TokenType {
@@ -251,14 +249,6 @@ pub fn create_recognizers() -> Vec<Box<dyn Recognizer>> {
 
 pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
     create_tokenizer(file_char_reader(input), create_recognizers())
-}
-
-#[cfg(test)]
-pub fn create_string_tokenizer<T>(input: T) -> impl Tokenizer
-where
-    T: AsRef<[u8]>,
-{
-    create_tokenizer(string_char_reader(input), create_recognizers())
 }
 
 //
@@ -571,4 +561,18 @@ impl TokenPredicate for IdentifierOrKeywordWithoutDot {
 
 pub fn identifier_or_keyword_without_dot() -> impl Parser<Output = Token> {
     IdentifierOrKeywordWithoutDot.parser()
+}
+
+#[cfg(test)]
+pub mod test_helper {
+    use crate::parser::char_reader::test_helper::string_char_reader;
+    use crate::parser::pc::{create_tokenizer, Tokenizer};
+    use crate::parser::pc_specific::create_recognizers;
+
+    pub fn create_string_tokenizer<T>(input: T) -> impl Tokenizer
+    where
+        T: AsRef<[u8]>,
+    {
+        create_tokenizer(string_char_reader(input), create_recognizers())
+    }
 }

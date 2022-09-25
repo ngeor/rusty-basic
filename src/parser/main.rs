@@ -3,8 +3,6 @@ use std::fs::File;
 use crate::common::*;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::create_file_tokenizer;
-#[cfg(test)]
-use crate::parser::pc_specific::create_string_tokenizer;
 use crate::parser::top_level_token::TopLevelTokensParser;
 use crate::parser::types::ProgramNode;
 
@@ -22,16 +20,10 @@ use crate::parser::types::ProgramNode;
 /// ```
 pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
     let mut reader = create_file_tokenizer(f);
-    parse_reader(&mut reader)
+    program_parser(&mut reader)
 }
 
-#[cfg(test)]
-pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
-    let mut reader = create_string_tokenizer(s);
-    parse_reader(&mut reader)
-}
-
-fn parse_reader(reader: &mut impl Tokenizer) -> Result<ProgramNode, QErrorNode> {
+pub fn program_parser(reader: &mut impl Tokenizer) -> Result<ProgramNode, QErrorNode> {
     match TopLevelTokensParser::new().parse(reader) {
         Ok(opt_program) => Ok(opt_program.unwrap_or_default()),
         Err(err) => Err(ErrorEnvelope::Pos(err, reader.position().into())),

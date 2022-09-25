@@ -1,6 +1,7 @@
 use crate::common::QErrorNode;
 use crate::linter::lint;
-use crate::parser::{parse_main_str, ProgramNode, UserDefinedTypes};
+use crate::parser::test_utils::parse_main_str;
+use crate::parser::{ProgramNode, UserDefinedTypes};
 
 /// Lints the given string and returns the results.
 ///

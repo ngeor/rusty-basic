@@ -1,20 +1,17 @@
 use std::collections::VecDeque;
 use std::fs::File;
-#[cfg(test)]
-use std::io::Cursor;
 use std::io::{BufRead, BufReader};
 
+/// Reads one character at a time.
+///
+/// Returns a `Result<Option<char>>` where:
+///
+/// - `Ok(Some(char))` means we found a `char`
+/// - `Ok(None)` means we hit EOF
+/// - `Err(err)` means we encountered some IO error
 pub trait CharReader {
     fn read(&mut self) -> std::io::Result<Option<char>>;
     fn unread(&mut self, item: char);
-}
-
-#[cfg(test)]
-pub fn string_char_reader<T>(input: T) -> impl CharReader
-where
-    T: AsRef<[u8]>,
-{
-    CharReaderImpl::new(BufReader::new(Cursor::new(input)))
 }
 
 pub fn file_char_reader(input: File) -> impl CharReader {
@@ -59,5 +56,34 @@ impl<T: BufRead> CharReader for CharReaderImpl<T> {
 
     fn unread(&mut self, item: char) {
         self.buffer.push_front(item)
+    }
+}
+
+#[cfg(test)]
+pub mod test_helper {
+    use crate::parser::char_reader::{CharReader, CharReaderImpl};
+    use std::io::{BufReader, Cursor};
+
+    pub fn string_char_reader<T>(input: T) -> impl CharReader
+    where
+        T: AsRef<[u8]>,
+    {
+        CharReaderImpl::new(BufReader::new(Cursor::new(input)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::parser::char_reader::test_helper::string_char_reader;
+    use crate::parser::char_reader::CharReader;
+
+    #[test]
+    fn test() {
+        let mut input = string_char_reader("hello");
+        assert_eq!(input.read().unwrap().unwrap(), 'h');
+        assert_eq!(input.read().unwrap().unwrap(), 'e');
+        assert_eq!(input.read().unwrap().unwrap(), 'l');
+        assert_eq!(input.read().unwrap().unwrap(), 'l');
+        assert_eq!(input.read().unwrap().unwrap(), 'o');
     }
 }

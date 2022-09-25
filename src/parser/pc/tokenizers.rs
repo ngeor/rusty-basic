@@ -1,7 +1,7 @@
 use crate::common::Location;
-use std::iter;
 use crate::parser::char_reader::CharReader;
 use crate::parser::pc::{Recognition, Recognizer};
+use std::iter;
 
 pub struct Position {
     pub begin: Location,
@@ -196,9 +196,9 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::char_reader::string_char_reader;
-    use crate::parser::pc::*;
+    use crate::parser::char_reader::test_helper::string_char_reader;
     use crate::parser::pc::tokenizers::{TokenizerImpl, UndoTokenizerImpl};
+    use crate::parser::pc::*;
 
     #[test]
     fn test_digits() {

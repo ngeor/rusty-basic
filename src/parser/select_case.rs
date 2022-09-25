@@ -339,7 +339,10 @@ mod tests {
 
     macro_rules! paren_exp {
         ($child: expr ; at $row: literal:$col: literal) => {
-            Locatable::new(Expression::Parenthesis(Box::new($child)), Location::new($row, $col))
+            Locatable::new(
+                Expression::Parenthesis(Box::new($child)),
+                Location::new($row, $col),
+            )
         };
     }
 

@@ -103,9 +103,8 @@ fn ensure_token_list_length(token: Token) -> Result<Token, QError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::pc_specific::create_string_tokenizer;
-
     use super::*;
+    use crate::parser::pc_specific::test_helper::create_string_tokenizer;
 
     #[test]
     fn test_any_word_with_dot() {

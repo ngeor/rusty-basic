@@ -26,7 +26,7 @@ pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
 pub fn program_parser(reader: &mut impl Tokenizer) -> Result<ProgramNode, QErrorNode> {
     match TopLevelTokensParser::new().parse(reader) {
         Ok(opt_program) => Ok(opt_program.unwrap_or_default()),
-        Err(err) => Err(ErrorEnvelope::Pos(err, reader.position().into())),
+        Err(err) => Err(ErrorEnvelope::Pos(err, reader.position())),
     }
 }
 

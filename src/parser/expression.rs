@@ -146,7 +146,7 @@ impl HasOutput for FileHandleParser {
 
 impl Parser for FileHandleParser {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let pos: Location = tokenizer.position().into(); // TODO fix location vs rowcol
+        let pos = tokenizer.position();
         match tokenizer.read()? {
             Some(token) if token.kind == TokenType::Pound as i32 => match tokenizer.read()? {
                 Some(token) if token.kind == TokenType::Digits as i32 => {
@@ -550,6 +550,7 @@ pub mod word {
     #[cfg(test)]
     mod tests {
         use crate::parser::test_utils::ExpressionNodeLiteralFactory;
+        use crate::parser::pc_specific::test_helper::create_string_tokenizer;
 
         use super::*;
 
@@ -558,7 +559,6 @@ pub mod word {
 
             mod no_dots {
                 use super::*;
-                use crate::parser::pc_specific::test_helper::create_string_tokenizer;
 
                 #[test]
                 fn test_any_word_without_dot() {
@@ -584,7 +584,6 @@ pub mod word {
 
             mod dots {
                 use super::*;
-                use crate::parser::pc_specific::test_helper::create_string_tokenizer;
 
                 #[test]
                 fn test_trailing_dot() {
@@ -668,7 +667,6 @@ pub mod word {
 
             mod no_dots {
                 use super::*;
-                use crate::parser::pc_specific::test_helper::create_string_tokenizer;
 
                 #[test]
                 fn test_qualified_var_without_dot() {
@@ -703,7 +701,6 @@ pub mod word {
 
             mod dots {
                 use super::*;
-                use crate::parser::pc_specific::test_helper::create_string_tokenizer;
 
                 #[test]
                 fn test_possible_qualified_property() {
@@ -899,14 +896,14 @@ pub fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
     RelationalMap.parser().with_pos()
 }
 
+// TODO there are more test modules earlier, merge them and/or split expression to more modules
 #[cfg(test)]
 mod tests {
+    use super::super::test_utils::*;
     use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::{Expression, ExpressionType, Operator, Statement, UnaryOperator};
     use crate::{assert_expression, assert_literal_expression};
-
-    use super::super::test_utils::*;
 
     #[test]
     fn test_parse_literals() {

@@ -1,14 +1,10 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::common::*;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn parse() -> impl Parser<Output = Statement> {
         parse_built_in_sub_with_opt_args(Keyword::Color, BuiltInSub::Color)
     }
 }
@@ -118,12 +114,7 @@ mod tests {
     #[test]
     fn parse_no_args() {
         let input = "COLOR";
-        assert_parser_err!(
-            input,
-            QError::syntax_error("Expected: whitespace after COLOR"),
-            1,
-            6
-        );
+        assert_parser_err!(input, QError::syntax_error("Expected: whitespace"), 1, 6);
     }
 
     #[test]

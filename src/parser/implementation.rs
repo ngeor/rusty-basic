@@ -1,29 +1,20 @@
-use crate::common::*;
 use crate::parser::declaration;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_p};
-use crate::parser::statements;
+use crate::parser::pc_specific::*;
+use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
 
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
 
-pub fn implementation_p<R>() -> impl Parser<R, Output = TopLevelToken>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn implementation_p() -> impl Parser<Output = TopLevelToken> {
     function_implementation_p().or(sub_implementation_p())
 }
 
-fn function_implementation_p<R>() -> impl Parser<R, Output = TopLevelToken>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn function_implementation_p() -> impl Parser<Output = TopLevelToken> {
     static_declaration_p(declaration::function_declaration_p())
-        .and_demand(statements::zero_or_more_statements_p(keyword_p(
-            Keyword::End,
-        )))
-        .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Function))
+        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
+        .and_demand(keyword_pair(Keyword::End, Keyword::Function))
         .keep_left()
         .map(|(((name, params), is_static), body)| {
             TopLevelToken::FunctionImplementation(FunctionImplementation {
@@ -35,15 +26,10 @@ where
         })
 }
 
-fn sub_implementation_p<R>() -> impl Parser<R, Output = TopLevelToken>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn sub_implementation_p() -> impl Parser<Output = TopLevelToken> {
     static_declaration_p(declaration::sub_declaration_p())
-        .and_demand(statements::zero_or_more_statements_p(keyword_p(
-            Keyword::End,
-        )))
-        .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Sub))
+        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
+        .and_demand(keyword_pair(Keyword::End, Keyword::Sub))
         .keep_left()
         .map(|(((name, params), is_static), body)| {
             TopLevelToken::SubImplementation(SubImplementation {
@@ -55,19 +41,19 @@ where
         })
 }
 
-fn static_declaration_p<R, P, T>(parser: P) -> impl Parser<R, Output = (T, bool)>
+fn static_declaration_p<P, T>(parser: P) -> impl Parser<Output = (T, bool)>
 where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    P: Parser<R, Output = T> + 'static,
+    P: Parser<Output = T> + 'static,
 {
     parser
-        .and_opt(keyword_p(Keyword::Static).preceded_by_opt_ws())
+        .and_opt(keyword(Keyword::Static).preceded_by_opt_ws())
         .map(|(l, r)| (l, r.is_some()))
 }
 
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
+    use crate::common::*;
     use crate::parser::test_utils::*;
 
     use super::*;

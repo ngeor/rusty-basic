@@ -1,26 +1,16 @@
 pub mod parser {
     use crate::built_ins::BuiltInFunction;
-    use crate::common::*;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Expression>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::String_)
-            .and(item_p('$'))
-            .and_demand(
-                in_parenthesis_p(
-                    expression::lazy_expression_node_p()
-                        .csv()
-                        .or_syntax_error("Expected: expression"),
-                )
-                .or_syntax_error("Expected: ("),
-            )
-            .keep_right()
-            .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v))
+    pub fn parse() -> impl Parser<Output = Expression> {
+        seq3(
+            keyword(Keyword::String_),
+            item_p('$'),
+            expression::expressions_non_opt("Expected: expression"),
+            |_, _, v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v),
+        )
     }
 }
 

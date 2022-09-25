@@ -5,54 +5,34 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::Field)
-            .and_demand(field_node_p().or_syntax_error("Expected: file number after FIELD"))
-            .keep_right()
-    }
-
-    fn field_node_p<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        whitespace_p()
-            .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
-            .and_demand(
-                item_p(',')
-                    .surrounded_by_opt_ws()
-                    .or_syntax_error("Expected: ,"),
-            )
-            .and_demand(
-                field_item_p()
-                    .csv()
-                    .or_syntax_error("Expected: field width"),
-            )
-            .map(|(((_, file_number), _), fields)| {
+    pub fn parse() -> impl Parser<Output = Statement> {
+        seq5(
+            keyword(Keyword::Field),
+            whitespace(),
+            expression::file_handle_p().or_syntax_error("Expected: file-number"),
+            comma_surrounded_by_opt_ws(),
+            field_item_p()
+                .csv()
+                .or_syntax_error("Expected: field width"),
+            |_, _, file_number, _, fields| {
                 Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
-            })
+            },
+        )
     }
 
-    fn field_item_p<R>() -> impl Parser<R, Output = (ExpressionNode, NameNode)>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        expression::expression_node_p()
-            // TODO 'AS' does not need leading whitespace if expression has parenthesis
-            // TODO solve this not by peeking the previous but with a new expression:: function
-            .and_demand(
-                keyword_p(Keyword::As)
-                    .surrounded_by_opt_ws()
-                    .or_syntax_error("Expected: AS"),
-            )
-            .and_demand(
-                name::name_with_dot_p()
-                    .with_pos()
-                    .or_syntax_error("Expected: variable name"),
-            )
-            .map(|((width, _), name)| (width, name))
+    fn field_item_p() -> impl Parser<Output = (ExpressionNode, NameNode)> {
+        // TODO 'AS' does not need leading whitespace if expression has parenthesis
+        // TODO solve this not by peeking the previous but with a new expression:: function
+        seq3(
+            expression::expression_node_p(),
+            keyword(Keyword::As)
+                .surrounded_by_opt_ws()
+                .or_syntax_error("Expected: AS"),
+            name::name_with_dot_p()
+                .with_pos()
+                .or_syntax_error("Expected: variable name"),
+            |width, _, name| (width, name),
+        )
     }
 
     fn build_args(

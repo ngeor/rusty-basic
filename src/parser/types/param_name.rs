@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use crate::common::*;
 use crate::parser::types::*;
-use std::collections::HashMap;
 
 // same as dim minus the x as string * 5
 #[derive(Clone, Debug, PartialEq)]

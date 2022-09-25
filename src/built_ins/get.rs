@@ -1,21 +1,13 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::common::*;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn parse() -> impl Parser<Output = Statement> {
         keyword_followed_by_whitespace_p(Keyword::Get)
             .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
-            .and_demand(
-                item_p(',')
-                    .surrounded_by_opt_ws()
-                    .or_syntax_error("Expected: ,"),
-            )
+            .and_demand(comma_surrounded_by_opt_ws())
             .and_demand(expression::expression_node_p().or_syntax_error("Expected: record-number"))
             .map(|(((_, file_number), _), r)| {
                 Statement::BuiltInSubCall(

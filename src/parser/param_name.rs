@@ -4,9 +4,7 @@ use crate::common::*;
 use crate::parser::expression;
 use crate::parser::name::MAX_LENGTH;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{
-    identifier_without_dot_p, keyword_followed_by_whitespace_p, PcSpecific,
-};
+use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
 // Parses a Param name. Possible options:
@@ -15,10 +13,7 @@ use crate::parser::types::*;
 // A AS INTEGER
 // A AS UserDefinedType
 
-pub fn param_name_node_p<R>() -> impl Parser<R, Output = ParamNameNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn param_name_node_p() -> impl Parser<Output = ParamNameNode> {
     param_name_p()
         .with_pos()
         .and_opt(type_definition_extended_p())
@@ -66,10 +61,7 @@ where
         )
 }
 
-fn param_name_p<R>() -> impl Parser<R, Output = (Name, bool)>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn param_name_p() -> impl Parser<Output = (Name, bool)> {
     expression::word::word_p().and_then(|name_expr| match name_expr {
         Expression::Variable(var_name, _) => Ok((var_name, false)),
         Expression::Property(_, _, _) => {
@@ -98,25 +90,19 @@ fn final_param_type(param_type: ParamType, is_array: bool) -> ParamType {
     }
 }
 
-fn type_definition_extended_p<R>() -> impl Parser<R, Output = ParamType>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn type_definition_extended_p() -> impl Parser<Output = ParamType> {
     // <ws+> AS <ws+> identifier
-    whitespace_p()
-        .and(keyword_followed_by_whitespace_p(Keyword::As))
+    keyword_followed_by_whitespace_p(Keyword::As)
+        .preceded_by_req_ws()
         .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
         .keep_right()
 }
 
-fn extended_type_p<R>() -> impl Parser<R, Output = ParamType>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation,
-{
-    identifier_without_dot_p()
+fn extended_type_p() -> impl Parser<Output = ParamType> {
+    identifier_or_keyword_without_dot()
         .with_pos()
         .and_then(
-            |Locatable { element: x, pos }| match Keyword::from_str(&x) {
+            |Locatable { element: x, pos }| match Keyword::from_str(&x.text) {
                 Ok(Keyword::Single) => Ok(ParamType::BuiltIn(
                     TypeQualifier::BangSingle,
                     BuiltInStyle::Extended,
@@ -141,10 +127,10 @@ where
                     "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
                 )),
                 Err(_) => {
-                    if x.len() > MAX_LENGTH {
+                    if x.text.chars().count() > MAX_LENGTH {
                         Err(QError::IdentifierTooLong)
                     } else {
-                        let type_name: BareName = x.into();
+                        let type_name: BareName = x.text.into();
                         Ok(ParamType::UserDefined(type_name.at(pos)))
                     }
                 }

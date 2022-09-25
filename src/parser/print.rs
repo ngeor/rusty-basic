@@ -3,45 +3,31 @@ use crate::parser::expression;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
+use std::convert::TryFrom;
 
-pub fn parse_print_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    keyword_p(Keyword::Print)
-            .and_opt(ws_file_handle_comma_p())
-            .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_none()))
-            .and_opt_factory(|((_, opt_file_number), opt_using)|
+pub fn parse_print_p() -> impl Parser<Output = Statement> {
+    keyword(Keyword::Print)
+        .and_opt(ws_file_handle_comma_p())
+        .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_some()))
+        .and_opt_factory(|((_, opt_file_number), opt_using)|
                 // we're just past PRINT. No need for space for ; or , but we need it for expressions
-                first_print_arg_p( opt_file_number.is_none() && opt_using.is_none()).one_or_more_looking_back(|prev_arg| {
-                    PrintArgLookingBack {
-                        prev_print_arg_was_expression: prev_arg.is_expression(),
-                    }
-                })
-            )
-            .map(|(((_,opt_file_number), format_string), opt_args)| {
-                Statement::Print(PrintNode {
-                    file_number: opt_file_number.map(|x| x.element),
-                    lpt1: false,
-                    format_string,
-                    args: opt_args.unwrap_or_default(),
-                })
+                PrintArgsParser::new(opt_file_number.is_none() && opt_using.is_none()))
+        .map(|(((_, opt_file_number), format_string), opt_args)| {
+            Statement::Print(PrintNode {
+                file_number: opt_file_number.map(|x| x.element),
+                lpt1: false,
+                format_string,
+                args: opt_args.unwrap_or_default(),
             })
+        })
 }
 
-pub fn parse_lprint_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    keyword_p(Keyword::LPrint)
+pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
+    keyword(Keyword::LPrint)
         .and_opt(using_p(true))
         .and_opt_factory(|(_keyword, opt_using)| {
             // we're just past LPRINT. No need for space for ; or , but we need it for expressions
-            first_print_arg_p(opt_using.is_none()).one_or_more_looking_back(|prev_arg| {
-                PrintArgLookingBack {
-                    prev_print_arg_was_expression: prev_arg.is_expression(),
-                }
-            })
+            PrintArgsParser::new(opt_using.is_none())
         })
         .map(|((_, format_string), opt_args)| {
             Statement::Print(PrintNode {
@@ -53,47 +39,29 @@ where
         })
 }
 
-fn using_p<R>(needs_leading_whitespace: bool) -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    opt_whitespace_p(needs_leading_whitespace)
-        .and(keyword_p(Keyword::Using))
-        .and_demand(
-            expression::guarded_expression_node_p()
-                .or_syntax_error("Expected: expression after USING"),
-        )
-        .and_demand(item_p(';').or_syntax_error("Expected: ;"))
-        .keep_left()
-        .keep_right()
-}
-
-fn first_print_arg_p<R>(
-    needs_leading_whitespace_for_expression: bool,
-) -> impl Parser<R, Output = PrintArg>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    FirstPrintArg {
-        needs_leading_whitespace_for_expression,
-    }
+fn using_p(is_leading_whitespace_optional: bool) -> impl Parser<Output = ExpressionNode> {
+    seq3(
+        whitespace_boundary(is_leading_whitespace_optional).and(keyword(Keyword::Using)),
+        expression::guarded_expression_node_p().or_syntax_error("Expected: expression after USING"),
+        item_p(';'),
+        |_, using_expr, _| using_expr,
+    )
 }
 
 struct FirstPrintArg {
     needs_leading_whitespace_for_expression: bool,
 }
 
-impl<R> Parser<R> for FirstPrintArg
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl HasOutput for FirstPrintArg {
     type Output = PrintArg;
+}
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+impl Parser for FirstPrintArg {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         if self.needs_leading_whitespace_for_expression {
             semicolon_or_comma_as_print_arg_p()
                 .preceded_by_opt_ws()
-                .or(expression::guarded_expression_node_p().map(|e| PrintArg::Expression(e)))
+                .or(expression::guarded_expression_node_p().map(PrintArg::Expression))
                 .parse(reader)
         } else {
             any_print_arg_p().preceded_by_opt_ws().parse(reader)
@@ -101,38 +69,37 @@ where
     }
 }
 
-fn any_print_arg_p<R>() -> impl Parser<R, Output = PrintArg>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn any_print_arg_p() -> impl Parser<Output = PrintArg> {
     semicolon_or_comma_as_print_arg_p()
-        .or(expression::expression_node_p().map(|e| PrintArg::Expression(e)))
+        .or(expression::expression_node_p().map(PrintArg::Expression))
 }
 
-fn semicolon_or_comma_as_print_arg_p<R>() -> impl Parser<R, Output = PrintArg>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation,
-{
-    any_p()
-        .filter_reader_item(|ch| ch == ';' || ch == ',')
-        .map(|ch| match ch {
-            ';' => PrintArg::Semicolon,
-            ',' => PrintArg::Comma,
-            _ => panic!("Parser should not have parsed {}", ch),
-        })
+impl TryFrom<TokenType> for PrintArg {
+    type Error = QError;
+
+    fn try_from(value: TokenType) -> Result<Self, Self::Error> {
+        match value {
+            TokenType::Semicolon => Ok(PrintArg::Semicolon),
+            TokenType::Comma => Ok(PrintArg::Comma),
+            _ => Err(QError::ArgumentCountMismatch),
+        }
+    }
+}
+
+fn semicolon_or_comma_as_print_arg_p() -> impl Parser<Output = PrintArg> {
+    TryFromParser::new()
 }
 
 struct PrintArgLookingBack {
     prev_print_arg_was_expression: bool,
 }
 
-impl<R> Parser<R> for PrintArgLookingBack
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl HasOutput for PrintArgLookingBack {
     type Output = PrintArg;
+}
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+impl Parser for PrintArgLookingBack {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         if self.prev_print_arg_was_expression {
             // only comma or semicolon is allowed
             semicolon_or_comma_as_print_arg_p()
@@ -145,25 +112,59 @@ where
     }
 }
 
-fn ws_file_handle_comma_p<R>() -> impl Parser<R, Output = Locatable<FileHandle>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    whitespace_p()
-        .and(expression::file_handle_p())
-        .and_demand(
-            item_p(',')
-                .surrounded_by_opt_ws()
-                .or_syntax_error("Expected: ,"),
-        )
-        .keep_middle()
+fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
+    expression::file_handle_p()
+        .preceded_by_req_ws()
+        .and_demand(comma_surrounded_by_opt_ws())
+        .keep_left()
+}
+
+struct PrintArgsParser {
+    seed_parser: FirstPrintArg,
+}
+
+impl PrintArgsParser {
+    pub fn new(needs_leading_whitespace: bool) -> Self {
+        Self {
+            seed_parser: FirstPrintArg {
+                needs_leading_whitespace_for_expression: needs_leading_whitespace,
+            },
+        }
+    }
+}
+
+impl HasOutput for PrintArgsParser {
+    type Output = Vec<PrintArg>;
+}
+
+impl Parser for PrintArgsParser {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let opt_first_arg = self.seed_parser.parse(tokenizer)?;
+        match opt_first_arg {
+            Some(first_arg) => {
+                let mut args = vec![first_arg];
+                loop {
+                    let parser = PrintArgLookingBack {
+                        prev_print_arg_was_expression: args.last().unwrap().is_expression(),
+                    };
+                    match parser.parse(tokenizer)? {
+                        Some(next_arg) => args.push(next_arg),
+                        None => break,
+                    }
+                }
+                Ok(Some(args))
+            }
+            None => Ok(None),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::assert_parser_err;
     use crate::parser::test_utils::*;
+
+    use super::*;
 
     #[test]
     fn test_print_no_args() {

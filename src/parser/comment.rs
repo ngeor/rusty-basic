@@ -1,44 +1,41 @@
 use crate::common::*;
 use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
 /// Tries to read a comment.
-pub fn comment_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    item_p('\'')
-        .and_opt(non_eol_p())
-        .keep_right()
-        .map(|x| Statement::Comment(x.unwrap_or_default()))
+pub fn comment_p() -> impl Parser<Output = Statement> {
+    CommentAsString.map(Statement::Comment)
 }
 
-/// Reads multiple comments and the surrounding whitespace.
-pub fn comments_and_whitespace_p<R>() -> impl Parser<R, Output = Vec<Locatable<String>>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    eol_or_whitespace_p()
-        .map_none_to_default()
-        .and_opt(
-            item_p('\'')
-                .with_pos()
-                .and_opt(non_eol_p())
-                .and_opt(eol_or_whitespace_p())
-                .keep_left()
-                .map(|(Locatable { pos, .. }, opt_s)| opt_s.unwrap_or_default().at(pos))
-                .one_or_more(),
-        )
-        .and_opt(eol_or_whitespace_p())
-        .keep_middle()
-        .map(|x| x.unwrap_or_default())
+pub struct CommentAsString;
+
+impl HasOutput for CommentAsString {
+    type Output = String;
 }
 
-// A sequence of any characters that are not EOL
-crate::char_sequence_p!(NonEolSequence, non_eol_p, is_not_eol);
-
-fn is_not_eol(ch: char) -> bool {
-    !is_eol(ch)
+impl Parser for CommentAsString {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match tokenizer.read()? {
+            Some(token) if token.kind == TokenType::SingleQuote as i32 => {
+                let mut result = String::new();
+                while let Some(token) = tokenizer.read()? {
+                    if token.kind == TokenType::Eol as i32 {
+                        tokenizer.unread(token);
+                        break;
+                    } else {
+                        result.push_str(&token.text);
+                    }
+                }
+                Ok(Some(result))
+            }
+            Some(token) => {
+                tokenizer.unread(token);
+                Ok(None)
+            }
+            None => Ok(None),
+        }
+    }
 }
 
 #[cfg(test)]

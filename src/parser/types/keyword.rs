@@ -1,5 +1,8 @@
-use crate::common::CmpIgnoreAsciiCase;
 use std::str::FromStr;
+
+use crate::common::CmpIgnoreAsciiCase;
+use crate::parser::pc::Token;
+use crate::parser::pc_specific::TokenType;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Keyword {
@@ -153,6 +156,12 @@ pub enum Keyword {
     Width,
 }
 
+impl PartialEq<Token> for Keyword {
+    fn eq(&self, other: &Token) -> bool {
+        other.kind == TokenType::Keyword as i32 && other.text.eq_ignore_ascii_case(self.as_str())
+    }
+}
+
 const STR_ACCESS: &str = "ACCESS";
 const STR_AND: &str = "AND";
 const STR_APPEND: &str = "APPEND";
@@ -228,7 +237,7 @@ const STR_WEND: &str = "WEND";
 const STR_WHILE: &str = "WHILE";
 const STR_WIDTH: &str = "WIDTH";
 
-const SORTED_KEYWORDS_STR: [&str; 74] = [
+pub const SORTED_KEYWORDS_STR: [&str; 74] = [
     STR_ACCESS,
     STR_AND,
     STR_APPEND,
@@ -496,11 +505,17 @@ mod tests {
             // can convert keyword to string
             assert_eq!(SORTED_KEYWORDS[i].to_string(), SORTED_KEYWORDS_STR[i]);
             // can parse string to keyword
-            assert_eq!(SORTED_KEYWORDS[i], SORTED_KEYWORDS_STR[i].parse().unwrap());
+            assert_eq!(
+                SORTED_KEYWORDS[i],
+                SORTED_KEYWORDS_STR[i].parse::<Keyword>().unwrap()
+            );
             // can parse lowercase string to keyword
             assert_eq!(
                 SORTED_KEYWORDS[i],
-                SORTED_KEYWORDS_STR[i].to_lowercase().parse().unwrap()
+                SORTED_KEYWORDS_STR[i]
+                    .to_lowercase()
+                    .parse::<Keyword>()
+                    .unwrap()
             );
         }
         // sort order is correct

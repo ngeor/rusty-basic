@@ -1,19 +1,15 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::common::*;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::Close)
+    pub fn parse() -> impl Parser<Output = Statement> {
+        // TODO rewrite this
+        keyword(Keyword::Close)
             .and_opt(
                 expression::guarded_file_handle_or_expression_p().and_opt(
-                    item_p(',')
-                        .surrounded_by_opt_ws()
+                    comma_surrounded_by_opt_ws()
                         .and(expression::file_handle_or_expression_p())
                         .keep_right()
                         .one_or_more(),

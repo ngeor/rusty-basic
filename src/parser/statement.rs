@@ -7,11 +7,10 @@ use crate::parser::exit::statement_exit_p;
 use crate::parser::for_loop;
 use crate::parser::go_sub::{statement_go_sub_p, statement_return_p};
 use crate::parser::if_block;
-use crate::parser::name;
-use crate::parser::name::bare_name_p;
+use crate::parser::name::{bare_name_as_token, bare_name_p};
 use crate::parser::on_error::statement_on_error_go_to_p;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, keyword_p, PcSpecific};
+use crate::parser::pc_specific::*;
 use crate::parser::print;
 use crate::parser::resume::statement_resume_p;
 use crate::parser::select_case;
@@ -19,146 +18,121 @@ use crate::parser::sub_call;
 use crate::parser::types::*;
 use crate::parser::while_wend;
 
-pub fn statement_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    statement_label_p()
-        .or(single_line_statement_p())
-        .or(if_block::if_block_p())
-        .or(for_loop::for_loop_p())
-        .or(select_case::select_case_p())
-        .or(while_wend::while_wend_p())
-        .or(do_loop::do_loop_p())
-        .or(illegal_starting_keywords())
+pub fn statement_p() -> impl Parser<Output = Statement> {
+    Alt8::new(
+        statement_label_p(),
+        single_line_statement_p(),
+        if_block::if_block_p(),
+        for_loop::for_loop_p(),
+        select_case::select_case_p(),
+        while_wend::while_wend_p(),
+        do_loop::do_loop_p(),
+        illegal_starting_keywords(),
+    )
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// excluding comments.
-pub fn single_line_non_comment_statement_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    dim::dim_p()
-        .or(dim::redim_p())
-        .or(constant::constant_p())
-        .or(crate::built_ins::parser::parse())
-        .or(print::parse_print_p())
-        .or(print::parse_lprint_p())
-        .or(sub_call::sub_call_or_assignment_p())
-        .or(statement_go_to_p())
-        .or(statement_go_sub_p())
-        .or(statement_return_p())
-        .or(statement_exit_p())
-        .or(statement_on_error_go_to_p())
-        .or(statement_resume_p())
-        .or(end::parse_end_p())
-        .or(system::parse_system_p())
+pub fn single_line_non_comment_statement_p() -> impl Parser<Output = Statement> {
+    Alt15::new(
+        dim::dim_p(),
+        dim::redim_p(),
+        constant::constant_p(),
+        crate::built_ins::parser::parse(),
+        print::parse_print_p(),
+        print::parse_lprint_p(),
+        sub_call::sub_call_or_assignment_p(),
+        statement_go_to_p(),
+        statement_go_sub_p(),
+        statement_return_p(),
+        statement_exit_p(),
+        statement_on_error_go_to_p(),
+        statement_resume_p(),
+        end::parse_end_p(),
+        system::parse_system_p(),
+    )
 }
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
-pub fn single_line_statement_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn single_line_statement_p() -> impl Parser<Output = Statement> {
     comment::comment_p().or(single_line_non_comment_statement_p())
 }
 
-fn statement_label_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    name::bare_name_p()
+fn statement_label_p() -> impl Parser<Output = Statement> {
+    // labels can have dots
+    bare_name_as_token()
         .and(item_p(':'))
         .keep_left()
-        .map(|l| Statement::Label(l))
+        .map(|l| Statement::Label(l.text.into()))
 }
 
-fn statement_go_to_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn statement_go_to_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
         .and_demand(bare_name_p().or_syntax_error("Expected: label"))
         .map(|(_, l)| Statement::GoTo(l))
 }
 
-fn illegal_starting_keywords<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    keyword_p(Keyword::Wend)
-        .or(keyword_p(Keyword::Else))
-        .and_then(|(k, _)| match k {
-            Keyword::Wend => Err(QError::WendWithoutWhile),
-            Keyword::Else => Err(QError::ElseWithoutIf),
-            Keyword::Loop => Err(QError::syntax_error("LOOP without DO")),
-            _ => panic!("Parser should not have parsed {}", k),
-        })
+/// A parser that fails if an illegal starting keyword is found.
+fn illegal_starting_keywords() -> impl Parser<Output = Statement> + 'static {
+    keyword_map(&[
+        (Keyword::Wend, QError::WendWithoutWhile),
+        (Keyword::Else, QError::ElseWithoutIf),
+        (Keyword::Loop, QError::syntax_error("LOOP without DO")),
+    ])
+    .and_then(Err)
 }
 
 mod end {
-    use super::*;
-    use crate::parser::pc_specific::keyword_choice_p;
-    use crate::parser::statement_separator::EofOrStatementSeparator;
+    use crate::common::QError;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
+    use crate::parser::statement_separator::peek_eof_or_statement_separator;
+    use crate::parser::{Keyword, Statement};
 
-    pub fn parse_end_p<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::End)
-            .and(
-                opt_whitespace_p(false)
-                    .and(AfterEndSeparator {})
-                    .map(|(l, r)| {
-                        let mut s: String = String::new();
-                        s.push_str(&l);
-                        s.push_str(&r);
-                        s
-                    })
-                    .peek(),
-            )
+    pub fn parse_end_p() -> impl Parser<Output = Statement> {
+        keyword(Keyword::End)
+            .and_demand(AfterEndSeparator)
             .map(|_| Statement::End)
     }
 
     /// Parses the next token after END. If it is one of the valid keywords that
     /// can follow END, it is undone so that the entire parsing will be undone.
     /// Otherwise, it demands that we find an end-of-statement terminator.
-    struct AfterEndSeparator {}
+    struct AfterEndSeparator;
 
-    impl<R> Parser<R> for AfterEndSeparator
-    where
-        R: Reader<Item = char, Err = QError>,
-    {
-        type Output = String;
+    impl HasOutput for AfterEndSeparator {
+        type Output = ();
+    }
 
-        fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-            let (reader, opt_result) = allowed_keywords_after_end().parse(reader)?;
-            match opt_result {
-                Some((_, s)) => {
-                    // undo and return None, as another parser will handle this
-                    Ok((reader.undo(s), None))
-                }
-                _ => {
-                    let (reader, opt_str) = EofOrStatementSeparator::new().parse(reader)?;
-                    match opt_str {
-                        Some(s) => Ok((reader, Some(s))),
-                        _ => {
-                            // error
-                            Err((reader, QError::syntax_error("Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement")))
-                        }
-                    }
+    impl NonOptParser for AfterEndSeparator {
+        fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+            let opt_ws = whitespace().parse(tokenizer)?;
+            if opt_ws.is_some() {
+                // maybe it is followed by a legit keyword after END
+                let opt_k = allowed_keywords_after_end().parse(tokenizer)?;
+                if opt_k.is_some() {
+                    // got it
+                    tokenizer.unread(opt_k.unwrap().1);
+                    tokenizer.unread(opt_ws.unwrap());
+                    return Ok(());
                 }
             }
+
+            // is the next token eof or end of statement?
+            let opt_sep = peek_eof_or_statement_separator().parse(tokenizer)?;
+
+            // put back the ws if we read it
+            opt_ws.undo(tokenizer);
+
+            opt_sep.ok_or(QError::syntax_error(
+                "Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement",
+            ))
         }
     }
 
-    fn allowed_keywords_after_end<R>() -> impl Parser<R, Output = (Keyword, String)>
-    where
-        R: Reader<Item = char>,
-    {
-        keyword_choice_p(&[
+    fn allowed_keywords_after_end() -> impl Parser<Output = (Keyword, Token)> {
+        keyword_choice(&[
             Keyword::Function,
             Keyword::If,
             Keyword::Select,
@@ -169,8 +143,9 @@ mod end {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
         use crate::assert_parser_err;
+
+        use super::*;
 
         #[test]
         fn test_sub_call_end_no_args_allowed() {
@@ -185,24 +160,16 @@ mod end {
 }
 
 mod system {
-    use super::*;
-    use crate::parser::statement_separator::EofOrStatementSeparator;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
+    use crate::parser::statement_separator::peek_eof_or_statement_separator;
+    use crate::parser::{Keyword, Statement};
 
-    pub fn parse_system_p<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::System)
+    pub fn parse_system_p() -> impl Parser<Output = Statement> {
+        keyword(Keyword::System)
             .and_demand(
-                opt_whitespace_p(false)
-                    .and(EofOrStatementSeparator::new())
-                    .map(|(l, r)| {
-                        let mut s: String = String::new();
-                        s.push_str(&l);
-                        s.push_str(&r);
-                        s
-                    })
-                    .peek()
+                peek_eof_or_statement_separator()
+                    .preceded_by_opt_ws()
                     .or_syntax_error("Expected: end-of-statement"),
             )
             .map(|_| Statement::System)

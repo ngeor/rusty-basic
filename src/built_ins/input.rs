@@ -5,10 +5,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn parse() -> impl Parser<Output = Statement> {
         // INPUT variable-list
         // LINE INPUT variable$
         // INPUT #file-number%, variable-list
@@ -214,10 +211,7 @@ mod tests {
     #[test]
     fn test_no_whitespace_after_input() {
         let input = "INPUT";
-        assert_parser_err!(
-            input,
-            QError::syntax_error("Expected: whitespace after INPUT")
-        );
+        assert_parser_err!(input, QError::syntax_error("Expected: whitespace"));
     }
 
     #[test]

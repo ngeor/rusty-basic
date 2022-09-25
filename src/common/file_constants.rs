@@ -145,6 +145,7 @@ mod tests {
 
     #[should_panic]
     #[test]
+    #[allow(unused_must_use)]
     fn test_zero_file_mode_should_panic() {
         FileMode::from(0);
     }
@@ -167,6 +168,7 @@ mod tests {
 
     #[should_panic]
     #[test]
+    #[allow(unused_must_use)]
     fn test_zero_file_access_should_panic() {
         FileAccess::from(0);
     }

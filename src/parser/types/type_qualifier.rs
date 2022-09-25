@@ -1,7 +1,11 @@
-use super::Operator;
-use crate::common::{CanCastTo, QError};
 use std::convert::TryFrom;
 use std::fmt::Display;
+
+use crate::common::{CanCastTo, QError};
+use crate::parser::pc::Token;
+use crate::parser::pc_specific::TokenType;
+
+use super::Operator;
 
 /// The optional character postfix that specifies the type of a name.
 /// Example: A$ denotes a string variable
@@ -104,6 +108,17 @@ impl TypeQualifier {
             }
         }
     }
+
+    /// `Option<Token>` -> `Option<TypeQualifier>`
+    pub fn from_opt_token(opt_token: &Option<Token>) -> Option<Self> {
+        match opt_token {
+            Some(token) => match TokenType::try_from(token.kind) {
+                Ok(token_type) => TryFrom::try_from(token_type).ok(),
+                Err(_) => None,
+            },
+            None => None,
+        }
+    }
 }
 
 // char -> TypeQualifier
@@ -138,6 +153,23 @@ impl From<TypeQualifier> for char {
             TypeQualifier::DollarString => '$',
             TypeQualifier::PercentInteger => '%',
             TypeQualifier::AmpersandLong => '&',
+        }
+    }
+}
+
+// TokenType -> TypeQualifier
+
+impl TryFrom<TokenType> for TypeQualifier {
+    type Error = QError;
+
+    fn try_from(token_type: TokenType) -> Result<TypeQualifier, QError> {
+        match token_type {
+            TokenType::ExclamationMark => Ok(TypeQualifier::BangSingle),
+            TokenType::Pound => Ok(TypeQualifier::HashDouble),
+            TokenType::Percent => Ok(TypeQualifier::PercentInteger),
+            TokenType::Ampersand => Ok(TypeQualifier::AmpersandLong),
+            TokenType::DollarSign => Ok(TypeQualifier::DollarString),
+            _ => Err(QError::syntax_error("Expected: %, &, !, # or $")),
         }
     }
 }

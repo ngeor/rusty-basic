@@ -1,28 +1,24 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::common::*;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_pair_p(Keyword::Def, Keyword::Seg)
+    pub fn parse() -> impl Parser<Output = Statement> {
+        keyword_pair(Keyword::Def, Keyword::Seg)
             .and_opt(equal_sign_and_expression())
             .keep_right()
             .map(opt_arg_to_args)
             .map(|args| Statement::BuiltInSubCall(BuiltInSub::DefSeg, args))
     }
 
-    fn equal_sign_and_expression<R>() -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {
         item_p('=')
             .surrounded_by_opt_ws()
-            .and_demand(expression::expression_node_p())
+            .and_demand(
+                expression::expression_node_p()
+                    .or_syntax_error("Expected expression after equal sign"),
+            )
             .keep_right()
     }
 

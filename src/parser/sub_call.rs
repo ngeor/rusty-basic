@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::parser::expression;
 use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
 // SubCall                  ::= SubCallNoArgs | SubCallArgsNoParenthesis | SubCallArgsParenthesis
@@ -8,58 +9,46 @@ use crate::parser::types::*;
 // SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
 
-pub fn sub_call_or_assignment_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    SubCallOrAssignment {}
+pub fn sub_call_or_assignment_p() -> impl Parser<Output = Statement> {
+    SubCallOrAssignment
 }
 
-pub struct SubCallOrAssignment {}
+struct SubCallOrAssignment;
 
-impl<R> Parser<R> for SubCallOrAssignment
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl HasOutput for SubCallOrAssignment {
     type Output = Statement;
+}
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_item) = Self::name_and_opt_eq_sign().parse(reader)?;
+impl Parser for SubCallOrAssignment {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let opt_item = Self::name_and_opt_eq_sign().parse(reader)?;
         match opt_item {
             Some((name_expr, opt_equal_sign)) => match opt_equal_sign {
                 Some(_) => {
-                    let (reader, opt_v) =
-                        expression::demand_expression_node_p("Expected: expression for assignment")
-                            .parse(reader)?;
-                    Ok((
-                        reader,
-                        Some(Statement::Assignment(name_expr, opt_v.unwrap())),
-                    ))
+                    let right_side_expr = expression::expression_node_p()
+                        .or_syntax_error("Expected: expression for assignment")
+                        .parse_non_opt(reader)?;
+                    Ok(Some(Statement::Assignment(name_expr, right_side_expr)))
                 }
                 _ => match expr_to_bare_name_args(name_expr) {
-                    Ok((bare_name, Some(args))) => {
-                        Ok((reader, Some(Statement::SubCall(bare_name, args))))
-                    }
+                    Ok((bare_name, Some(args))) => Ok(Some(Statement::SubCall(bare_name, args))),
                     Ok((bare_name, None)) => {
-                        let (reader, args) = expression::expression_nodes_p().parse(reader)?;
-                        Ok((
-                            reader,
-                            Some(Statement::SubCall(bare_name, args.unwrap_or_default())),
-                        ))
+                        let args = expression::expression_nodes_p().parse(reader)?;
+                        Ok(Some(Statement::SubCall(
+                            bare_name,
+                            args.unwrap_or_default(),
+                        )))
                     }
-                    Err(err) => Err((reader, err)),
+                    Err(err) => Err(err),
                 },
             },
-            _ => Ok((reader, None)),
+            _ => Ok(None),
         }
     }
 }
 
 impl SubCallOrAssignment {
-    fn name_and_opt_eq_sign<R>() -> impl Parser<R, Output = (Expression, Option<char>)>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    fn name_and_opt_eq_sign() -> impl Parser<Output = (Expression, Option<Token>)> {
         expression::word::word_p().and_opt(item_p('=').surrounded_by_opt_ws())
     }
 }
@@ -109,6 +98,7 @@ fn fold_to_bare_name(expr: Expression) -> Result<BareName, QError> {
 #[cfg(test)]
 mod tests {
     use crate::assert_sub_call;
+    use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::{
         BuiltInStyle, Expression, ExpressionType, Operator, ParamName, ParamType, PrintArg,
@@ -116,7 +106,6 @@ mod tests {
     };
 
     use super::super::test_utils::*;
-    use crate::built_ins::BuiltInSub;
 
     #[test]
     fn test_parse_sub_call_no_args() {

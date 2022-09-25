@@ -1,7 +1,8 @@
+use std::convert::TryFrom;
+
 use crate::common::Locatable;
 use crate::parser::types::{BareName, QualifiedName, TypeQualifier};
 use crate::parser::{ExpressionType, HasExpressionType};
-use std::convert::TryFrom;
 
 /// Defines a name.
 ///

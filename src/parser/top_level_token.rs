@@ -1,57 +1,54 @@
-use std::marker::PhantomData;
-
 use crate::common::*;
 use crate::parser::declaration;
 use crate::parser::def_type;
 use crate::parser::implementation;
 use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;
+use std::convert::TryFrom;
 
-pub struct TopLevelTokensParser<R>(PhantomData<R>);
+pub struct TopLevelTokensParser;
 
-impl<R> TopLevelTokensParser<R> {
+impl TopLevelTokensParser {
     pub fn new() -> Self {
-        Self(PhantomData)
+        Self
     }
 }
 
-impl<R> Parser<R> for TopLevelTokensParser<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl HasOutput for TopLevelTokensParser {
     type Output = ProgramNode;
+}
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
+impl Parser for TopLevelTokensParser {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let mut read_separator = true; // we are at the beginning of the file
         let mut top_level_tokens: ProgramNode = vec![];
-        let mut r = reader;
         loop {
-            let (tmp, opt_item) = r.read()?;
-            r = tmp;
+            let opt_item = reader.read()?;
             match opt_item {
                 Some(ch) => {
-                    if ch == ' ' {
+                    let token_type = TokenType::try_from(ch.kind)?;
+                    if token_type == TokenType::Whitespace {
                         // skip whitespace
-                    } else if ch == '\r' || ch == '\n' || ch == ':' {
+                    } else if token_type == TokenType::Eol || token_type == TokenType::Colon {
                         read_separator = true;
                     } else {
                         // if it is a comment, we are allowed to read it without a separator
-                        let can_read = ch == '\'' || read_separator;
+                        let can_read = token_type == TokenType::SingleQuote || read_separator;
                         if !can_read {
-                            return Err((r, QError::SyntaxError(format!("No separator: {}", ch))));
+                            return Err(QError::SyntaxError(format!("No separator: {}", ch.text)));
                         }
-                        let (tmp, opt_top_level_token) =
-                            top_level_token_one_p().parse(r.undo_item(ch))?;
-                        r = tmp;
+                        reader.unread(ch);
+                        let opt_top_level_token = top_level_token_one_p().parse(reader)?;
                         match opt_top_level_token {
                             Some(top_level_token) => {
                                 top_level_tokens.push(top_level_token);
                                 read_separator = false;
                             }
                             _ => {
-                                return Err((r, QError::syntax_error("Expected: top level token")));
+                                return Err(QError::syntax_error("Expected: top level token"));
                             }
                         }
                     }
@@ -61,19 +58,17 @@ where
                 }
             }
         }
-        Ok((r, Some(top_level_tokens)))
+        Ok(Some(top_level_tokens))
     }
 }
 
-fn top_level_token_one_p<R>() -> impl Parser<R, Output = TopLevelTokenNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    def_type::def_type_p()
-        .map(TopLevelToken::DefType)
-        .or(declaration::declaration_p())
-        .or(implementation::implementation_p())
-        .or(statement::statement_p().map(TopLevelToken::Statement))
-        .or(user_defined_type::user_defined_type_p().map(TopLevelToken::UserDefinedType))
-        .with_pos()
+fn top_level_token_one_p() -> impl Parser<Output = TopLevelTokenNode> {
+    Alt5::new(
+        def_type::def_type_p().map(TopLevelToken::DefType),
+        declaration::declaration_p(),
+        implementation::implementation_p(),
+        statement::statement_p().map(TopLevelToken::Statement),
+        user_defined_type::user_defined_type_p().map(TopLevelToken::UserDefinedType),
+    )
+    .with_pos()
 }

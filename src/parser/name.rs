@@ -1,9 +1,10 @@
+use std::str::FromStr;
+
 use crate::common::QError;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::identifier_with_dot;
-use crate::parser::type_qualifier::type_qualifier_p;
+use crate::parser::pc_specific::*;
+use crate::parser::type_qualifier::type_qualifier_as_token;
 use crate::parser::{BareName, Keyword, Name, TypeQualifier};
-use std::str::FromStr;
 
 /// Parses a name. The name must start with a letter and can include
 /// letters, digits or dots. The name can optionally be qualified by a type
@@ -11,26 +12,15 @@ use std::str::FromStr;
 ///
 /// The parser validates the maximum length of the name and checks that the name
 /// is not a keyword (with the exception of strings, e.g. `end$`).
-pub fn name_with_dot_p<R>() -> impl Parser<R, Output = Name>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
-    identifier_with_dot()
-        .validate(|n| {
-            if n.len() > MAX_LENGTH {
-                Err(QError::IdentifierTooLong)
-            } else {
-                Ok(true)
-            }
-        })
-        .and_opt(type_qualifier_p())
-        .map(|(n, opt_q)| Name::new(n.into(), opt_q))
-        .validate(|n| {
-            let bare_name: &BareName = n.bare_name();
-            let s: &str = bare_name.as_ref();
-            let is_keyword = Keyword::from_str(s).is_ok();
+pub fn name_with_dot_p() -> impl Parser<Output = Name> {
+    identifier_or_keyword()
+        .and_then(ensure_token_list_length)
+        .and_opt(type_qualifier_as_token())
+        .validate(|(n, opt_q)| {
+            // TODO preserve the string and type qualifier for the fn_map step
+            let is_keyword = n.kind == TokenType::Keyword as i32;
             if is_keyword {
-                match n.qualifier() {
+                match TypeQualifier::from_opt_token(opt_q) {
                     Some(TypeQualifier::DollarString) => Ok(true),
                     Some(_) => Err(QError::syntax_error("Unexpected keyword")),
                     _ => {
@@ -42,44 +32,79 @@ where
                 Ok(true)
             }
         })
+        .map(|(n, opt_q)| Name::new(n.text.into(), TypeQualifier::from_opt_token(&opt_q)))
 }
 
 // bare name node
 
-pub fn bare_name_p<R>() -> impl Parser<R, Output = BareName>
+pub fn bare_name_as_token() -> impl Parser<Output = Token> {
+    UnlessFollowedBy(
+        TokenKindParser::new(TokenType::Identifier).parser(),
+        type_qualifier_as_token(),
+    )
+    .validate(ensure_length_and_not_keyword)
+}
+
+pub fn bare_name_p() -> impl Parser<Output = BareName> {
+    bare_name_as_token().map(|x| x.text.into()) // TODO make a parser for simpler .into() cases
+}
+
+struct UnlessFollowedBy<L, R>(L, R);
+
+impl<L, R> HasOutput for UnlessFollowedBy<L, R>
 where
-    R: Reader<Item = char, Err = QError>,
+    L: HasOutput,
 {
-    any_word_with_dot_p().unless_followed_by(type_qualifier_p())
+    type Output = L::Output;
+}
+
+impl<L, R> Parser for UnlessFollowedBy<L, R>
+where
+    L: Parser,
+    L::Output: Undo,
+    R: Parser,
+    R::Output: Undo,
+{
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match self.0.parse(tokenizer)? {
+            Some(value) => match self.1.parse(tokenizer)? {
+                Some(needle) => {
+                    needle.undo(tokenizer);
+                    value.undo(tokenizer);
+                    Ok(None)
+                }
+                None => Ok(Some(value)),
+            },
+            None => Ok(None),
+        }
+    }
 }
 
 pub const MAX_LENGTH: usize = 40;
 
-/// Reads any word, i.e. any identifier which is not a keyword.
-pub fn any_word_with_dot_p<R>() -> impl Parser<R, Output = BareName>
-where
-    R: Reader<Item = char, Err = QError>,
-{
-    identifier_with_dot()
-        .validate(ensure_length_and_not_keyword)
-        .map(|x| x.into())
-}
-
-fn ensure_length_and_not_keyword(s: &String) -> Result<bool, QError> {
-    if s.len() > MAX_LENGTH {
+fn ensure_length_and_not_keyword(token: &Token) -> Result<bool, QError> {
+    if token.text.chars().count() > MAX_LENGTH {
         Err(QError::IdentifierTooLong)
     } else {
-        match Keyword::from_str(s.as_ref()) {
+        match Keyword::from_str(&token.text) {
             Ok(_) => Ok(false),
             Err(_) => Ok(true),
         }
     }
 }
 
+fn ensure_token_list_length(token: Token) -> Result<Token, QError> {
+    if token.text.chars().count() > MAX_LENGTH {
+        Err(QError::IdentifierTooLong)
+    } else {
+        Ok(token)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::char_reader::EolReader;
+    use crate::parser::pc_specific::test_helper::create_string_tokenizer;
 
     #[test]
     fn test_any_word_with_dot() {
@@ -88,9 +113,9 @@ mod tests {
         for i in 0..inputs.len() {
             let input = inputs[i];
             let expected_output = expected_outputs[i];
-            let eol_reader = EolReader::from(input);
-            let mut parser = any_word_with_dot_p();
-            let (_, result) = parser.parse(eol_reader).expect("Should succeed");
+            let mut eol_reader = create_string_tokenizer(input);
+            let parser = bare_name_p();
+            let result = parser.parse(&mut eol_reader).expect("Should succeed");
             assert_eq!(result, Some(BareName::from(expected_output)));
         }
     }

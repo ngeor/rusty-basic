@@ -1,11 +1,10 @@
 use crate::common::*;
-use crate::parser::comment;
 use crate::parser::expression;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{demand_keyword_pair_p, keyword_p, keyword_pair_p, PcSpecific};
-use crate::parser::statements;
+use crate::parser::pc_specific::*;
+use crate::parser::statement_separator::comments_and_whitespace_p;
+use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
-use std::marker::PhantomData;
 
 // SELECT CASE expr ' comment
 // CASE 1
@@ -19,38 +18,29 @@ use std::marker::PhantomData;
 // CASE <ws+> IS <Operator> <expr>
 // CASE <expr>
 
-pub fn select_case_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn select_case_p() -> impl Parser<Output = Statement> {
     select_case_expr_p()
-        .and_opt(comment::comments_and_whitespace_p())
-        .and_opt(case_blocks())
+        .and_demand(comments_and_whitespace_p())
+        .and_demand(case_blocks())
         .and_opt(case_else())
-        .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Select))
+        .and_demand(keyword_pair(Keyword::End, Keyword::Select))
         .map(
-            |((((expr, opt_inline_comments), opt_blocks), else_block), _)| {
+            |((((expr, inline_comments), case_blocks), else_block), _)| {
                 Statement::SelectCase(SelectCaseNode {
                     expr,
-                    case_blocks: opt_blocks.unwrap_or_default(),
+                    case_blocks,
                     else_block,
-                    inline_comments: opt_inline_comments.unwrap_or_default(),
+                    inline_comments,
                 })
             },
         )
 }
 
 /// Parses the `SELECT CASE expression` part
-fn select_case_expr_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    keyword_pair_p(Keyword::Select, Keyword::Case)
-        .and_demand(
-            expression::guarded_expression_node_p()
-                .or_syntax_error("Expected: expression after CASE"),
-        )
-        .keep_right()
+fn select_case_expr_p() -> impl Parser<Output = ExpressionNode> {
+    keyword_pair(Keyword::Select, Keyword::Case).then_use(
+        expression::guarded_expression_node_p().or_syntax_error("Expected: expression after CASE"),
+    )
 }
 
 // SELECT CASE expr
@@ -71,165 +61,150 @@ where
 //
 // For range-expression, no space is needed before TO if the first expression is in parenthesis
 
-fn case_blocks<R>() -> impl Parser<R, Output = Vec<CaseBlockNode>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    CaseBlockParser::<R>::new().one_or_more()
+fn case_blocks() -> impl NonOptParser<Output = Vec<CaseBlockNode>> {
+    case_block().zero_or_more()
 }
 
-struct CaseBlockParser<R>(PhantomData<R>);
+fn case_block() -> impl Parser<Output = CaseBlockNode> {
+    // CASE
+    CaseButNotElse.then_use(
+        continue_after_case()
+            .preceded_by_opt_ws()
+            .or_syntax_error("Expected case expression after CASE"),
+    )
+}
 
-impl<R> Parser<R> for CaseBlockParser<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    type Output = CaseBlockNode;
+struct CaseButNotElse;
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        // CASE
-        let (reader, result) = keyword_p(Keyword::Case)
-            .and_opt(whitespace_p())
-            .map(|((_, l), r)| {
-                let mut temp: String = String::new();
-                temp.push_str(l.as_str());
-                temp.push_str(r.unwrap_or_default().as_str());
-                temp
-            })
-            .parse(reader)?;
-        if result.is_none() {
-            return Ok((reader, None));
+impl HasOutput for CaseButNotElse {
+    type Output = ();
+}
+
+impl Parser for CaseButNotElse {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match tokenizer.read()? {
+            Some(case_token) if Keyword::Case == case_token => match tokenizer.read()? {
+                Some(space_token) if space_token.kind == TokenType::Whitespace as i32 => {
+                    match tokenizer.read()? {
+                        Some(else_token) if Keyword::Else == else_token => {
+                            tokenizer.unread(else_token);
+                            tokenizer.unread(space_token);
+                            tokenizer.unread(case_token);
+                            Ok(None)
+                        }
+                        Some(other_token) => {
+                            tokenizer.unread(other_token);
+                            Ok(Some(()))
+                        }
+                        None => Err(QError::syntax_error(
+                            "Expected: ELSE or expression after CASE",
+                        )),
+                    }
+                }
+                Some(paren_token) if paren_token.kind == TokenType::LParen as i32 => {
+                    tokenizer.unread(paren_token);
+                    Ok(Some(()))
+                }
+                _ => Err(QError::syntax_error(
+                    "Expected: whitespace or parenthesis after CASE",
+                )),
+            },
+            Some(token) => {
+                tokenizer.unread(token);
+                Ok(None)
+            }
+            None => Ok(None),
         }
-        let case_ws_str: String = result.unwrap_or_default();
-        let (reader, result) = Self::continue_after_case().parse(reader)?;
-        if result.is_some() {
-            Ok((reader, result))
-        } else {
-            Ok((reader.undo(case_ws_str), result))
-        }
     }
 }
 
-impl<R> CaseBlockParser<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    fn new() -> Self {
-        Self(PhantomData)
-    }
-
-    fn continue_after_case() -> impl Parser<R, Output = CaseBlockNode> {
-        case_expression_list()
-            .and_demand(statements::zero_or_more_statements_p(
-                keyword_p(Keyword::Case).or(keyword_p(Keyword::End)),
-            ))
-            .map(|(expression_list, statements)| CaseBlockNode {
-                expression_list,
-                statements,
-            })
-    }
+fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
+    case_expression_list()
+        .and_demand(ZeroOrMoreStatements::new(keyword_choice(&[
+            Keyword::Case,
+            Keyword::End,
+        ])))
+        .map(|(expression_list, statements)| CaseBlockNode {
+            expression_list,
+            statements,
+        })
 }
 
-fn case_expression_list<R>() -> impl Parser<R, Output = Vec<CaseExpression>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn case_expression_list() -> impl Parser<Output = Vec<CaseExpression>> {
     CaseExpressionParser::new().csv()
 }
 
-struct CaseExpressionParser<R>(PhantomData<R>);
+struct CaseExpressionParser;
 
-impl<R> Parser<R> for CaseExpressionParser<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl HasOutput for CaseExpressionParser {
     type Output = CaseExpression;
+}
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, result) = keyword_p(Keyword::Else).peek().parse(reader)?;
-        if result.is_some() {
-            return Ok((reader, None));
-        }
-
-        Self::case_is()
-            .or(SimpleOrRangeParser::new())
-            .or_syntax_error("Expected: IS or expression")
-            .parse(reader)
+impl Parser for CaseExpressionParser {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        Self::case_is().or(SimpleOrRangeParser::new()).parse(reader)
     }
 }
 
-impl<R> CaseExpressionParser<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl CaseExpressionParser {
     fn new() -> Self {
-        Self(PhantomData)
+        Self
     }
 
-    fn case_is() -> impl Parser<R, Output = CaseExpression> {
-        keyword_p(Keyword::Is)
-            .and_opt(whitespace_p())
+    fn case_is() -> impl Parser<Output = CaseExpression> {
+        keyword(Keyword::Is)
             .and_demand(
-                expression::relational_operator_p().or_syntax_error("Expected: Operator after IS"),
+                expression::relational_operator_p()
+                    .preceded_by_opt_ws()
+                    .or_syntax_error("Expected: Operator after IS"),
             )
-            .and_opt(whitespace_p())
             .and_demand(
                 expression::expression_node_p()
+                    .preceded_by_opt_ws()
                     .or_syntax_error("Expected: expression after IS operator"),
             )
-            .map(|(((_, op), _), r)| CaseExpression::Is(op.strip_location(), r))
+            .map(|((_, op), r)| CaseExpression::Is(op.strip_location(), r))
     }
 }
 
-struct SimpleOrRangeParser<R>(PhantomData<R>);
+struct SimpleOrRangeParser;
 
-impl<R> Parser<R> for SimpleOrRangeParser<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl HasOutput for SimpleOrRangeParser {
     type Output = CaseExpression;
+}
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, expr) = expression::expression_node_p().parse(reader)?;
-        match expr {
+impl Parser for SimpleOrRangeParser {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match expression::expression_node_p().parse(reader)? {
             Some(expr) => {
                 let parenthesis = expr.is_parenthesis();
-                let (reader, result) = opt_whitespace_p(!parenthesis)
-                    .and(keyword_p(Keyword::To))
+                let to_keyword = keyword(Keyword::To)
+                    .preceded_by_ws(!parenthesis)
                     .parse(reader)?;
-                match result {
+                match to_keyword {
                     Some(_) => {
-                        let (reader, second_expr) = expression::guarded_expression_node_p()
+                        let second_expr = expression::guarded_expression_node_p()
                             .or_syntax_error("Expected: expression after TO")
-                            .parse(reader)?;
-                        Ok((
-                            reader,
-                            Some(CaseExpression::Range(expr, second_expr.unwrap())),
-                        ))
+                            .parse_non_opt(reader)?;
+                        Ok(Some(CaseExpression::Range(expr, second_expr)))
                     }
-                    None => Ok((reader, Some(CaseExpression::Simple(expr)))),
+                    None => Ok(Some(CaseExpression::Simple(expr))),
                 }
             }
-            _ => Ok((reader, None)),
+            _ => Ok(None),
         }
     }
 }
 
-impl<R> SimpleOrRangeParser<R> {
+impl SimpleOrRangeParser {
     fn new() -> Self {
-        Self(PhantomData)
+        Self
     }
 }
 
-fn case_else<R>() -> impl Parser<R, Output = StatementNodes>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    keyword_pair_p(Keyword::Case, Keyword::Else)
-        .and_demand(statements::zero_or_more_statements_p(keyword_p(
-            Keyword::End,
-        )))
-        .keep_right()
+fn case_else() -> impl Parser<Output = StatementNodes> {
+    keyword_pair(Keyword::Case, Keyword::Else)
+        .then_use(ZeroOrMoreStatements::new(keyword(Keyword::End)))
 }
 
 #[cfg(test)]
@@ -335,17 +310,96 @@ mod tests {
         );
     }
 
+    // TODO move macros up and use them more
+
+    macro_rules! int_lit {
+        ($value: literal) => {
+            Expression::IntegerLiteral($value)
+        };
+
+        ($value: literal at $row: literal:$col: literal) => {
+            Locatable::new(int_lit!($value), Location::new($row, $col))
+        };
+    }
+
+    macro_rules! bin_exp {
+        ($left: expr ; plus $right: expr) => {
+            Expression::BinaryExpression(
+                Operator::Plus,
+                Box::new($left),
+                Box::new($right),
+                ExpressionType::Unresolved,
+            )
+        };
+
+        ($left: expr ; plus $right: expr ; at $row: literal:$col: literal) => {
+            Locatable::new(bin_exp!($left ; plus $right), Location::new($row, $col))
+        };
+    }
+
+    macro_rules! paren_exp {
+        ($child: expr ; at $row: literal:$col: literal) => {
+            Locatable::new(
+                Expression::Parenthesis(Box::new($child)),
+                Location::new($row, $col),
+            )
+        };
+    }
+
+    #[test]
+    fn test_parenthesis() {
+        let input = "
+        SELECT CASE(5+2)
+        CASE(6+5)
+            PRINT 11
+        CASE(2)TO(5)
+            PRINT 2
+        END SELECT
+        ";
+        let result = parse(input).demand_single_statement();
+        assert_eq!(
+            result,
+            Statement::SelectCase(SelectCaseNode {
+                expr: paren_exp!( bin_exp!( int_lit!(5 at 2:21) ; plus int_lit!(2 at 2:23) ; at 2:22 ) ; at 2:20 ),
+                inline_comments: vec![],
+                case_blocks: vec![
+                    CaseBlockNode {
+                        expression_list: vec![CaseExpression::Simple(
+                            paren_exp!( bin_exp!( int_lit!(6 at 3:14) ; plus int_lit!(5 at 3:16) ; at 3:15 ) ; at 3:13 )
+                        )],
+                        statements: vec![Statement::Print(PrintNode {
+                            file_number: None,
+                            lpt1: false,
+                            format_string: None,
+                            args: vec![PrintArg::Expression(11.as_lit_expr(4, 19))]
+                        })
+                        .at_rc(4, 13)]
+                    },
+                    CaseBlockNode {
+                        expression_list: vec![CaseExpression::Range(
+                            Expression::Parenthesis(Box::new(2.as_lit_expr(5, 14))).at_rc(5, 13),
+                            Expression::Parenthesis(Box::new(5.as_lit_expr(5, 19))).at_rc(5, 18)
+                        )],
+                        statements: vec![Statement::Print(PrintNode {
+                            file_number: None,
+                            lpt1: false,
+                            format_string: None,
+                            args: vec![PrintArg::Expression(2.as_lit_expr(6, 19))]
+                        })
+                        .at_rc(6, 13)]
+                    },
+                ],
+                else_block: None
+            })
+        );
+    }
+
     #[test]
     fn test_no_space_after_select_case() {
         let input = "
         SELECT CASE1
         END SELECT";
-        assert_parser_err!(
-            input,
-            QError::syntax_error("Expected: CASE after SELECT"),
-            2,
-            16
-        );
+        assert_parser_err!(input, QError::syntax_error("Expected: CASE"), 2, 16);
     }
 
     #[test]
@@ -354,7 +408,7 @@ mod tests {
         SELECT CASE X
         CASE1
         END SELECT";
-        assert_parser_err!(input, QError::syntax_error("Expected: END SELECT"), 3, 9);
+        assert_parser_err!(input, QError::syntax_error("Expected: END"), 3, 9);
     }
 
     #[test]

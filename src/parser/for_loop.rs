@@ -1,26 +1,22 @@
-use crate::common::{HasLocation, QError};
+use crate::common::QError;
 use crate::parser::expression;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, keyword_p, PcSpecific};
-use crate::parser::statements;
+use crate::parser::pc_specific::*;
+use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
 
 // FOR I = 0 TO 5 STEP 1
 // statements
 // NEXT (I)
 
-pub fn for_loop_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn for_loop_p() -> impl Parser<Output = Statement> {
     parse_for_step_p()
-        .and_demand(statements::zero_or_more_statements_p(keyword_p(
-            Keyword::Next,
-        )))
-        .and_demand(next_counter_p().or(static_err_p(QError::ForWithoutNext)))
+        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::Next)))
+        .and_demand(keyword(Keyword::Next).map_err(QError::ForWithoutNext))
+        .and_opt(next_counter_p())
         .map(
             |(
-                ((variable_name, lower_bound, upper_bound, opt_step), statements),
+                (((variable_name, lower_bound, upper_bound, opt_step), statements), _),
                 opt_next_name_node,
             )| {
                 Statement::ForLoop(ForLoopNode {
@@ -36,36 +32,28 @@ where
 }
 
 /// Parses the "FOR I = 1 TO 2 [STEP X]" part
-fn parse_for_step_p<R>() -> impl Parser<
-    R,
+fn parse_for_step_p() -> impl Parser<
     Output = (
         ExpressionNode,
         ExpressionNode,
         ExpressionNode,
         Option<ExpressionNode>,
     ),
->
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+> {
     parse_for_p()
         .and_opt_factory(|(_, _, upper)| {
-            opt_whitespace_p(!upper.is_parenthesis())
-                .and(keyword_p(Keyword::Step))
-                .and_demand(
-                    expression::guarded_expression_node_p()
-                        .or_syntax_error("Expected: expression after STEP"),
-                )
-                .keep_right()
+            seq2(
+                whitespace_boundary_after_expr(upper).and(keyword(Keyword::Step)),
+                expression::guarded_expression_node_p()
+                    .or_syntax_error("Expected: expression after STEP"),
+                |_, step_expr| step_expr,
+            )
         })
         .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
 }
 
 /// Parses the "FOR I = 1 TO 2" part
-fn parse_for_p<R>() -> impl Parser<R, Output = (ExpressionNode, ExpressionNode, ExpressionNode)>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, ExpressionNode)> {
     keyword_followed_by_whitespace_p(Keyword::For)
         .and_demand(
             expression::word::word_p()
@@ -81,7 +69,7 @@ where
             expression::back_guarded_expression_node_p()
                 .or_syntax_error("Expected: lower bound of FOR loop"),
         )
-        .and_demand(keyword_p(Keyword::To).or_syntax_error("Expected: TO"))
+        .and_demand(keyword(Keyword::To))
         .and_demand(
             expression::guarded_expression_node_p()
                 .or_syntax_error("Expected: upper bound of FOR loop"),
@@ -89,13 +77,8 @@ where
         .map(|(((((_, n), _), l), _), u)| (n, l, u))
 }
 
-fn next_counter_p<R>() -> impl Parser<R, Output = Option<ExpressionNode>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    keyword_p(Keyword::Next)
-        .and_opt(whitespace_p().and(expression::word::word_p().with_pos()))
-        .map(|(_, opt_right)| opt_right.map(|(_, r)| r))
+fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
+    expression::word::word_p().with_pos().preceded_by_req_ws()
 }
 
 #[cfg(test)]

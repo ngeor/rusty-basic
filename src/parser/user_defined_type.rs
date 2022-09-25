@@ -42,42 +42,31 @@
 //
 // Type must be defined Before DECLARE SUB
 
-use crate::common::{HasLocation, Locatable, QError};
-use crate::parser::comment;
-use crate::parser::expression;
+use crate::common::{Locatable, QError};
+use crate::parser::expression::expression_node_p;
 use crate::parser::name;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{
-    demand_keyword_pair_p, keyword_choice_p, keyword_followed_by_whitespace_p, keyword_p,
-    PcSpecific,
-};
+use crate::parser::pc_specific::*;
+use crate::parser::statement_separator::comments_and_whitespace_p;
 use crate::parser::types::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
     UserDefinedType,
 };
 
-pub fn user_defined_type_p<R>() -> impl Parser<R, Output = UserDefinedType>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    keyword_followed_by_whitespace_p(Keyword::Type)
-        .and_demand(
-            bare_name_without_dot_p()
-                .with_pos()
-                .or_syntax_error("Expected: name after TYPE"),
-        )
-        .and_demand(comment::comments_and_whitespace_p())
-        .and_demand(element_nodes_p())
-        .and_demand(demand_keyword_pair_p(Keyword::End, Keyword::Type))
-        .map(|((((_, name), comments), elements), _)| {
-            UserDefinedType::new(name, comments, elements)
-        })
+pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
+    seq5(
+        keyword_followed_by_whitespace_p(Keyword::Type),
+        bare_name_without_dot_p()
+            .with_pos()
+            .or_syntax_error("Expected: name after TYPE"),
+        comments_and_whitespace_p(),
+        element_nodes_p(),
+        keyword_pair(Keyword::End, Keyword::Type),
+        |_, name, comments, elements, _| UserDefinedType::new(name, comments, elements),
+    )
 }
 
-fn bare_name_without_dot_p<R>() -> impl Parser<R, Output = BareName>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn bare_name_without_dot_p() -> impl Parser<Output = BareName> {
     name::name_with_dot_p().and_then(|n| match n {
         Name::Bare(b) => {
             if b.contains('.') {
@@ -92,69 +81,52 @@ where
     })
 }
 
-fn element_nodes_p<R>() -> impl Parser<R, Output = Vec<ElementNode>>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn element_nodes_p() -> impl NonOptParser<Output = Vec<ElementNode>> {
     element_node_p()
         .one_or_more()
-        .or(static_err_p(QError::ElementNotDefined))
+        .or_error(QError::ElementNotDefined)
 }
 
-fn element_node_p<R>() -> impl Parser<R, Output = ElementNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn element_node_p() -> impl Parser<Output = ElementNode> {
     bare_name_without_dot_p()
+        .followed_by_req_ws()
         .with_pos()
-        .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after element name"))
         .and_demand(keyword_followed_by_whitespace_p(Keyword::As).or_syntax_error("Expected: AS"))
         .and_demand(element_type_p().or_syntax_error("Expected: element type"))
-        .and_demand(comment::comments_and_whitespace_p())
+        .and_demand(comments_and_whitespace_p())
         .map(
-            |((((Locatable { element, pos }, _), _), element_type), comments)| {
+            |(((Locatable { element, pos }, _), element_type), comments)| {
                 Locatable::new(Element::new(element, element_type, comments), pos)
             },
         )
 }
 
-fn element_type_p<R>() -> impl Parser<R, Output = ElementType>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    keyword_choice_p(&[
-        Keyword::Integer,
-        Keyword::Long,
-        Keyword::Single,
-        Keyword::Double,
-    ])
-    .map(|(k, _)| match k {
-        Keyword::Integer => ElementType::Integer,
-        Keyword::Long => ElementType::Long,
-        Keyword::Single => ElementType::Single,
-        Keyword::Double => ElementType::Double,
-        _ => panic!("Parser should not have parsed this"),
-    })
-    .or(keyword_p(Keyword::String_)
-        .and_demand(
-            item_p('*')
-                .surrounded_by_opt_ws()
-                .or_syntax_error("Expected: *"),
-        )
-        .and_demand(demand_string_length_p())
-        .keep_right()
-        .map(|e| ElementType::FixedLengthString(e, 0)))
-    .or(bare_name_without_dot_p()
-        .with_pos()
-        .map(|n| ElementType::UserDefined(n)))
+fn element_type_p() -> impl Parser<Output = ElementType> {
+    Alt3::new(
+        keyword_map(&[
+            (Keyword::Integer, ElementType::Integer),
+            (Keyword::Long, ElementType::Long),
+            (Keyword::Single, ElementType::Single),
+            (Keyword::Double, ElementType::Double),
+        ]),
+        keyword(Keyword::String_)
+            .and_demand(
+                item_p('*')
+                    .surrounded_by_opt_ws()
+                    .or_syntax_error("Expected: *"),
+            )
+            .and_demand(demand_string_length_p())
+            .keep_right()
+            .map(|e| ElementType::FixedLengthString(e, 0)),
+        bare_name_without_dot_p()
+            .with_pos()
+            .map(ElementType::UserDefined),
+    )
 }
 
-fn demand_string_length_p<R>() -> impl Parser<R, Output = ExpressionNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    expression::demand_expression_node_p("Expected: string length").and_then(
-        |Locatable { element, pos }| match element {
+fn demand_string_length_p() -> impl NonOptParser<Output = ExpressionNode> {
+    expression_node_p()
+        .and_then(|Locatable { element, pos }| match element {
             Expression::IntegerLiteral(i) => {
                 if i > 0 && i < crate::variant::MAX_INTEGER {
                     Ok(Locatable::new(element, pos))
@@ -167,17 +139,18 @@ where
                 Ok(Locatable::new(element, pos))
             }
             _ => Err(QError::syntax_error("Illegal string length")),
-        },
-    )
+        })
+        .or_syntax_error("Expected: string length")
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::assert_parser_err;
     use crate::common::AtRowCol;
     use crate::parser::test_utils::*;
     use crate::parser::types::TopLevelToken;
+
+    use super::*;
 
     #[test]
     fn parse_type() {

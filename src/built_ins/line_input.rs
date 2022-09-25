@@ -5,12 +5,9 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_pair_p(Keyword::Line, Keyword::Input)
-            .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after LINE INPUT"))
+    pub fn parse() -> impl Parser<Output = Statement> {
+        keyword_pair(Keyword::Line, Keyword::Input)
+            .followed_by_req_ws()
             .and_opt(expression::file_handle_comma_p())
             .and_demand(
                 expression::expression_node_p()
@@ -184,10 +181,7 @@ mod tests {
     #[test]
     fn test_no_whitespace_after_input() {
         let input = "LINE INPUT";
-        assert_parser_err!(
-            input,
-            QError::syntax_error("Expected: whitespace after LINE INPUT")
-        );
+        assert_parser_err!(input, QError::syntax_error("Expected: whitespace"));
     }
 
     #[test]

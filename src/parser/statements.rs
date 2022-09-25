@@ -1,98 +1,113 @@
 use crate::common::*;
 use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 use crate::parser::statement;
-use crate::parser::statement_separator::StatementSeparator;
+use crate::parser::statement_separator::Separator;
 use crate::parser::types::*;
-use std::marker::PhantomData;
 
-pub fn single_line_non_comment_statements_p<R>() -> impl Parser<R, Output = StatementNodes>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    whitespace_p()
-        .and(
-            statement::single_line_non_comment_statement_p()
-                .with_pos()
-                .one_or_more_delimited_by(
-                    item_p(':').surrounded_by_opt_ws(),
-                    QError::syntax_error("Error: trailing colon"),
-                ),
+pub fn single_line_non_comment_statements_p() -> impl Parser<Output = StatementNodes> {
+    statement::single_line_non_comment_statement_p()
+        .with_pos()
+        .one_or_more_delimited_by(
+            item_p(':').surrounded_by_opt_ws(),
+            QError::syntax_error("Error: trailing colon"),
         )
-        .keep_right()
+        .preceded_by_req_ws()
 }
 
-pub fn single_line_statements_p<R>() -> impl Parser<R, Output = StatementNodes>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    whitespace_p()
-        .and(
-            statement::single_line_statement_p()
-                .with_pos()
-                .one_or_more_delimited_by(
-                    item_p(':').surrounded_by_opt_ws(),
-                    QError::syntax_error("Error: trailing colon"),
-                ),
+pub fn single_line_statements_p() -> impl Parser<Output = StatementNodes> {
+    statement::single_line_statement_p()
+        .with_pos()
+        .one_or_more_delimited_by(
+            item_p(':').surrounded_by_opt_ws(),
+            QError::syntax_error("Error: trailing colon"),
         )
-        .keep_right()
+        .preceded_by_req_ws()
 }
 
-// When `zero_or_more_statements_p` is called, it must always read first the first statement separator.
-// `top_level_token` handles the case where the first statement does not start with
-// a separator.
-pub fn zero_or_more_statements_p<R, S>(exit_source: S) -> impl Parser<R, Output = StatementNodes>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + Undo<S::Output> + 'static,
-    S: Parser<R> + 'static,
-{
-    // first separator
-    // loop
-    //      negate exit source
-    //      statement node and separator
-    StatementSeparator::new(false)
-        .and(
-            exit_source
-                .negate()
-                .and(StatementAndSeparator::new())
-                .keep_right()
-                .zero_or_more(),
-        )
-        .keep_right()
-}
+pub struct ZeroOrMoreStatements<S>(NegateParser<S>, Option<QError>);
 
-struct StatementAndSeparator<R>(PhantomData<R>);
+impl<S> ZeroOrMoreStatements<S> {
+    pub fn new(exit_source: S) -> Self {
+        Self(NegateParser(exit_source), None)
+    }
 
-impl<R> StatementAndSeparator<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation,
-{
-    pub fn new() -> Self {
-        Self(PhantomData)
+    pub fn new_with_custom_error(exit_source: S, err: QError) -> Self {
+        Self(NegateParser(exit_source), Some(err))
     }
 }
 
-impl<R> Parser<R> for StatementAndSeparator<R>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    type Output = StatementNode;
+impl<S> HasOutput for ZeroOrMoreStatements<S> {
+    type Output = StatementNodes;
+}
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_statement_node) = statement::statement_p().with_pos().parse(reader)?;
-        match opt_statement_node {
-            Some(statement_node) => {
-                let is_comment = if let Statement::Comment(_) = statement_node.as_ref() {
-                    true
+impl<S> NonOptParser for ZeroOrMoreStatements<S>
+where
+    S: Parser,
+    S::Output: Undo,
+{
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        // must start with a separator (e.g. after a WHILE condition)
+        Separator::NonComment
+            .parse(tokenizer)?
+            .ok_or(QError::syntax_error("Expected: end-of-statement"))?;
+        let mut result: StatementNodes = vec![];
+        let mut state = 0;
+        // while not found exit
+        while self.0.parse(tokenizer)?.is_some() {
+            if state == 0 || state == 2 {
+                // looking for statement
+                if let Some(statement_node) =
+                    statement::statement_p().with_pos().parse(tokenizer)?
+                {
+                    result.push(statement_node);
+                    state = 1;
                 } else {
-                    false
-                };
-                let (reader, opt_separator) = StatementSeparator::new(is_comment).parse(reader)?;
-                match opt_separator {
-                    Some(_) => Ok((reader, Some(statement_node))),
-                    _ => Err((reader, QError::syntax_error("Expected: end-of-statement"))),
+                    return Err(match &self.1 {
+                        Some(custom_error) => custom_error.clone(),
+                        _ => QError::syntax_error("Expected: statement"),
+                    });
                 }
+            } else if state == 1 {
+                // looking for separator after statement
+                let found_separator =
+                    if let Some(Statement::Comment(_)) = result.last().map(|x| &x.element) {
+                        // last element was comment
+                        Separator::Comment.parse(tokenizer)?.is_some()
+                    } else {
+                        Separator::NonComment.parse(tokenizer)?.is_some()
+                    };
+                if found_separator {
+                    state = 2;
+                } else {
+                    return Err(QError::syntax_error("Expected: statement separator"));
+                }
+            } else {
+                panic!("Cannot happen")
             }
-            _ => Ok((reader, None)),
+        }
+        Ok(result)
+    }
+}
+
+struct NegateParser<P>(P);
+
+impl<P> HasOutput for NegateParser<P> {
+    type Output = ();
+}
+
+impl<P> Parser for NegateParser<P>
+where
+    P: Parser,
+    P::Output: Undo,
+{
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match self.0.parse(tokenizer)? {
+            Some(value) => {
+                value.undo(tokenizer);
+                Ok(None)
+            }
+            None => Ok(Some(())),
         }
     }
 }

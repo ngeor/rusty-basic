@@ -1,31 +1,22 @@
-use crate::common::{HasLocation, QError};
-use crate::parser::expression;
+use crate::parser::expression::expression_node_p;
 use crate::parser::name;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{keyword_followed_by_whitespace_p, PcSpecific};
+use crate::parser::pc_specific::*;
 use crate::parser::types::{Keyword, Statement};
 
-pub fn constant_p<R>() -> impl Parser<R, Output = Statement>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    keyword_followed_by_whitespace_p(Keyword::Const)
-        .and_demand(
-            name::name_with_dot_p()
-                .with_pos()
-                .or_syntax_error("Expected: const name"),
-        )
-        .and_demand(
-            item_p('=')
-                .surrounded_by_opt_ws()
-                .or_syntax_error("Expected: ="),
-        )
-        .and_demand(expression::demand_expression_node_p(
-            "Expected: const value",
-        ))
-        .map(|(((_, const_name), _), const_value_expr)| {
-            Statement::Const(const_name, const_value_expr)
-        })
+pub fn constant_p() -> impl Parser<Output = Statement> {
+    seq5(
+        keyword(Keyword::Const),
+        whitespace(),
+        name::name_with_dot_p()
+            .with_pos()
+            .or_syntax_error("Expected: const name"),
+        item_p('=')
+            .surrounded_by_opt_ws()
+            .or_syntax_error("Expected: ="),
+        expression_node_p().or_syntax_error("Expected: const value"),
+        |_, _, const_name, _, const_value_expr| Statement::Const(const_name, const_value_expr),
+    )
 }
 
 #[cfg(test)]

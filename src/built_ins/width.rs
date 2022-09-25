@@ -5,16 +5,11 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn parse() -> impl Parser<Output = Statement> {
         keyword_followed_by_whitespace_p(Keyword::Width)
-            .and_opt(expression::expression_node_p().csv_allow_missing())
+            .and_demand(expression::expression_node_p().csv_allow_missing())
             .keep_right()
-            .map(|opt_args| {
-                Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args.unwrap_or_default()))
-            })
+            .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args)))
     }
 
     fn map_args(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {

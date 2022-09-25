@@ -1,15 +1,11 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::common::*;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::Data)
+    pub fn parse() -> impl Parser<Output = Statement> {
+        keyword(Keyword::Data)
             .and_opt(expression::expression_nodes_p())
             .keep_right()
             .map(|opt_args| {

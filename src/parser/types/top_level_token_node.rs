@@ -1,8 +1,9 @@
+use crate::common::*;
+
 use super::{
     BareName, BareNameNode, DefType, Name, NameNode, ParamName, ParamNameNodes, Statement,
     StatementNodes, UserDefinedType,
 };
-use crate::common::*;
 
 pub type ProgramNode = Vec<TopLevelTokenNode>;
 pub type TopLevelTokenNode = Locatable<TopLevelToken>;

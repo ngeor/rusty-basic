@@ -1,6 +1,7 @@
+use std::convert::TryFrom;
+
 use crate::common::*;
 use crate::parser::types::*;
-use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DimName {

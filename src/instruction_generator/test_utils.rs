@@ -2,7 +2,8 @@ use crate::instruction_generator::{
     generate_instructions, InstructionGeneratorResult, InstructionNode,
 };
 use crate::linter::lint;
-use crate::parser::{parse_main_str, UserDefinedTypes};
+use crate::parser::test_utils::parse_main_str;
+use crate::parser::UserDefinedTypes;
 
 pub fn generate_instructions_str_with_types<T>(
     input: T,

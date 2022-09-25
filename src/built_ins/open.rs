@@ -5,11 +5,8 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::Open)
+    pub fn parse() -> impl Parser<Output = Statement> {
+        keyword(Keyword::Open)
             .and_demand(
                 expression::back_guarded_expression_node_p()
                     .or_syntax_error("Expected: file name after OPEN"),
@@ -35,65 +32,34 @@ pub mod parser {
     }
 
     // FOR <ws+> INPUT <ws+>
-    fn parse_open_mode_p<R>() -> impl Parser<R, Output = Locatable<FileMode>>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_followed_by_whitespace_p(Keyword::For)
-            .and_demand(
-                keyword_choice_p(&[
-                    Keyword::Append,
-                    Keyword::Input,
-                    Keyword::Output,
-                    Keyword::Random,
-                ])
-                .or_syntax_error("Expected: APPEND, INPUT or OUTPUT")
-                .with_pos(),
-            )
-            .keep_right()
-            .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after file mode"))
-            .keep_left()
-            .map(
-                |Locatable {
-                     element: (file_mode, _),
-                     pos,
-                 }| {
-                    (match file_mode {
-                        Keyword::Append => FileMode::Append,
-                        Keyword::Input => FileMode::Input,
-                        Keyword::Output => FileMode::Output,
-                        Keyword::Random => FileMode::Random,
-                        _ => panic!("Parser should not have parsed {}", file_mode),
-                    })
-                    .at(pos)
-                },
-            )
+    fn parse_open_mode_p() -> impl Parser<Output = Locatable<FileMode>> {
+        seq3(
+            keyword_followed_by_whitespace_p(Keyword::For),
+            keyword_map(&[
+                (Keyword::Append, FileMode::Append),
+                (Keyword::Input, FileMode::Input),
+                (Keyword::Output, FileMode::Output),
+                (Keyword::Random, FileMode::Random),
+            ])
+            .with_pos(),
+            whitespace(),
+            |_, file_mode, _| file_mode,
+        )
     }
 
     // ACCESS <ws+> READ <ws+>
-    fn parse_open_access_p<R>() -> impl Parser<R, Output = Locatable<FileAccess>>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    fn parse_open_access_p() -> impl Parser<Output = Locatable<FileAccess>> {
         keyword_followed_by_whitespace_p(Keyword::Access)
-            .and_demand(
-                keyword_p(Keyword::Read)
-                    .with_pos()
-                    .or_syntax_error("Invalid file access"),
-            )
+            .and_demand(keyword(Keyword::Read).with_pos())
             .keep_right()
-            .and_demand(whitespace_p().or_syntax_error("Expected: whitespace after file-access"))
-            .keep_left()
+            .followed_by_req_ws()
             .map(|x| FileAccess::Read.at(x.pos()))
     }
 
     // AS <ws+> expression
     // AS ( expression )
-    fn parse_file_number_p<R>() -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::As)
+    fn parse_file_number_p() -> impl Parser<Output = ExpressionNode> {
+        keyword(Keyword::As)
             .and_demand(
                 expression::guarded_file_handle_or_expression_p()
                     .or_syntax_error("Expected: #file-number%"),
@@ -101,22 +67,14 @@ pub mod parser {
             .keep_right()
     }
 
-    fn parse_len_p<R>() -> impl Parser<R, Output = ExpressionNode>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        whitespace_p()
-            .and(keyword_p(Keyword::Len))
-            .and_demand(
-                item_p('=')
-                    .preceded_by_opt_ws()
-                    .or_syntax_error("Expected: = after LEN"),
-            )
-            .and_demand(
-                expression::guarded_expression_node_p()
-                    .or_syntax_error("Expected: expression after LEN ="),
-            )
-            .keep_right()
+    fn parse_len_p() -> impl Parser<Output = ExpressionNode> {
+        seq3(
+            whitespace().and(keyword(Keyword::Len)),
+            item_p('=').preceded_by_opt_ws(),
+            expression::guarded_expression_node_p()
+                .or_syntax_error("Expected: expression after LEN ="),
+            |_, _, e| e,
+        )
     }
 
     fn map_opt_locatable_enum<T>(

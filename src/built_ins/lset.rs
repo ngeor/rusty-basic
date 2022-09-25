@@ -5,10 +5,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn parse() -> impl Parser<Output = Statement> {
         keyword_followed_by_whitespace_p(Keyword::LSet)
             .and_demand(
                 name::name_with_dot_p()

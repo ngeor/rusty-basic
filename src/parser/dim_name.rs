@@ -5,10 +5,7 @@ use crate::parser::expression;
 use crate::parser::name;
 use crate::parser::name::name_with_dot_p;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{
-    identifier_without_dot_p, in_parenthesis_p, keyword_followed_by_whitespace_p, keyword_p,
-    PcSpecific,
-};
+use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
 // Parses a declared name. Possible options:
@@ -22,10 +19,7 @@ use crate::parser::types::*;
 // A$(1 TO 2, 0 TO 10)
 // A(1 TO 5) AS INTEGER
 
-pub fn dim_name_node_p<R>() -> impl Parser<R, Output = DimNameNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn dim_name_node_p() -> impl Parser<Output = DimNameNode> {
     name_with_dot_p()
         .with_pos()
         .and_opt(array_dimensions_p())
@@ -41,10 +35,7 @@ where
         )
 }
 
-pub fn redim_name_node_p<R>() -> impl Parser<R, Output = DimNameNode>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
     name_with_dot_p()
         .with_pos()
         .and_demand(array_dimensions_p().or_syntax_error("Expected: array dimensions"))
@@ -60,31 +51,27 @@ where
         )
 }
 
-fn array_dimensions_p<R>() -> impl Parser<R, Output = ArrayDimensions>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
-    in_parenthesis_p(
+fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
+    in_parenthesis(
         array_dimension_p()
             .csv()
             .or_syntax_error("Expected: array dimension"),
     )
 }
 
-fn array_dimension_p<R>() -> impl Parser<R, Output = ArrayDimension>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+// expr (e.g. 10)
+// expr ws+ TO ws+ expr (e.g. 1 TO 10)
+// paren_expr ws* TO ws* paren_expr
+fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
     expression::expression_node_p()
-        .and_opt(
-            whitespace_p()
-                .and(keyword_p(Keyword::To))
-                .and_demand(
-                    expression::guarded_expression_node_p()
-                        .or_syntax_error("Expected: expression after TO"),
-                )
-                .keep_right(),
-        )
+        .and_opt_factory(|lower_bound_expr| {
+            seq2(
+                whitespace_boundary_after_expr(lower_bound_expr).and(keyword(Keyword::To)),
+                expression::guarded_expression_node_p()
+                    .or_syntax_error("Expected: expression after TO"),
+                |_, upper_bound_expr| upper_bound_expr,
+            )
+        })
         .map(|(l, opt_r)| match opt_r {
             Some(r) => ArrayDimension {
                 lbound: Some(l),
@@ -97,85 +84,73 @@ where
         })
 }
 
-fn type_definition_extended_p<R>() -> impl Parser<R, Output = DimType>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn type_definition_extended_p() -> impl Parser<Output = DimType> {
     // <ws+> AS <ws+> identifier
-    whitespace_p()
-        .and(keyword_followed_by_whitespace_p(Keyword::As))
-        .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
-        .keep_right()
+    seq3(
+        whitespace().and(keyword(Keyword::As)),
+        whitespace(),
+        extended_type_p().or_syntax_error("Expected: type after AS"),
+        |_, _, identifier| identifier,
+    )
 }
 
-fn extended_type_p<R>() -> impl Parser<R, Output = DimType>
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+fn extended_type_p() -> impl Parser<Output = DimType> {
     ExtendedTypeParser {}
 }
 
 struct ExtendedTypeParser;
 
-impl<R> Parser<R> for ExtendedTypeParser
-where
-    R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-{
+impl HasOutput for ExtendedTypeParser {
     type Output = DimType;
+}
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_identifier) = identifier_without_dot_p().with_pos().parse(reader)?;
+impl Parser for ExtendedTypeParser {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        // TODO rewrite this
+        // TODO only try to parse keyword if the token kind matches
+        let opt_identifier = identifier_or_keyword_without_dot()
+            .with_pos()
+            .parse(reader)?;
         match opt_identifier {
-            Some(Locatable { element: x, pos }) => match Keyword::from_str(x.as_str()) {
-                Ok(Keyword::Single) => Self::built_in(reader, TypeQualifier::BangSingle),
-                Ok(Keyword::Double) => Self::built_in(reader, TypeQualifier::HashDouble),
+            Some(Locatable { element: x, pos }) => match Keyword::from_str(&x.text) {
+                Ok(Keyword::Single) => Self::built_in(TypeQualifier::BangSingle),
+                Ok(Keyword::Double) => Self::built_in(TypeQualifier::HashDouble),
                 Ok(Keyword::String_) => Self::string(reader),
-                Ok(Keyword::Integer) => Self::built_in(reader, TypeQualifier::PercentInteger),
-                Ok(Keyword::Long) => Self::built_in(reader, TypeQualifier::AmpersandLong),
-                Ok(_) => Err((
-                    reader,
-                    QError::syntax_error(
-                        "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-                    ),
+                Ok(Keyword::Integer) => Self::built_in(TypeQualifier::PercentInteger),
+                Ok(Keyword::Long) => Self::built_in(TypeQualifier::AmpersandLong),
+                Ok(_) => Err(QError::syntax_error(
+                    "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
                 )),
                 Err(_) => {
-                    if x.len() > name::MAX_LENGTH {
-                        Err((reader, QError::IdentifierTooLong))
+                    if x.text.chars().count() > name::MAX_LENGTH {
+                        Err(QError::IdentifierTooLong)
                     } else {
-                        Ok((
-                            reader,
-                            Some(DimType::UserDefined(BareName::from(x).at(pos))),
-                        ))
+                        Ok(Some(DimType::UserDefined(BareName::from(x.text).at(pos))))
                     }
                 }
             },
-            _ => Ok((reader, None)),
+            _ => Ok(None),
         }
     }
 }
 
 impl ExtendedTypeParser {
-    fn built_in<R>(reader: R, q: TypeQualifier) -> ReaderResult<R, DimType, R::Err>
-    where
-        R: Reader,
-    {
-        Ok((reader, Some(DimType::BuiltIn(q, BuiltInStyle::Extended))))
+    fn built_in(q: TypeQualifier) -> Result<Option<DimType>, QError> {
+        Ok(Some(DimType::BuiltIn(q, BuiltInStyle::Extended)))
     }
 
-    fn string<R>(reader: R) -> ReaderResult<R, DimType, R::Err>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        let (reader, opt_len) = item_p('*')
-            .surrounded_by_opt_ws()
+    fn string(reader: &mut impl Tokenizer) -> Result<Option<DimType>, QError> {
+        let opt_len = whitespace_boundary(true)
+            .and(item_p('*'))
             .and_demand(
-                expression::expression_node_p().or_syntax_error("Expected: string length after *"),
+                expression::guarded_expression_node_p()
+                    .or_syntax_error("Expected: string length after *"),
             )
             .keep_right()
             .parse(reader)?;
         match opt_len {
-            Some(len) => Ok((reader, Some(DimType::FixedLengthString(len, 0)))),
-            _ => Self::built_in(reader, TypeQualifier::DollarString),
+            Some(len) => Ok(Some(DimType::FixedLengthString(len, 0))),
+            _ => Self::built_in(TypeQualifier::DollarString),
         }
     }
 }

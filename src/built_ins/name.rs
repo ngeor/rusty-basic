@@ -1,20 +1,16 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::common::*;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        keyword_p(Keyword::Name)
+    pub fn parse() -> impl Parser<Output = Statement> {
+        keyword(Keyword::Name)
             .and_demand(
                 expression::back_guarded_expression_node_p()
                     .or_syntax_error("Expected: old file name"),
             )
-            .and_demand(keyword_p(Keyword::As).or_syntax_error("Expected: AS"))
+            .and_demand(keyword(Keyword::As))
             .keep_middle()
             .and_demand(
                 expression::guarded_expression_node_p().or_syntax_error("Expected: new file name"),

@@ -409,39 +409,34 @@ impl BuiltInSub {
 }
 
 pub mod parser {
-    use crate::common::*;
     use crate::parser::pc::*;
     use crate::parser::{Expression, Statement};
 
     /// Parses built-in subs which have a special syntax.
-    pub fn parse<R>() -> impl Parser<R, Output = Statement>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
-        crate::built_ins::close::parser::parse()
-            .or(crate::built_ins::color::parser::parse())
-            .or(crate::built_ins::data::parser::parse())
-            .or(crate::built_ins::def_seg::parser::parse())
-            .or(crate::built_ins::field::parser::parse())
-            .or(crate::built_ins::get::parser::parse())
-            .or(crate::built_ins::input::parser::parse())
-            .or(crate::built_ins::line_input::parser::parse())
-            .or(crate::built_ins::locate::parser::parse())
-            .or(crate::built_ins::lset::parser::parse())
-            .or(crate::built_ins::name::parser::parse())
-            .or(crate::built_ins::open::parser::parse())
-            .or(crate::built_ins::put::parser::parse())
-            .or(crate::built_ins::read::parser::parse())
-            .or(crate::built_ins::view_print::parser::parse())
-            .or(crate::built_ins::width::parser::parse())
+    pub fn parse() -> impl Parser<Output = Statement> {
+        Alt16::new(
+            crate::built_ins::close::parser::parse(),
+            crate::built_ins::color::parser::parse(),
+            crate::built_ins::data::parser::parse(),
+            crate::built_ins::def_seg::parser::parse(),
+            crate::built_ins::field::parser::parse(),
+            crate::built_ins::get::parser::parse(),
+            crate::built_ins::input::parser::parse(),
+            crate::built_ins::line_input::parser::parse(),
+            crate::built_ins::locate::parser::parse(),
+            crate::built_ins::lset::parser::parse(),
+            crate::built_ins::name::parser::parse(),
+            crate::built_ins::open::parser::parse(),
+            crate::built_ins::put::parser::parse(),
+            crate::built_ins::read::parser::parse(),
+            crate::built_ins::view_print::parser::parse(),
+            crate::built_ins::width::parser::parse(),
+        )
     }
 
     // needed for built-in functions that are also keywords (e.g. LEN), so they
     // cannot be parsed by the `word` module.
-    pub fn built_in_function_call_p<R>() -> impl Parser<R, Output = Expression>
-    where
-        R: Reader<Item = char, Err = QError> + HasLocation + 'static,
-    {
+    pub fn built_in_function_call_p() -> impl Parser<Output = Expression> {
         crate::built_ins::len::parser::parse().or(crate::built_ins::string_fn::parser::parse())
     }
 }

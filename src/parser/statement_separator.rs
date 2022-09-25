@@ -1,124 +1,175 @@
-use crate::common::QError;
-use crate::parser::pc::{
-    is_eol, is_eol_or_whitespace, is_whitespace, item_p, whitespace_p, BinaryParser, Parser,
-    Reader, ReaderResult, UnaryFnParser, UnaryParser,
-};
-use std::marker::PhantomData;
+use crate::common::*;
+use crate::parser::comment::CommentAsString;
+use crate::parser::pc::*;
+use crate::parser::pc_specific::*;
 
-pub struct StatementSeparator<R> {
-    phantom_reader: PhantomData<R>,
-    comment_mode: bool,
+pub enum Separator {
+    /// `<ws>* EOL <ws | eol>*`
+    Comment,
+
+    /// ````text
+    /// <ws>* '\'' (undoing it)
+    /// <ws>* ':' <ws*>
+    /// <ws>* EOL <ws | eol>*
+    /// ```
+    NonComment,
 }
 
-impl<R> StatementSeparator<R>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
-    pub fn new(comment_mode: bool) -> Self {
-        Self {
-            phantom_reader: PhantomData,
-            comment_mode,
+impl HasOutput for Separator {
+    type Output = ();
+}
+
+impl Parser for Separator {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match self {
+            Self::Comment => CommentSeparator.parse(tokenizer),
+            Self::NonComment => CommonSeparator.parse(tokenizer),
         }
     }
+}
 
-    fn parse_comment(&self, reader: R, mut buf: String) -> ReaderResult<R, String, R::Err> {
-        let (reader, opt_item) = eol_separator_p().parse(reader)?;
-        let item = opt_item.unwrap();
-        buf.push_str(item.as_str());
-        Ok((reader, Some(buf)))
-    }
+struct CommentSeparator;
 
-    // <ws>* '\'' (undoing it)
-    // <ws>* ':' <ws*>
-    // <ws>* EOL <ws | eol>*
-    fn parse_non_comment(&self, reader: R, mut buf: String) -> ReaderResult<R, String, R::Err> {
-        let (reader, opt_item) = comment_separator_p()
-            .or(colon_separator_p())
-            .or(eol_separator_p())
-            .parse(reader)?;
-        match opt_item {
-            Some(item) => {
-                buf.push_str(item.as_str());
-                Ok((reader, Some(buf)))
+impl HasOutput for CommentSeparator {
+    type Output = ();
+}
+
+impl Parser for CommentSeparator {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let mut tokens: TokenList = vec![];
+        let mut found_eol = false;
+        while let Some(token) = tokenizer.read()? {
+            if token.kind == TokenType::Whitespace as i32 {
+                if !found_eol {
+                    tokens.push(token);
+                }
+            } else if token.kind == TokenType::Eol as i32 {
+                found_eol = true;
+                tokens.clear();
+            } else {
+                tokenizer.unread(token);
+                break;
             }
-            _ => Err((reader, QError::syntax_error("Expected: end-of-statement"))),
         }
-    }
-}
-
-impl<R> Parser<R> for StatementSeparator<R>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
-    type Output = String;
-
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        // skip any whitespace, so that the error will hit the first offending character
-        let (reader, opt_buf) = whitespace_p().parse(reader)?;
-        let buf = opt_buf.unwrap_or_default();
-        if self.comment_mode {
-            self.parse_comment(reader, buf)
+        if found_eol {
+            Ok(Some(()))
         } else {
-            self.parse_non_comment(reader, buf)
+            tokens.undo(tokenizer);
+            Ok(None)
         }
     }
 }
 
-// '\'' (undoing it)
-fn comment_separator_p<R>() -> impl Parser<R, Output = String>
-where
-    R: Reader<Item = char, Err = QError> + 'static,
-{
-    // not adding the ' character in the resulting string because it was already undone
-    item_p('\'').peek_reader_item().map(|_| String::new())
+struct CommonSeparator;
+
+impl HasOutput for CommonSeparator {
+    type Output = ();
 }
 
-// ':' <ws>*
-crate::char_sequence_p!(ColonOptWs, colon_separator_p, is_colon, is_whitespace);
-fn is_colon(ch: char) -> bool {
-    ch == ':'
-}
-
-// <eol> < ws | eol >*
-crate::char_sequence_p!(
-    EolFollowedByEolOrWhitespace,
-    eol_separator_p,
-    is_eol,
-    is_eol_or_whitespace
-);
-
-/// A parser that succeeds on EOF, EOL, colon and comment.
-/// Does not undo anything.
-pub struct EofOrStatementSeparator<R>(PhantomData<R>);
-
-impl<R> EofOrStatementSeparator<R> {
-    pub fn new() -> Self {
-        Self(PhantomData)
+impl Parser for CommonSeparator {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        let mut sep = TokenType::Unknown;
+        while let Some(token) = tokenizer.read()? {
+            if token.kind == TokenType::Whitespace as i32 {
+                // skip whitespace
+            } else if token.kind == TokenType::SingleQuote as i32 {
+                tokenizer.unread(token);
+                return Ok(Some(()));
+            } else if token.kind == TokenType::Colon as i32 {
+                if sep == TokenType::Unknown {
+                    // same line separator
+                    sep = TokenType::Colon;
+                } else {
+                    tokenizer.unread(token);
+                    break;
+                }
+            } else if token.kind == TokenType::Eol as i32 {
+                if sep == TokenType::Unknown || sep == TokenType::Eol {
+                    // multiline separator
+                    sep = TokenType::Eol;
+                } else {
+                    tokenizer.unread(token);
+                    break;
+                }
+            } else {
+                tokenizer.unread(token);
+                break;
+            }
+        }
+        Ok(if sep != TokenType::Unknown {
+            Some(())
+        } else {
+            None
+        })
     }
 }
 
-impl<R> Parser<R> for EofOrStatementSeparator<R>
-where
-    R: Reader<Item = char>,
-{
-    type Output = String;
+pub fn peek_eof_or_statement_separator() -> impl Parser<Output = ()> {
+    PeekStatementSeparatorOrEof(StatementSeparator2)
+}
 
-    fn parse(&mut self, reader: R) -> ReaderResult<R, Self::Output, R::Err> {
-        let (reader, opt_item) = reader.read()?;
-        match opt_item {
-            Some(ch) => {
-                if ch == ':' || ch == '\'' || is_eol(ch) {
-                    let mut buf: String = String::new();
-                    buf.push(ch);
-                    Ok((reader, Some(buf)))
-                } else {
-                    Ok((reader.undo_item(ch), None))
+struct PeekStatementSeparatorOrEof<P>(P);
+
+impl<P> HasOutput for PeekStatementSeparatorOrEof<P> {
+    type Output = ();
+}
+
+impl<P> Parser for PeekStatementSeparatorOrEof<P>
+where
+    P: TokenPredicate,
+{
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<()>, QError> {
+        match tokenizer.read()? {
+            Some(token) => {
+                let found_it = self.0.test(&token);
+                tokenizer.unread(token);
+                Ok(if found_it { Some(()) } else { None })
+            }
+            None => Ok(Some(())),
+        }
+    }
+}
+
+struct StatementSeparator2;
+
+impl TokenPredicate for StatementSeparator2 {
+    fn test(&self, token: &Token) -> bool {
+        token.kind == TokenType::Colon as i32
+            || token.kind == TokenType::SingleQuote as i32
+            || token.kind == TokenType::Eol as i32
+    }
+}
+
+/// Reads multiple comments and the surrounding whitespace.
+pub fn comments_and_whitespace_p() -> impl NonOptParser<Output = Vec<Locatable<String>>> {
+    CommentsAndWhitespace.preceded_by_opt_ws()
+}
+
+struct CommentsAndWhitespace;
+
+impl HasOutput for CommentsAndWhitespace {
+    type Output = Vec<Locatable<String>>;
+}
+
+impl NonOptParser for CommentsAndWhitespace {
+    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let mut result: Vec<Locatable<String>> = vec![];
+        let sep = Separator::Comment;
+        let parser = CommentAsString.with_pos();
+        let mut found_separator = true;
+        let mut found_comment = true;
+        while found_separator || found_comment {
+            found_separator = sep.parse(tokenizer)?.is_some();
+            match parser.parse(tokenizer)? {
+                Some(comment) => {
+                    result.push(comment);
+                    found_comment = true;
+                }
+                _ => {
+                    found_comment = false;
                 }
             }
-            _ => {
-                // EOF is accepted
-                Ok((reader, Some(String::new())))
-            }
         }
+        Ok(result)
     }
 }

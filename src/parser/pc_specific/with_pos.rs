@@ -1,4 +1,4 @@
-use crate::common::{AtRowCol, Locatable, QError};
+use crate::common::{AtLocation, Locatable, QError};
 use crate::parser::pc::*;
 
 pub struct WithPosMapper<P>(P);
@@ -18,7 +18,7 @@ where
         let pos = tokenizer.position();
         self.0
             .parse(tokenizer)
-            .map(|opt_x| opt_x.map(|x| x.at_rc(pos.row, pos.col)))
+            .map(|opt_x| opt_x.map(|x| x.at(pos)))
     }
 }
 
@@ -28,9 +28,7 @@ where
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let pos = tokenizer.position();
-        self.0
-            .parse_non_opt(tokenizer)
-            .map(|x| x.at_rc(pos.row, pos.col))
+        self.0.parse_non_opt(tokenizer).map(|x| x.at(pos))
     }
 }
 

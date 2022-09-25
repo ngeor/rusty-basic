@@ -29,7 +29,7 @@ where
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         println!(
-            "{}{} Parsing current position {} peek token {}",
+            "{}{} Parsing current position {:?} peek token {}",
             indentation(),
             self.1,
             tokenizer.position(),
@@ -45,7 +45,7 @@ where
         match result {
             Ok(Some(value)) => {
                 println!(
-                    "{}{} Success current position {} peek token {}",
+                    "{}{} Success current position {:?} peek token {}",
                     indentation(),
                     self.1,
                     tokenizer.position(),
@@ -55,7 +55,7 @@ where
             }
             Ok(None) => {
                 println!(
-                    "{}{} None current position {} peek token {}",
+                    "{}{} None current position {:?} peek token {}",
                     indentation(),
                     self.1,
                     tokenizer.position(),
@@ -65,7 +65,7 @@ where
             }
             Err(err) => {
                 println!(
-                    "{}{} Err current position {} peek token {}",
+                    "{}{} Err current position {:?} peek token {}",
                     indentation(),
                     self.1,
                     tokenizer.position(),
@@ -83,7 +83,7 @@ where
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         println!(
-            "{}{} Parsing non-opt current position {} peek token {}",
+            "{}{} Parsing non-opt current position {:?} peek token {}",
             indentation(),
             self.1,
             tokenizer.position(),
@@ -99,7 +99,7 @@ where
         match result {
             Ok(value) => {
                 println!(
-                    "{}{} Success current position {} peek token {}",
+                    "{}{} Success current position {:?} peek token {}",
                     indentation(),
                     self.1,
                     tokenizer.position(),
@@ -109,7 +109,7 @@ where
             }
             Err(err) => {
                 println!(
-                    "{}{} Err current position {} peek token {}",
+                    "{}{} Err current position {:?} peek token {}",
                     indentation(),
                     self.1,
                     tokenizer.position(),

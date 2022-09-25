@@ -1,44 +1,12 @@
-use std::fmt::{Display, Formatter};
+use crate::common::Location;
 use std::iter;
 
 use super::readers::CharReader;
 use super::recognizers::{Recognition, Recognizer};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct RowCol {
-    pub row: u32,
-    pub col: u32,
-}
-
-impl RowCol {
-    pub fn new() -> Self {
-        Self { row: 1, col: 1 }
-    }
-
-    pub fn inc_row(self) -> Self {
-        Self {
-            row: self.row + 1,
-            col: 1,
-        }
-    }
-
-    pub fn inc_col(self) -> Self {
-        Self {
-            row: self.row,
-            col: self.col + 1,
-        }
-    }
-}
-
-impl Display for RowCol {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.row, self.col)
-    }
-}
-
 pub struct Position {
-    pub begin: RowCol,
-    pub end: RowCol,
+    pub begin: Location,
+    pub end: Location,
 }
 
 pub struct Token {
@@ -61,7 +29,7 @@ pub fn token_list_to_string(list: &[Token]) -> String {
 pub trait Tokenizer {
     fn read(&mut self) -> std::io::Result<Option<Token>>;
     fn unread(&mut self, token: Token);
-    fn position(&self) -> RowCol;
+    fn position(&self) -> Location;
 }
 
 pub fn create_tokenizer<R: CharReader>(
@@ -74,7 +42,7 @@ pub fn create_tokenizer<R: CharReader>(
 struct TokenizerImpl<R: CharReader> {
     reader: R,
     recognizers: Vec<Box<dyn Recognizer>>,
-    pos: RowCol,
+    pos: Location,
 }
 
 struct UndoTokenizerImpl<R: CharReader> {
@@ -110,7 +78,7 @@ impl<R: CharReader> TokenizerImpl<R> {
         Self {
             reader,
             recognizers,
-            pos: RowCol::new(),
+            pos: Location::start(),
         }
     }
 
@@ -168,19 +136,19 @@ impl<R: CharReader> TokenizerImpl<R> {
         }
 
         if max_positive_index >= 0 {
-            let begin: RowCol = self.pos;
+            let begin: Location = self.pos;
             let mut previous_char: char = ' ';
             for ch in buffer.chars() {
                 if ch == '\r' {
-                    self.pos = self.pos.inc_row();
+                    self.pos.inc_row();
                 } else if ch == '\n' {
                     if previous_char == '\r' {
                         // already increased row for '\r'
                     } else {
-                        self.pos = self.pos.inc_row();
+                        self.pos.inc_row();
                     }
                 } else {
-                    self.pos = self.pos.inc_col();
+                    self.pos.inc_col();
                 }
                 previous_char = ch;
             }
@@ -219,7 +187,7 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
         self.buffer.push(token)
     }
 
-    fn position(&self) -> RowCol {
+    fn position(&self) -> Location {
         match self.buffer.last() {
             Some(token) => token.position.begin,
             _ => self.tokenizer.pos,
@@ -241,10 +209,10 @@ mod tests {
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "1234");
         assert_eq!(token.kind, 0);
-        assert_eq!(token.position.begin.row, 1);
-        assert_eq!(token.position.begin.col, 1);
-        assert_eq!(token.position.end.row, 1);
-        assert_eq!(token.position.end.col, 5);
+        assert_eq!(token.position.begin.row(), 1);
+        assert_eq!(token.position.begin.col(), 1);
+        assert_eq!(token.position.end.row(), 1);
+        assert_eq!(token.position.end.col(), 5);
     }
 
     #[test]
@@ -261,17 +229,17 @@ mod tests {
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "abc");
         assert_eq!(token.kind, 0);
-        assert_eq!(token.position.begin.row, 1);
-        assert_eq!(token.position.begin.col, 1);
-        assert_eq!(token.position.end.row, 1);
-        assert_eq!(token.position.end.col, 4);
+        assert_eq!(token.position.begin.row(), 1);
+        assert_eq!(token.position.begin.col(), 1);
+        assert_eq!(token.position.end.row(), 1);
+        assert_eq!(token.position.end.col(), 4);
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "1234");
         assert_eq!(token.kind, 1);
-        assert_eq!(token.position.begin.row, 1);
-        assert_eq!(token.position.begin.col, 4);
-        assert_eq!(token.position.end.row, 1);
-        assert_eq!(token.position.end.col, 8);
+        assert_eq!(token.position.begin.row(), 1);
+        assert_eq!(token.position.begin.col(), 4);
+        assert_eq!(token.position.end.row(), 1);
+        assert_eq!(token.position.end.col(), 8);
     }
 
     #[test]

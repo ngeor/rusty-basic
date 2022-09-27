@@ -53,7 +53,7 @@ pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes
 }
 
 fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> {
-    in_parenthesis_allow_no_elements(param_name_node_p().csv())
+    in_parenthesis_allow_no_elements(csv(param_name_node_p()))
 }
 
 #[cfg(test)]

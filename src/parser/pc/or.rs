@@ -103,12 +103,15 @@ where
 
 pub trait OrTrait<O, P>
 where
-    Self: Sized,
+    Self: Sized + HasOutput,
 {
     fn or(self, other: P) -> Alt2<O, Self, P>;
 }
 
-impl<O, S, P> OrTrait<O, P> for S {
+impl<O, S, P> OrTrait<O, P> for S
+where
+    S: HasOutput,
+{
     fn or(self, other: P) -> Alt2<O, Self, P> {
         Alt2::new(self, other)
     }

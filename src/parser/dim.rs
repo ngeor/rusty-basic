@@ -6,11 +6,7 @@ use crate::parser::{dim_name, DimList, Keyword, Statement};
 pub fn dim_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Dim)
         .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
-        .and_demand(
-            dim_name::dim_name_node_p()
-                .csv()
-                .or_syntax_error("Expected: name after DIM"),
-        )
+        .and_demand(csv(dim_name::dim_name_node_p()).or_syntax_error("Expected: name after DIM"))
         .map(|((_, opt_shared), variables)| {
             Statement::Dim(DimList {
                 shared: opt_shared.is_some(),
@@ -24,9 +20,7 @@ pub fn redim_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Redim)
         .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
         .and_demand(
-            dim_name::redim_name_node_p()
-                .csv()
-                .or_syntax_error("Expected: name after REDIM"),
+            csv(dim_name::redim_name_node_p()).or_syntax_error("Expected: name after REDIM"),
         )
         .map(|((_, opt_shared), variables)| {
             Statement::Redim(DimList {

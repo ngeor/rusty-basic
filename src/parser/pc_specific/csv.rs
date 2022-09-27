@@ -2,39 +2,23 @@ use crate::common::QError;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 
-type CsvParser<P> = DelimitedPC<P, CommaSurroundedByOptWhitespace>;
-// allow missing between delimiters
-type CsvAllowMissingParser<P> = DelimitedAllowMissingPC<P, CommaSurroundedByOptWhitespace>;
-type NonOptCsvParser<P> = NonOptDelimitedPC<P, CommaSurroundedByOptWhitespace>;
-
-pub trait CsvTrait
-where
-    Self: Sized,
-{
-    /// Returns one or more items when used as a `Parser`,
-    /// or zero or more when used as a `NonOptParser`.
-    fn csv(self) -> CsvParser<Self>;
-
-    fn csv_allow_missing(self) -> CsvAllowMissingParser<Self>;
-
-    fn csv_demand(self) -> NonOptCsvParser<Self>;
+/// Comma separated list of items.
+/// When used as a parser, returns one or more items.
+/// When used as a non-opt-parser, returns zero or more items.
+pub fn csv<L: Parser>(
+    parser: L,
+) -> impl Parser<Output = Vec<L::Output>> + NonOptParser<Output = Vec<L::Output>> {
+    delimited_by(parser, comma_surrounded_by_opt_ws(), trailing_comma_error())
 }
 
-impl<S> CsvTrait for S {
-    fn csv(self) -> CsvParser<Self> {
-        self.one_or_more_delimited_by(
-            comma_surrounded_by_opt_ws(),
-            QError::syntax_error("Trailing comma"),
-        )
-    }
+/// Comma separated list of items.
+/// Returns at least one item.
+pub fn csv_non_opt<L: NonOptParser>(parser: L) -> impl NonOptParser<Output = Vec<L::Output>> {
+    delimited_by_non_opt(parser, comma_surrounded_by_opt_ws(), trailing_comma_error())
+}
 
-    fn csv_allow_missing(self) -> CsvAllowMissingParser<Self> {
-        self.one_or_more_delimited_by_allow_missing(comma_surrounded_by_opt_ws())
-    }
-
-    fn csv_demand(self) -> NonOptCsvParser<Self> {
-        self.one_or_more_delimited_by_non_opt(comma_surrounded_by_opt_ws())
-    }
+pub fn trailing_comma_error() -> QError {
+    QError::syntax_error("Error: trailing comma")
 }
 
 pub fn comma_surrounded_by_opt_ws() -> CommaSurroundedByOptWhitespace {

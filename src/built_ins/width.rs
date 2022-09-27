@@ -1,4 +1,5 @@
 pub mod parser {
+    use crate::built_ins::parser::csv_allow_missing;
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::pc::*;
@@ -7,8 +8,7 @@ pub mod parser {
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_followed_by_whitespace_p(Keyword::Width)
-            .and_demand(expression::expression_node_p().csv_allow_missing())
-            .keep_right()
+            .then_use(csv_allow_missing())
             .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args)))
     }
 

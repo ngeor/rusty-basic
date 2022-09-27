@@ -19,6 +19,9 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
 
+// TODO make linter types hold references instead of copying parser objects
+// TODO make interpreter types hold references instead of copying parser objects
+
 pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> {
     /// Offers system calls
     stdlib: TStdlib,

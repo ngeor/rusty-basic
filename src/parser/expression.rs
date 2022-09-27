@@ -6,11 +6,11 @@ use crate::parser::types::*;
 
 /// `( expr [, expr]* )`
 pub fn expressions_non_opt(err_msg: &str) -> impl NonOptParser<Output = ExpressionNodes> + '_ {
-    in_parenthesis(lazy_expression_node_p().csv().or_syntax_error(err_msg))
+    in_parenthesis(csv(lazy_expression_node_p()).or_syntax_error(err_msg))
 }
 
 fn parenthesis_with_zero_or_more_expressions_p() -> impl Parser<Output = ExpressionNodes> {
-    in_parenthesis(lazy_expression_node_p().csv())
+    in_parenthesis(csv(lazy_expression_node_p()))
 }
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {

@@ -1,12 +1,8 @@
-use crate::built_ins::BuiltInSub;
-use crate::common::{AtLocation, Location, QError};
+use crate::common::QError;
 use crate::parser::char_reader::file_char_reader;
-use crate::parser::expression::expression_node_p;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
-use crate::parser::{
-    Expression, ExpressionNode, ExpressionNodes, Keyword, Statement, SORTED_KEYWORDS_STR,
-};
+use crate::parser::{Keyword, SORTED_KEYWORDS_STR};
 use std::convert::TryFrom;
 use std::fs::File;
 use std::str::Chars;
@@ -386,40 +382,6 @@ pub fn item_p(ch: char) -> TokenPredicateParser<TokenKindParser> {
         _ => panic!("not implemented {}", ch),
     })
     .parser()
-}
-
-//
-// TODO Used only by COLOR and LOCATE, perhaps move elsewhere
-//
-
-/// Parses built-in subs with optional arguments
-pub fn parse_built_in_sub_with_opt_args(
-    keyword: Keyword,
-    built_in_sub: BuiltInSub,
-) -> impl Parser<Output = Statement> {
-    keyword_followed_by_whitespace_p(keyword)
-        .and_demand(expression_node_p().csv_allow_missing())
-        .keep_right()
-        .map(move |opt_args| {
-            Statement::BuiltInSubCall(built_in_sub, map_opt_args_to_flags(opt_args))
-        })
-}
-
-/// Maps optional arguments to arguments, inserting a dummy first argument indicating
-/// which arguments were present in the form of a bit mask.
-fn map_opt_args_to_flags(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {
-    let mut result: ExpressionNodes = vec![];
-    let mut mask = 1;
-    let mut flags = 0;
-    for arg in args {
-        if let Some(arg) = arg {
-            flags |= mask;
-            result.push(arg);
-        }
-        mask <<= 1;
-    }
-    result.insert(0, Expression::IntegerLiteral(flags).at(Location::start()));
-    result
 }
 
 //

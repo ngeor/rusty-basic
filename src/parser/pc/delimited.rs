@@ -1,224 +1,100 @@
 use crate::common::QError;
-use crate::parser::pc::*;
+use crate::parser::pc::{
+    AndOptTrait, AndThenTrait, LoopWhileTrait, NonOptParser, Parser, ZipValue,
+};
 
-//
-// NonOptDelimitedPC
-//
-
-pub struct NonOptDelimitedPC<A, B> {
-    parser: A,
-    delimiter: B,
+/// Represents a value that has is followed by optional delimiter.
+pub trait Delimited<T> {
+    fn has_delimiter(&self) -> bool;
+    fn value(self) -> T;
 }
 
-impl<A, B> HasOutput for NonOptDelimitedPC<A, B>
-where
-    A: HasOutput,
-{
-    type Output = Vec<A::Output>;
-}
+// used by opt_zip
 
-impl<A, B> NonOptParser for NonOptDelimitedPC<A, B>
-where
-    A: NonOptParser,
-    B: Parser,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let mut result: Vec<A::Output> = vec![];
-        let mut has_more = true;
-        while has_more {
-            let next = self.parser.parse_non_opt(tokenizer)?;
-            result.push(next);
-            has_more = self.delimiter.parse(tokenizer)?.is_some();
-        }
-        Ok(result)
+impl<L, R> Delimited<Option<L>> for ZipValue<L, R> {
+    fn has_delimiter(&self) -> bool {
+        self.has_right()
+    }
+
+    fn value(self) -> Option<L> {
+        self.left()
     }
 }
 
-//
-// DelimitedPC
-//
+// used by and_opt
 
-pub struct DelimitedPC<A, B> {
-    parser: A,
-    delimiter: B,
+impl<L, R> Delimited<L> for (L, Option<R>) {
+    fn has_delimiter(&self) -> bool {
+        let (_, right) = self;
+        right.is_some()
+    }
+
+    fn value(self) -> L {
+        let (left, _) = self;
+        left
+    }
+}
+
+/// Gets a list of items separated by a delimiter.
+/// One or more if parser, zero or more if non-opt-parser.
+pub fn delimited_by<P: Parser, D: Parser>(
+    parser: P,
+    delimiter: D,
     trailing_error: QError,
+) -> impl Parser<Output = Vec<P::Output>> + NonOptParser<Output = Vec<P::Output>> {
+    parse_delimited_to_items(parser.and_opt(delimiter), trailing_error)
 }
 
-impl<A, B> HasOutput for DelimitedPC<A, B>
+/// Gets a list of items separated by a delimiter.
+/// The given parser already provides items and delimiters together.
+/// Public because needed by built_ins to implement csv_allow_missing.
+pub fn parse_delimited_to_items<P, L>(
+    parser: P,
+    trailing_error: QError,
+) -> impl Parser<Output = Vec<L>> + NonOptParser<Output = Vec<L>>
 where
-    A: HasOutput,
+    P: Parser,
+    P::Output: Delimited<L>,
 {
-    type Output = Vec<A::Output>;
+    parser
+        .loop_while(Delimited::has_delimiter)
+        .and_then(move |items| map_items(items, trailing_error.clone()))
 }
 
-// reject zero elements
+// non opt
 
-impl<A, B> Parser for DelimitedPC<A, B>
+pub fn delimited_by_non_opt<P: NonOptParser, D: Parser>(
+    parser: P,
+    delimiter: D,
+    trailing_error: QError,
+) -> impl NonOptParser<Output = Vec<P::Output>> {
+    zero_or_more_delimited_non_opt(parser.and_opt(delimiter), trailing_error)
+}
+
+fn zero_or_more_delimited_non_opt<P, L>(
+    parser: P,
+    trailing_error: QError,
+) -> impl NonOptParser<Output = Vec<L>>
 where
-    A: Parser,
-    B: Parser,
+    P: NonOptParser,
+    P::Output: Delimited<L>,
 {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.parser.parse(tokenizer)? {
-            Some(first) => self.after_element(tokenizer, vec![first]).map(Some),
-            None => Ok(None),
-        }
-    }
+    parser
+        .loop_while_non_opt(Delimited::has_delimiter)
+        .and_then(move |items| map_items(items, trailing_error.clone()))
 }
 
-// allow zero elements
-
-impl<A, B> NonOptParser for DelimitedPC<A, B>
+fn map_items<P, T>(items: Vec<P>, trailing_error: QError) -> Result<Vec<T>, QError>
 where
-    A: Parser,
-    B: Parser,
+    P: Delimited<T>,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match self.parser.parse(tokenizer)? {
-            Some(first) => self.after_element(tokenizer, vec![first]),
-            None => Ok(vec![]),
-        }
-    }
-}
-
-impl<A, B> DelimitedPC<A, B>
-where
-    A: Parser,
-    B: Parser,
-{
-    fn after_element(
-        &self,
-        tokenizer: &mut impl Tokenizer,
-        collected: Vec<A::Output>,
-    ) -> Result<Vec<A::Output>, QError> {
-        match self.delimiter.parse(tokenizer)? {
-            Some(_) => self.after_delimiter(tokenizer, collected),
-            None => Ok(collected),
-        }
-    }
-
-    fn after_delimiter(
-        &self,
-        tokenizer: &mut impl Tokenizer,
-        mut collected: Vec<A::Output>,
-    ) -> Result<Vec<A::Output>, QError> {
-        match self.parser.parse(tokenizer)? {
-            Some(next) => {
-                collected.push(next);
-                self.after_element(tokenizer, collected)
-            }
-            None => Err(self.trailing_error.clone()),
-        }
-    }
-}
-
-// allow missing elements between delimiters
-
-pub struct DelimitedAllowMissingPC<A, B> {
-    parser: A,
-    delimiter: B,
-}
-
-impl<A, B> HasOutput for DelimitedAllowMissingPC<A, B>
-where
-    A: HasOutput,
-{
-    type Output = Vec<Option<A::Output>>;
-}
-
-enum ListItem<A> {
-    Empty,
-    FinalItem(A, Box<ListItem<A>>),
-    Delimited(Option<A>, Box<ListItem<A>>),
-}
-
-impl<A, B> NonOptParser for DelimitedAllowMissingPC<A, B>
-where
-    A: Parser,
-    B: Parser,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let mut item = ListItem::Empty;
-        loop {
-            let opt_value = self.parser.parse(tokenizer)?;
-            match self.delimiter.parse(tokenizer)? {
-                Some(_) => {
-                    item = ListItem::Delimited(opt_value, Box::new(item));
-                }
-                None => {
-                    if let Some(value) = opt_value {
-                        item = ListItem::FinalItem(value, Box::new(item));
-                    }
-                    break;
-                }
-            }
-        }
-
-        let mut result: Vec<Option<A::Output>> = vec![];
-        loop {
-            match item {
-                ListItem::Empty => {
-                    break;
-                }
-                ListItem::FinalItem(value, box_next) => {
-                    result.insert(0, Some(value));
-                    item = *box_next;
-                }
-                ListItem::Delimited(opt_value, box_next) => {
-                    if result.is_empty() {
-                        return Err(QError::syntax_error("Error: trailing comma"));
-                    }
-                    result.insert(0, opt_value);
-                    item = *box_next;
-                }
-            }
-        }
-        Ok(result)
-    }
-}
-
-pub trait DelimitedTrait<P>
-where
-    Self: Sized,
-{
-    fn one_or_more_delimited_by(self, delimiter: P, trailing_error: QError)
-        -> DelimitedPC<Self, P>;
-
-    fn one_or_more_delimited_by_allow_missing(
-        self,
-        delimiter: P,
-    ) -> DelimitedAllowMissingPC<Self, P>;
-
-    fn one_or_more_delimited_by_non_opt(self, delimiter: P) -> NonOptDelimitedPC<Self, P>;
-}
-
-impl<S, P> DelimitedTrait<P> for S {
-    fn one_or_more_delimited_by(
-        self,
-        delimiter: P,
-        trailing_error: QError,
-    ) -> DelimitedPC<Self, P> {
-        DelimitedPC {
-            parser: self,
-            delimiter,
-            trailing_error,
-        }
-    }
-
-    fn one_or_more_delimited_by_allow_missing(
-        self,
-        delimiter: P,
-    ) -> DelimitedAllowMissingPC<Self, P> {
-        DelimitedAllowMissingPC {
-            parser: self,
-            delimiter,
-        }
-    }
-
-    fn one_or_more_delimited_by_non_opt(self, delimiter: P) -> NonOptDelimitedPC<Self, P> {
-        NonOptDelimitedPC {
-            parser: self,
-            delimiter,
-        }
+    if items
+        .last()
+        .map(Delimited::has_delimiter)
+        .unwrap_or_default()
+    {
+        Err(trailing_error)
+    } else {
+        Ok(items.into_iter().map(Delimited::value).collect())
     }
 }

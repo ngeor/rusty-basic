@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::pc::{AndDemandLookingBack, AndPC, Token, Tokenizer};
+use crate::parser::pc::{AndDemandLookingBack, AndPC, LoopWhileNonOpt, Token, Tokenizer};
 
 pub trait HasOutput {
     type Output;
@@ -7,7 +7,15 @@ pub trait HasOutput {
 
 /// A parser that either succeeds or returns an error.
 pub trait NonOptParser: HasOutput {
+    // TODO it is possible to have a default implementation for `parse` based on `parse_non_opt` if we have a QError that means "no match"
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
+
+    fn loop_while_non_opt<F>(self, f: F) -> LoopWhileNonOpt<Self, F>
+    where
+        Self: Sized,
+    {
+        LoopWhileNonOpt::new(self, f)
+    }
 }
 
 // TODO rename to OptParser

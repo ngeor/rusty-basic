@@ -86,17 +86,16 @@ pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
 /// Missing expressions are not allowed.
 /// The first expression needs to be preceded by space or surrounded in parenthesis.
 pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
-    guarded_expression_node_p()
-        .and_demand(
-            comma_surrounded_by_opt_ws()
-                .and_demand(expression_node_p().or_syntax_error("Expected: expression after comma"))
-                .keep_right()
-                .zero_or_more(),
-        )
-        .map(|(first, mut remaining)| {
+    seq2(
+        guarded_expression_node_p(),
+        comma_surrounded_by_opt_ws()
+            .then_use(expression_node_p().or_syntax_error("Expected: expression after comma"))
+            .zero_or_more(),
+        |first, mut remaining| {
             remaining.insert(0, first);
             remaining
-        })
+        },
+    )
 }
 
 fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
@@ -115,19 +114,19 @@ fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
 }
 
 fn unary_minus_p() -> impl Parser<Output = ExpressionNode> {
-    item_p('-')
-        .with_pos()
-        .and_demand(
-            lazy_expression_node_p().or_syntax_error("Expected: expression after unary minus"),
-        )
-        .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos))
+    seq2(
+        item_p('-').with_pos(),
+        lazy_expression_node_p().or_syntax_error("Expected: expression after unary minus"),
+        |l, r| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos),
+    )
 }
 
 pub fn unary_not_p() -> impl Parser<Output = ExpressionNode> {
-    keyword(Keyword::Not)
-        .with_pos()
-        .and_demand(guarded_expression_node_p().or_syntax_error("Expected: expression after NOT"))
-        .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()))
+    seq2(
+        keyword(Keyword::Not).with_pos(),
+        guarded_expression_node_p().or_syntax_error("Expected: expression after NOT"),
+        |l, r| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()),
+    )
 }
 
 // TODO move the file handle logic into the built_ins as it is only used there
@@ -201,7 +200,7 @@ mod string_literal {
     use crate::parser::Expression;
 
     pub fn string_literal_p() -> impl Parser<Output = Expression> {
-        string_delimiter()
+        to_impl_parser(string_delimiter())
             .and_demand(InsideString.parser().zero_or_more())
             .and_demand(string_delimiter())
             .map(|((_, token_list), _)| {
@@ -232,7 +231,7 @@ mod number_literal {
     pub fn number_literal_p() -> impl Parser<Output = ExpressionNode> {
         // TODO support more qualifiers besides '#'
         digits()
-            .and_opt(item_p('.').and_demand(digits()).keep_right())
+            .and_opt(item_p('.').then_use(digits()))
             .and_opt(item_p('#'))
             .and_then(
                 |((int_digits, opt_fraction_digits), opt_double)| match opt_fraction_digits {
@@ -248,7 +247,7 @@ mod number_literal {
     }
 
     pub fn float_without_leading_zero_p() -> impl Parser<Output = ExpressionNode> {
-        item_p('.')
+        to_impl_parser(item_p('.'))
             .and_demand(digits())
             .and_opt(item_p('#'))
             .and_then(|((_, fraction_digits), opt_double)| {

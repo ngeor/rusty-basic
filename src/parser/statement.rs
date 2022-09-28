@@ -92,7 +92,7 @@ mod end {
 
     pub fn parse_end_p() -> impl Parser<Output = Statement> {
         keyword(Keyword::End)
-            .and_demand(AfterEndSeparator)
+            .then_use(AfterEndSeparator)
             .map(|_| Statement::End)
     }
 
@@ -167,7 +167,7 @@ mod system {
 
     pub fn parse_system_p() -> impl Parser<Output = Statement> {
         keyword(Keyword::System)
-            .and_demand(
+            .then_use(
                 peek_eof_or_statement_separator()
                     .preceded_by_opt_ws()
                     .or_syntax_error("Expected: end-of-statement"),

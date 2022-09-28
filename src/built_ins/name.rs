@@ -5,17 +5,13 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword(Keyword::Name)
-            .and_demand(
-                expression::back_guarded_expression_node_p()
-                    .or_syntax_error("Expected: old file name"),
-            )
-            .and_demand(keyword(Keyword::As))
-            .keep_middle()
-            .and_demand(
-                expression::guarded_expression_node_p().or_syntax_error("Expected: new file name"),
-            )
-            .map(|(l, r)| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]))
+        seq4(
+            keyword(Keyword::Name),
+            expression::back_guarded_expression_node_p().or_syntax_error("Expected: old file name"),
+            keyword(Keyword::As),
+            expression::guarded_expression_node_p().or_syntax_error("Expected: new file name"),
+            |_, l, _, r| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]),
+        )
     }
 }
 

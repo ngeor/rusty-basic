@@ -8,12 +8,12 @@ use crate::parser::{Expression, Keyword, OnErrorOption, Statement};
 pub fn statement_on_error_go_to_p() -> impl Parser<Output = Statement> {
     keyword_pair(Keyword::On, Keyword::Error)
         .followed_by_req_ws()
-        .and_demand(
+        .then_use(
             next()
                 .or(goto())
                 .or_syntax_error("Expected: GOTO or RESUME"),
         )
-        .map(|(_, r)| Statement::OnError(r))
+        .map(Statement::OnError)
 }
 
 fn next() -> impl Parser<Output = OnErrorOption> {

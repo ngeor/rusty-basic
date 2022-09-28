@@ -5,7 +5,7 @@ use crate::parser::pc::{HasOutput, Parser, Tokenizer, Undo};
 // And (with undo if the left parser supports it)
 //
 
-// Looks identical to NonOptSeq2 but that one has already an implementation
+// Looks identical to `NonOptSeq2` but that one has already an implementation
 // of Parser
 
 pub struct AndPC<A, B>(A, B);

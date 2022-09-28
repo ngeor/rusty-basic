@@ -1,5 +1,8 @@
 use crate::common::QError;
-use crate::parser::pc::{AndDemandLookingBack, AndPC, LoopWhileNonOpt, Token, Tokenizer};
+use crate::parser::pc::{
+    AndDemandLookingBack, AndPC, GuardPC, LoopWhileNonOpt, NonOptSeq2, Token, Tokenizer, Undo,
+    ValidateParser,
+};
 
 pub trait HasOutput {
     type Output;
@@ -9,6 +12,14 @@ pub trait HasOutput {
 pub trait NonOptParser: HasOutput {
     // TODO it is possible to have a default implementation for `parse` based on `parse_non_opt` if we have a QError that means "no match"
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
+
+    fn and_demand<R>(self, right: R) -> NonOptSeq2<Self, R>
+    where
+        Self: Sized,
+        R: NonOptParser,
+    {
+        NonOptSeq2::new(self, right)
+    }
 
     fn loop_while_non_opt<F>(self, f: F) -> LoopWhileNonOpt<Self, F>
     where
@@ -32,11 +43,36 @@ pub trait Parser: HasOutput {
         AndPC::new(self, right)
     }
 
+    fn and_demand<R>(self, right: R) -> NonOptSeq2<Self, R>
+    where
+        Self: Sized,
+        R: NonOptParser,
+    {
+        NonOptSeq2::new(self, right)
+    }
+
     fn and_demand_looking_back<F>(self, factory: F) -> AndDemandLookingBack<Self, F>
     where
         Self: Sized,
     {
         AndDemandLookingBack::new(self, factory)
+    }
+
+    fn then_use<R>(self, other: R) -> GuardPC<Self, R>
+    where
+        Self: Sized,
+        R: NonOptParser,
+    {
+        GuardPC::new(self, other)
+    }
+
+    fn validate<F>(self, f: F) -> ValidateParser<Self, F>
+    where
+        Self: Sized,
+        Self::Output: Undo,
+        F: Fn(&Self::Output) -> Result<bool, QError>,
+    {
+        ValidateParser::new(self, f)
     }
 }
 
@@ -48,10 +84,7 @@ pub fn to_impl_non_opt_parser<P: NonOptParser>(parser: P) -> impl NonOptParser<O
     parser
 }
 
-// TODO check if possible to inherit from this and use it
-pub trait ParserFactory<P> {
-    fn parser(self) -> P;
-}
+// TODO change these blanket implementations so that not every single type gets the methods
 
 //
 // TokenPredicate

@@ -28,13 +28,13 @@ pub fn if_block_p() -> impl Parser<Output = Statement> {
 // multi line if    ::= statements else-if-blocks else-block END IF
 
 fn if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
-    keyword(Keyword::If)
-        .and_demand(
-            expression::back_guarded_expression_node_p()
-                .or_syntax_error("Expected: expression after IF"),
-        )
-        .and_demand(keyword(Keyword::Then))
-        .keep_middle()
+    seq3(
+        keyword(Keyword::If),
+        expression::back_guarded_expression_node_p()
+            .or_syntax_error("Expected: expression after IF"),
+        keyword(Keyword::Then),
+        |_, m, _| m,
+    )
 }
 
 fn single_line_if_else_p() -> impl Parser<
@@ -57,12 +57,9 @@ fn single_line_if_else_p() -> impl Parser<
 }
 
 fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
-    keyword(Keyword::Else)
-        .preceded_by_req_ws()
-        .and_demand(
-            single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
-        )
-        .keep_right()
+    keyword(Keyword::Else).preceded_by_req_ws().then_use(
+        single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
+    )
 }
 
 fn multi_line_if_p() -> impl NonOptParser<
@@ -79,18 +76,18 @@ fn multi_line_if_p() -> impl NonOptParser<
     ]))
     .and_demand(else_if_block_p().zero_or_more())
     .and_opt(else_block_p())
-    .and_demand(keyword_pair(Keyword::End, Keyword::If))
+    .and_demand(keyword_pair_non_opt(Keyword::End, Keyword::If))
     .map(|(((if_block, else_if_blocks), opt_else), _)| (if_block, else_if_blocks, opt_else))
 }
 
 fn else_if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
-    keyword(Keyword::ElseIf)
-        .and_demand(
-            expression::back_guarded_expression_node_p()
-                .or_syntax_error("Expected: expression after ELSEIF"),
-        )
-        .and_demand(keyword(Keyword::Then))
-        .keep_middle()
+    seq3(
+        keyword(Keyword::ElseIf),
+        expression::back_guarded_expression_node_p()
+            .or_syntax_error("Expected: expression after ELSEIF"),
+        keyword(Keyword::Then),
+        |_, m, _| m,
+    )
 }
 
 fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {

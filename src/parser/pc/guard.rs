@@ -3,6 +3,12 @@ use crate::parser::pc::*;
 
 pub struct GuardPC<L, R>(L, R);
 
+impl<L, R> GuardPC<L, R> {
+    pub fn new(left: L, right: R) -> Self {
+        Self(left, right)
+    }
+}
+
 impl<L, R> HasOutput for GuardPC<L, R>
 where
     R: HasOutput,
@@ -20,28 +26,5 @@ where
             Some(_) => self.1.parse_non_opt(tokenizer).map(Some),
             None => Ok(None),
         }
-    }
-}
-
-impl<L, R> NonOptParser for GuardPC<L, R>
-where
-    L: NonOptParser,
-    R: NonOptParser,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.0.parse_non_opt(tokenizer)?;
-        self.1.parse_non_opt(tokenizer)
-    }
-}
-
-pub trait GuardTrait<P> {
-    fn then_use(self, parser: P) -> GuardPC<Self, P>
-    where
-        Self: Sized;
-}
-
-impl<S, P> GuardTrait<P> for S {
-    fn then_use(self, parser: P) -> GuardPC<Self, P> {
-        GuardPC(self, parser)
     }
 }

@@ -326,10 +326,15 @@ pub fn keyword_followed_by_whitespace_p(k: Keyword) -> impl Parser {
     keyword(k).followed_by_req_ws()
 }
 
-pub fn keyword_pair(first: Keyword, second: Keyword) -> impl Parser + NonOptParser {
-    keyword(first)
-        .followed_by_req_ws()
-        .and_demand(keyword(second))
+// TODO this use to be able to implement both opt and non-opt
+pub fn keyword_pair(first: Keyword, second: Keyword) -> impl Parser {
+    seq3(keyword(first), whitespace(), keyword(second), |l, m, r| {
+        (l, m, r)
+    })
+}
+
+pub fn keyword_pair_non_opt(first: Keyword, second: Keyword) -> impl NonOptParser {
+    keyword_pair(first, second).or_error(QError::SyntaxError(format!("Expected: {}", first)))
 }
 
 //

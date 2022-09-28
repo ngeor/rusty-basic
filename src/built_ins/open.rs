@@ -6,7 +6,7 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword(Keyword::Open)
+        to_impl_parser(keyword(Keyword::Open))
             .and_demand(
                 expression::back_guarded_expression_node_p()
                     .or_syntax_error("Expected: file name after OPEN"),
@@ -59,12 +59,10 @@ pub mod parser {
     // AS <ws+> expression
     // AS ( expression )
     fn parse_file_number_p() -> impl Parser<Output = ExpressionNode> {
-        keyword(Keyword::As)
-            .and_demand(
-                expression::guarded_file_handle_or_expression_p()
-                    .or_syntax_error("Expected: #file-number%"),
-            )
-            .keep_right()
+        keyword(Keyword::As).then_use(
+            expression::guarded_file_handle_or_expression_p()
+                .or_syntax_error("Expected: #file-number%"),
+        )
     }
 
     fn parse_len_p() -> impl Parser<Output = ExpressionNode> {

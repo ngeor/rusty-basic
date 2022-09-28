@@ -61,7 +61,7 @@ pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
             .or_syntax_error("Expected: name after TYPE"),
         comments_and_whitespace_p(),
         element_nodes_p(),
-        keyword_pair(Keyword::End, Keyword::Type),
+        keyword_pair_non_opt(Keyword::End, Keyword::Type),
         |_, name, comments, elements, _| UserDefinedType::new(name, comments, elements),
     )
 }
@@ -109,15 +109,14 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
             (Keyword::Single, ElementType::Single),
             (Keyword::Double, ElementType::Double),
         ]),
-        keyword(Keyword::String_)
-            .and_demand(
-                item_p('*')
-                    .surrounded_by_opt_ws()
-                    .or_syntax_error("Expected: *"),
-            )
-            .and_demand(demand_string_length_p())
-            .keep_right()
-            .map(|e| ElementType::FixedLengthString(e, 0)),
+        seq3(
+            keyword(Keyword::String_),
+            item_p('*')
+                .surrounded_by_opt_ws()
+                .or_syntax_error("Expected: *"),
+            demand_string_length_p(),
+            |_, _, e| ElementType::FixedLengthString(e, 0),
+        ),
         bare_name_without_dot_p()
             .with_pos()
             .map(ElementType::UserDefined),

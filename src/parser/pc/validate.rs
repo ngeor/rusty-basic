@@ -25,24 +25,3 @@ where
         }
     }
 }
-
-// TODO make a macro for the traits too
-// TODO change these blanket implementations so that not every single type gets the methods
-
-pub trait ValidateTrait<F>
-where
-    Self: Sized + HasOutput,
-    F: Fn(&Self::Output) -> Result<bool, QError>,
-{
-    fn validate(self, f: F) -> ValidateParser<Self, F>;
-}
-
-impl<P, F> ValidateTrait<F> for P
-where
-    P: HasOutput,
-    F: Fn(&P::Output) -> Result<bool, QError>,
-{
-    fn validate(self, f: F) -> ValidateParser<Self, F> {
-        ValidateParser::new(self, f)
-    }
-}

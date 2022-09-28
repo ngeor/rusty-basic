@@ -3,6 +3,15 @@ use crate::parser::TypeQualifier;
 use crate::variant;
 use crate::variant::{QBNumberCast, Variant};
 
+impl<T> QBNumberCast<Vec<T>> for Vec<Variant>
+where
+    Variant: QBNumberCast<T>,
+{
+    fn try_cast(&self) -> Result<Vec<T>, QError> {
+        self.iter().map(QBNumberCast::try_cast).collect()
+    }
+}
+
 // ========================================================
 // variant casting
 // ========================================================

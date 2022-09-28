@@ -1,3 +1,6 @@
+use super::handlers::{
+    allocation, cast, comparison, logical, math, registers, subprogram, var_path,
+};
 use crate::common::*;
 use crate::instruction_generator::{Instruction, InstructionGeneratorResult, Path, PrinterType};
 use crate::interpreter::context::*;
@@ -14,7 +17,6 @@ use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
 use crate::parser::UserDefinedTypes;
 use crate::variant::{QBNumberCast, Variant};
-use handlers::{allocation, cast, comparison, logical, math, registers, subprogram, var_path};
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
@@ -727,5 +729,3 @@ mod tests {
         assert_eq!(interpreter.stdout().output_exact(), " 0 \r\n");
     }
 }
-
-mod handlers;

@@ -5,8 +5,8 @@ use crate::parser::{Keyword, Statement};
 
 pub fn statement_go_sub_p() -> impl OptParser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoSub)
-        .and_demand(bare_name_p().or_syntax_error("Expected: label"))
-        .map(|(_, l)| Statement::GoSub(l))
+        .then_use(bare_name_p().or_syntax_error("Expected: label"))
+        .map(Statement::GoSub)
 }
 
 pub fn statement_return_p() -> impl OptParser<Output = Statement> {

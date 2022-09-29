@@ -14,12 +14,12 @@ pub mod parser {
     }
 
     fn parse_args() -> impl OptParser<Output = ExpressionNodes> {
-        expression::back_guarded_expression_node_p()
-            .and_demand(keyword(Keyword::To))
-            .and_demand(
-                expression::guarded_expression_node_p().or_syntax_error("Expected: expression"),
-            )
-            .map(|((l, _), r)| vec![l, r])
+        seq3(
+            expression::back_guarded_expression_node_p(),
+            keyword(Keyword::To),
+            expression::guarded_expression_node_p().or_syntax_error("Expected: expression"),
+            |l, _, r| vec![l, r],
+        )
     }
 }
 

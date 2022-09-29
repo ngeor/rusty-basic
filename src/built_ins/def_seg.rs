@@ -13,13 +13,9 @@ pub mod parser {
     }
 
     fn equal_sign_and_expression() -> impl OptParser<Output = ExpressionNode> {
-        item_p('=')
-            .surrounded_by_opt_ws()
-            .and_demand(
-                expression::expression_node_p()
-                    .or_syntax_error("Expected expression after equal sign"),
-            )
-            .keep_right()
+        item_p('=').surrounded_by_opt_ws().then_use(
+            expression::expression_node_p().or_syntax_error("Expected expression after equal sign"),
+        )
     }
 
     fn opt_arg_to_args(opt_arg: Option<ExpressionNode>) -> ExpressionNodes {

@@ -54,7 +54,7 @@ use crate::parser::types::{
 };
 
 pub fn user_defined_type_p() -> impl OptParser<Output = UserDefinedType> {
-    Seq5::new(
+    seq5(
         keyword_followed_by_whitespace_p(Keyword::Type),
         bare_name_without_dot_p()
             .with_pos()
@@ -62,8 +62,8 @@ pub fn user_defined_type_p() -> impl OptParser<Output = UserDefinedType> {
         comments_and_whitespace_p(),
         element_nodes_p(),
         keyword_pair(Keyword::End, Keyword::Type),
+        |_, name, comments, elements, _| UserDefinedType::new(name, comments, elements),
     )
-    .map(|(_, name, comments, elements, _)| UserDefinedType::new(name, comments, elements))
 }
 
 fn bare_name_without_dot_p() -> impl OptParser<Output = BareName> {
@@ -88,17 +88,14 @@ fn element_nodes_p() -> impl NonOptParser<Output = Vec<ElementNode>> {
 }
 
 fn element_node_p() -> impl OptParser<Output = ElementNode> {
-    bare_name_without_dot_p()
-        .followed_by_req_ws()
-        .with_pos()
-        .and_demand(keyword_followed_by_whitespace_p(Keyword::As).or_syntax_error("Expected: AS"))
-        .and_demand(element_type_p().or_syntax_error("Expected: element type"))
-        .and_demand(comments_and_whitespace_p())
-        .map(
-            |(((Locatable { element, pos }, _), element_type), comments)| {
-                Locatable::new(Element::new(element, element_type, comments), pos)
-            },
-        )
+    seq4(
+        bare_name_without_dot_p().followed_by_req_ws(),
+        keyword_followed_by_whitespace_p(Keyword::As).or_syntax_error("Expected: AS"),
+        element_type_p().or_syntax_error("Expected: element type"),
+        comments_and_whitespace_p(),
+        |element, _, element_type, comments| Element::new(element, element_type, comments),
+    )
+    .with_pos()
 }
 
 fn element_type_p() -> impl OptParser<Output = ElementType> {
@@ -109,14 +106,14 @@ fn element_type_p() -> impl OptParser<Output = ElementType> {
             (Keyword::Single, ElementType::Single),
             (Keyword::Double, ElementType::Double),
         ]),
-        Seq3::new(
+        seq3(
             keyword(Keyword::String_),
             item_p('*')
                 .surrounded_by_opt_ws()
                 .or_syntax_error("Expected: *"),
             demand_string_length_p(),
-        )
-        .map(|(_, _, e)| ElementType::FixedLengthString(e, 0)),
+            |_, _, e| ElementType::FixedLengthString(e, 0),
+        ),
         bare_name_without_dot_p()
             .with_pos()
             .map(ElementType::UserDefined),

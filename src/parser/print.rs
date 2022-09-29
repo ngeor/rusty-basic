@@ -40,12 +40,12 @@ pub fn parse_lprint_p() -> impl OptParser<Output = Statement> {
 }
 
 fn using_p(is_leading_whitespace_optional: bool) -> impl OptParser<Output = ExpressionNode> {
-    Seq3::new(
+    seq3(
         whitespace_boundary(is_leading_whitespace_optional).and(keyword(Keyword::Using)),
         expression::guarded_expression_node_p().or_syntax_error("Expected: expression after USING"),
         item_p(';'),
+        |_, using_expr, _| using_expr,
     )
-    .map(|(_, using_expr, _)| using_expr)
 }
 
 struct FirstPrintArg {
@@ -113,10 +113,11 @@ impl OptParser for PrintArgLookingBack {
 }
 
 fn ws_file_handle_comma_p() -> impl OptParser<Output = Locatable<FileHandle>> {
-    expression::file_handle_p()
-        .preceded_by_req_ws()
-        .and_demand(comma_surrounded_by_opt_ws())
-        .keep_left()
+    seq2(
+        expression::file_handle_p().preceded_by_req_ws(),
+        comma_surrounded_by_opt_ws(),
+        |l, _| l,
+    )
 }
 
 struct PrintArgsParser {

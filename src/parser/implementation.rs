@@ -12,33 +12,35 @@ pub fn implementation_p() -> impl OptParser<Output = TopLevelToken> {
 }
 
 fn function_implementation_p() -> impl OptParser<Output = TopLevelToken> {
-    static_declaration_p(declaration::function_declaration_p())
-        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
-        .and_demand(keyword_pair(Keyword::End, Keyword::Function))
-        .keep_left()
-        .map(|(((name, params), is_static), body)| {
+    seq3(
+        static_declaration_p(declaration::function_declaration_p()),
+        ZeroOrMoreStatements::new(keyword(Keyword::End)),
+        keyword_pair(Keyword::End, Keyword::Function),
+        |((name, params), is_static), body, _| {
             TopLevelToken::FunctionImplementation(FunctionImplementation {
                 name,
                 params,
                 body,
                 is_static,
             })
-        })
+        },
+    )
 }
 
 fn sub_implementation_p() -> impl OptParser<Output = TopLevelToken> {
-    static_declaration_p(declaration::sub_declaration_p())
-        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
-        .and_demand(keyword_pair(Keyword::End, Keyword::Sub))
-        .keep_left()
-        .map(|(((name, params), is_static), body)| {
+    seq3(
+        static_declaration_p(declaration::sub_declaration_p()),
+        ZeroOrMoreStatements::new(keyword(Keyword::End)),
+        keyword_pair(Keyword::End, Keyword::Sub),
+        |((name, params), is_static), body, _| {
             TopLevelToken::SubImplementation(SubImplementation {
                 name,
                 params,
                 body,
                 is_static,
             })
-        })
+        },
+    )
 }
 
 fn static_declaration_p<P, T>(parser: P) -> impl OptParser<Output = (T, bool)>

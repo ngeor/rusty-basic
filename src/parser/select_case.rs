@@ -119,15 +119,14 @@ impl OptParser for CaseButNotElse {
 }
 
 fn continue_after_case() -> impl OptParser<Output = CaseBlockNode> {
-    case_expression_list()
-        .and_demand(ZeroOrMoreStatements::new(keyword_choice(&[
-            Keyword::Case,
-            Keyword::End,
-        ])))
-        .map(|(expression_list, statements)| CaseBlockNode {
+    seq2(
+        case_expression_list(),
+        ZeroOrMoreStatements::new(keyword_choice(&[Keyword::Case, Keyword::End])),
+        |expression_list, statements| CaseBlockNode {
             expression_list,
             statements,
-        })
+        },
+    )
 }
 
 fn case_expression_list() -> impl OptParser<Output = Vec<CaseExpression>> {
@@ -152,7 +151,7 @@ impl CaseExpressionParser {
     }
 
     fn case_is() -> impl OptParser<Output = CaseExpression> {
-        Seq3::new(
+        seq3(
             keyword(Keyword::Is),
             expression::relational_operator_p()
                 .preceded_by_opt_ws()
@@ -160,8 +159,8 @@ impl CaseExpressionParser {
             expression::expression_node_p()
                 .preceded_by_opt_ws()
                 .or_syntax_error("Expected: expression after IS operator"),
+            |_, op, r| CaseExpression::Is(op.strip_location(), r),
         )
-        .map(|(_, op, r)| CaseExpression::Is(op.strip_location(), r))
     }
 }
 

@@ -86,17 +86,17 @@ pub fn expression_node_p() -> impl OptParser<Output = ExpressionNode> {
 /// Missing expressions are not allowed.
 /// The first expression needs to be preceded by space or surrounded in parenthesis.
 pub fn expression_nodes_p() -> impl OptParser<Output = ExpressionNodes> {
-    // TODO this is a form of ManyParser, if a new trait is to be defined
-    Seq2::new(
+    // TODO this is a form of ManyParser
+    seq2(
         guarded_expression_node_p(),
         comma_surrounded_by_opt_ws()
             .then_use(expression_node_p().or_syntax_error("Expected: expression after comma"))
             .zero_or_more(),
+        |first, mut remaining| {
+            remaining.insert(0, first);
+            remaining
+        },
     )
-    .map(|(first, mut remaining)| {
-        remaining.insert(0, first);
-        remaining
-    })
 }
 
 fn single_expression_node_p() -> impl OptParser<Output = ExpressionNode> {
@@ -115,19 +115,19 @@ fn single_expression_node_p() -> impl OptParser<Output = ExpressionNode> {
 }
 
 fn unary_minus_p() -> impl OptParser<Output = ExpressionNode> {
-    Seq2::new(
+    seq2(
         item_p('-').with_pos(),
         lazy_expression_node_p().or_syntax_error("Expected: expression after unary minus"),
+        |l, r| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos),
     )
-    .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos))
 }
 
 pub fn unary_not_p() -> impl OptParser<Output = ExpressionNode> {
-    Seq2::new(
+    seq2(
         keyword(Keyword::Not).with_pos(),
         guarded_expression_node_p().or_syntax_error("Expected: expression after NOT"),
+        |l, r| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()),
     )
-    .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()))
 }
 
 // TODO move the file handle logic into the built_ins as it is only used there
@@ -184,9 +184,7 @@ pub fn parenthesis_p() -> impl OptParser<Output = Expression> {
 }
 
 pub fn file_handle_comma_p() -> impl OptParser<Output = Locatable<FileHandle>> {
-    file_handle_p()
-        .and_demand(comma_surrounded_by_opt_ws())
-        .keep_left()
+    seq2(file_handle_p(), comma_surrounded_by_opt_ws(), |l, _| l)
 }
 
 pub fn guarded_file_handle_or_expression_p() -> impl OptParser<Output = ExpressionNode> {
@@ -201,12 +199,12 @@ mod string_literal {
     use crate::parser::Expression;
 
     pub fn string_literal_p() -> impl OptParser<Output = Expression> {
-        string_delimiter()
-            .and_demand(InsideString.parser().zero_or_more())
-            .and_demand(string_delimiter())
-            .map(|((_, token_list), _)| {
-                Expression::StringLiteral(token_list_to_string(&token_list))
-            })
+        seq3(
+            string_delimiter(),
+            InsideString.parser().zero_or_more(),
+            string_delimiter(),
+            |_, token_list, _| Expression::StringLiteral(token_list_to_string(&token_list)),
+        )
     }
 
     fn string_delimiter() -> TokenPredicateParser<TokenKindParser> {

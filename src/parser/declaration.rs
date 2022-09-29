@@ -16,14 +16,12 @@ use crate::parser::types::*;
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
 pub fn declaration_p() -> impl OptParser<Output = TopLevelToken> {
-    keyword_followed_by_whitespace_p(Keyword::Declare)
-        .and_demand(
-            function_declaration_p()
-                .map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
-                .or(sub_declaration_p().map(|(n, p)| TopLevelToken::SubDeclaration(n, p)))
-                .or_syntax_error("Expected: FUNCTION or SUB after DECLARE"),
-        )
-        .keep_right()
+    keyword_followed_by_whitespace_p(Keyword::Declare).then_use(
+        function_declaration_p()
+            .map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
+            .or(sub_declaration_p().map(|(n, p)| TopLevelToken::SubDeclaration(n, p)))
+            .or_syntax_error("Expected: FUNCTION or SUB after DECLARE"),
+    )
 }
 
 pub fn function_declaration_p() -> impl OptParser<Output = (NameNode, ParamNameNodes)> {

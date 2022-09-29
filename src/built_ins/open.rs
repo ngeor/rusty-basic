@@ -33,7 +33,7 @@ pub mod parser {
 
     // FOR <ws+> INPUT <ws+>
     fn parse_open_mode_p() -> impl OptParser<Output = Locatable<FileMode>> {
-        Seq3::new(
+        seq3(
             keyword_followed_by_whitespace_p(Keyword::For),
             keyword_map(&[
                 (Keyword::Append, FileMode::Append),
@@ -43,17 +43,19 @@ pub mod parser {
             ])
             .with_pos(),
             whitespace(),
+            |_, file_mode, _| file_mode,
         )
-        .map(|(_, file_mode, _)| file_mode) // TODO implement keep_middle for this too
     }
 
     // ACCESS <ws+> READ <ws+>
     fn parse_open_access_p() -> impl OptParser<Output = Locatable<FileAccess>> {
-        keyword_followed_by_whitespace_p(Keyword::Access)
-            .and_demand(keyword(Keyword::Read).with_pos())
-            .keep_right()
-            .followed_by_req_ws()
-            .map(|x| FileAccess::Read.at(x.pos()))
+        seq4(
+            keyword(Keyword::Access),
+            whitespace(),
+            keyword(Keyword::Read).with_pos(),
+            whitespace(),
+            |_, _, Locatable { pos, .. }, _| FileAccess::Read.at(pos),
+        )
     }
 
     // AS <ws+> expression
@@ -66,13 +68,13 @@ pub mod parser {
     }
 
     fn parse_len_p() -> impl OptParser<Output = ExpressionNode> {
-        Seq3::new(
+        seq3(
             whitespace().and(keyword(Keyword::Len)),
             item_p('=').preceded_by_opt_ws(),
             expression::guarded_expression_node_p()
                 .or_syntax_error("Expected: expression after LEN ="),
+            |_, _, e| e,
         )
-        .map(|(_, _, e)| e) // TODO impl keep_right for this too
     }
 
     fn map_opt_locatable_enum<T>(

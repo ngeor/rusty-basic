@@ -6,21 +6,19 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl OptParser<Output = Statement> {
-        keyword_followed_by_whitespace_p(Keyword::LSet)
-            .and_demand(
-                name::name_with_dot_p()
-                    .with_pos()
-                    .or_syntax_error("Expected: variable after LSET"),
-            )
-            .and_demand(
-                item_p('=')
-                    .surrounded_by_opt_ws()
-                    .or_syntax_error("Expected: ="),
-            )
-            .and_demand(expression::expression_node_p().or_syntax_error("Expected: expression"))
-            .map(|(((_, name_node), _), value_expr_node)| {
+        seq4(
+            keyword_followed_by_whitespace_p(Keyword::LSet),
+            name::name_with_dot_p()
+                .with_pos()
+                .or_syntax_error("Expected: variable after LSET"),
+            item_p('=')
+                .surrounded_by_opt_ws()
+                .or_syntax_error("Expected: ="),
+            expression::expression_node_p().or_syntax_error("Expected: expression"),
+            |_, name_node, _, value_expr_node| {
                 Statement::BuiltInSubCall(BuiltInSub::LSet, build_args(name_node, value_expr_node))
-            })
+            },
+        )
     }
 
     fn build_args(name_node: NameNode, value_expr_node: ExpressionNode) -> ExpressionNodes {

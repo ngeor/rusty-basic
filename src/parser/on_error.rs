@@ -22,13 +22,11 @@ fn next() -> impl OptParser<Output = OnErrorOption> {
 }
 
 fn goto() -> impl OptParser<Output = OnErrorOption> {
-    keyword_followed_by_whitespace_p(Keyword::GoTo)
-        .and_demand(
-            goto_label()
-                .or(goto_zero())
-                .or_syntax_error("Expected: label or 0"),
-        )
-        .keep_right()
+    keyword_followed_by_whitespace_p(Keyword::GoTo).then_use(
+        goto_label()
+            .or(goto_zero())
+            .or_syntax_error("Expected: label or 0"),
+    )
 }
 
 fn goto_label() -> impl OptParser<Output = OnErrorOption> {

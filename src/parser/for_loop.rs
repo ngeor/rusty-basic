@@ -54,27 +54,21 @@ fn parse_for_step_p() -> impl OptParser<
 
 /// Parses the "FOR I = 1 TO 2" part
 fn parse_for_p() -> impl OptParser<Output = (ExpressionNode, ExpressionNode, ExpressionNode)> {
-    keyword_followed_by_whitespace_p(Keyword::For)
-        .and_demand(
-            expression::word::word_p()
-                .with_pos()
-                .or_syntax_error("Expected: name after FOR"),
-        )
-        .and_demand(
-            item_p('=')
-                .preceded_by_opt_ws()
-                .or_syntax_error("Expected: = after name"),
-        )
-        .and_demand(
-            expression::back_guarded_expression_node_p()
-                .or_syntax_error("Expected: lower bound of FOR loop"),
-        )
-        .and_demand(keyword(Keyword::To))
-        .and_demand(
-            expression::guarded_expression_node_p()
-                .or_syntax_error("Expected: upper bound of FOR loop"),
-        )
-        .map(|(((((_, n), _), l), _), u)| (n, l, u))
+    seq6(
+        keyword_followed_by_whitespace_p(Keyword::For),
+        expression::word::word_p()
+            .with_pos()
+            .or_syntax_error("Expected: name after FOR"),
+        item_p('=')
+            .preceded_by_opt_ws()
+            .or_syntax_error("Expected: = after name"),
+        expression::back_guarded_expression_node_p()
+            .or_syntax_error("Expected: lower bound of FOR loop"),
+        keyword(Keyword::To),
+        expression::guarded_expression_node_p()
+            .or_syntax_error("Expected: upper bound of FOR loop"),
+        |_, name, _, lower_bound, _, upper_bound| (name, lower_bound, upper_bound),
+    )
 }
 
 fn next_counter_p() -> impl OptParser<Output = ExpressionNode> {

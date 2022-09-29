@@ -69,8 +69,8 @@ fn statement_label_p() -> impl OptParser<Output = Statement> {
 
 fn statement_go_to_p() -> impl OptParser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
-        .and_demand(bare_name_p().or_syntax_error("Expected: label"))
-        .map(|(_, l)| Statement::GoTo(l))
+        .then_use(bare_name_p().or_syntax_error("Expected: label"))
+        .map(Statement::GoTo)
 }
 
 /// A parser that fails if an illegal starting keyword is found.

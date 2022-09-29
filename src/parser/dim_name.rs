@@ -82,12 +82,12 @@ fn array_dimension_p() -> impl OptParser<Output = ArrayDimension> {
 
 fn type_definition_extended_p() -> impl OptParser<Output = DimType> {
     // <ws+> AS <ws+> identifier
-    Seq3::new(
+    seq3(
         whitespace().and(keyword(Keyword::As)),
         whitespace(),
         extended_type_p().or_syntax_error("Expected: type after AS"),
+        |_, _, identifier| identifier,
     )
-    .map(|(_, _, identifier)| identifier)
 }
 
 fn extended_type_p() -> impl OptParser<Output = DimType> {

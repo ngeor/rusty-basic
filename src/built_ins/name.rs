@@ -5,13 +5,13 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl OptParser<Output = Statement> {
-        Seq4::new(
+        seq4(
             keyword(Keyword::Name),
             expression::back_guarded_expression_node_p().or_syntax_error("Expected: old file name"),
             keyword(Keyword::As),
             expression::guarded_expression_node_p().or_syntax_error("Expected: new file name"),
+            |_, l, _, r| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]),
         )
-        .map(|(_, l, _, r)| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]))
     }
 }
 

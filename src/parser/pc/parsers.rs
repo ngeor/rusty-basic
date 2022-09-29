@@ -11,6 +11,7 @@ use crate::parser::pc::{
 pub trait ParserBase {
     type Output;
 
+    // TODO deprecate
     fn and_demand<R>(self, right: R) -> Seq2<Self, R>
     where
         Self: Sized,

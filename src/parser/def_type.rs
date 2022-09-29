@@ -10,7 +10,9 @@ use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 // Letter       ::= [a-zA-Z]
 
 pub fn def_type_p() -> impl OptParser<Output = DefType> {
-    Seq3::new(def_keyword_p(), whitespace(), letter_ranges()).map(|(l, _, r)| DefType::new(l, r))
+    seq3(def_keyword_p(), whitespace(), letter_ranges(), |l, _, r| {
+        DefType::new(l, r)
+    })
 }
 
 fn def_keyword_p() -> impl OptParser<Output = TypeQualifier> {

@@ -5,13 +5,12 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl OptParser<Output = Expression> {
-        Seq3::new(
+        seq3(
             keyword(Keyword::String_),
             item_p('$'),
             expression::expressions_non_opt("Expected: expression"),
+            |_, _, v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v),
         )
-        .map(|(_, _, v)| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v))
-        // TODO impl keep_right
     }
 }
 

@@ -49,6 +49,7 @@ where
             .parse(tokenizer)?
             .ok_or(QError::syntax_error("Expected: end-of-statement"))?;
         let mut result: StatementNodes = vec![];
+        // TODO rewrite the numeric state or add constants
         let mut state = 0;
         // while not found exit
         while self.0.parse(tokenizer)?.is_some() {

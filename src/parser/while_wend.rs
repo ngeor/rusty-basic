@@ -6,7 +6,7 @@ use crate::parser::statements::*;
 use crate::parser::types::*;
 
 pub fn while_wend_p() -> impl OptParser<Output = Statement> {
-    Seq4::new(
+    seq4(
         keyword(Keyword::While),
         guarded_expression_node_p().or_syntax_error("Expected: expression after WHILE"),
         ZeroOrMoreStatements::new_with_custom_error(
@@ -14,13 +14,13 @@ pub fn while_wend_p() -> impl OptParser<Output = Statement> {
             QError::WhileWithoutWend,
         ),
         keyword(Keyword::Wend).map_err(QError::WhileWithoutWend),
+        |_, condition, statements, _| {
+            Statement::While(ConditionalBlockNode {
+                condition,
+                statements,
+            })
+        },
     )
-    .map(|(_, condition, statements, _)| {
-        Statement::While(ConditionalBlockNode {
-            condition,
-            statements,
-        })
-    })
 }
 
 #[cfg(test)]

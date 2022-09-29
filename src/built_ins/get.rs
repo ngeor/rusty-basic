@@ -5,16 +5,18 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl OptParser<Output = Statement> {
-        keyword_followed_by_whitespace_p(Keyword::Get)
-            .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
-            .and_demand(comma_surrounded_by_opt_ws())
-            .and_demand(expression::expression_node_p().or_syntax_error("Expected: record-number"))
-            .map(|(((_, file_number), _), r)| {
+        seq4(
+            keyword_followed_by_whitespace_p(Keyword::Get),
+            expression::file_handle_p().or_syntax_error("Expected: file-number"),
+            comma_surrounded_by_opt_ws(),
+            expression::expression_node_p().or_syntax_error("Expected: record-number"),
+            |_, file_number, _, r| {
                 Statement::BuiltInSubCall(
                     BuiltInSub::Get,
                     vec![file_number.map(|x| Expression::IntegerLiteral(x.into())), r],
                 )
-            })
+            },
+        )
     }
 }
 

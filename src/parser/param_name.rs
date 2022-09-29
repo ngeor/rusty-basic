@@ -94,8 +94,7 @@ fn type_definition_extended_p() -> impl OptParser<Output = ParamType> {
     // <ws+> AS <ws+> identifier
     keyword_followed_by_whitespace_p(Keyword::As)
         .preceded_by_req_ws()
-        .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
-        .keep_right()
+        .then_use(extended_type_p().or_syntax_error("Expected: type after AS"))
 }
 
 fn extended_type_p() -> impl OptParser<Output = ParamType> {

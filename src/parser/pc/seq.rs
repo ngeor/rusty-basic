@@ -4,98 +4,85 @@
 use crate::common::QError;
 use crate::parser::pc::*;
 
-/// Defines a NonOptParser where all parts must succeed.
-macro_rules! non_opt_seq_pc {
-    (pub struct $name:ident< $($generics:tt),+ >) => {
+// When in opt-parser: if the first succeeds, all the rest must succeed.
+// When in non-opt-parser: all parts must succeed.
+
+macro_rules! seq_pc {
+    (pub struct $name:ident<$first_type:tt, $($generic_type:tt),+ >) => {
         #[allow(non_snake_case)]
-        pub struct $name <$($generics),+> {
-            // holds the parser objects
-            $($generics: $generics),+
+        pub struct $name <$first_type, $($generic_type),+> {
+            // holds the first parser object (might be opt-parser or non-opt parser)
+            $first_type: $first_type,
+            // holds the remaining parser objects (must be non-opt parsers)
+            $($generic_type: $generic_type),+
         }
 
-        impl <$($generics),+> $name <$($generics),+> {
+        impl <$first_type, $($generic_type),+> $name <$first_type, $($generic_type),+> {
             #[allow(non_snake_case)]
-            pub fn new($($generics: $generics),+) -> Self {
+            pub fn new($first_type: $first_type, $($generic_type: $generic_type),+) -> Self {
                 Self {
-                    $($generics),+
+                    $first_type,
+                    $($generic_type),+
                 }
             }
         }
 
-        impl <$($generics),+> HasOutput for $name <$($generics),+> where $($generics : HasOutput),+ {
-            type Output = ( $($generics::Output),+ );
+        impl <$first_type, $($generic_type),+> ParserBase for $name <$first_type, $($generic_type),+>
+        where
+            $first_type: ParserBase,
+            $($generic_type : ParserBase),+
+        {
+            type Output = ($first_type::Output, $($generic_type::Output),+ );
         }
 
-        impl <$($generics),+> NonOptParser for $name <$($generics),+> where $($generics: NonOptParser),+ {
+        impl <$first_type, $($generic_type),+> NonOptParser for $name <$first_type, $($generic_type),+>
+        where
+            $first_type: NonOptParser,
+            $($generic_type: NonOptParser),+
+        {
             #[allow(non_snake_case)]
             fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+                let $first_type = self.$first_type.parse_non_opt(tokenizer)?;
                 $(
-                    let $generics = self.$generics.parse_non_opt(tokenizer)?;
+                    let $generic_type = self.$generic_type.parse_non_opt(tokenizer)?;
                 )+
                 Ok(
                     (
-                        $($generics),+
+                        $first_type,
+                        $($generic_type),+
                     )
                 )
+            }
+        }
+
+        impl <$first_type, $($generic_type),+> OptParser for $name <$first_type, $($generic_type),+>
+        where
+            $first_type: OptParser,
+            $($generic_type: NonOptParser),+
+        {
+            #[allow(non_snake_case)]
+            fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+                if let Some($first_type) = self.$first_type.parse(tokenizer)? {
+                    $(
+                        let $generic_type = self.$generic_type.parse_non_opt(tokenizer)?;
+                    )+
+                    Ok(
+                        Some(
+                            (
+                                $first_type,
+                                $($generic_type),+
+                            )
+                        )
+                    )
+                } else {
+                    Ok(None)
+                }
             }
         }
     };
 }
 
-non_opt_seq_pc!(pub struct NonOptSeq2<A, B>);
-non_opt_seq_pc!(pub struct NonOptSeq3<A, B, C>);
-non_opt_seq_pc!(pub struct NonOptSeq4<A, B, C, D>);
-non_opt_seq_pc!(pub struct NonOptSeq5<A, B, C, D, E>);
-
-// special parser implementation for NonOptSeq2,
-// to implement the "and without undo" functionality
-
-impl<L, R> Parser for NonOptSeq2<L, R>
-where
-    L: Parser,
-    R: NonOptParser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.A.parse(tokenizer)? {
-            Some(left) => {
-                let right = self.B.parse_non_opt(tokenizer)?;
-                Ok(Some((left, right)))
-            }
-            None => Ok(None),
-        }
-    }
-}
-
-pub fn seq2<A, B, F, U>(a: A, b: B, f: F) -> impl Parser<Output = U>
-where
-    A: Parser,
-    B: NonOptParser,
-    F: Fn(A::Output, B::Output) -> U,
-{
-    NonOptSeq2::new(a, b).map(move |(a, b)| f(a, b))
-}
-
-/// A parser where if the first succeeds, all subsequent parsers must succeed.
-/// The mapping function accepts all parsed arguments.
-macro_rules! seq_fn {
-    ($fn_name:ident ; $type_name:ident<$($generics:tt),+>) => {
-        #[allow(non_snake_case)]
-        pub fn $fn_name <
-            P1: Parser,
-            OUT,
-            FM : Fn(P1::Output, $($generics::Output),+ ) -> OUT,
-            $($generics: NonOptParser),+
-        > (head: P1, $($generics: $generics),+, mapper: FM) -> impl Parser<Output = OUT>
-        {
-            NonOptSeq2::new(
-                head,
-                $type_name::new( $($generics),+ )
-            ).map(move | ( p1, ( $($generics),+ ) )| mapper(p1, $($generics),+ ) )
-        }
-    }
-}
-
-seq_fn!(seq3 ; NonOptSeq2<A, B>);
-seq_fn!(seq4 ; NonOptSeq3<A, B, C>);
-seq_fn!(seq5 ; NonOptSeq4<A, B, C, D>);
-seq_fn!(seq6 ; NonOptSeq5<A, B, C, D, E>);
+seq_pc!(pub struct Seq2<A, B>);
+seq_pc!(pub struct Seq3<A, B, C>);
+seq_pc!(pub struct Seq4<A, B, C, D>);
+seq_pc!(pub struct Seq5<A, B, C, D, E>);

@@ -5,9 +5,9 @@ use crate::parser::pc_specific::*;
 /// Comma separated list of items.
 /// When used as a parser, returns one or more items.
 /// When used as a non-opt-parser, returns zero or more items.
-pub fn csv<L: Parser>(
+pub fn csv<L: OptParser>(
     parser: L,
-) -> impl Parser<Output = Vec<L::Output>> + NonOptParser<Output = Vec<L::Output>> {
+) -> impl OptParser<Output = Vec<L::Output>> + NonOptParser<Output = Vec<L::Output>> {
     delimited_by(parser, comma_surrounded_by_opt_ws(), trailing_comma_error())
 }
 
@@ -27,11 +27,11 @@ pub fn comma_surrounded_by_opt_ws() -> CommaSurroundedByOptWhitespace {
 
 pub struct CommaSurroundedByOptWhitespace;
 
-impl HasOutput for CommaSurroundedByOptWhitespace {
+impl ParserBase for CommaSurroundedByOptWhitespace {
     type Output = (Option<Token>, Token, Option<Token>);
 }
 
-impl Parser for CommaSurroundedByOptWhitespace {
+impl OptParser for CommaSurroundedByOptWhitespace {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let mut opt_leading_space: Option<Token> = None;
         let mut comma_token: Option<Token> = None;

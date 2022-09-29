@@ -4,7 +4,7 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl Parser<Output = Statement> {
+    pub fn parse() -> impl OptParser<Output = Statement> {
         parse_built_in_sub_with_opt_args(Keyword::Color, BuiltInSub::Color)
     }
 }

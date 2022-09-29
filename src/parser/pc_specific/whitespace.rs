@@ -8,7 +8,7 @@ pub fn whitespace() -> TokenPredicateParser<TokenKindParser> {
 
 pub struct LeadingWhitespace<P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     parser: P,
     needs_whitespace: bool,
@@ -16,7 +16,7 @@ where
 
 impl<P> LeadingWhitespace<P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     pub fn new(parser: P, needs_whitespace: bool) -> Self {
         Self {
@@ -26,16 +26,16 @@ where
     }
 }
 
-impl<P> HasOutput for LeadingWhitespace<P>
+impl<P> ParserBase for LeadingWhitespace<P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     type Output = P::Output;
 }
 
-impl<P> Parser for LeadingWhitespace<P>
+impl<P> OptParser for LeadingWhitespace<P>
 where
-    P: Parser,
+    P: OptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let opt_space = whitespace().parse(tokenizer)?;
@@ -71,7 +71,7 @@ where
 
 pub struct TrailingWhitespace<P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     parser: P,
     needs_whitespace: bool,
@@ -79,7 +79,7 @@ where
 
 impl<P> TrailingWhitespace<P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     pub fn new(parser: P, needs_whitespace: bool) -> Self {
         Self {
@@ -89,16 +89,16 @@ where
     }
 }
 
-impl<P> HasOutput for TrailingWhitespace<P>
+impl<P> ParserBase for TrailingWhitespace<P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     type Output = P::Output;
 }
 
-impl<P> Parser for TrailingWhitespace<P>
+impl<P> OptParser for TrailingWhitespace<P>
 where
-    P: Parser,
+    P: OptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self.parser.parse(tokenizer)? {
@@ -136,18 +136,18 @@ where
 // TODO refactor so that LeadingWhitespace becomes a smaller type that depends on this one
 pub struct LeadingWhitespacePreserving<P>(P)
 where
-    P: HasOutput;
+    P: ParserBase;
 
-impl<P> HasOutput for LeadingWhitespacePreserving<P>
+impl<P> ParserBase for LeadingWhitespacePreserving<P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     type Output = (Option<Token>, P::Output);
 }
 
-impl<P> Parser for LeadingWhitespacePreserving<P>
+impl<P> OptParser for LeadingWhitespacePreserving<P>
 where
-    P: Parser,
+    P: OptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let opt_ws = whitespace().parse(tokenizer)?;
@@ -163,21 +163,21 @@ where
 
 pub struct SurroundedByWhitespacePreserving<P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     leading_parser: LeadingWhitespacePreserving<P>,
 }
 
-impl<P> HasOutput for SurroundedByWhitespacePreserving<P>
+impl<P> ParserBase for SurroundedByWhitespacePreserving<P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     type Output = (Option<Token>, P::Output, Option<Token>);
 }
 
-impl<P> Parser for SurroundedByWhitespacePreserving<P>
+impl<P> OptParser for SurroundedByWhitespacePreserving<P>
 where
-    P: Parser,
+    P: OptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self.leading_parser.parse(tokenizer)? {
@@ -192,21 +192,21 @@ where
 
 pub struct SurroundedByWhitespace<P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     parser: SurroundedByWhitespacePreserving<P>,
 }
 
-impl<P> HasOutput for SurroundedByWhitespace<P>
+impl<P> ParserBase for SurroundedByWhitespace<P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     type Output = P::Output;
 }
 
-impl<P> Parser for SurroundedByWhitespace<P>
+impl<P> OptParser for SurroundedByWhitespace<P>
 where
-    P: Parser,
+    P: OptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         self.parser
@@ -218,7 +218,7 @@ where
 // TODO delete the `preceded_by_req_ws and preceded_by_opt_ws` traits
 pub trait WhitespaceTrait
 where
-    Self: Sized + HasOutput,
+    Self: Sized + ParserBase,
 {
     fn preceded_by_ws(self, mandatory: bool) -> LeadingWhitespace<Self>;
 
@@ -249,7 +249,7 @@ where
 
 impl<P> WhitespaceTrait for P
 where
-    P: Sized + HasOutput,
+    P: Sized + ParserBase,
 {
     fn preceded_by_ws(self, mandatory: bool) -> LeadingWhitespace<Self> {
         LeadingWhitespace {

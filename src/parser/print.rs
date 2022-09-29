@@ -5,7 +5,7 @@ use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::convert::TryFrom;
 
-pub fn parse_print_p() -> impl Parser<Output = Statement> {
+pub fn parse_print_p() -> impl OptParser<Output = Statement> {
     keyword(Keyword::Print)
         .and_opt(ws_file_handle_comma_p())
         .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_some()))
@@ -22,7 +22,7 @@ pub fn parse_print_p() -> impl Parser<Output = Statement> {
         })
 }
 
-pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
+pub fn parse_lprint_p() -> impl OptParser<Output = Statement> {
     keyword(Keyword::LPrint)
         .and_opt(using_p(true))
         .and_opt_factory(|(_keyword, opt_using)| {
@@ -39,24 +39,24 @@ pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
         })
 }
 
-fn using_p(is_leading_whitespace_optional: bool) -> impl Parser<Output = ExpressionNode> {
-    seq3(
+fn using_p(is_leading_whitespace_optional: bool) -> impl OptParser<Output = ExpressionNode> {
+    Seq3::new(
         whitespace_boundary(is_leading_whitespace_optional).and(keyword(Keyword::Using)),
         expression::guarded_expression_node_p().or_syntax_error("Expected: expression after USING"),
         item_p(';'),
-        |_, using_expr, _| using_expr,
     )
+    .map(|(_, using_expr, _)| using_expr)
 }
 
 struct FirstPrintArg {
     needs_leading_whitespace_for_expression: bool,
 }
 
-impl HasOutput for FirstPrintArg {
+impl ParserBase for FirstPrintArg {
     type Output = PrintArg;
 }
 
-impl Parser for FirstPrintArg {
+impl OptParser for FirstPrintArg {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         if self.needs_leading_whitespace_for_expression {
             semicolon_or_comma_as_print_arg_p()
@@ -69,7 +69,7 @@ impl Parser for FirstPrintArg {
     }
 }
 
-fn any_print_arg_p() -> impl Parser<Output = PrintArg> {
+fn any_print_arg_p() -> impl OptParser<Output = PrintArg> {
     semicolon_or_comma_as_print_arg_p()
         .or(expression::expression_node_p().map(PrintArg::Expression))
 }
@@ -86,7 +86,7 @@ impl TryFrom<TokenType> for PrintArg {
     }
 }
 
-fn semicolon_or_comma_as_print_arg_p() -> impl Parser<Output = PrintArg> {
+fn semicolon_or_comma_as_print_arg_p() -> impl OptParser<Output = PrintArg> {
     TryFromParser::new()
 }
 
@@ -94,11 +94,11 @@ struct PrintArgLookingBack {
     prev_print_arg_was_expression: bool,
 }
 
-impl HasOutput for PrintArgLookingBack {
+impl ParserBase for PrintArgLookingBack {
     type Output = PrintArg;
 }
 
-impl Parser for PrintArgLookingBack {
+impl OptParser for PrintArgLookingBack {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         if self.prev_print_arg_was_expression {
             // only comma or semicolon is allowed
@@ -112,7 +112,7 @@ impl Parser for PrintArgLookingBack {
     }
 }
 
-fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
+fn ws_file_handle_comma_p() -> impl OptParser<Output = Locatable<FileHandle>> {
     expression::file_handle_p()
         .preceded_by_req_ws()
         .and_demand(comma_surrounded_by_opt_ws())
@@ -133,11 +133,11 @@ impl PrintArgsParser {
     }
 }
 
-impl HasOutput for PrintArgsParser {
+impl ParserBase for PrintArgsParser {
     type Output = Vec<PrintArg>;
 }
 
-impl Parser for PrintArgsParser {
+impl OptParser for PrintArgsParser {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let opt_first_arg = self.seed_parser.parse(tokenizer)?;
         match opt_first_arg {

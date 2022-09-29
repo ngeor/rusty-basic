@@ -12,11 +12,11 @@ impl<O> TryFromParser<O> {
     }
 }
 
-impl<O> HasOutput for TryFromParser<O> {
+impl<O> ParserBase for TryFromParser<O> {
     type Output = O;
 }
 
-impl<O> Parser for TryFromParser<O>
+impl<O> OptParser for TryFromParser<O>
 where
     O: TryFrom<TokenType, Error = QError>,
 {

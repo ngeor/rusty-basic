@@ -5,16 +5,16 @@ use crate::parser::statement;
 use crate::parser::statement_separator::Separator;
 use crate::parser::types::*;
 
-pub fn single_line_non_comment_statements_p() -> impl Parser<Output = StatementNodes> {
+pub fn single_line_non_comment_statements_p() -> impl OptParser<Output = StatementNodes> {
     delimited_by_colon(statement::single_line_non_comment_statement_p().with_pos())
         .preceded_by_req_ws()
 }
 
-pub fn single_line_statements_p() -> impl Parser<Output = StatementNodes> {
+pub fn single_line_statements_p() -> impl OptParser<Output = StatementNodes> {
     delimited_by_colon(statement::single_line_statement_p().with_pos()).preceded_by_req_ws()
 }
 
-fn delimited_by_colon<P: Parser>(parser: P) -> impl Parser<Output = Vec<P::Output>> {
+fn delimited_by_colon<P: OptParser>(parser: P) -> impl OptParser<Output = Vec<P::Output>> {
     delimited_by(
         parser,
         item_p(':').surrounded_by_opt_ws(),
@@ -34,13 +34,13 @@ impl<S> ZeroOrMoreStatements<S> {
     }
 }
 
-impl<S> HasOutput for ZeroOrMoreStatements<S> {
+impl<S> ParserBase for ZeroOrMoreStatements<S> {
     type Output = StatementNodes;
 }
 
 impl<S> NonOptParser for ZeroOrMoreStatements<S>
 where
-    S: Parser,
+    S: OptParser,
     S::Output: Undo,
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
@@ -89,13 +89,13 @@ where
 
 struct NegateParser<P>(P);
 
-impl<P> HasOutput for NegateParser<P> {
+impl<P> ParserBase for NegateParser<P> {
     type Output = ();
 }
 
-impl<P> Parser for NegateParser<P>
+impl<P> OptParser for NegateParser<P>
 where
-    P: Parser,
+    P: OptParser,
     P::Output: Undo,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {

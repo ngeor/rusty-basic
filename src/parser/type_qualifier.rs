@@ -4,7 +4,7 @@ use crate::parser::TypeQualifier;
 use std::convert::TryFrom;
 
 /// Returns a parser that can parse a `TypeQualifier`.
-pub fn type_qualifier_p() -> impl Parser<Output = TypeQualifier> {
+pub fn type_qualifier_p() -> impl OptParser<Output = TypeQualifier> {
     TryFromParser::new()
 }
 
@@ -18,6 +18,6 @@ impl TokenPredicate for TypeQualifierPredicate {
     }
 }
 
-pub fn type_qualifier_as_token() -> impl Parser<Output = Token> {
+pub fn type_qualifier_as_token() -> impl OptParser<Output = Token> {
     TypeQualifierPredicate.parser()
 }

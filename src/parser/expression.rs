@@ -9,7 +9,7 @@ pub fn expressions_non_opt(err_msg: &str) -> impl NonOptParser<Output = Expressi
     in_parenthesis(csv(lazy_expression_node_p()).or_syntax_error(err_msg))
 }
 
-fn parenthesis_with_zero_or_more_expressions_p() -> impl Parser<Output = ExpressionNodes> {
+fn parenthesis_with_zero_or_more_expressions_p() -> impl OptParser<Output = ExpressionNodes> {
     in_parenthesis(csv(lazy_expression_node_p()))
 }
 
@@ -19,11 +19,11 @@ pub fn lazy_expression_node_p() -> LazyExpressionParser {
 
 pub struct LazyExpressionParser;
 
-impl HasOutput for LazyExpressionParser {
+impl ParserBase for LazyExpressionParser {
     type Output = ExpressionNode;
 }
 
-impl Parser for LazyExpressionParser {
+impl OptParser for LazyExpressionParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let parser = expression_node_p();
         parser.parse(reader)
@@ -32,7 +32,7 @@ impl Parser for LazyExpressionParser {
 
 // TODO check if all usages are "demand"
 // TODO rename to expression_preceded_by_ws
-pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
+pub fn guarded_expression_node_p() -> impl OptParser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr
     OptAndPC::new(whitespace(), lazy_expression_node_p()).and_then(
@@ -51,7 +51,7 @@ pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
 }
 
 // TODO rename to expression_surrounded_by_ws
-pub fn back_guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
+pub fn back_guarded_expression_node_p() -> impl OptParser<Output = ExpressionNode> {
     // ws* ( expr ) ws*
     // ws+ expr ws+
     guarded_expression_node_p()
@@ -60,7 +60,7 @@ pub fn back_guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> 
 }
 
 /// Parses an expression
-pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
+pub fn expression_node_p() -> impl OptParser<Output = ExpressionNode> {
     single_expression_node_p()
         .and_opt_factory(|first_expr| {
             operator_p(first_expr.is_parenthesis()).and_demand(
@@ -85,20 +85,21 @@ pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
 /// Trailing commas are not allowed.
 /// Missing expressions are not allowed.
 /// The first expression needs to be preceded by space or surrounded in parenthesis.
-pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
-    seq2(
+pub fn expression_nodes_p() -> impl OptParser<Output = ExpressionNodes> {
+    // TODO this is a form of ManyParser, if a new trait is to be defined
+    Seq2::new(
         guarded_expression_node_p(),
         comma_surrounded_by_opt_ws()
             .then_use(expression_node_p().or_syntax_error("Expected: expression after comma"))
             .zero_or_more(),
-        |first, mut remaining| {
-            remaining.insert(0, first);
-            remaining
-        },
     )
+    .map(|(first, mut remaining)| {
+        remaining.insert(0, first);
+        remaining
+    })
 }
 
-fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
+fn single_expression_node_p() -> impl OptParser<Output = ExpressionNode> {
     Alt10::new(
         string_literal::string_literal_p().with_pos(),
         built_in_function_call_p().with_pos(),
@@ -113,25 +114,25 @@ fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     )
 }
 
-fn unary_minus_p() -> impl Parser<Output = ExpressionNode> {
-    seq2(
+fn unary_minus_p() -> impl OptParser<Output = ExpressionNode> {
+    Seq2::new(
         item_p('-').with_pos(),
         lazy_expression_node_p().or_syntax_error("Expected: expression after unary minus"),
-        |l, r| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos),
     )
+    .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos))
 }
 
-pub fn unary_not_p() -> impl Parser<Output = ExpressionNode> {
-    seq2(
+pub fn unary_not_p() -> impl OptParser<Output = ExpressionNode> {
+    Seq2::new(
         keyword(Keyword::Not).with_pos(),
         guarded_expression_node_p().or_syntax_error("Expected: expression after NOT"),
-        |l, r| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()),
     )
+    .map(|(l, r)| r.apply_unary_priority_order(UnaryOperator::Not, l.pos()))
 }
 
 // TODO move the file handle logic into the built_ins as it is only used there
 
-pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
+pub fn file_handle_p() -> impl OptParser<Output = Locatable<FileHandle>> {
     FileHandleParser
 }
 
@@ -139,11 +140,11 @@ pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
 
 struct FileHandleParser;
 
-impl HasOutput for FileHandleParser {
+impl ParserBase for FileHandleParser {
     type Output = Locatable<FileHandle>;
 }
 
-impl Parser for FileHandleParser {
+impl OptParser for FileHandleParser {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let pos = tokenizer.position();
         match tokenizer.read()? {
@@ -166,29 +167,29 @@ impl Parser for FileHandleParser {
 }
 
 /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
-pub fn file_handle_as_expression_node_p() -> impl Parser<Output = ExpressionNode> {
+pub fn file_handle_as_expression_node_p() -> impl OptParser<Output = ExpressionNode> {
     file_handle_p()
         .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
 }
 
-pub fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
+pub fn file_handle_or_expression_p() -> impl OptParser<Output = ExpressionNode> {
     file_handle_as_expression_node_p().or(expression_node_p())
 }
 
-pub fn parenthesis_p() -> impl Parser<Output = Expression> {
+pub fn parenthesis_p() -> impl OptParser<Output = Expression> {
     in_parenthesis(
         lazy_expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
     )
     .map(|child| Expression::Parenthesis(Box::new(child)))
 }
 
-pub fn file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
+pub fn file_handle_comma_p() -> impl OptParser<Output = Locatable<FileHandle>> {
     file_handle_p()
         .and_demand(comma_surrounded_by_opt_ws())
         .keep_left()
 }
 
-pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
+pub fn guarded_file_handle_or_expression_p() -> impl OptParser<Output = ExpressionNode> {
     file_handle_as_expression_node_p()
         .preceded_by_req_ws()
         .or(guarded_expression_node_p())
@@ -199,8 +200,8 @@ mod string_literal {
     use crate::parser::pc_specific::*;
     use crate::parser::Expression;
 
-    pub fn string_literal_p() -> impl Parser<Output = Expression> {
-        to_impl_parser(string_delimiter())
+    pub fn string_literal_p() -> impl OptParser<Output = Expression> {
+        string_delimiter()
             .and_demand(InsideString.parser().zero_or_more())
             .and_demand(string_delimiter())
             .map(|((_, token_list), _)| {
@@ -228,7 +229,7 @@ mod number_literal {
     use crate::parser::types::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
 
-    pub fn number_literal_p() -> impl Parser<Output = ExpressionNode> {
+    pub fn number_literal_p() -> impl OptParser<Output = ExpressionNode> {
         // TODO support more qualifiers besides '#'
         digits()
             .and_opt(item_p('.').then_use(digits()))
@@ -246,8 +247,8 @@ mod number_literal {
             .with_pos()
     }
 
-    pub fn float_without_leading_zero_p() -> impl Parser<Output = ExpressionNode> {
-        to_impl_parser(item_p('.'))
+    pub fn float_without_leading_zero_p() -> impl OptParser<Output = ExpressionNode> {
+        item_p('.')
             .and_demand(digits())
             .and_opt(item_p('#'))
             .and_then(|((_, fraction_digits), opt_double)| {
@@ -339,7 +340,7 @@ mod number_literal {
         }
     }
 
-    pub fn hexadecimal_literal_p() -> impl Parser<Output = Expression> {
+    pub fn hexadecimal_literal_p() -> impl OptParser<Output = Expression> {
         TokenKindParser::new(TokenType::HexDigits)
             .parser()
             .and_then(|token| {
@@ -357,7 +358,7 @@ mod number_literal {
             })
     }
 
-    pub fn octal_literal_p() -> impl Parser<Output = Expression> {
+    pub fn octal_literal_p() -> impl OptParser<Output = Expression> {
         TokenKindParser::new(TokenType::OctDigits)
             .parser()
             .and_then(|token| {
@@ -374,7 +375,7 @@ mod number_literal {
             })
     }
 
-    pub fn digits() -> impl Parser<Output = Token> + NonOptParser<Output = Token> {
+    pub fn digits() -> impl OptParser<Output = Token> + NonOptParser<Output = Token> {
         TokenKindParser::new(TokenType::Digits).parser()
     }
 }
@@ -389,7 +390,7 @@ pub mod word {
     use crate::parser::types::*;
     use std::convert::TryFrom;
 
-    pub fn word_p() -> impl Parser<Output = Expression> {
+    pub fn word_p() -> impl OptParser<Output = Expression> {
         name_with_dot_p()
             .and_opt(parenthesis_with_zero_or_more_expressions_p())
             .and_opt(
@@ -483,13 +484,13 @@ pub mod word {
     }
 
     // TODO rewrite this
-    fn dot_property_name() -> impl Parser<Output = Vec<String>> {
+    fn dot_property_name() -> impl OptParser<Output = Vec<String>> {
         item_p('.').then_use(Properties)
     }
 
     struct Properties;
 
-    impl HasOutput for Properties {
+    impl ParserBase for Properties {
         type Output = Vec<String>;
     }
 
@@ -519,11 +520,11 @@ pub mod word {
 
     struct EnsureEndOfNameParser;
 
-    impl HasOutput for EnsureEndOfNameParser {
+    impl ParserBase for EnsureEndOfNameParser {
         type Output = ();
     }
 
-    impl Parser for EnsureEndOfNameParser {
+    impl OptParser for EnsureEndOfNameParser {
         fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
             match tokenizer.read()? {
                 Some(token) => {
@@ -821,7 +822,7 @@ pub mod word {
     }
 }
 
-fn operator_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
+fn operator_p(had_parenthesis_before: bool) -> impl OptParser<Output = Locatable<Operator>> {
     Alt5::new(
         relational_operator_p().preceded_by_opt_ws(),
         arithmetic_op_p().with_pos().preceded_by_opt_ws(),
@@ -835,7 +836,7 @@ fn and_or_p(
     had_parenthesis_before: bool,
     k: Keyword,
     operator: Operator,
-) -> impl Parser<Output = Locatable<Operator>> {
+) -> impl OptParser<Output = Locatable<Operator>> {
     keyword(k)
         .with_pos()
         .preceded_by_ws(!had_parenthesis_before)
@@ -844,7 +845,7 @@ fn and_or_p(
 
 struct ArithmeticMap;
 
-impl HasOutput for ArithmeticMap {
+impl ParserBase for ArithmeticMap {
     type Output = Operator;
 }
 
@@ -860,11 +861,11 @@ impl TokenTypeMap for ArithmeticMap {
     }
 }
 
-fn arithmetic_op_p() -> impl Parser<Output = Operator> {
+fn arithmetic_op_p() -> impl OptParser<Output = Operator> {
     ArithmeticMap.parser()
 }
 
-fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
+fn modulo_op_p(had_parenthesis_before: bool) -> impl OptParser<Output = Locatable<Operator>> {
     keyword(Keyword::Mod)
         .preceded_by_ws(!had_parenthesis_before)
         .map(|_| Operator::Modulo)
@@ -873,7 +874,7 @@ fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<O
 
 struct RelationalMap;
 
-impl HasOutput for RelationalMap {
+impl ParserBase for RelationalMap {
     type Output = Operator;
 }
 
@@ -891,7 +892,7 @@ impl TokenTypeMap for RelationalMap {
     }
 }
 
-pub fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
+pub fn relational_operator_p() -> impl OptParser<Output = Locatable<Operator>> {
     RelationalMap.parser().with_pos()
 }
 

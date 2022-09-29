@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::pc::{HasOutput, NonOptParser, Parser, Token, Tokenizer, Undo};
+use crate::parser::pc::{NonOptParser, OptParser, ParserBase, Token, Tokenizer, Undo};
 use crate::parser::pc_specific::TokenType;
 use crate::parser::ExpressionNode;
 
@@ -33,11 +33,11 @@ impl WhitespaceBoundaryParser {
     }
 }
 
-impl HasOutput for WhitespaceBoundaryParser {
+impl ParserBase for WhitespaceBoundaryParser {
     type Output = WhitespaceBoundary;
 }
 
-impl Parser for WhitespaceBoundaryParser {
+impl OptParser for WhitespaceBoundaryParser {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match tokenizer.read()? {
             Some(token) if token.kind == TokenType::Whitespace as i32 => {

@@ -5,7 +5,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl Parser<Output = Statement> {
+    pub fn parse() -> impl OptParser<Output = Statement> {
         keyword_pair(Keyword::Line, Keyword::Input)
             .followed_by_req_ws()
             .and_opt(expression::file_handle_comma_p())

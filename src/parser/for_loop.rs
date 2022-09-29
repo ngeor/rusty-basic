@@ -9,7 +9,7 @@ use crate::parser::types::*;
 // statements
 // NEXT (I)
 
-pub fn for_loop_p() -> impl Parser<Output = Statement> {
+pub fn for_loop_p() -> impl OptParser<Output = Statement> {
     parse_for_step_p()
         .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::Next)))
         .and_demand(keyword(Keyword::Next).map_err(QError::ForWithoutNext))
@@ -32,7 +32,7 @@ pub fn for_loop_p() -> impl Parser<Output = Statement> {
 }
 
 /// Parses the "FOR I = 1 TO 2 [STEP X]" part
-fn parse_for_step_p() -> impl Parser<
+fn parse_for_step_p() -> impl OptParser<
     Output = (
         ExpressionNode,
         ExpressionNode,
@@ -42,18 +42,18 @@ fn parse_for_step_p() -> impl Parser<
 > {
     parse_for_p()
         .and_opt_factory(|(_, _, upper)| {
-            seq2(
-                whitespace_boundary_after_expr(upper).and(keyword(Keyword::Step)),
-                expression::guarded_expression_node_p()
-                    .or_syntax_error("Expected: expression after STEP"),
-                |_, step_expr| step_expr,
-            )
+            whitespace_boundary_after_expr(upper)
+                .and(keyword(Keyword::Step))
+                .then_use(
+                    expression::guarded_expression_node_p()
+                        .or_syntax_error("Expected: expression after STEP"),
+                )
         })
         .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
 }
 
 /// Parses the "FOR I = 1 TO 2" part
-fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, ExpressionNode)> {
+fn parse_for_p() -> impl OptParser<Output = (ExpressionNode, ExpressionNode, ExpressionNode)> {
     keyword_followed_by_whitespace_p(Keyword::For)
         .and_demand(
             expression::word::word_p()
@@ -77,7 +77,7 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
         .map(|(((((_, n), _), l), _), u)| (n, l, u))
 }
 
-fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
+fn next_counter_p() -> impl OptParser<Output = ExpressionNode> {
     expression::word::word_p().with_pos().preceded_by_req_ws()
 }
 

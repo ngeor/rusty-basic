@@ -5,8 +5,8 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl Parser<Output = Statement> {
-        to_impl_parser(keyword(Keyword::Open))
+    pub fn parse() -> impl OptParser<Output = Statement> {
+        keyword(Keyword::Open)
             .and_demand(
                 expression::back_guarded_expression_node_p()
                     .or_syntax_error("Expected: file name after OPEN"),
@@ -32,8 +32,8 @@ pub mod parser {
     }
 
     // FOR <ws+> INPUT <ws+>
-    fn parse_open_mode_p() -> impl Parser<Output = Locatable<FileMode>> {
-        seq3(
+    fn parse_open_mode_p() -> impl OptParser<Output = Locatable<FileMode>> {
+        Seq3::new(
             keyword_followed_by_whitespace_p(Keyword::For),
             keyword_map(&[
                 (Keyword::Append, FileMode::Append),
@@ -43,12 +43,12 @@ pub mod parser {
             ])
             .with_pos(),
             whitespace(),
-            |_, file_mode, _| file_mode,
         )
+        .map(|(_, file_mode, _)| file_mode) // TODO implement keep_middle for this too
     }
 
     // ACCESS <ws+> READ <ws+>
-    fn parse_open_access_p() -> impl Parser<Output = Locatable<FileAccess>> {
+    fn parse_open_access_p() -> impl OptParser<Output = Locatable<FileAccess>> {
         keyword_followed_by_whitespace_p(Keyword::Access)
             .and_demand(keyword(Keyword::Read).with_pos())
             .keep_right()
@@ -58,21 +58,21 @@ pub mod parser {
 
     // AS <ws+> expression
     // AS ( expression )
-    fn parse_file_number_p() -> impl Parser<Output = ExpressionNode> {
+    fn parse_file_number_p() -> impl OptParser<Output = ExpressionNode> {
         keyword(Keyword::As).then_use(
             expression::guarded_file_handle_or_expression_p()
                 .or_syntax_error("Expected: #file-number%"),
         )
     }
 
-    fn parse_len_p() -> impl Parser<Output = ExpressionNode> {
-        seq3(
+    fn parse_len_p() -> impl OptParser<Output = ExpressionNode> {
+        Seq3::new(
             whitespace().and(keyword(Keyword::Len)),
             item_p('=').preceded_by_opt_ws(),
             expression::guarded_expression_node_p()
                 .or_syntax_error("Expected: expression after LEN ="),
-            |_, _, e| e,
         )
+        .map(|(_, _, e)| e) // TODO impl keep_right for this too
     }
 
     fn map_opt_locatable_enum<T>(

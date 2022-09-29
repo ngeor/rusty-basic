@@ -9,17 +9,17 @@ use crate::parser::types::*;
 // SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
 
-pub fn sub_call_or_assignment_p() -> impl Parser<Output = Statement> {
+pub fn sub_call_or_assignment_p() -> impl OptParser<Output = Statement> {
     SubCallOrAssignment
 }
 
 struct SubCallOrAssignment;
 
-impl HasOutput for SubCallOrAssignment {
+impl ParserBase for SubCallOrAssignment {
     type Output = Statement;
 }
 
-impl Parser for SubCallOrAssignment {
+impl OptParser for SubCallOrAssignment {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let opt_item = Self::name_and_opt_eq_sign().parse(reader)?;
         match opt_item {
@@ -48,7 +48,7 @@ impl Parser for SubCallOrAssignment {
 }
 
 impl SubCallOrAssignment {
-    fn name_and_opt_eq_sign() -> impl Parser<Output = (Expression, Option<Token>)> {
+    fn name_and_opt_eq_sign() -> impl OptParser<Output = (Expression, Option<Token>)> {
         expression::word::word_p().and_opt(item_p('=').surrounded_by_opt_ws())
     }
 }

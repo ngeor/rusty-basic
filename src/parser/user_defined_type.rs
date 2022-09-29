@@ -53,20 +53,20 @@ use crate::parser::types::{
     UserDefinedType,
 };
 
-pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
-    seq5(
+pub fn user_defined_type_p() -> impl OptParser<Output = UserDefinedType> {
+    Seq5::new(
         keyword_followed_by_whitespace_p(Keyword::Type),
         bare_name_without_dot_p()
             .with_pos()
             .or_syntax_error("Expected: name after TYPE"),
         comments_and_whitespace_p(),
         element_nodes_p(),
-        keyword_pair_non_opt(Keyword::End, Keyword::Type),
-        |_, name, comments, elements, _| UserDefinedType::new(name, comments, elements),
+        keyword_pair(Keyword::End, Keyword::Type),
     )
+    .map(|(_, name, comments, elements, _)| UserDefinedType::new(name, comments, elements))
 }
 
-fn bare_name_without_dot_p() -> impl Parser<Output = BareName> {
+fn bare_name_without_dot_p() -> impl OptParser<Output = BareName> {
     name::name_with_dot_p().and_then(|n| match n {
         Name::Bare(b) => {
             if b.contains('.') {
@@ -87,7 +87,7 @@ fn element_nodes_p() -> impl NonOptParser<Output = Vec<ElementNode>> {
         .or_error(QError::ElementNotDefined)
 }
 
-fn element_node_p() -> impl Parser<Output = ElementNode> {
+fn element_node_p() -> impl OptParser<Output = ElementNode> {
     bare_name_without_dot_p()
         .followed_by_req_ws()
         .with_pos()
@@ -101,7 +101,7 @@ fn element_node_p() -> impl Parser<Output = ElementNode> {
         )
 }
 
-fn element_type_p() -> impl Parser<Output = ElementType> {
+fn element_type_p() -> impl OptParser<Output = ElementType> {
     Alt3::new(
         keyword_map(&[
             (Keyword::Integer, ElementType::Integer),
@@ -109,14 +109,14 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
             (Keyword::Single, ElementType::Single),
             (Keyword::Double, ElementType::Double),
         ]),
-        seq3(
+        Seq3::new(
             keyword(Keyword::String_),
             item_p('*')
                 .surrounded_by_opt_ws()
                 .or_syntax_error("Expected: *"),
             demand_string_length_p(),
-            |_, _, e| ElementType::FixedLengthString(e, 0),
-        ),
+        )
+        .map(|(_, _, e)| ElementType::FixedLengthString(e, 0)),
         bare_name_without_dot_p()
             .with_pos()
             .map(ElementType::UserDefined),

@@ -8,7 +8,7 @@ pub struct KeywordChoice<'a> {
     keywords: &'a [Keyword],
 }
 
-impl<'a> HasOutput for KeywordChoice<'a> {
+impl<'a> ParserBase for KeywordChoice<'a> {
     type Output = (Keyword, Token);
 }
 
@@ -18,7 +18,7 @@ impl Undo for (Keyword, Token) {
     }
 }
 
-impl<'a> Parser for KeywordChoice<'a> {
+impl<'a> OptParser for KeywordChoice<'a> {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match tokenizer.read()? {
             Some(token) => match self.find_keyword(&token) {
@@ -69,7 +69,7 @@ impl<'a> ErrorProvider for KeywordChoice<'a> {
 
 pub fn keyword_choice(
     keywords: &[Keyword],
-) -> impl Parser<Output = (Keyword, Token)> + NonOptParser<Output = (Keyword, Token)> + '_ {
+) -> impl OptParser<Output = (Keyword, Token)> + NonOptParser<Output = (Keyword, Token)> + '_ {
     KeywordChoice { keywords }
 }
 

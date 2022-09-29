@@ -4,7 +4,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl Parser<Output = Statement> {
+    pub fn parse() -> impl OptParser<Output = Statement> {
         // TODO rewrite this
         keyword(Keyword::Close)
             .and_opt(

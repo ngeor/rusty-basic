@@ -2,16 +2,16 @@ use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::{ExitObject, Keyword, Statement};
 
-pub fn statement_exit_p() -> impl Parser<Output = Statement> {
-    seq3(
+pub fn statement_exit_p() -> impl OptParser<Output = Statement> {
+    Seq3::new(
         keyword(Keyword::Exit),
         whitespace(),
         keyword_map(&[
             (Keyword::Function, ExitObject::Function),
             (Keyword::Sub, ExitObject::Sub),
         ]),
-        |_, _, exit_object| Statement::Exit(exit_object),
     )
+    .map(|(_, _, exit_object)| Statement::Exit(exit_object))
 }
 
 #[cfg(test)]

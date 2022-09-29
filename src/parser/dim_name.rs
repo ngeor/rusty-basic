@@ -19,7 +19,7 @@ use crate::parser::types::*;
 // A$(1 TO 2, 0 TO 10)
 // A(1 TO 5) AS INTEGER
 
-pub fn dim_name_node_p() -> impl Parser<Output = DimNameNode> {
+pub fn dim_name_node_p() -> impl OptParser<Output = DimNameNode> {
     name_with_dot_p()
         .with_pos()
         .and_opt(array_dimensions_p())
@@ -35,7 +35,7 @@ pub fn dim_name_node_p() -> impl Parser<Output = DimNameNode> {
         )
 }
 
-pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
+pub fn redim_name_node_p() -> impl OptParser<Output = DimNameNode> {
     name_with_dot_p()
         .with_pos()
         .and_demand(array_dimensions_p().or_syntax_error("Expected: array dimensions"))
@@ -51,22 +51,22 @@ pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
         )
 }
 
-fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
+fn array_dimensions_p() -> impl OptParser<Output = ArrayDimensions> {
     in_parenthesis(csv(array_dimension_p()).or_syntax_error("Expected: array dimension"))
 }
 
 // expr (e.g. 10)
 // expr ws+ TO ws+ expr (e.g. 1 TO 10)
 // paren_expr ws* TO ws* paren_expr
-fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
+fn array_dimension_p() -> impl OptParser<Output = ArrayDimension> {
     expression::expression_node_p()
         .and_opt_factory(|lower_bound_expr| {
-            seq2(
-                whitespace_boundary_after_expr(lower_bound_expr).and(keyword(Keyword::To)),
-                expression::guarded_expression_node_p()
-                    .or_syntax_error("Expected: expression after TO"),
-                |_, upper_bound_expr| upper_bound_expr,
-            )
+            whitespace_boundary_after_expr(lower_bound_expr)
+                .and(keyword(Keyword::To))
+                .then_use(
+                    expression::guarded_expression_node_p()
+                        .or_syntax_error("Expected: expression after TO"),
+                )
         })
         .map(|(l, opt_r)| match opt_r {
             Some(r) => ArrayDimension {
@@ -80,27 +80,27 @@ fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
         })
 }
 
-fn type_definition_extended_p() -> impl Parser<Output = DimType> {
+fn type_definition_extended_p() -> impl OptParser<Output = DimType> {
     // <ws+> AS <ws+> identifier
-    seq3(
+    Seq3::new(
         whitespace().and(keyword(Keyword::As)),
         whitespace(),
         extended_type_p().or_syntax_error("Expected: type after AS"),
-        |_, _, identifier| identifier,
     )
+    .map(|(_, _, identifier)| identifier)
 }
 
-fn extended_type_p() -> impl Parser<Output = DimType> {
+fn extended_type_p() -> impl OptParser<Output = DimType> {
     ExtendedTypeParser {}
 }
 
 struct ExtendedTypeParser;
 
-impl HasOutput for ExtendedTypeParser {
+impl ParserBase for ExtendedTypeParser {
     type Output = DimType;
 }
 
-impl Parser for ExtendedTypeParser {
+impl OptParser for ExtendedTypeParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         // TODO rewrite this
         // TODO only try to parse keyword if the token kind matches

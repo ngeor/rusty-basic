@@ -1,15 +1,13 @@
 use crate::common::QError;
-use crate::parser::pc::parsers::{HasOutput, NonOptParser, Parser};
+use crate::parser::pc::parsers::{NonOptParser, OptParser, ParserBase};
 use crate::parser::pc::tokenizers::Tokenizer;
+use crate::parser_decorator;
 
-pub struct LoggingPC<P>(P, String);
-
-impl<P> HasOutput for LoggingPC<P>
-where
-    P: HasOutput,
-{
-    type Output = P::Output;
-}
+parser_decorator!(
+    struct LoggingPC {
+        tag: String,
+    }
+);
 
 static mut INDENTATION_LEVEL: i32 = 0;
 
@@ -23,22 +21,22 @@ fn indentation() -> String {
     s
 }
 
-impl<P> Parser for LoggingPC<P>
+impl<P> OptParser for LoggingPC<P>
 where
-    P: Parser,
+    P: OptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         println!(
             "{}{} Parsing current position {:?} peek token {}",
             indentation(),
-            self.1,
+            self.tag,
             tokenizer.position(),
             peek_token(tokenizer)
         );
         unsafe {
             INDENTATION_LEVEL += 1;
         }
-        let result = self.0.parse(tokenizer);
+        let result = self.parser.parse(tokenizer);
         unsafe {
             INDENTATION_LEVEL -= 1;
         }
@@ -47,7 +45,7 @@ where
                 println!(
                     "{}{} Success current position {:?} peek token {}",
                     indentation(),
-                    self.1,
+                    self.tag,
                     tokenizer.position(),
                     peek_token(tokenizer)
                 );
@@ -57,7 +55,7 @@ where
                 println!(
                     "{}{} None current position {:?} peek token {}",
                     indentation(),
-                    self.1,
+                    self.tag,
                     tokenizer.position(),
                     peek_token(tokenizer)
                 );
@@ -67,7 +65,7 @@ where
                 println!(
                     "{}{} Err current position {:?} peek token {}",
                     indentation(),
-                    self.1,
+                    self.tag,
                     tokenizer.position(),
                     peek_token(tokenizer)
                 );
@@ -85,14 +83,14 @@ where
         println!(
             "{}{} Parsing non-opt current position {:?} peek token {}",
             indentation(),
-            self.1,
+            self.tag,
             tokenizer.position(),
             peek_token(tokenizer)
         );
         unsafe {
             INDENTATION_LEVEL += 1;
         }
-        let result = self.0.parse_non_opt(tokenizer);
+        let result = self.parser.parse_non_opt(tokenizer);
         unsafe {
             INDENTATION_LEVEL -= 1;
         }
@@ -101,7 +99,7 @@ where
                 println!(
                     "{}{} Success current position {:?} peek token {}",
                     indentation(),
-                    self.1,
+                    self.tag,
                     tokenizer.position(),
                     peek_token(tokenizer)
                 );
@@ -111,29 +109,13 @@ where
                 println!(
                     "{}{} Err current position {:?} peek token {}",
                     indentation(),
-                    self.1,
+                    self.tag,
                     tokenizer.position(),
                     peek_token(tokenizer)
                 );
                 Err(err)
             }
         }
-    }
-}
-
-pub trait LoggingTrait
-where
-    Self: Sized,
-{
-    fn logging(self, name: &str) -> LoggingPC<Self>;
-}
-
-impl<P> LoggingTrait for P
-where
-    P: Sized,
-{
-    fn logging(self, name: &str) -> LoggingPC<Self> {
-        LoggingPC(self, name.to_owned())
     }
 }
 

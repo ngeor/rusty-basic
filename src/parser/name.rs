@@ -12,7 +12,7 @@ use crate::parser::{BareName, Keyword, Name, TypeQualifier};
 ///
 /// The parser validates the maximum length of the name and checks that the name
 /// is not a keyword (with the exception of strings, e.g. `end$`).
-pub fn name_with_dot_p() -> impl Parser<Output = Name> {
+pub fn name_with_dot_p() -> impl OptParser<Output = Name> {
     identifier_or_keyword()
         .and_then(ensure_token_list_length)
         .and_opt(type_qualifier_as_token())
@@ -37,7 +37,7 @@ pub fn name_with_dot_p() -> impl Parser<Output = Name> {
 
 // bare name node
 
-pub fn bare_name_as_token() -> impl Parser<Output = Token> {
+pub fn bare_name_as_token() -> impl OptParser<Output = Token> {
     UnlessFollowedBy(
         TokenKindParser::new(TokenType::Identifier).parser(),
         type_qualifier_as_token(),
@@ -45,24 +45,24 @@ pub fn bare_name_as_token() -> impl Parser<Output = Token> {
     .validate(ensure_length_and_not_keyword)
 }
 
-pub fn bare_name_p() -> impl Parser<Output = BareName> {
+pub fn bare_name_p() -> impl OptParser<Output = BareName> {
     bare_name_as_token().map(|x| x.text.into()) // TODO make a parser for simpler .into() cases
 }
 
 struct UnlessFollowedBy<L, R>(L, R);
 
-impl<L, R> HasOutput for UnlessFollowedBy<L, R>
+impl<L, R> ParserBase for UnlessFollowedBy<L, R>
 where
-    L: HasOutput,
+    L: ParserBase,
 {
     type Output = L::Output;
 }
 
-impl<L, R> Parser for UnlessFollowedBy<L, R>
+impl<L, R> OptParser for UnlessFollowedBy<L, R>
 where
-    L: Parser,
+    L: OptParser,
     L::Output: Undo,
-    R: Parser,
+    R: OptParser,
     R::Output: Undo,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {

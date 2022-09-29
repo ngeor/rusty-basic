@@ -5,7 +5,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl Parser<Output = Statement> {
+    pub fn parse() -> impl OptParser<Output = Statement> {
         // INPUT variable-list
         // LINE INPUT variable$
         // INPUT #file-number%, variable-list

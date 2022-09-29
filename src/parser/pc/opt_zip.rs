@@ -1,7 +1,8 @@
 // Mixed type or
 
+use crate::binary_parser_declaration;
 use crate::common::QError;
-use crate::parser::pc::{HasOutput, Parser, Tokenizer};
+use crate::parser::pc::{OptParser, ParserBase, Tokenizer};
 
 pub enum ZipValue<L, R> {
     Left(L),
@@ -32,24 +33,24 @@ impl<L, R> ZipValue<L, R> {
     }
 }
 
-pub struct OptZip<L, R>(L, R);
+binary_parser_declaration!(struct OptZip);
 
 pub fn opt_zip<L, R>(left: L, right: R) -> OptZip<L, R> {
     OptZip(left, right)
 }
 
-impl<L, R> HasOutput for OptZip<L, R>
+impl<L, R> ParserBase for OptZip<L, R>
 where
-    L: HasOutput,
-    R: HasOutput,
+    L: ParserBase,
+    R: ParserBase,
 {
     type Output = ZipValue<L::Output, R::Output>;
 }
 
-impl<L, R> Parser for OptZip<L, R>
+impl<L, R> OptParser for OptZip<L, R>
 where
-    L: Parser,
-    R: Parser,
+    L: OptParser,
+    R: OptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let opt_left = self.0.parse(tokenizer)?;

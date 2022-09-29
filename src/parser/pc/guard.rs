@@ -1,24 +1,19 @@
+use crate::binary_parser_declaration;
 use crate::common::QError;
 use crate::parser::pc::*;
 
-pub struct GuardPC<L, R>(L, R);
+binary_parser_declaration!(struct GuardPC);
 
-impl<L, R> GuardPC<L, R> {
-    pub fn new(left: L, right: R) -> Self {
-        Self(left, right)
-    }
-}
-
-impl<L, R> HasOutput for GuardPC<L, R>
+impl<L, R> ParserBase for GuardPC<L, R>
 where
-    R: HasOutput,
+    R: ParserBase,
 {
     type Output = R::Output;
 }
 
-impl<L, R> Parser for GuardPC<L, R>
+impl<L, R> OptParser for GuardPC<L, R>
 where
-    L: Parser,
+    L: OptParser,
     R: NonOptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {

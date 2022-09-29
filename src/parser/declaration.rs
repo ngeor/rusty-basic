@@ -15,7 +15,7 @@ use crate::parser::types::*;
 // ExtendedBuiltIn       ::= <BareName><ws+>AS<ws+>(SINGLE|DOUBLE|STRING|INTEGER|LONG)
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
-pub fn declaration_p() -> impl Parser<Output = TopLevelToken> {
+pub fn declaration_p() -> impl OptParser<Output = TopLevelToken> {
     keyword_followed_by_whitespace_p(Keyword::Declare)
         .and_demand(
             function_declaration_p()
@@ -26,7 +26,7 @@ pub fn declaration_p() -> impl Parser<Output = TopLevelToken> {
         .keep_right()
 }
 
-pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNodes)> {
+pub fn function_declaration_p() -> impl OptParser<Output = (NameNode, ParamNameNodes)> {
     keyword_followed_by_whitespace_p(Keyword::Function)
         .and_demand(
             name::name_with_dot_p()
@@ -40,7 +40,7 @@ pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNode
         })
 }
 
-pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes)> {
+pub fn sub_declaration_p() -> impl OptParser<Output = (BareNameNode, ParamNameNodes)> {
     keyword_followed_by_whitespace_p(Keyword::Sub)
         .and_demand(
             name::bare_name_p()
@@ -52,7 +52,7 @@ pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes
         .map(|(((_, sub_name_node), _), opt_p)| (sub_name_node, opt_p.unwrap_or_default()))
 }
 
-fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> {
+fn declaration_parameters_p() -> impl OptParser<Output = ParamNameNodes> {
     in_parenthesis_allow_no_elements(csv(param_name_node_p()))
 }
 

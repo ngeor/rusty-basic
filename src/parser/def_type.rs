@@ -9,13 +9,11 @@ use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 // LetterRange  ::= <Letter> | <Letter>-<Letter>
 // Letter       ::= [a-zA-Z]
 
-pub fn def_type_p() -> impl Parser<Output = DefType> {
-    seq3(def_keyword_p(), whitespace(), letter_ranges(), |l, _, r| {
-        DefType::new(l, r)
-    })
+pub fn def_type_p() -> impl OptParser<Output = DefType> {
+    Seq3::new(def_keyword_p(), whitespace(), letter_ranges()).map(|(l, _, r)| DefType::new(l, r))
 }
 
-fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
+fn def_keyword_p() -> impl OptParser<Output = TypeQualifier> {
     keyword_map(&[
         (Keyword::DefInt, TypeQualifier::PercentInteger),
         (Keyword::DefLng, TypeQualifier::AmpersandLong),
@@ -44,7 +42,7 @@ fn letter_range() -> impl NonOptParser<Output = LetterRange> {
         })
 }
 
-fn letter() -> impl Parser<Output = char> + NonOptParser<Output = char> {
+fn letter() -> impl OptParser<Output = char> + NonOptParser<Output = char> {
     LetterToken.parser().map(token_to_char)
 }
 

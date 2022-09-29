@@ -1,5 +1,6 @@
+use crate::binary_parser_declaration;
 use crate::common::QError;
-use crate::parser::pc::{HasOutput, Parser, Tokenizer, Undo};
+use crate::parser::pc::{OptParser, ParserBase, Tokenizer, Undo};
 
 //
 // And (with undo if the left parser supports it)
@@ -8,27 +9,21 @@ use crate::parser::pc::{HasOutput, Parser, Tokenizer, Undo};
 // Looks identical to `NonOptSeq2` but that one has already an implementation
 // of Parser
 
-pub struct AndPC<A, B>(A, B);
+binary_parser_declaration!(struct AndPC);
 
-impl<A, B> AndPC<A, B> {
-    pub fn new(left: A, right: B) -> Self {
-        Self(left, right)
-    }
-}
-
-impl<A, B> HasOutput for AndPC<A, B>
+impl<A, B> ParserBase for AndPC<A, B>
 where
-    A: HasOutput,
-    B: HasOutput,
+    A: ParserBase,
+    B: ParserBase,
 {
     type Output = (A::Output, B::Output);
 }
 
-impl<A, B> Parser for AndPC<A, B>
+impl<A, B> OptParser for AndPC<A, B>
 where
-    A: Parser,
+    A: OptParser,
     A::Output: Undo,
-    B: Parser,
+    B: OptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self.0.parse(tokenizer)? {

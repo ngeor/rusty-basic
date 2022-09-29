@@ -15,11 +15,11 @@ pub enum Separator {
     NonComment,
 }
 
-impl HasOutput for Separator {
+impl ParserBase for Separator {
     type Output = ();
 }
 
-impl Parser for Separator {
+impl OptParser for Separator {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self {
             Self::Comment => CommentSeparator.parse(tokenizer),
@@ -30,11 +30,11 @@ impl Parser for Separator {
 
 struct CommentSeparator;
 
-impl HasOutput for CommentSeparator {
+impl ParserBase for CommentSeparator {
     type Output = ();
 }
 
-impl Parser for CommentSeparator {
+impl OptParser for CommentSeparator {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let mut tokens: TokenList = vec![];
         let mut found_eol = false;
@@ -62,11 +62,11 @@ impl Parser for CommentSeparator {
 
 struct CommonSeparator;
 
-impl HasOutput for CommonSeparator {
+impl ParserBase for CommonSeparator {
     type Output = ();
 }
 
-impl Parser for CommonSeparator {
+impl OptParser for CommonSeparator {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         let mut sep = TokenType::Unknown;
         while let Some(token) = tokenizer.read()? {
@@ -104,17 +104,17 @@ impl Parser for CommonSeparator {
     }
 }
 
-pub fn peek_eof_or_statement_separator() -> impl Parser<Output = ()> {
+pub fn peek_eof_or_statement_separator() -> impl OptParser<Output = ()> {
     PeekStatementSeparatorOrEof(StatementSeparator2)
 }
 
 struct PeekStatementSeparatorOrEof<P>(P);
 
-impl<P> HasOutput for PeekStatementSeparatorOrEof<P> {
+impl<P> ParserBase for PeekStatementSeparatorOrEof<P> {
     type Output = ();
 }
 
-impl<P> Parser for PeekStatementSeparatorOrEof<P>
+impl<P> OptParser for PeekStatementSeparatorOrEof<P>
 where
     P: TokenPredicate,
 {
@@ -147,7 +147,7 @@ pub fn comments_and_whitespace_p() -> impl NonOptParser<Output = Vec<Locatable<S
 
 struct CommentsAndWhitespace;
 
-impl HasOutput for CommentsAndWhitespace {
+impl ParserBase for CommentsAndWhitespace {
     type Output = Vec<Locatable<String>>;
 }
 

@@ -4,13 +4,14 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl Parser<Output = Expression> {
-        seq3(
+    pub fn parse() -> impl OptParser<Output = Expression> {
+        Seq3::new(
             keyword(Keyword::String_),
             item_p('$'),
             expression::expressions_non_opt("Expected: expression"),
-            |_, _, v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v),
         )
+        .map(|(_, _, v)| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v))
+        // TODO impl keep_right
     }
 }
 

@@ -5,7 +5,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl Parser<Output = Statement> {
+    pub fn parse() -> impl OptParser<Output = Statement> {
         keyword_followed_by_whitespace_p(Keyword::LSet)
             .and_demand(
                 name::name_with_dot_p()

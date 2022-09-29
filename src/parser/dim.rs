@@ -3,7 +3,7 @@ use crate::parser::pc_specific::*;
 use crate::parser::{dim_name, DimList, Keyword, Statement};
 
 /// Parses DIM statement
-pub fn dim_p() -> impl Parser<Output = Statement> {
+pub fn dim_p() -> impl OptParser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Dim)
         .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
         .and_demand(csv(dim_name::dim_name_node_p()).or_syntax_error("Expected: name after DIM"))
@@ -16,7 +16,7 @@ pub fn dim_p() -> impl Parser<Output = Statement> {
 }
 
 /// Parses REDIM statement
-pub fn redim_p() -> impl Parser<Output = Statement> {
+pub fn redim_p() -> impl OptParser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Redim)
         .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
         .and_demand(

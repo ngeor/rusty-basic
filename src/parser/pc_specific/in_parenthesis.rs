@@ -13,13 +13,13 @@ pub fn in_parenthesis<P>(parser: P) -> InParenthesisParser<P> {
 
 parser_decorator!(struct InParenthesisParser);
 
-impl<P> Parser for InParenthesisParser<P>
+impl<P> OptParser for InParenthesisParser<P>
 where
     P: NonOptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         if let Some(_) = left_paren(tokenizer)? {
-            let value = self.0.parse_non_opt(tokenizer)?;
+            let value = self.parser.parse_non_opt(tokenizer)?;
             right_paren(tokenizer)?;
             Ok(Some(value))
         } else {
@@ -34,7 +34,7 @@ where
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         if let Some(_) = left_paren(tokenizer)? {
-            let value = self.0.parse_non_opt(tokenizer)?;
+            let value = self.parser.parse_non_opt(tokenizer)?;
             right_paren(tokenizer)?;
             Ok(value)
         } else {
@@ -50,13 +50,13 @@ pub fn in_parenthesis_allow_no_elements<P>(parser: P) -> InParenthesisAllowNoEle
 
 parser_decorator!(struct InParenthesisAllowNoElements);
 
-impl<P> Parser for InParenthesisAllowNoElements<P>
+impl<P> OptParser for InParenthesisAllowNoElements<P>
 where
-    P: Parser,
+    P: OptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         if let Some(_) = left_paren(tokenizer)? {
-            let opt_value = self.0.parse(tokenizer)?;
+            let opt_value = self.parser.parse(tokenizer)?;
             right_paren(tokenizer)?;
             Ok(opt_value)
         } else {

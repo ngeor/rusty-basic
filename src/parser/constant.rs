@@ -4,8 +4,8 @@ use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::{Keyword, Statement};
 
-pub fn constant_p() -> impl Parser<Output = Statement> {
-    seq5(
+pub fn constant_p() -> impl OptParser<Output = Statement> {
+    Seq5::new(
         keyword(Keyword::Const),
         whitespace(),
         name::name_with_dot_p()
@@ -15,8 +15,8 @@ pub fn constant_p() -> impl Parser<Output = Statement> {
             .surrounded_by_opt_ws()
             .or_syntax_error("Expected: ="),
         expression_node_p().or_syntax_error("Expected: const value"),
-        |_, _, const_name, _, const_value_expr| Statement::Const(const_name, const_value_expr),
     )
+    .map(|(_, _, const_name, _, const_value_expr)| Statement::Const(const_name, const_value_expr))
 }
 
 #[cfg(test)]

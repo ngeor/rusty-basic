@@ -23,11 +23,11 @@ macro_rules! alt_pc {
             }
         }
 
-        impl <OUT, $($generics),+> HasOutput for $name <OUT, $($generics),+> {
+        impl <OUT, $($generics),+> ParserBase for $name <OUT, $($generics),+> {
             type Output = OUT;
         }
 
-        impl <OUT, $($generics : Parser<Output=OUT>),+> Parser for $name <OUT, $($generics),+> {
+        impl <OUT, $($generics : OptParser<Output=OUT>),+> OptParser for $name <OUT, $($generics),+> {
             fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<OUT>, QError> {
                 $(
                     if let Some(value) = self.$generics.parse(tokenizer)? {
@@ -88,7 +88,7 @@ alt_pc!(
 
 impl<O, L, R> NonOptParser for Alt2<O, L, R>
 where
-    L: Parser<Output = O>,
+    L: OptParser<Output = O>,
     R: NonOptParser<Output = O>,
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
@@ -96,23 +96,5 @@ where
             Some(left) => Ok(left),
             _ => self.B.parse_non_opt(tokenizer),
         }
-    }
-}
-
-// OrTrait
-
-pub trait OrTrait<O, P>
-where
-    Self: Sized + HasOutput,
-{
-    fn or(self, other: P) -> Alt2<O, Self, P>;
-}
-
-impl<O, S, P> OrTrait<O, P> for S
-where
-    S: HasOutput,
-{
-    fn or(self, other: P) -> Alt2<O, Self, P> {
-        Alt2::new(self, other)
     }
 }

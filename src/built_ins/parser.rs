@@ -9,7 +9,7 @@ use crate::parser::pc_specific::{
 use crate::parser::{Expression, ExpressionNode, ExpressionNodes, Keyword, Statement};
 
 /// Parses built-in subs which have a special syntax.
-pub fn parse() -> impl Parser<Output = Statement> {
+pub fn parse() -> impl OptParser<Output = Statement> {
     Alt16::new(
         built_ins::close::parser::parse(),
         built_ins::color::parser::parse(),
@@ -32,7 +32,7 @@ pub fn parse() -> impl Parser<Output = Statement> {
 
 // needed for built-in functions that are also keywords (e.g. LEN), so they
 // cannot be parsed by the `word` module.
-pub fn built_in_function_call_p() -> impl Parser<Output = Expression> {
+pub fn built_in_function_call_p() -> impl OptParser<Output = Expression> {
     built_ins::len::parser::parse().or(built_ins::string_fn::parser::parse())
 }
 
@@ -41,7 +41,7 @@ pub fn built_in_function_call_p() -> impl Parser<Output = Expression> {
 pub fn parse_built_in_sub_with_opt_args(
     keyword: Keyword,
     built_in_sub: BuiltInSub,
-) -> impl Parser<Output = Statement> {
+) -> impl OptParser<Output = Statement> {
     keyword_followed_by_whitespace_p(keyword)
         .then_use(csv_allow_missing())
         .map(move |opt_args| {

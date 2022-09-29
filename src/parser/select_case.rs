@@ -18,12 +18,12 @@ use crate::parser::types::*;
 // CASE <ws+> IS <Operator> <expr>
 // CASE <expr>
 
-pub fn select_case_p() -> impl Parser<Output = Statement> {
+pub fn select_case_p() -> impl OptParser<Output = Statement> {
     select_case_expr_p()
         .and_demand(comments_and_whitespace_p())
         .and_demand(case_blocks())
         .and_opt(case_else())
-        .and_demand(keyword_pair_non_opt(Keyword::End, Keyword::Select))
+        .and_demand(keyword_pair(Keyword::End, Keyword::Select))
         .map(
             |((((expr, inline_comments), case_blocks), else_block), _)| {
                 Statement::SelectCase(SelectCaseNode {
@@ -37,7 +37,7 @@ pub fn select_case_p() -> impl Parser<Output = Statement> {
 }
 
 /// Parses the `SELECT CASE expression` part
-fn select_case_expr_p() -> impl Parser<Output = ExpressionNode> {
+fn select_case_expr_p() -> impl OptParser<Output = ExpressionNode> {
     keyword_pair(Keyword::Select, Keyword::Case).then_use(
         expression::guarded_expression_node_p().or_syntax_error("Expected: expression after CASE"),
     )
@@ -65,7 +65,7 @@ fn case_blocks() -> impl NonOptParser<Output = Vec<CaseBlockNode>> {
     case_block().zero_or_more()
 }
 
-fn case_block() -> impl Parser<Output = CaseBlockNode> {
+fn case_block() -> impl OptParser<Output = CaseBlockNode> {
     // CASE
     CaseButNotElse.then_use(
         continue_after_case()
@@ -76,11 +76,11 @@ fn case_block() -> impl Parser<Output = CaseBlockNode> {
 
 struct CaseButNotElse;
 
-impl HasOutput for CaseButNotElse {
+impl ParserBase for CaseButNotElse {
     type Output = ();
 }
 
-impl Parser for CaseButNotElse {
+impl OptParser for CaseButNotElse {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match tokenizer.read()? {
             Some(case_token) if Keyword::Case == case_token => match tokenizer.read()? {
@@ -118,7 +118,7 @@ impl Parser for CaseButNotElse {
     }
 }
 
-fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
+fn continue_after_case() -> impl OptParser<Output = CaseBlockNode> {
     case_expression_list()
         .and_demand(ZeroOrMoreStatements::new(keyword_choice(&[
             Keyword::Case,
@@ -130,17 +130,17 @@ fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
         })
 }
 
-fn case_expression_list() -> impl Parser<Output = Vec<CaseExpression>> {
+fn case_expression_list() -> impl OptParser<Output = Vec<CaseExpression>> {
     csv(CaseExpressionParser::new())
 }
 
 struct CaseExpressionParser;
 
-impl HasOutput for CaseExpressionParser {
+impl ParserBase for CaseExpressionParser {
     type Output = CaseExpression;
 }
 
-impl Parser for CaseExpressionParser {
+impl OptParser for CaseExpressionParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         Self::case_is().or(SimpleOrRangeParser::new()).parse(reader)
     }
@@ -151,8 +151,8 @@ impl CaseExpressionParser {
         Self
     }
 
-    fn case_is() -> impl Parser<Output = CaseExpression> {
-        seq3(
+    fn case_is() -> impl OptParser<Output = CaseExpression> {
+        Seq3::new(
             keyword(Keyword::Is),
             expression::relational_operator_p()
                 .preceded_by_opt_ws()
@@ -160,18 +160,18 @@ impl CaseExpressionParser {
             expression::expression_node_p()
                 .preceded_by_opt_ws()
                 .or_syntax_error("Expected: expression after IS operator"),
-            |_, op, r| CaseExpression::Is(op.strip_location(), r),
         )
+        .map(|(_, op, r)| CaseExpression::Is(op.strip_location(), r))
     }
 }
 
 struct SimpleOrRangeParser;
 
-impl HasOutput for SimpleOrRangeParser {
+impl ParserBase for SimpleOrRangeParser {
     type Output = CaseExpression;
 }
 
-impl Parser for SimpleOrRangeParser {
+impl OptParser for SimpleOrRangeParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match expression::expression_node_p().parse(reader)? {
             Some(expr) => {
@@ -200,7 +200,7 @@ impl SimpleOrRangeParser {
     }
 }
 
-fn case_else() -> impl Parser<Output = StatementNodes> {
+fn case_else() -> impl OptParser<Output = StatementNodes> {
     keyword_pair(Keyword::Case, Keyword::Else)
         .then_use(ZeroOrMoreStatements::new(keyword(Keyword::End)))
 }

@@ -255,11 +255,11 @@ struct KeywordParser {
     keyword: Keyword,
 }
 
-impl HasOutput for KeywordParser {
+impl ParserBase for KeywordParser {
     type Output = Token;
 }
 
-impl Parser for KeywordParser {
+impl OptParser for KeywordParser {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match tokenizer.read()? {
             Some(token) => {
@@ -317,24 +317,17 @@ impl NonOptParser for KeywordParser {
     }
 }
 
-pub fn keyword(keyword: Keyword) -> impl Parser<Output = Token> + NonOptParser<Output = Token> {
+pub fn keyword(keyword: Keyword) -> impl OptParser<Output = Token> + NonOptParser<Output = Token> {
     KeywordParser { keyword }
 }
 
 // TODO deprecate this
-pub fn keyword_followed_by_whitespace_p(k: Keyword) -> impl Parser {
+pub fn keyword_followed_by_whitespace_p(k: Keyword) -> impl OptParser {
     keyword(k).followed_by_req_ws()
 }
 
-// TODO this use to be able to implement both opt and non-opt
-pub fn keyword_pair(first: Keyword, second: Keyword) -> impl Parser {
-    seq3(keyword(first), whitespace(), keyword(second), |l, m, r| {
-        (l, m, r)
-    })
-}
-
-pub fn keyword_pair_non_opt(first: Keyword, second: Keyword) -> impl NonOptParser {
-    keyword_pair(first, second).or_error(QError::SyntaxError(format!("Expected: {}", first)))
+pub fn keyword_pair(first: Keyword, second: Keyword) -> impl OptParser + NonOptParser {
+    Seq3::new(keyword(first), whitespace(), keyword(second))
 }
 
 //
@@ -395,16 +388,16 @@ pub fn item_p(ch: char) -> TokenPredicateParser<TokenKindParser> {
 
 pub struct MapErrParser<P>(P, QError);
 
-impl<P> HasOutput for MapErrParser<P>
+impl<P> ParserBase for MapErrParser<P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     type Output = P::Output;
 }
 
-impl<P> Parser for MapErrParser<P>
+impl<P> OptParser for MapErrParser<P>
 where
-    P: Parser,
+    P: OptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         self.0.parse(tokenizer).map_err(|_| self.1.clone())
@@ -440,16 +433,16 @@ impl<S> MapErrTrait for S {
 
 pub struct OrError<P>(P, QError);
 
-impl<P> HasOutput for OrError<P>
+impl<P> ParserBase for OrError<P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     type Output = P::Output;
 }
 
 impl<P> NonOptParser for OrError<P>
 where
-    P: Parser,
+    P: OptParser,
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match self.0.parse(tokenizer)? {
@@ -465,16 +458,16 @@ where
 
 pub struct OrSyntaxError<'a, P>(P, &'a str);
 
-impl<'a, P> HasOutput for OrSyntaxError<'a, P>
+impl<'a, P> ParserBase for OrSyntaxError<'a, P>
 where
-    P: HasOutput,
+    P: ParserBase,
 {
     type Output = P::Output;
 }
 
 impl<'a, P> NonOptParser for OrSyntaxError<'a, P>
 where
-    P: Parser,
+    P: OptParser,
 {
     fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match self.0.parse(tokenizer)? {
@@ -513,7 +506,7 @@ impl TokenPredicate for IdentifierOrKeyword {
     }
 }
 
-pub fn identifier_or_keyword() -> impl Parser<Output = Token> {
+pub fn identifier_or_keyword() -> impl OptParser<Output = Token> {
     IdentifierOrKeyword.parser()
 }
 
@@ -526,7 +519,7 @@ impl TokenPredicate for IdentifierOrKeywordWithoutDot {
     }
 }
 
-pub fn identifier_or_keyword_without_dot() -> impl Parser<Output = Token> {
+pub fn identifier_or_keyword_without_dot() -> impl OptParser<Output = Token> {
     IdentifierOrKeywordWithoutDot.parser()
 }
 

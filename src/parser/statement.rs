@@ -18,7 +18,7 @@ use crate::parser::sub_call;
 use crate::parser::types::*;
 use crate::parser::while_wend;
 
-pub fn statement_p() -> impl Parser<Output = Statement> {
+pub fn statement_p() -> impl OptParser<Output = Statement> {
     Alt8::new(
         statement_label_p(),
         single_line_statement_p(),
@@ -33,7 +33,7 @@ pub fn statement_p() -> impl Parser<Output = Statement> {
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// excluding comments.
-pub fn single_line_non_comment_statement_p() -> impl Parser<Output = Statement> {
+pub fn single_line_non_comment_statement_p() -> impl OptParser<Output = Statement> {
     Alt15::new(
         dim::dim_p(),
         dim::redim_p(),
@@ -55,11 +55,11 @@ pub fn single_line_non_comment_statement_p() -> impl Parser<Output = Statement> 
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
-pub fn single_line_statement_p() -> impl Parser<Output = Statement> {
+pub fn single_line_statement_p() -> impl OptParser<Output = Statement> {
     comment::comment_p().or(single_line_non_comment_statement_p())
 }
 
-fn statement_label_p() -> impl Parser<Output = Statement> {
+fn statement_label_p() -> impl OptParser<Output = Statement> {
     // labels can have dots
     bare_name_as_token()
         .and(item_p(':'))
@@ -67,14 +67,14 @@ fn statement_label_p() -> impl Parser<Output = Statement> {
         .map(|l| Statement::Label(l.text.into()))
 }
 
-fn statement_go_to_p() -> impl Parser<Output = Statement> {
+fn statement_go_to_p() -> impl OptParser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
         .and_demand(bare_name_p().or_syntax_error("Expected: label"))
         .map(|(_, l)| Statement::GoTo(l))
 }
 
 /// A parser that fails if an illegal starting keyword is found.
-fn illegal_starting_keywords() -> impl Parser<Output = Statement> + 'static {
+fn illegal_starting_keywords() -> impl OptParser<Output = Statement> + 'static {
     keyword_map(&[
         (Keyword::Wend, QError::WendWithoutWhile),
         (Keyword::Else, QError::ElseWithoutIf),
@@ -90,7 +90,7 @@ mod end {
     use crate::parser::statement_separator::peek_eof_or_statement_separator;
     use crate::parser::{Keyword, Statement};
 
-    pub fn parse_end_p() -> impl Parser<Output = Statement> {
+    pub fn parse_end_p() -> impl OptParser<Output = Statement> {
         keyword(Keyword::End)
             .then_use(AfterEndSeparator)
             .map(|_| Statement::End)
@@ -101,7 +101,7 @@ mod end {
     /// Otherwise, it demands that we find an end-of-statement terminator.
     struct AfterEndSeparator;
 
-    impl HasOutput for AfterEndSeparator {
+    impl ParserBase for AfterEndSeparator {
         type Output = ();
     }
 
@@ -131,7 +131,7 @@ mod end {
         }
     }
 
-    fn allowed_keywords_after_end() -> impl Parser<Output = (Keyword, Token)> {
+    fn allowed_keywords_after_end() -> impl OptParser<Output = (Keyword, Token)> {
         keyword_choice(&[
             Keyword::Function,
             Keyword::If,
@@ -165,7 +165,7 @@ mod system {
     use crate::parser::statement_separator::peek_eof_or_statement_separator;
     use crate::parser::{Keyword, Statement};
 
-    pub fn parse_system_p() -> impl Parser<Output = Statement> {
+    pub fn parse_system_p() -> impl OptParser<Output = Statement> {
         keyword(Keyword::System)
             .then_use(
                 peek_eof_or_statement_separator()

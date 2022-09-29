@@ -7,14 +7,14 @@ use crate::parser::types::*;
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
 
-pub fn implementation_p() -> impl Parser<Output = TopLevelToken> {
+pub fn implementation_p() -> impl OptParser<Output = TopLevelToken> {
     function_implementation_p().or(sub_implementation_p())
 }
 
-fn function_implementation_p() -> impl Parser<Output = TopLevelToken> {
+fn function_implementation_p() -> impl OptParser<Output = TopLevelToken> {
     static_declaration_p(declaration::function_declaration_p())
         .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
-        .and_demand(keyword_pair_non_opt(Keyword::End, Keyword::Function))
+        .and_demand(keyword_pair(Keyword::End, Keyword::Function))
         .keep_left()
         .map(|(((name, params), is_static), body)| {
             TopLevelToken::FunctionImplementation(FunctionImplementation {
@@ -26,10 +26,10 @@ fn function_implementation_p() -> impl Parser<Output = TopLevelToken> {
         })
 }
 
-fn sub_implementation_p() -> impl Parser<Output = TopLevelToken> {
+fn sub_implementation_p() -> impl OptParser<Output = TopLevelToken> {
     static_declaration_p(declaration::sub_declaration_p())
         .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
-        .and_demand(keyword_pair_non_opt(Keyword::End, Keyword::Sub))
+        .and_demand(keyword_pair(Keyword::End, Keyword::Sub))
         .keep_left()
         .map(|(((name, params), is_static), body)| {
             TopLevelToken::SubImplementation(SubImplementation {
@@ -41,9 +41,9 @@ fn sub_implementation_p() -> impl Parser<Output = TopLevelToken> {
         })
 }
 
-fn static_declaration_p<P, T>(parser: P) -> impl Parser<Output = (T, bool)>
+fn static_declaration_p<P, T>(parser: P) -> impl OptParser<Output = (T, bool)>
 where
-    P: Parser<Output = T> + 'static,
+    P: OptParser<Output = T> + 'static,
 {
     parser
         .and_opt(keyword(Keyword::Static).preceded_by_opt_ws())

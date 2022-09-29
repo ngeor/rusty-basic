@@ -91,8 +91,8 @@ pub trait ParserBase {
 
 /// A parser that either succeeds or returns an error.
 pub trait NonOptParser: ParserBase {
-    // TODO it is possible to have a default implementation for `parse` based on `parse_non_opt` if we have a QError that means "no match"
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
+    // TODO it is possible to have a default implementation for `parse` based on `parse` if we have a QError that means "no match"
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
 
     fn loop_while_non_opt<F>(self, f: F) -> LoopWhileNonOpt<Self, F>
     where

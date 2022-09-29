@@ -289,7 +289,7 @@ impl OptParser for KeywordParser {
 }
 
 impl NonOptParser for KeywordParser {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) => {
                 if self.keyword == token {
@@ -408,8 +408,8 @@ impl<P> NonOptParser for MapErrParser<P>
 where
     P: NonOptParser,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.0.parse_non_opt(tokenizer).map_err(|_| self.1.clone())
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        self.0.parse(tokenizer).map_err(|_| self.1.clone())
     }
 }
 
@@ -444,7 +444,7 @@ impl<P> NonOptParser for OrError<P>
 where
     P: OptParser,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match self.0.parse(tokenizer)? {
             Some(value) => Ok(value),
             _ => Err(self.1.clone()),
@@ -469,7 +469,7 @@ impl<'a, P> NonOptParser for OrSyntaxError<'a, P>
 where
     P: OptParser,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match self.0.parse(tokenizer)? {
             Some(value) => Ok(value),
             None => Err(QError::syntax_error(self.1)),

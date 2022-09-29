@@ -54,7 +54,7 @@ impl<P> NonOptParser for ManyParser<P>
 where
     P: OptParser,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut result: Vec<P::Output> = Vec::new();
         loop {
             match self.parser.parse(tokenizer)? {

@@ -26,9 +26,9 @@ impl<P> NonOptParser for WithPosMapper<P>
 where
     P: NonOptParser,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let pos = tokenizer.position();
-        self.0.parse_non_opt(tokenizer).map(|x| x.at(pos))
+        self.0.parse(tokenizer).map(|x| x.at(pos))
     }
 }
 

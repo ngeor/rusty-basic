@@ -19,7 +19,7 @@ where
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         if let Some(_) = left_paren(tokenizer)? {
-            let value = self.parser.parse_non_opt(tokenizer)?;
+            let value = self.parser.parse(tokenizer)?;
             right_paren(tokenizer)?;
             Ok(Some(value))
         } else {
@@ -32,9 +32,9 @@ impl<P> NonOptParser for InParenthesisParser<P>
 where
     P: NonOptParser,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         if let Some(_) = left_paren(tokenizer)? {
-            let value = self.parser.parse_non_opt(tokenizer)?;
+            let value = self.parser.parse(tokenizer)?;
             right_paren(tokenizer)?;
             Ok(value)
         } else {

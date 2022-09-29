@@ -34,7 +34,7 @@ impl<'a> OptParser for KeywordChoice<'a> {
 }
 
 impl<'a> NonOptParser for KeywordChoice<'a> {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) => match self.find_keyword(&token) {
                 Some(keyword) => Ok((keyword, token)),

@@ -106,8 +106,8 @@ mod end {
     }
 
     impl NonOptParser for AfterEndSeparator {
-        fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-            let opt_ws = whitespace().parse(tokenizer)?;
+        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+            let opt_ws = OptParser::parse(&whitespace(), tokenizer)?;
             if opt_ws.is_some() {
                 // maybe it is followed by a legit keyword after END
                 let opt_k = allowed_keywords_after_end().parse(tokenizer)?;

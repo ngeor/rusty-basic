@@ -48,8 +48,8 @@ impl<T> NonOptParser for KeywordMap<T>
 where
     T: Clone,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match self.parse(tokenizer)? {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        match OptParser::parse(self, tokenizer)? {
             Some(value) => Ok(value),
             None => Err(keyword_syntax_error(self.mappings.iter().map(|(k, _)| k))),
         }

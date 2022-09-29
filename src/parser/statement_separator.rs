@@ -152,7 +152,7 @@ impl ParserBase for CommentsAndWhitespace {
 }
 
 impl NonOptParser for CommentsAndWhitespace {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut result: Vec<Locatable<String>> = vec![];
         let sep = Separator::Comment;
         let parser = CommentAsString.with_pos();

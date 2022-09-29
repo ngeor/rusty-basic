@@ -91,10 +91,10 @@ where
     L: OptParser<Output = O>,
     R: NonOptParser<Output = O>,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match self.A.parse(tokenizer)? {
             Some(left) => Ok(left),
-            _ => self.B.parse_non_opt(tokenizer),
+            _ => self.B.parse(tokenizer),
         }
     }
 }

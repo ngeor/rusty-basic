@@ -38,7 +38,7 @@ where
     P: OptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let opt_space = whitespace().parse(tokenizer)?;
+        let opt_space = OptParser::parse(&whitespace(), tokenizer)?;
         if self.needs_whitespace && opt_space.is_none() {
             Ok(None)
         } else {
@@ -59,12 +59,12 @@ impl<P> NonOptParser for LeadingWhitespace<P>
 where
     P: NonOptParser,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let opt_space = whitespace().parse(tokenizer)?;
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let opt_space = OptParser::parse(&whitespace(), tokenizer)?;
         if self.needs_whitespace && opt_space.is_none() {
             Err(QError::syntax_error("Expected: whitespace"))
         } else {
-            self.parser.parse_non_opt(tokenizer)
+            self.parser.parse(tokenizer)
         }
     }
 }
@@ -104,12 +104,12 @@ where
         match self.parser.parse(tokenizer)? {
             Some(value) => {
                 if self.needs_whitespace {
-                    match whitespace().parse(tokenizer)? {
+                    match OptParser::parse(&whitespace(), tokenizer)? {
                         Some(_) => Ok(Some(value)),
                         None => Err(QError::syntax_error("Expected: whitespace")),
                     }
                 } else {
-                    whitespace().parse(tokenizer)?;
+                    OptParser::parse(&whitespace(), tokenizer)?;
                     Ok(Some(value))
                 }
             }
@@ -122,12 +122,12 @@ impl<P> NonOptParser for TrailingWhitespace<P>
 where
     P: NonOptParser,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let result = self.parser.parse_non_opt(tokenizer)?;
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let result = self.parser.parse(tokenizer)?;
         if self.needs_whitespace {
-            whitespace().parse_non_opt(tokenizer)?;
+            NonOptParser::parse(&whitespace(), tokenizer)?;
         } else {
-            whitespace().parse(tokenizer)?;
+            OptParser::parse(&whitespace(), tokenizer)?;
         }
         Ok(result)
     }
@@ -150,7 +150,7 @@ where
     P: OptParser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let opt_ws = whitespace().parse(tokenizer)?;
+        let opt_ws = OptParser::parse(&whitespace(), tokenizer)?;
         match self.0.parse(tokenizer)? {
             Some(value) => Ok(Some((opt_ws, value))),
             None => {
@@ -182,7 +182,7 @@ where
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
         match self.leading_parser.parse(tokenizer)? {
             Some((opt_lead_ws, value)) => {
-                let opt_trail_ws = whitespace().parse(tokenizer)?;
+                let opt_trail_ws = OptParser::parse(&whitespace(), tokenizer)?;
                 Ok(Some((opt_lead_ws, value, opt_trail_ws)))
             }
             None => Ok(None),

@@ -43,7 +43,7 @@ where
     S: OptParser,
     S::Output: Undo,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         // must start with a separator (e.g. after a WHILE condition)
         Separator::NonComment
             .parse(tokenizer)?

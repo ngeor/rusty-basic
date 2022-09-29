@@ -23,7 +23,7 @@ where
         match self.parser.parse(tokenizer)? {
             Some(first) => {
                 let right_parser = (self.right_factory)(&first);
-                let second = right_parser.parse_non_opt(tokenizer)?;
+                let second = right_parser.parse(tokenizer)?;
                 Ok(Some((first, second)))
             }
             None => Ok(None),

@@ -16,7 +16,7 @@ where
     P: OptParser,
     F: Fn(&P::Output) -> bool,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut result: Vec<P::Output> = vec![];
         let mut keep_going = true;
         while keep_going {
@@ -41,7 +41,7 @@ where
     F: Fn(&P::Output) -> bool,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let result = self.parse_non_opt(tokenizer)?;
+        let result = NonOptParser::parse(self, tokenizer)?;
         if result.is_empty() {
             Ok(None)
         } else {
@@ -68,11 +68,11 @@ where
     P: NonOptParser,
     F: Fn(&P::Output) -> bool,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut result: Vec<P::Output> = vec![];
         let mut keep_going = true;
         while keep_going {
-            let item = self.parser.parse_non_opt(tokenizer)?;
+            let item = self.parser.parse(tokenizer)?;
             keep_going = (self.predicate)(&item);
             // push to the list regardless
             result.push(item);

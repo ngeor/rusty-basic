@@ -79,7 +79,7 @@ impl<P> NonOptParser for LoggingPC<P>
 where
     P: NonOptParser,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         println!(
             "{}{} Parsing non-opt current position {:?} peek token {}",
             indentation(),
@@ -90,7 +90,7 @@ where
         unsafe {
             INDENTATION_LEVEL += 1;
         }
-        let result = self.parser.parse_non_opt(tokenizer);
+        let result = self.parser.parse(tokenizer);
         unsafe {
             INDENTATION_LEVEL -= 1;
         }

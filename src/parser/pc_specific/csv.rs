@@ -70,8 +70,7 @@ impl OptParser for CommaSurroundedByOptWhitespace {
 }
 
 impl NonOptParser for CommaSurroundedByOptWhitespace {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.parse(tokenizer)?
-            .ok_or(QError::syntax_error("Expected: ,"))
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        OptParser::parse(self, tokenizer)?.ok_or(QError::syntax_error("Expected: ,"))
     }
 }

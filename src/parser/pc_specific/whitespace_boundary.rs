@@ -53,7 +53,7 @@ impl OptParser for WhitespaceBoundaryParser {
 }
 
 impl NonOptParser for WhitespaceBoundaryParser {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) if token.kind == TokenType::Whitespace as i32 => {
                 Ok(WhitespaceBoundary(Some(token)))

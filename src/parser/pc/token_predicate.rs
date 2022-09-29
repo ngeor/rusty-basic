@@ -55,7 +55,7 @@ impl<P> NonOptParser for TokenPredicateParser<P>
 where
     P: TokenPredicate + ErrorProvider,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) => {
                 if self.0.test(&token) {

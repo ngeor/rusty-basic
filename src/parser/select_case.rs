@@ -176,14 +176,13 @@ impl OptParser for SimpleOrRangeParser {
         match expression::expression_node_p().parse(reader)? {
             Some(expr) => {
                 let parenthesis = expr.is_parenthesis();
-                let to_keyword = keyword(Keyword::To)
-                    .preceded_by_ws(!parenthesis)
-                    .parse(reader)?;
+                let to_keyword =
+                    OptParser::parse(&keyword(Keyword::To).preceded_by_ws(!parenthesis), reader)?;
                 match to_keyword {
                     Some(_) => {
                         let second_expr = expression::guarded_expression_node_p()
                             .or_syntax_error("Expected: expression after TO")
-                            .parse_non_opt(reader)?;
+                            .parse(reader)?;
                         Ok(Some(CaseExpression::Range(expr, second_expr)))
                     }
                     None => Ok(Some(CaseExpression::Simple(expr))),

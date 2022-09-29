@@ -35,8 +35,8 @@ where
     P: NonOptParser,
     F: Fn(P::Output) -> U,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.parser.parse_non_opt(tokenizer).map(&self.mapper)
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        self.parser.parse(tokenizer).map(&self.mapper)
     }
 }
 
@@ -68,8 +68,8 @@ impl<P, L, R> NonOptParser for KeepLeftMapper<P>
 where
     P: NonOptParser<Output = (L, R)>,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.parser.parse_non_opt(tokenizer).map(|(l, _)| l)
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        self.parser.parse(tokenizer).map(|(l, _)| l)
     }
 }
 
@@ -101,8 +101,8 @@ impl<P, L, M, R> NonOptParser for KeepMiddleMapper<P>
 where
     P: NonOptParser<Output = ((L, M), R)>,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.parser.parse_non_opt(tokenizer).map(|((_, m), _)| m)
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        self.parser.parse(tokenizer).map(|((_, m), _)| m)
     }
 }
 
@@ -134,7 +134,7 @@ impl<P, L, R> NonOptParser for KeepRightMapper<P>
 where
     P: NonOptParser<Output = (L, R)>,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.parser.parse_non_opt(tokenizer).map(|(_, r)| r)
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        self.parser.parse(tokenizer).map(|(_, r)| r)
     }
 }

@@ -27,7 +27,7 @@ impl OptParser for SubCallOrAssignment {
                 Some(_) => {
                     let right_side_expr = expression::expression_node_p()
                         .or_syntax_error("Expected: expression for assignment")
-                        .parse_non_opt(reader)?;
+                        .parse(reader)?;
                     Ok(Some(Statement::Assignment(name_expr, right_side_expr)))
                 }
                 _ => match expr_to_bare_name_args(name_expr) {

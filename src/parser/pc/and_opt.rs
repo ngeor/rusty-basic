@@ -35,8 +35,8 @@ where
     L: NonOptParser,
     R: OptParser,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let left = self.0.parse_non_opt(tokenizer)?;
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let left = self.0.parse(tokenizer)?;
         let opt_right = self.1.parse(tokenizer)?;
         Ok((left, opt_right))
     }

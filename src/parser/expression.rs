@@ -495,7 +495,7 @@ pub mod word {
     }
 
     impl NonOptParser for Properties {
-        fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
             let mut result: Vec<String> = vec![];
             while let Some(token) = tokenizer.read()? {
                 if token.kind == TokenType::Keyword as i32 {

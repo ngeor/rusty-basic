@@ -32,7 +32,7 @@ where
     P: NonOptParser,
     F: Fn(P::Output) -> Result<U, QError>,
 {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.parser.parse_non_opt(tokenizer).and_then(&self.mapper)
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        self.parser.parse(tokenizer).and_then(&self.mapper)
     }
 }

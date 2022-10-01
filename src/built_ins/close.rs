@@ -7,26 +7,25 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
+    // <result> ::= <CLOSE> | <CLOSE><file_handles>
+    // file_handles ::= <first_file_handle> | <first_file_handle> <opt-ws> "," <opt-ws> <next_file_handles>
+    // next_file_handles ::= <file_handle> | <file_handle> <opt-ws> "," <opt-ws> <next_file_handles>
+    // first_file_handle ::= "(" <file_handle> ")" | <ws> <file_handle>
+    // file_handle ::= "#" <digits> | <expr>
     pub fn parse() -> impl Parser<Output = Statement> {
-        // TODO rewrite this
         keyword(Keyword::Close)
-            .and_opt(
-                guarded_file_handle_or_expression_p().and_opt(
-                    comma()
-                        .and(file_handle_or_expression_p())
-                        .keep_right()
-                        .one_or_more(),
-                ),
-            )
+            .and_opt(file_handles())
             .keep_right()
-            .map(|opt_first_and_remaining| {
-                let mut args: ExpressionNodes = vec![];
-                if let Some((first, opt_remaining)) = opt_first_and_remaining {
-                    args.push(first);
-                    args.extend(opt_remaining.unwrap_or_default());
-                }
-                Statement::BuiltInSubCall(BuiltInSub::Close, args)
+            .map(|opt_file_handles| {
+                Statement::BuiltInSubCall(BuiltInSub::Close, opt_file_handles.unwrap_or_default())
             })
+    }
+
+    fn file_handles() -> impl Parser<Output = ExpressionNodes> {
+        AccumulateParser::new(
+            guarded_file_handle_or_expression_p(),
+            comma().then_use(file_handle_or_expression_p()),
+        )
     }
 }
 

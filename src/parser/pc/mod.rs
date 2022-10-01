@@ -1,5 +1,6 @@
 //! base module contains functionality that can be extracted into a library,
 //! it's generic and not specific to QBasic
+mod accumulate;
 mod and;
 mod and_demand_looking_back;
 mod and_opt;
@@ -25,6 +26,7 @@ mod tokenizers;
 mod undo;
 mod validate;
 
+pub use accumulate::*;
 pub use and::*;
 pub use and_demand_looking_back::*;
 pub use and_then::*;

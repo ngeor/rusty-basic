@@ -1557,7 +1557,7 @@ mod tests {
 
         macro_rules! assert_file_handle {
             ($input:expr, $expected_file_handle:expr) => {
-                let result: Statement = parse_str($input).demand_single_statement();
+                let result: Statement = parse($input).demand_single_statement();
                 match result {
                     Statement::BuiltInSubCall(_, args) => {
                         assert_eq!(

@@ -67,7 +67,7 @@ mod tests {
             Add = A + B
         END FUNCTION
         ";
-        let result = parse_str(input).demand_single();
+        let result = parse(input).demand_single();
         assert_eq!(
             result,
             TopLevelToken::FunctionImplementation(FunctionImplementation {
@@ -100,7 +100,7 @@ mod tests {
             add = a + b
         end function
         ";
-        let result = parse_str(input).demand_single();
+        let result = parse(input).demand_single();
         assert_eq!(
             result,
             TopLevelToken::FunctionImplementation(FunctionImplementation {

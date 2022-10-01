@@ -123,7 +123,7 @@ mod tests {
     #[test]
     fn test_if() {
         let input = "IF X THEN\r\nFlint X\r\nEND IF";
-        let if_block = parse_str(input).demand_single_statement();
+        let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
             Statement::IfBlock(IfBlockNode {
@@ -175,7 +175,7 @@ mod tests {
 ELSE
     Flint Y
 END IF"#;
-        let if_block = parse_str(input).demand_single_statement();
+        let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
             Statement::IfBlock(IfBlockNode {
@@ -204,7 +204,7 @@ END IF"#;
 ELSEIF Y THEN
     Flint Y
 END IF"#;
-        let if_block = parse_str(input).demand_single_statement();
+        let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
             Statement::IfBlock(IfBlockNode {
@@ -238,7 +238,7 @@ ELSEIF Y THEN
 ELSEIF Z THEN
     Flint Z
 END IF"#;
-        let if_block = parse_str(input).demand_single_statement();
+        let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
             Statement::IfBlock(IfBlockNode {
@@ -282,7 +282,7 @@ ELSEIF Y THEN
 ELSE
     Flint Z
 END IF"#;
-        let if_block = parse_str(input).demand_single_statement();
+        let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
             Statement::IfBlock(IfBlockNode {
@@ -320,7 +320,7 @@ elseif y then
 else
     flint z
 end if"#;
-        let if_block = parse_str(input).demand_single_statement();
+        let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
             Statement::IfBlock(IfBlockNode {
@@ -352,7 +352,7 @@ end if"#;
     #[test]
     fn test_single_line_if_else() {
         let input = "IF ID = 0 THEN A$ = B$ ELSE A$ = C$";
-        let if_block = parse_str(input).demand_single_statement();
+        let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
             Statement::IfBlock(IfBlockNode {
@@ -391,7 +391,7 @@ end if"#;
             Flint C   ' print c
         END IF        ' end if
         "#;
-        let program = parse_str(input);
+        let program = parse(input);
         assert_eq!(
             program,
             vec![
@@ -444,7 +444,7 @@ end if"#;
             Flint "zero"
         END IF
         "#;
-        let program = parse_str(input);
+        let program = parse(input);
         assert_eq!(
             program,
             vec![TopLevelToken::Statement(Statement::IfBlock(IfBlockNode {
@@ -499,7 +499,7 @@ end if"#;
             BEEP
         END IF
         "#;
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::IfBlock(IfBlockNode {

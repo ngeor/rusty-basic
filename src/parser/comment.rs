@@ -43,7 +43,7 @@ mod tests {
     #[test]
     fn test_comment_until_eof() {
         let input = "' just a comment . 123 AS";
-        let program = parse_str(input);
+        let program = parse(input);
         assert_eq!(
             program,
             vec![TopLevelToken::Statement(Statement::Comment(
@@ -56,7 +56,7 @@ mod tests {
     #[test]
     fn test_comment_at_eof() {
         let input = "'";
-        let program = parse_str(input);
+        let program = parse(input);
         assert_eq!(
             program,
             vec![TopLevelToken::Statement(Statement::Comment(String::new())).at_rc(1, 1)]

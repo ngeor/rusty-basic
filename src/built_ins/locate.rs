@@ -98,15 +98,13 @@ mod tests {
     use crate::assert_parser_err;
     use crate::built_ins::BuiltInSub;
     use crate::common::QError;
-    use crate::parser::test_utils::{
-        parse_str, DemandSingleStatement, ExpressionNodeLiteralFactory,
-    };
+    use crate::parser::test_utils::{parse, DemandSingleStatement, ExpressionNodeLiteralFactory};
     use crate::parser::Statement;
 
     #[test]
     fn parse_row() {
         let input = "LOCATE 11";
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -122,7 +120,7 @@ mod tests {
     #[test]
     fn parse_col() {
         let input = "LOCATE , 20";
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -138,7 +136,7 @@ mod tests {
     #[test]
     fn parse_row_col() {
         let input = "LOCATE 10, 20";
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -155,7 +153,7 @@ mod tests {
     #[test]
     fn parse_only_cursor_arg() {
         let input = "LOCATE , , 1";
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(

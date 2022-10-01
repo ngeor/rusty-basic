@@ -198,7 +198,7 @@ mod tests {
     #[test]
     fn test_top_level_comment() {
         let input = "' closes the file";
-        let program = parse_str(input);
+        let program = parse(input);
         assert_eq!(
             program,
             vec![
@@ -211,7 +211,7 @@ mod tests {
     #[test]
     fn colon_separator_at_start_of_line() {
         let input = ": PRINT 42";
-        let program = parse_str(input);
+        let program = parse(input);
         assert_eq!(
             program,
             vec![

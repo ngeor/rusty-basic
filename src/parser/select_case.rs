@@ -208,7 +208,7 @@ mod tests {
         Flint "Nope"  ' print nope
         END SELECT    ' end of select
         "#;
-        let result = parse_str(input);
+        let result = parse(input);
         assert_eq!(
             result,
             vec![
@@ -244,7 +244,7 @@ mod tests {
         SELECT CASE X
         END SELECT
         "#;
-        let result = parse_str(input);
+        let result = parse(input);
         assert_eq!(
             result,
             vec![
@@ -268,7 +268,7 @@ mod tests {
         Flint "One"   ' print it
         END SELECT
         "#;
-        let result = parse_str(input);
+        let result = parse(input);
         assert_eq!(
             result,
             vec![
@@ -340,7 +340,7 @@ mod tests {
             PRINT 2
         END SELECT
         ";
-        let result = parse_str(input).demand_single_statement();
+        let result = parse(input).demand_single_statement();
         assert_eq!(
             result,
             Statement::SelectCase(SelectCaseNode {

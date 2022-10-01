@@ -7,7 +7,7 @@ mod tests {
 
     macro_rules! assert_top_level_assignment {
         ($input:expr, $name_expr:expr) => {
-            match parse_str($input).demand_single_statement() {
+            match parse($input).demand_single_statement() {
                 Statement::Assignment(n, _) => {
                     assert_eq!(n, $name_expr);
                 }
@@ -15,7 +15,7 @@ mod tests {
             }
         };
         ($input:expr, $name:expr, $value:expr) => {
-            match parse_str($input).demand_single_statement() {
+            match parse($input).demand_single_statement() {
                 Statement::Assignment(n, crate::common::Locatable { element: v, .. }) => {
                     assert_eq!(n, Expression::var_unresolved($name));
                     assert_eq!(v, Expression::IntegerLiteral($value));
@@ -214,7 +214,7 @@ mod tests {
     #[test]
     fn test_inline_comment() {
         let input = "ANSWER = 42 ' the answer to life, universe, everything";
-        let program = parse_str(input);
+        let program = parse(input);
         assert_eq!(
             program,
             vec![
@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn test_array_with_single_dimension() {
         let input = "A(2) = 1";
-        let program = parse_str(input).demand_single_statement();
+        let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
             Statement::Assignment(
@@ -247,7 +247,7 @@ mod tests {
     #[test]
     fn test_array_with_two_dimensions() {
         let input = "A(1, 2) = 3";
-        let program = parse_str(input).demand_single_statement();
+        let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
             Statement::Assignment(
@@ -260,7 +260,7 @@ mod tests {
     #[test]
     fn test_array_qualified() {
         let input = "A$(N!) = 1";
-        let program = parse_str(input).demand_single_statement();
+        let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
             Statement::Assignment(
@@ -273,7 +273,7 @@ mod tests {
     #[test]
     fn test_array_with_user_defined_type_element() {
         let input = "A(1).Height = 2";
-        let program = parse_str(input).demand_single_statement();
+        let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
             Statement::Assignment(
@@ -290,7 +290,7 @@ mod tests {
     #[test]
     fn test_unqualified_user_defined_type_element() {
         let input = "A.B = 2";
-        let program = parse_str(input).demand_single_statement();
+        let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
             Statement::Assignment(
@@ -311,7 +311,7 @@ mod tests {
         #[test]
         fn test_can_assign_to_keyword_qualified_by_string() {
             let input = "DIM$ = \"hello\"";
-            let program = parse_str(input).demand_single_statement();
+            let program = parse(input).demand_single_statement();
             assert_eq!(
                 program,
                 Statement::Assignment(

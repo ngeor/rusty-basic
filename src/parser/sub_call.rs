@@ -101,14 +101,14 @@ mod tests {
     #[test]
     fn test_parse_sub_call_no_args() {
         let input = "Flint";
-        let program = parse_str(input).demand_single_statement();
+        let program = parse(input).demand_single_statement();
         assert_sub_call!(program, "Flint");
     }
 
     #[test]
     fn test_parse_sub_call_single_arg_string_literal() {
         let input = "Flint \"Hello, world!\"";
-        let program = parse_str(input).demand_single_statement();
+        let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
             Statement::SubCall("Flint".into(), vec!["Hello, world!".as_lit_expr(1, 7)])

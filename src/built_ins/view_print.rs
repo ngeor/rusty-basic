@@ -68,15 +68,13 @@ pub mod interpreter {
 #[cfg(test)]
 mod tests {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::test_utils::{
-        parse_str, DemandSingleStatement, ExpressionNodeLiteralFactory,
-    };
+    use crate::parser::test_utils::{parse, DemandSingleStatement, ExpressionNodeLiteralFactory};
     use crate::parser::Statement;
 
     #[test]
     fn parse_no_args() {
         let input = "VIEW PRINT";
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(BuiltInSub::ViewPrint, vec![])
@@ -86,7 +84,7 @@ mod tests {
     #[test]
     fn parse_args() {
         let input = "VIEW PRINT 1 TO 20";
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(

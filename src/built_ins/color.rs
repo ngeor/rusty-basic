@@ -71,7 +71,7 @@ mod tests {
     #[test]
     fn parse_foreground_only() {
         let input = "COLOR 7";
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -84,7 +84,7 @@ mod tests {
     #[test]
     fn parse_background_only() {
         let input = "COLOR , 7";
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -97,7 +97,7 @@ mod tests {
     #[test]
     fn parse_both_colors() {
         let input = "COLOR 7, 4";
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(

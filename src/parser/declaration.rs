@@ -66,7 +66,7 @@ mod tests {
 
     macro_rules! assert_function_declaration {
         ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
-            match parse_str($input).demand_single().element() {
+            match parse($input).demand_single().element() {
                 TopLevelToken::FunctionDeclaration(name, parameters) => {
                     assert_eq!(
                         name.element(),
@@ -124,7 +124,7 @@ mod tests {
         FUNCTION Echo(X) ' Implementation of Echo
         END FUNCTION ' End of implementation
         "#;
-        let program = parse_str(input);
+        let program = parse(input);
         assert_eq!(
             program,
             vec![
@@ -181,7 +181,7 @@ mod tests {
         FUNCTION Echo(X$())
         END FUNCTION
         "#;
-        let program = parse_str(input);
+        let program = parse(input);
         assert_eq!(
             program,
             vec![
@@ -220,7 +220,7 @@ mod tests {
         let input = r#"
         DECLARE SUB ScrollUp ()
         "#;
-        let program = parse_str(input);
+        let program = parse(input);
         assert_eq!(
             program,
             vec![TopLevelToken::SubDeclaration("ScrollUp".as_bare_name(2, 21), vec![]).at_rc(2, 9)]
@@ -232,7 +232,7 @@ mod tests {
         let input = r#"
         DECLARE SUB LCenter (text$)
         "#;
-        let program = parse_str(input);
+        let program = parse(input);
         assert_eq!(
             program,
             vec![TopLevelToken::SubDeclaration(

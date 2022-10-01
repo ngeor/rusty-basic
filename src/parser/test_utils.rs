@@ -15,12 +15,12 @@ fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorN
 /// # Panics
 ///
 /// If the parser has an error.
-pub fn parse_str<T: AsRef<[u8]> + 'static>(input: T) -> ProgramNode {
+pub fn parse<T: AsRef<[u8]> + 'static>(input: T) -> ProgramNode {
     parse_main_str(input).expect("Could not parse program")
 }
 
 pub fn parse_str_no_location<T: AsRef<[u8]> + 'static>(input: T) -> Vec<TopLevelToken> {
-    Locatable::strip_location(parse_str(input))
+    Locatable::strip_location(parse(input))
 }
 
 /// Parses the given file under the `fixtures` folder.
@@ -195,7 +195,7 @@ macro_rules! assert_sub_call {
 #[macro_export]
 macro_rules! assert_built_in_sub_call {
     ($input: expr, $expected_name: expr) => {
-        let result = parse_str($input).demand_single_statement();
+        let result = parse($input).demand_single_statement();
         match result {
             Statement::BuiltInSubCall(actual_name, actual_args) => {
                 assert_eq!(actual_name, $expected_name);
@@ -206,7 +206,7 @@ macro_rules! assert_built_in_sub_call {
     };
 
     ($input: expr, $expected_name: expr, $($arg: expr),+) => {
-        let result = parse_str($input).demand_single_statement();
+        let result = parse($input).demand_single_statement();
         match result {
             Statement::BuiltInSubCall(actual_name, actual_args) => {
                 assert_eq!(actual_name, $expected_name);
@@ -221,7 +221,7 @@ macro_rules! assert_built_in_sub_call {
 #[macro_export]
 macro_rules! assert_expression {
     ($left:expr, $right:expr) => {
-        let program = parse_str(format!("Flint {}", $left)).demand_single_statement();
+        let program = parse(format!("Flint {}", $left)).demand_single_statement();
         crate::assert_sub_call!(program, "Flint", $right);
     };
 }

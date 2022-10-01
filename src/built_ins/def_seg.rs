@@ -64,15 +64,13 @@ mod tests {
     use crate::built_ins::BuiltInSub;
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use crate::parser::test_utils::{
-        parse_str, DemandSingleStatement, ExpressionNodeLiteralFactory,
-    };
+    use crate::parser::test_utils::{parse, DemandSingleStatement, ExpressionNodeLiteralFactory};
     use crate::parser::*;
 
     #[test]
     fn parse_no_items_is_allowed() {
         let input = "DEF SEG";
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(BuiltInSub::DefSeg, vec![])
@@ -82,7 +80,7 @@ mod tests {
     #[test]
     fn parse_one_item() {
         let input = "DEF SEG = 42";
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(BuiltInSub::DefSeg, vec![42.as_lit_expr(1, 11)])

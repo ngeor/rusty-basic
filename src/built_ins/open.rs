@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn test_open_for_input_access_read_as_file_handle_with_spaces() {
         let input = r#"OPEN "FILE.TXT" FOR INPUT ACCESS READ AS #1"#;
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -204,7 +204,7 @@ mod tests {
     #[test]
     fn test_open_for_input_access_read_as_file_handle_no_spaces() {
         let input = r#"OPEN("FILE.TXT")FOR INPUT ACCESS READ AS(1)"#;
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -223,7 +223,7 @@ mod tests {
     #[test]
     fn test_open_for_input_as_file_handle_with_spaces() {
         let input = r#"OPEN "FILE.TXT" FOR INPUT AS #1"#;
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn test_open_access_read_as_file_handle_with_spaces() {
         let input = r#"OPEN "FILE.TXT" ACCESS READ AS #1"#;
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -261,7 +261,7 @@ mod tests {
     #[test]
     fn test_open_as_file_handle_with_spaces() {
         let input = r#"OPEN "FILE.TXT" AS #1"#;
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -280,7 +280,7 @@ mod tests {
     #[test]
     fn test_open_as_number_with_spaces() {
         let input = r#"OPEN "FILE.TXT" AS 1"#;
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -299,7 +299,7 @@ mod tests {
     #[test]
     fn test_open_as_file_handle_no_spaces() {
         let input = r#"OPEN("FILE.TXT")AS(1)"#;
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -329,7 +329,7 @@ mod tests {
     #[test]
     fn test_open_random_explicit_len() {
         let input = r#"OPEN "A.TXT" FOR RANDOM AS #1 LEN = 64"#;
-        let statement = parse_str(input).demand_single_statement();
+        let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(

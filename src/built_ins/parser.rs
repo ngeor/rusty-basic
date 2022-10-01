@@ -1,6 +1,6 @@
 use crate::built_ins;
 use crate::built_ins::BuiltInSub;
-use crate::common::{AtLocation, Location};
+use crate::common::{AtLocation, FileHandle, Location};
 use crate::parser::expression::expression_node_p;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{comma, keyword, trailing_comma_error, whitespace};
@@ -76,4 +76,8 @@ pub fn csv_allow_missing() -> impl Parser<Output = Vec<Option<ExpressionNode>>> 
     )
 }
 
-// TODO mimic the std::iter functions to create new parsers from simpler blocks
+impl From<FileHandle> for Expression {
+    fn from(file_handle: FileHandle) -> Self {
+        Expression::IntegerLiteral(file_handle.into())
+    }
+}

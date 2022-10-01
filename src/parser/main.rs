@@ -39,7 +39,7 @@ mod tests {
 
     #[test]
     fn test_parse_fixture_fib() {
-        let program = parse_file("FIB.BAS").strip_location();
+        let program = parse_file_no_location("FIB.BAS");
         assert_eq!(
             program,
             vec![

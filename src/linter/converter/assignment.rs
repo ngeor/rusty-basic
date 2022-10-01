@@ -70,7 +70,7 @@ mod assignment_post_conversion_validation_rules {
         left_side: &ExpressionNode,
         right_side: &ExpressionNode,
     ) -> Result<(), QErrorNode> {
-        if right_side.can_cast_to(left_side) {
+        if right_side.as_ref().can_cast_to(left_side) {
             Ok(())
         } else {
             Err(QError::TypeMismatch).with_err_at(right_side)

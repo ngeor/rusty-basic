@@ -25,8 +25,8 @@ pub mod linter {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
             args.require_integer_argument(0)?;
-            if args[1].can_cast_to(TypeQualifier::PercentInteger)
-                || args[1].can_cast_to(TypeQualifier::DollarString)
+            if args[1].as_ref().can_cast_to(TypeQualifier::PercentInteger)
+                || args[1].as_ref().can_cast_to(TypeQualifier::DollarString)
             {
                 Ok(())
             } else {

@@ -66,13 +66,15 @@ mod tests {
     use crate::built_ins::BuiltInSub;
     use crate::common::QError;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use crate::parser::test_utils::{parse, DemandSingleStatement, ExpressionNodeLiteralFactory};
+    use crate::parser::test_utils::{
+        parse_str, DemandSingleStatement, ExpressionNodeLiteralFactory,
+    };
     use crate::parser::*;
 
     #[test]
     fn parse_no_items_is_allowed() {
         let input = "DATA";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(BuiltInSub::Data, vec![])
@@ -82,7 +84,7 @@ mod tests {
     #[test]
     fn parse_one_item() {
         let input = "DATA 42";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(BuiltInSub::Data, vec![42.as_lit_expr(1, 6)])
@@ -92,7 +94,7 @@ mod tests {
     #[test]
     fn parse_two_items() {
         let input = r#"DATA 42, "hello""#;
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(

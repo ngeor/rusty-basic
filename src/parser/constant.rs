@@ -29,7 +29,7 @@ mod tests {
         CONST X = 42
         CONST Y$ = "hello"
         "#;
-        let program = parse(input).strip_location();
+        let program = parse_str_no_location(input);
         assert_eq!(
             program,
             vec![
@@ -52,7 +52,7 @@ mod tests {
         for name in &names {
             for value in &values {
                 let input = format!("CONST {} = {}", name, value);
-                let statement = parse(input).demand_single_statement();
+                let statement = parse_str(input).demand_single_statement();
                 match statement {
                     Statement::Const(
                         Locatable { element: left, .. },
@@ -70,7 +70,7 @@ mod tests {
     #[test]
     fn test_inline_comment() {
         let input = "CONST ANSWER = 42 ' the answer to life, universe, everything";
-        let program = parse(input);
+        let program = parse_str(input);
         assert_eq!(
             program,
             vec![

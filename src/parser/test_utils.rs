@@ -5,7 +5,7 @@ use crate::parser::pc_specific::test_helper::create_string_tokenizer;
 use crate::parser::types::*;
 use crate::parser::{parse_main_file, program_parser};
 
-pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
+fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
     let mut reader = create_string_tokenizer(s);
     program_parser(&mut reader)
 }
@@ -15,8 +15,12 @@ pub fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QEr
 /// # Panics
 ///
 /// If the parser has an error.
-pub fn parse<T: AsRef<[u8]> + 'static>(input: T) -> ProgramNode {
+pub fn parse_str<T: AsRef<[u8]> + 'static>(input: T) -> ProgramNode {
     parse_main_str(input).expect("Could not parse program")
+}
+
+pub fn parse_str_no_location<T: AsRef<[u8]> + 'static>(input: T) -> Vec<TopLevelToken> {
+    Locatable::strip_location(parse_str(input))
 }
 
 /// Parses the given file under the `fixtures` folder.
@@ -30,6 +34,10 @@ pub fn parse_file<S: AsRef<str>>(filename: S) -> ProgramNode {
     parse_main_file(f).expect("Could not parse program")
 }
 
+pub fn parse_file_no_location<S: AsRef<str>>(filename: S) -> Vec<TopLevelToken> {
+    Locatable::strip_location(parse_file(filename))
+}
+
 /// Parses the given string, expecting that it will fail.
 /// Returns the error with location information.
 ///
@@ -37,7 +45,7 @@ pub fn parse_file<S: AsRef<str>>(filename: S) -> ProgramNode {
 ///
 /// If the parser does not have an error.
 pub fn parse_err_node<T: AsRef<[u8]> + 'static>(input: T) -> QErrorNode {
-    parse_main_str(input).unwrap_err()
+    parse_main_str(input).expect_err("Parser should have failed")
 }
 
 /// Parses the given string, expecting that it will fail.
@@ -176,7 +184,7 @@ macro_rules! assert_sub_call {
             Statement::SubCall(actual_bare_name, actual_args) => {
                 let expected_bare_name: crate::parser::types::BareName = $expected_name.into();
                 assert_eq!(actual_bare_name, expected_bare_name, "SubCall name mismatch");
-                let actual_args_no_loc: Vec<crate::parser::types::Expression> = actual_args.into_iter().map(|x| x.strip_location()).collect();
+                let actual_args_no_loc: Vec<crate::parser::Expression> = crate::common::Locatable::strip_location(actual_args);
                 assert_eq!(actual_args_no_loc, vec![$($arg),+]);
             }
             _ => panic!("Expected SubCall")
@@ -187,7 +195,7 @@ macro_rules! assert_sub_call {
 #[macro_export]
 macro_rules! assert_built_in_sub_call {
     ($input: expr, $expected_name: expr) => {
-        let result = parse($input).demand_single_statement();
+        let result = parse_str($input).demand_single_statement();
         match result {
             Statement::BuiltInSubCall(actual_name, actual_args) => {
                 assert_eq!(actual_name, $expected_name);
@@ -198,11 +206,11 @@ macro_rules! assert_built_in_sub_call {
     };
 
     ($input: expr, $expected_name: expr, $($arg: expr),+) => {
-        let result = parse($input).demand_single_statement();
+        let result = parse_str($input).demand_single_statement();
         match result {
             Statement::BuiltInSubCall(actual_name, actual_args) => {
                 assert_eq!(actual_name, $expected_name);
-                let actual_args_no_loc: Vec<crate::parser::Expression> = actual_args.into_iter().map(|x| x.strip_location()).collect();
+                let actual_args_no_loc: Vec<crate::parser::Expression> = crate::common::Locatable::strip_location(actual_args);
                 assert_eq!(actual_args_no_loc, vec![$($arg),+]);
             }
             _ => panic!("Expected built-in sub call {:?}", $expected_name)
@@ -213,7 +221,7 @@ macro_rules! assert_built_in_sub_call {
 #[macro_export]
 macro_rules! assert_expression {
     ($left:expr, $right:expr) => {
-        let program = parse(format!("Flint {}", $left)).demand_single_statement();
+        let program = parse_str(format!("Flint {}", $left)).demand_single_statement();
         crate::assert_sub_call!(program, "Flint", $right);
     };
 }

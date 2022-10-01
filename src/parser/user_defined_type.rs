@@ -157,7 +157,7 @@ mod tests {
         END TYPE
         ";
         assert_eq!(
-            parse(input).demand_single(),
+            parse_str(input).demand_single(),
             TopLevelToken::UserDefinedType(UserDefinedType::new(
                 BareName::from("Card").at_rc(2, 14),
                 vec![],
@@ -184,7 +184,7 @@ mod tests {
         END TYPE
         ";
         assert_eq!(
-            parse(input).demand_single(),
+            parse_str(input).demand_single(),
             TopLevelToken::UserDefinedType(UserDefinedType::new(
                 BareName::from("Card").at_rc(2, 14),
                 vec![String::from(" A card").at_rc(2, 19)],

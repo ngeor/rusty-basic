@@ -7,12 +7,13 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        seq4(
-            keyword_followed_by_whitespace_p(Keyword::Get),
+        seq5(
+            keyword(Keyword::Get),
+            whitespace(),
             file_handle_p().or_syntax_error("Expected: file-number"),
             comma(),
             expression_node_p().or_syntax_error("Expected: record-number"),
-            |_, file_number, _, r| {
+            |_, _, file_number, _, r| {
                 Statement::BuiltInSubCall(
                     BuiltInSub::Get,
                     vec![file_number.map(|x| Expression::IntegerLiteral(x.into())), r],

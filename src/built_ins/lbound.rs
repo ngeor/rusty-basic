@@ -24,7 +24,7 @@ pub mod linter {
         ) = first
         {
             if args.len() == 2 {
-                if args[1].can_cast_to(TypeQualifier::PercentInteger) {
+                if args[1].as_ref().can_cast_to(TypeQualifier::PercentInteger) {
                     Ok(())
                 } else {
                     Err(QError::ArgumentTypeMismatch).with_err_at(&args[1])

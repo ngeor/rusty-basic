@@ -72,7 +72,7 @@ mod tests {
     /// Asserts that the given input program contains a def type top level token.
     macro_rules! assert_def_type {
         ($input:expr, $expected_qualifier:expr, $expected_ranges:expr) => {
-            match parse($input).demand_single().strip_location() {
+            match parse_str($input).demand_single().element() {
                 TopLevelToken::DefType(def_type) => {
                     let def_type_qualifier: &crate::parser::TypeQualifier = def_type.as_ref();
                     assert_eq!(*def_type_qualifier, $expected_qualifier);
@@ -144,7 +144,7 @@ mod tests {
         let input = r#"
         DEFINT A-Z ' Improve performance
         "#;
-        let program = parse(input);
+        let program = parse_str(input);
         assert_eq!(
             program,
             vec![

@@ -56,13 +56,15 @@ mod tests {
     use crate::assert_parser_err;
     use crate::built_ins::BuiltInSub;
     use crate::common::QError;
-    use crate::parser::test_utils::{parse, DemandSingleStatement, ExpressionNodeLiteralFactory};
+    use crate::parser::test_utils::{
+        parse_str, DemandSingleStatement, ExpressionNodeLiteralFactory,
+    };
     use crate::parser::Statement;
 
     #[test]
     fn parse_row_col() {
         let input = "WIDTH 80, 24";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -80,7 +82,7 @@ mod tests {
     #[test]
     fn parse_only_col_arg() {
         let input = "WIDTH , 24";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(

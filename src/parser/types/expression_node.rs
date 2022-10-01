@@ -210,8 +210,8 @@ impl Expression {
         op: Operator,
     ) -> Result<Self, QErrorNode> {
         // get the types
-        let t_left = left.expression_type();
-        let t_right = right.expression_type();
+        let t_left = left.as_ref().expression_type();
+        let t_right = right.as_ref().expression_type();
         // get the cast type
         match t_left.cast_binary_op(t_right, op) {
             Some(type_definition) => Ok(Expression::BinaryExpression(
@@ -339,7 +339,7 @@ impl ExpressionNode {
             ExpressionType::Unresolved,
         )
         .at(pos);
-        if result.should_flip_binary() {
+        if result.as_ref().should_flip_binary() {
             result.flip_binary()
         } else {
             result
@@ -350,7 +350,7 @@ impl ExpressionNode {
     ///
     /// `NOT A AND B` would be parsed as `NOT (A AND B)`, needs to flip into `(NOT A) AND B`
     pub fn apply_unary_priority_order(self, op: UnaryOperator, op_pos: Location) -> ExpressionNode {
-        if self.should_flip_unary(op) {
+        if self.as_ref().should_flip_unary(op) {
             let Locatable { element, pos } = self;
             match element {
                 Expression::BinaryExpression(r_op, r_left, r_right, _) => {
@@ -402,7 +402,9 @@ impl HasExpressionType for Expression {
                 ExpressionType::BuiltIn(*qualifier)
             }
             Self::BuiltInFunctionCall(f, _) => ExpressionType::BuiltIn(f.into()),
-            Self::UnaryExpression(_, c) | Self::Parenthesis(c) => c.as_ref().expression_type(),
+            Self::UnaryExpression(_, c) | Self::Parenthesis(c) => {
+                c.as_ref().as_ref().expression_type()
+            }
             Self::FunctionCall(Name::Bare(_), _) => ExpressionType::Unresolved,
         }
     }

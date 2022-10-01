@@ -42,7 +42,7 @@ mod tests {
     macro_rules! assert_parse_dim_extended_built_in {
         ($name: literal, $keyword: literal, $qualifier: ident) => {
             let input = format!("DIM {} AS {}", $name, $keyword);
-            let p = parse(input).demand_single_statement();
+            let p = parse_str(input).demand_single_statement();
             assert_eq!(
                 p,
                 crate::parser::Statement::Dim(crate::parser::DimList {
@@ -82,7 +82,7 @@ mod tests {
         for var_name in &var_names {
             for var_type in &types {
                 let input = format!("DIM {} AS {}", var_name, var_type);
-                let p = parse(input).demand_single_statement();
+                let p = parse_str(input).demand_single_statement();
                 let var_name_bare: BareName = (*var_name).into();
                 let var_type_bare: BareName = (*var_type).into();
                 match p {
@@ -141,7 +141,7 @@ mod tests {
     macro_rules! assert_parse_dim_compact {
         ($name: literal) => {
             let input = format!("DIM {}", $name);
-            let p = parse(input).demand_single_statement();
+            let p = parse_str(input).demand_single_statement();
             assert_eq!(
                 p,
                 Statement::Dim(
@@ -155,7 +155,7 @@ mod tests {
 
         ($name: literal, $keyword: literal, $qualifier: ident) => {
             let input = format!("DIM {}{}", $name, $keyword);
-            let p = parse(input).demand_single_statement();
+            let p = parse_str(input).demand_single_statement();
             assert_eq!(
                 p,
                 Statement::Dim(
@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn test_parse_array_single_dimension_ubound() {
         let input = "DIM A$(2)";
-        let p = parse(input).demand_single_statement();
+        let p = parse_str(input).demand_single_statement();
         assert_eq!(
             p,
             Statement::Dim(
@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn test_parse_array_single_dimension_lbound_ubound() {
         let input = "DIM A(1 TO 2)";
-        let p = parse(input).demand_single_statement();
+        let p = parse_str(input).demand_single_statement();
         assert_eq!(
             p,
             Statement::Dim(
@@ -227,7 +227,7 @@ mod tests {
     #[test]
     fn test_parse_array_two_dimensions() {
         let input = "DIM A(1 TO 3, 2 TO 4)";
-        let p = parse(input).demand_single_statement();
+        let p = parse_str(input).demand_single_statement();
         assert_eq!(
             p,
             Statement::Dim(
@@ -257,7 +257,7 @@ mod tests {
         #[test]
         fn test_can_assign_to_keyword_qualified_by_string() {
             let input = "DIM DIM$";
-            let program = parse(input).demand_single_statement();
+            let program = parse_str(input).demand_single_statement();
             assert_eq!(
                 program,
                 Statement::Dim(

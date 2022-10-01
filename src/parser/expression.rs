@@ -36,11 +36,11 @@ pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr
     OptAndPC::new(whitespace(), lazy_expression_node_p()).and_then(
-        |(opt_leading_whitespace, expression)| {
-            let needs_leading_whitespace = !expression.is_parenthesis();
+        |(opt_leading_whitespace, expr_node)| {
+            let needs_leading_whitespace = !expr_node.as_ref().is_parenthesis();
             let has_leading_whitespace = opt_leading_whitespace.is_some();
             if has_leading_whitespace || !needs_leading_whitespace {
-                Ok(expression)
+                Ok(expr_node)
             } else {
                 Err(QError::syntax_error(
                     "Expected: whitespace before expression",
@@ -70,8 +70,8 @@ pub fn expression_node_followed_by_ws() -> impl Parser<Output = ExpressionNode> 
 /// Parses an expression
 pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
     single_expression_node_p()
-        .and_opt_factory(|first_expr| {
-            operator_p(first_expr.is_parenthesis()).and_demand(
+        .and_opt_factory(|first_expr_node| {
+            operator_p(first_expr_node.as_ref().is_parenthesis()).and_demand(
                 OptAndPC::new(whitespace(), lazy_expression_node_p())
                     .keep_right()
                     .or_syntax_error("Expected: right side expression"),
@@ -1557,10 +1557,13 @@ mod tests {
 
         macro_rules! assert_file_handle {
             ($input:expr, $expected_file_handle:expr) => {
-                let result: Statement = parse($input).demand_single_statement();
+                let result: Statement = parse_str($input).demand_single_statement();
                 match result {
                     Statement::BuiltInSubCall(_, args) => {
-                        assert_eq!(args[0], Expression::IntegerLiteral($expected_file_handle));
+                        assert_eq!(
+                            args[0].as_ref(),
+                            &Expression::IntegerLiteral($expected_file_handle)
+                        );
                     }
                     _ => {
                         panic!("Expected built-in sub call");

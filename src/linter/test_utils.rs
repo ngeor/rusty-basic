@@ -1,6 +1,6 @@
 use crate::common::QErrorNode;
 use crate::linter::lint;
-use crate::parser::test_utils::parse_main_str;
+use crate::parser::test_utils::parse_str;
 use crate::parser::{ProgramNode, UserDefinedTypes};
 
 /// Lints the given string and returns the results.
@@ -12,7 +12,7 @@ pub fn linter_ok_with_types<T>(input: T) -> (ProgramNode, UserDefinedTypes)
 where
     T: AsRef<[u8]> + 'static,
 {
-    let program = parse_main_str(input).unwrap();
+    let program = parse_str(input);
     lint(program).unwrap()
 }
 
@@ -37,7 +37,7 @@ pub fn linter_err<T>(input: T, msg: &str) -> QErrorNode
 where
     T: AsRef<[u8]> + 'static,
 {
-    let program = parse_main_str(input).expect("Parser should succeed");
+    let program = parse_str(input);
     lint(program).expect_err(format!("Linter should fail {}", msg).as_str())
 }
 

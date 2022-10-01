@@ -40,7 +40,7 @@ mod tests {
             SYSTEM
         WEND
         ";
-        let program = parse(input).demand_single_statement();
+        let program = parse_str(input).demand_single_statement();
         assert_eq!(
             program,
             Statement::While(ConditionalBlockNode {
@@ -58,7 +58,7 @@ mod tests {
 
     #[test]
     fn test_while_wend_single_line() {
-        let program = parse("WHILE A < 5: A = A + 1: Flint A: WEND").demand_single_statement();
+        let program = parse_str("WHILE A < 5: A = A + 1: Flint A: WEND").demand_single_statement();
         assert_eq!(
             program,
             Statement::While(ConditionalBlockNode {
@@ -95,7 +95,7 @@ mod tests {
             SYSTEM ' exit
         WEND       ' end of loop
         ";
-        let program = parse(input);
+        let program = parse_str(input);
         assert_eq!(
             program,
             vec![
@@ -135,7 +135,7 @@ mod tests {
         WHILE(X > 0)
             Flint X
         WEND"#;
-        let program = parse(input).demand_single_statement();
+        let program = parse_str(input).demand_single_statement();
         assert_eq!(
             program,
             Statement::While(ConditionalBlockNode {
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_while_wend_wend_same_line_on_last_statement() {
-        let program = parse(
+        let program = parse_str(
             r#"
         WHILE A < 5
             A = A + 1

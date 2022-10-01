@@ -101,14 +101,14 @@ mod tests {
     #[test]
     fn test_parse_sub_call_no_args() {
         let input = "Flint";
-        let program = parse(input).demand_single_statement();
+        let program = parse_str(input).demand_single_statement();
         assert_sub_call!(program, "Flint");
     }
 
     #[test]
     fn test_parse_sub_call_single_arg_string_literal() {
         let input = "Flint \"Hello, world!\"";
-        let program = parse(input).demand_single_statement();
+        let program = parse_str(input).demand_single_statement();
         assert_eq!(
             program,
             Statement::SubCall("Flint".into(), vec!["Hello, world!".as_lit_expr(1, 7)])
@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn test_parse_fixture_hello_system() {
-        let program = parse_file("HELLO_S.BAS").strip_location();
+        let program = parse_file_no_location("HELLO_S.BAS");
         assert_eq!(
             program,
             vec![
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_parse_fixture_input() {
-        let program = parse_file("INPUT.BAS").strip_location();
+        let program = parse_file_no_location("INPUT.BAS");
         assert_eq!(
             program,
             vec![
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_parse_fixture_environ() {
-        let program = parse_file("ENVIRON.BAS").strip_location();
+        let program = parse_file_no_location("ENVIRON.BAS");
         assert_eq!(
             program,
             vec![TopLevelToken::Statement(Statement::Print(PrintNode::one(
@@ -194,7 +194,7 @@ mod tests {
             ENVIRON "FOO=BAR"
         END SUB
         "#;
-        let program = parse(input).strip_location();
+        let program = parse_str_no_location(input);
         assert_eq!(
             program,
             vec![
@@ -226,7 +226,7 @@ mod tests {
             ENVIRON N$ + "=" + V$
         END SUB
         "#;
-        let program = parse(input).strip_location();
+        let program = parse_str_no_location(input);
         assert_eq!(
             program,
             vec![

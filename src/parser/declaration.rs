@@ -66,16 +66,20 @@ mod tests {
 
     macro_rules! assert_function_declaration {
         ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
-            match parse($input).demand_single().strip_location() {
+            match parse_str($input).demand_single().element() {
                 TopLevelToken::FunctionDeclaration(name, parameters) => {
-                    assert_eq!(name, $expected_function_name, "Function name mismatch");
+                    assert_eq!(
+                        name.element(),
+                        $expected_function_name,
+                        "Function name mismatch"
+                    );
                     assert_eq!(
                         parameters.len(),
                         $expected_params.len(),
                         "Parameter count mismatch"
                     );
                     let parameters_without_location: Vec<ParamName> =
-                        parameters.into_iter().map(|x| x.strip_location()).collect();
+                        Locatable::strip_location(parameters);
                     for i in 0..parameters_without_location.len() {
                         assert_eq!(
                             parameters_without_location[i], $expected_params[i],
@@ -120,7 +124,7 @@ mod tests {
         FUNCTION Echo(X) ' Implementation of Echo
         END FUNCTION ' End of implementation
         "#;
-        let program = parse(input);
+        let program = parse_str(input);
         assert_eq!(
             program,
             vec![
@@ -177,7 +181,7 @@ mod tests {
         FUNCTION Echo(X$())
         END FUNCTION
         "#;
-        let program = parse(input);
+        let program = parse_str(input);
         assert_eq!(
             program,
             vec![
@@ -216,7 +220,7 @@ mod tests {
         let input = r#"
         DECLARE SUB ScrollUp ()
         "#;
-        let program = parse(input);
+        let program = parse_str(input);
         assert_eq!(
             program,
             vec![TopLevelToken::SubDeclaration("ScrollUp".as_bare_name(2, 21), vec![]).at_rc(2, 9)]
@@ -228,7 +232,7 @@ mod tests {
         let input = r#"
         DECLARE SUB LCenter (text$)
         "#;
-        let program = parse(input);
+        let program = parse_str(input);
         assert_eq!(
             program,
             vec![TopLevelToken::SubDeclaration(

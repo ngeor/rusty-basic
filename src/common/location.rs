@@ -2,8 +2,6 @@
 // Location
 //
 
-use std::ops::Deref;
-
 /// The location of a token within a text file, expressed in row and column.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Location {
@@ -44,6 +42,7 @@ impl Location {
 
 /// Bundles an element (typically a parsed token) together with its location
 /// within the file it was read from.
+// TODO make fields private (breaks pattern matching)
 #[derive(Clone, Debug, PartialEq)]
 pub struct Locatable<T> {
     pub element: T,
@@ -53,6 +52,10 @@ pub struct Locatable<T> {
 impl<T> Locatable<T> {
     pub fn new(element: T, pos: Location) -> Self {
         Locatable { element, pos }
+    }
+
+    pub fn element(self) -> T {
+        self.element
     }
 
     pub fn map<F, U>(self, op: F) -> Locatable<U>
@@ -66,24 +69,15 @@ impl<T> Locatable<T> {
             pos,
         }
     }
+
+    #[cfg(test)]
+    pub fn strip_location(items: Vec<Self>) -> Vec<T> {
+        items.into_iter().map(Self::element).collect()
+    }
 }
 
 impl<T> AsRef<T> for Locatable<T> {
     fn as_ref(&self) -> &T {
-        &self.element
-    }
-}
-
-impl<T: PartialEq<T>> PartialEq<T> for Locatable<T> {
-    fn eq(&self, that: &T) -> bool {
-        &self.element == that
-    }
-}
-
-impl<T> Deref for Locatable<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
         &self.element
     }
 }
@@ -136,25 +130,5 @@ impl<T> HasLocation for Locatable<T> {
 impl HasLocation for Location {
     fn pos(&self) -> Location {
         *self
-    }
-}
-
-//
-// StripLocation
-//
-
-pub trait StripLocation<T> {
-    fn strip_location(self) -> T;
-}
-
-impl<T> StripLocation<T> for Locatable<T> {
-    fn strip_location(self) -> T {
-        self.element
-    }
-}
-
-impl<T> StripLocation<Vec<T>> for Vec<Locatable<T>> {
-    fn strip_location(self) -> Vec<T> {
-        self.into_iter().map(|x| x.strip_location()).collect()
     }
 }

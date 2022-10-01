@@ -1,4 +1,4 @@
-use crate::common::{AtRowCol, StripLocation};
+use crate::common::AtRowCol;
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{Instruction, RootPath};
 use crate::parser::TypeQualifier;
@@ -26,7 +26,7 @@ fn test_assignment() {
             })
             .at_rc(1, 1),
             Instruction::CopyAToVarPath.at_rc(1, 1),
-            Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
+            Instruction::Halt.at_rc(u32::MAX, u32::MAX)
         ]
     );
 }
@@ -34,7 +34,7 @@ fn test_assignment() {
 #[test]
 fn test_assignment_no_cast_implicit_variable() {
     assert_eq!(
-        generate_instructions_str("X% = 1").strip_location(),
+        generate_instructions_str_no_location("X% = 1"),
         [
             // implicit dim
             Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
@@ -62,7 +62,7 @@ fn test_assignment_no_cast_explicit_variable() {
     X% = 1
     "#;
     assert_eq!(
-        generate_instructions_str(input).strip_location(),
+        generate_instructions_str_no_location(input),
         [
             // dim
             Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
@@ -90,7 +90,7 @@ fn test_assignment_no_cast_implicit_variable_implicit_dim_is_only_once() {
     X% = 2
     "#;
     assert_eq!(
-        generate_instructions_str(input).strip_location(),
+        generate_instructions_str_no_location(input),
         [
             // implicit dim
             Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
@@ -121,7 +121,7 @@ fn test_assignment_no_cast_implicit_variable_implicit_dim_is_only_once() {
 #[test]
 fn test_assignment_binary_plus() {
     assert_eq!(
-        generate_instructions_str("X% = 1 + 2.1").strip_location(),
+        generate_instructions_str_no_location("X% = 1 + 2.1"),
         [
             // implicit dim
             Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),

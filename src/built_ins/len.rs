@@ -32,7 +32,7 @@ pub mod linter {
                     }
                     _ => Ok(()),
                 }
-            } else if !args[0].can_cast_to(TypeQualifier::DollarString) {
+            } else if !args[0].as_ref().can_cast_to(TypeQualifier::DollarString) {
                 Err(QError::VariableRequired).with_err_at(&args[0])
             } else {
                 Ok(())

@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn test_print_no_args() {
         let input = "PRINT";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -176,7 +176,7 @@ mod tests {
     fn test_print_no_other_args_only_trailing_comma_space_variations() {
         let variations = ["PRINT,", "PRINT ,"];
         for input in &variations {
-            let statement = parse(*input).demand_single_statement();
+            let statement = parse_str(*input).demand_single_statement();
             assert_eq!(
                 statement,
                 Statement::Print(PrintNode {
@@ -193,7 +193,7 @@ mod tests {
     fn test_print_no_other_args_only_trailing_semicolon_space_variations() {
         let variations = ["PRINT;", "PRINT ;"];
         for input in &variations {
-            let statement = parse(*input).demand_single_statement();
+            let statement = parse_str(*input).demand_single_statement();
             assert_eq!(
                 statement,
                 Statement::Print(PrintNode {
@@ -210,7 +210,7 @@ mod tests {
     fn test_print_leading_comma_numeric_arg_space_variations() {
         let variations = ["PRINT,1", "PRINT ,1", "PRINT, 1", "PRINT , 1"];
         for input in &variations {
-            let statement = parse(*input).demand_single_statement();
+            let statement = parse_str(*input).demand_single_statement();
             match statement {
                 Statement::Print(print_node) => {
                     assert_eq!(print_node.file_number, None);
@@ -235,7 +235,7 @@ mod tests {
     fn test_print_leading_semicolon_numeric_arg_space_variations() {
         let variations = ["PRINT;1", "PRINT ;1", "PRINT; 1", "PRINT ; 1"];
         for input in &variations {
-            let statement = parse(*input).demand_single_statement();
+            let statement = parse_str(*input).demand_single_statement();
             match statement {
                 Statement::Print(print_node) => {
                     assert_eq!(print_node.file_number, None);
@@ -259,7 +259,7 @@ mod tests {
     #[test]
     fn test_lprint_no_args() {
         let input = "LPRINT";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -274,7 +274,7 @@ mod tests {
     #[test]
     fn test_print_one_arg() {
         let input = "PRINT 42";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -289,7 +289,7 @@ mod tests {
     #[test]
     fn test_lprint_one_arg() {
         let input = "LPRINT 42";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -304,7 +304,7 @@ mod tests {
     #[test]
     fn test_print_two_args() {
         let input = "PRINT 42, A";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -323,7 +323,7 @@ mod tests {
     #[test]
     fn test_lprint_two_args() {
         let input = "LPRINT 42, A";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -348,7 +348,7 @@ mod tests {
     #[test]
     fn test_print_file_no_args() {
         let input = "PRINT #1,";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -363,7 +363,7 @@ mod tests {
     #[test]
     fn test_print_file_one_arg() {
         let input = "PRINT #1, 42";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -384,7 +384,7 @@ mod tests {
     #[test]
     fn test_print_file_two_args() {
         let input = "PRINT #1, A, B";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -403,7 +403,7 @@ mod tests {
     #[test]
     fn test_print_file_leading_comma() {
         let input = "PRINT #1,, A, B";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -423,7 +423,7 @@ mod tests {
     #[test]
     fn test_print_file_leading_semicolon() {
         let input = "PRINT #1,; A, B";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -443,7 +443,7 @@ mod tests {
     #[test]
     fn test_print_using_no_args() {
         let input = "PRINT USING \"#\";";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -458,7 +458,7 @@ mod tests {
     #[test]
     fn test_lprint_using_no_args() {
         let input = "LPRINT USING \"#\";";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -485,7 +485,7 @@ mod tests {
     #[test]
     fn test_print_using_one_arg() {
         let input = "PRINT USING \"#\"; 42";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -500,7 +500,7 @@ mod tests {
     #[test]
     fn test_lprint_using_one_arg() {
         let input = "LPRINT USING \"#\"; 42";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -515,7 +515,7 @@ mod tests {
     #[test]
     fn test_print_file_using_no_args() {
         let input = "PRINT #1, USING \"#\";";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {
@@ -530,7 +530,7 @@ mod tests {
     #[test]
     fn test_print_file_using_one_arg() {
         let input = "PRINT #1, USING \"#\"; 3.14";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::Print(PrintNode {

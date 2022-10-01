@@ -1,4 +1,4 @@
-use crate::common::{AtRowCol, StripLocation};
+use crate::common::AtRowCol;
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{AddressOrLabel, Instruction, PrinterType, RootPath};
 use crate::parser::{BuiltInStyle, ExpressionType, ParamName, ParamType, TypeQualifier};
@@ -36,7 +36,7 @@ fn test_declaration() {
             })
             .at_rc(2, 9),
             Instruction::CopyAToVarPath.at_rc(2, 9),
-            Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
+            Instruction::Halt.at_rc(u32::MAX, u32::MAX)
         ]
     );
 }
@@ -82,7 +82,7 @@ fn test_assignment() {
             Instruction::VarPathIndex.at_rc(3, 8),
             Instruction::PopValueStackIntoA.at_rc(3, 8),
             Instruction::CopyAToVarPath.at_rc(3, 5),
-            Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
+            Instruction::Halt.at_rc(u32::MAX, u32::MAX)
         ]
     );
 }
@@ -95,7 +95,7 @@ fn test_assign_and_print_one_element() {
     PRINT A(1)
     "#;
     assert_eq!(
-        generate_instructions_str(input).strip_location(),
+        generate_instructions_str_no_location(input),
         [
             // evaluate dimensions of array
             Instruction::BeginCollectArguments,
@@ -156,7 +156,7 @@ fn test_pass_param_to_sub() {
     END SUB
     "#;
     assert_eq!(
-        generate_instructions_str(input).strip_location(),
+        generate_instructions_str_no_location(input),
         [
             // evaluate dimensions of array
             Instruction::BeginCollectArguments,

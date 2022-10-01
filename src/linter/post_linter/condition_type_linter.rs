@@ -9,16 +9,16 @@ use crate::parser::{
 pub struct ConditionTypeLinter {}
 
 impl ConditionTypeLinter {
-    fn ensure_expression_is_condition(expr: &ExpressionNode) -> Result<(), QErrorNode> {
-        match expr.expression_type() {
+    fn ensure_expression_is_condition(expr_node: &ExpressionNode) -> Result<(), QErrorNode> {
+        match expr_node.as_ref().expression_type() {
             ExpressionType::BuiltIn(q) => {
                 if q == TypeQualifier::DollarString {
-                    Err(QError::TypeMismatch).with_err_at(expr)
+                    Err(QError::TypeMismatch).with_err_at(expr_node)
                 } else {
                     Ok(())
                 }
             }
-            _ => Err(QError::TypeMismatch).with_err_at(expr),
+            _ => Err(QError::TypeMismatch).with_err_at(expr_node),
         }
     }
 }

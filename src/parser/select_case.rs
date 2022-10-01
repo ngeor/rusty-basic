@@ -153,7 +153,7 @@ impl CaseExpressionParser {
             OptAndPC::new(whitespace(), expression::expression_node_p())
                 .keep_right()
                 .or_syntax_error("Expected: expression after IS operator"),
-            |_, op, r| CaseExpression::Is(op.strip_location(), r),
+            |_, Locatable { element, .. }, r| CaseExpression::Is(element, r),
         )
     }
 }
@@ -164,7 +164,7 @@ impl Parser for SimpleOrRangeParser {
     type Output = CaseExpression;
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let expr = expression::expression_node_p().parse(reader)?;
-        let parenthesis = expr.is_parenthesis();
+        let parenthesis = expr.as_ref().is_parenthesis();
         let to_keyword = whitespace_boundary(parenthesis)
             .and(keyword(Keyword::To))
             .parse_opt(reader)?;
@@ -208,7 +208,7 @@ mod tests {
         Flint "Nope"  ' print nope
         END SELECT    ' end of select
         "#;
-        let result = parse(input);
+        let result = parse_str(input);
         assert_eq!(
             result,
             vec![
@@ -244,7 +244,7 @@ mod tests {
         SELECT CASE X
         END SELECT
         "#;
-        let result = parse(input);
+        let result = parse_str(input);
         assert_eq!(
             result,
             vec![
@@ -268,7 +268,7 @@ mod tests {
         Flint "One"   ' print it
         END SELECT
         "#;
-        let result = parse(input);
+        let result = parse_str(input);
         assert_eq!(
             result,
             vec![
@@ -340,7 +340,7 @@ mod tests {
             PRINT 2
         END SELECT
         ";
-        let result = parse(input).demand_single_statement();
+        let result = parse_str(input).demand_single_statement();
         assert_eq!(
             result,
             Statement::SelectCase(SelectCaseNode {

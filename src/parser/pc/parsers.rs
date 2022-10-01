@@ -182,3 +182,4 @@ pub trait ParseLookingBack {
         tokenizer: &mut impl Tokenizer,
     ) -> Result<Self::Output, QError>;
 }
+// TODO mimic the std::iter functions to create new parsers from simpler blocks

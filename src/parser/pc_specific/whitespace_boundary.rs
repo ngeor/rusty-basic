@@ -13,7 +13,7 @@ impl Undo for WhitespaceBoundary {
 }
 
 pub fn whitespace_boundary_after_expr(expr: &ExpressionNode) -> WhitespaceBoundaryParser {
-    whitespace_boundary(expr.is_parenthesis())
+    whitespace_boundary(expr.as_ref().is_parenthesis())
 }
 
 pub fn whitespace_boundary(is_optional: bool) -> WhitespaceBoundaryParser {

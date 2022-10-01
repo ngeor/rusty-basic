@@ -85,7 +85,7 @@ mod unary {
         // convert child (recursion)
         let (converted_child, implicit_vars) = ctx.on_expression(*box_child, expr_context)?;
         // ensure operator applies to converted expr
-        let converted_expr_type = converted_child.expression_type();
+        let converted_expr_type = converted_child.as_ref().expression_type();
         if is_applicable_to_expr_type(&converted_expr_type) {
             let unary_expr = Expression::UnaryExpression(unary_operator, Box::new(converted_child));
             Ok((unary_expr.at(pos), implicit_vars))

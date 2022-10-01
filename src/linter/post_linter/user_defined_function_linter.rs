@@ -173,7 +173,7 @@ impl<'a> UserDefinedFunctionLinter<'a> {
     fn handle_undefined_function(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
         for i in 0..args.len() {
             let arg_node = args.get(i).unwrap();
-            match arg_node.expression_type() {
+            match arg_node.as_ref().expression_type() {
                 ExpressionType::BuiltIn(q) => {
                     if q == TypeQualifier::DollarString {
                         return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);

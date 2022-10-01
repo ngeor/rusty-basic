@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn test_for_loop() {
         let input = "FOR I = 1 TO 10\r\nFlint I\r\nNEXT";
-        let result = parse(input).demand_single_statement();
+        let result = parse_str(input).demand_single_statement();
         assert_eq!(
             result,
             Statement::ForLoop(ForLoopNode {
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn test_for_loop_lower_case() {
         let input = "for i = 1 TO 10\r\nflint i\r\nnext";
-        let result = parse(input).demand_single_statement();
+        let result = parse_str(input).demand_single_statement();
         assert_eq!(
             result,
             Statement::ForLoop(ForLoopNode {
@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn fn_fixture_for_nested() {
-        let result = parse_file("FOR_NESTED.BAS").strip_location();
+        let result = parse_file_no_location("FOR_NESTED.BAS");
         assert_eq!(
             result,
             vec![
@@ -221,7 +221,7 @@ mod tests {
         Flint I ' print it
         NEXT ' end of loop
         "#;
-        let result = parse(input);
+        let result = parse_str(input);
         assert_eq!(
             result,
             vec![

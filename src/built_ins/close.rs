@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn test_no_args() {
         let input = "CLOSE";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(BuiltInSub::Close, vec![])
@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn test_one_file_number_no_hash() {
         let input = "CLOSE 1";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(BuiltInSub::Close, vec![1.as_lit_expr(1, 7)])
@@ -97,14 +97,14 @@ mod tests {
     #[test]
     fn test_one_file_number_no_hash_no_leading_space() {
         let input = "CLOSE1";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(statement, Statement::SubCall("CLOSE1".into(), vec![]));
     }
 
     #[test]
     fn test_one_file_number_no_hash_parenthesis_leading_space() {
         let input = "CLOSE (1)";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn test_one_file_number_no_hash_parenthesis_no_leading_space() {
         let input = "CLOSE(1)";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -130,7 +130,7 @@ mod tests {
     #[test]
     fn test_one_file_number_with_hash() {
         let input = "CLOSE #1";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(BuiltInSub::Close, vec![1.as_lit_expr(1, 7)])
@@ -168,7 +168,7 @@ mod tests {
     #[test]
     fn test_two_file_number_no_hash_space_after_comma() {
         let input = "CLOSE 1, 2";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -181,7 +181,7 @@ mod tests {
     #[test]
     fn test_two_file_number_no_hash_space_before_comma() {
         let input = "CLOSE 1 ,2";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn test_two_file_number_no_hash_space_around_comma() {
         let input = "CLOSE 1 , 2";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -207,7 +207,7 @@ mod tests {
     #[test]
     fn test_two_file_number_no_hash_no_space_around_comma() {
         let input = "CLOSE 1,2";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -220,7 +220,7 @@ mod tests {
     #[test]
     fn test_two_file_number_hash_space_after_comma() {
         let input = "CLOSE #1, #2";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn test_two_file_number_hash_space_before_comma() {
         let input = "CLOSE #1 ,#2";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -246,7 +246,7 @@ mod tests {
     #[test]
     fn test_two_file_number_hash_space_around_comma() {
         let input = "CLOSE #1 , #2";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -259,7 +259,7 @@ mod tests {
     #[test]
     fn test_two_file_number_hash_no_space_around_comma() {
         let input = "CLOSE #1,#2";
-        let statement = parse(input).demand_single_statement();
+        let statement = parse_str(input).demand_single_statement();
         assert_eq!(
             statement,
             Statement::BuiltInSubCall(
@@ -272,7 +272,7 @@ mod tests {
     #[test]
     fn test_close_inline_comment() {
         let input = "CLOSE #1 ' closes the file";
-        let program = parse(input);
+        let program = parse_str(input);
         assert_eq!(
             program,
             vec![

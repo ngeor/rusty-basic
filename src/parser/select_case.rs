@@ -38,7 +38,7 @@ pub fn select_case_p() -> impl Parser<Output = Statement> {
 
 /// Parses the `SELECT CASE expression` part
 fn select_case_expr_p() -> impl Parser<Output = ExpressionNode> {
-    keyword_pair(Keyword::Select, Keyword::Case).then_use(
+    keyword_pair(Keyword::Select, Keyword::Case).then_demand(
         expression::guarded_expression_node_p().or_syntax_error("Expected: expression after CASE"),
     )
 }
@@ -67,7 +67,7 @@ fn case_blocks() -> impl Parser<Output = Vec<CaseBlockNode>> {
 
 fn case_block() -> impl Parser<Output = CaseBlockNode> {
     // CASE
-    CaseButNotElse.then_use(
+    CaseButNotElse.then_demand(
         OptAndPC::new(whitespace(), continue_after_case())
             .keep_right()
             .or_syntax_error("Expected case expression after CASE"),
@@ -188,7 +188,7 @@ impl SimpleOrRangeParser {
 
 fn case_else() -> impl Parser<Output = StatementNodes> {
     keyword_pair(Keyword::Case, Keyword::Else)
-        .then_use(ZeroOrMoreStatements::new(keyword(Keyword::End)))
+        .then_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
 }
 
 #[cfg(test)]

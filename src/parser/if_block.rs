@@ -57,7 +57,7 @@ fn single_line_if_else_p() -> impl Parser<
 }
 
 fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
-    whitespace().and(keyword(Keyword::Else)).then_use(
+    whitespace().and(keyword(Keyword::Else)).then_demand(
         single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
     )
 }
@@ -106,7 +106,7 @@ fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {
 }
 
 fn else_block_p() -> impl Parser<Output = StatementNodes> {
-    keyword(Keyword::Else).then_use(ZeroOrMoreStatements::new(keyword(Keyword::End)))
+    keyword(Keyword::Else).then_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
 }
 
 #[cfg(test)]

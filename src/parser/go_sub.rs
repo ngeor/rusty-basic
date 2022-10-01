@@ -5,13 +5,13 @@ use crate::parser::{Keyword, Statement};
 
 pub fn statement_go_sub_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoSub)
-        .then_use(bare_name_p().or_syntax_error("Expected: label"))
+        .then_demand(bare_name_p().or_syntax_error("Expected: label"))
         .map(Statement::GoSub)
 }
 
 pub fn statement_return_p() -> impl Parser<Output = Statement> {
     keyword(Keyword::Return)
-        .and_opt(whitespace().then_use(bare_name_p()))
+        .and_opt(whitespace().then_demand(bare_name_p()))
         .keep_right()
         .map(Statement::Return)
 }

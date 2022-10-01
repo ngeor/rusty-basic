@@ -7,7 +7,7 @@ pub mod parser {
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword(Keyword::Read)
-            .then_use(expression_nodes_p().or_syntax_error("Expected: variable"))
+            .then_demand(expression_nodes_p().or_syntax_error("Expected: variable"))
             .map(|args| Statement::BuiltInSubCall(BuiltInSub::Read, args))
     }
 }

@@ -96,7 +96,8 @@ pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
 pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
     AccumulateParser::new(
         guarded_expression_node_p(),
-        comma().then_use(expression_node_p().or_syntax_error("Expected: expression after comma")),
+        comma()
+            .then_demand(expression_node_p().or_syntax_error("Expected: expression after comma")),
     )
 }
 
@@ -240,7 +241,7 @@ mod number_literal {
     pub fn number_literal_p() -> impl Parser<Output = ExpressionNode> {
         // TODO support more qualifiers besides '#'
         digits()
-            .and_opt(dot().then_use(digits()))
+            .and_opt(dot().then_demand(digits()))
             .and_opt(pound())
             .and_then(
                 |((int_digits, opt_fraction_digits), opt_double)| match opt_fraction_digits {
@@ -489,7 +490,7 @@ pub mod word {
 
     // TODO rewrite this
     fn dot_property_name() -> impl Parser<Output = Vec<String>> {
-        dot().then_use(Properties)
+        dot().then_demand(Properties)
     }
 
     struct Properties;

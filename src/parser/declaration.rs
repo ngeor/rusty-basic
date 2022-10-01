@@ -16,7 +16,7 @@ use crate::parser::types::*;
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
 pub fn declaration_p() -> impl Parser<Output = TopLevelToken> {
-    keyword_followed_by_whitespace_p(Keyword::Declare).then_use(
+    keyword_followed_by_whitespace_p(Keyword::Declare).then_demand(
         function_declaration_p()
             .map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
             .or(sub_declaration_p().map(|(n, p)| TopLevelToken::SubDeclaration(n, p)))

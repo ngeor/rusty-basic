@@ -69,7 +69,7 @@ fn statement_label_p() -> impl Parser<Output = Statement> {
 
 fn statement_go_to_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
-        .then_use(bare_name_p().or_syntax_error("Expected: label"))
+        .then_demand(bare_name_p().or_syntax_error("Expected: label"))
         .map(Statement::GoTo)
 }
 
@@ -92,7 +92,7 @@ mod end {
 
     pub fn parse_end_p() -> impl Parser<Output = Statement> {
         keyword(Keyword::End)
-            .then_use(AfterEndSeparator)
+            .then_demand(AfterEndSeparator)
             .map(|_| Statement::End)
     }
 
@@ -164,7 +164,7 @@ mod system {
 
     pub fn parse_system_p() -> impl Parser<Output = Statement> {
         keyword(Keyword::System)
-            .then_use(
+            .then_demand(
                 OptAndPC::new(whitespace(), peek_eof_or_statement_separator())
                     .or_syntax_error("Expected: end-of-statement"),
             )

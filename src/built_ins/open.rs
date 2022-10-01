@@ -62,7 +62,7 @@ pub mod parser {
     // AS <ws+> expression
     // AS ( expression )
     fn parse_file_number_p() -> impl Parser<Output = ExpressionNode> {
-        keyword(Keyword::As).then_use(
+        keyword(Keyword::As).then_demand(
             guarded_file_handle_or_expression_p().or_syntax_error("Expected: #file-number%"),
         )
     }

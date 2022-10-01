@@ -1,4 +1,4 @@
-use crate::common::QError;
+use crate::common::{ParserErrorTrait, QError};
 use crate::parser::pc::{Parser, Tokenizer};
 use crate::parser_declaration;
 
@@ -14,7 +14,7 @@ where
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let first = self.parser.parse(tokenizer)?;
         let right_parser = (self.right_factory)(&first);
-        let second = right_parser.parse(tokenizer)?;
+        let second = right_parser.parse(tokenizer).no_incomplete()?;
         Ok((first, second))
     }
 }

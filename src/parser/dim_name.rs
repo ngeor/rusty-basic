@@ -63,7 +63,7 @@ fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
         .and_opt_factory(|lower_bound_expr| {
             whitespace_boundary_after_expr(lower_bound_expr)
                 .and(keyword(Keyword::To))
-                .then_use(
+                .then_demand(
                     expression::guarded_expression_node_p()
                         .or_syntax_error("Expected: expression after TO"),
                 )
@@ -131,7 +131,7 @@ impl ExtendedTypeParser {
 
     fn string(reader: &mut impl Tokenizer) -> Result<DimType, QError> {
         let opt_len = star()
-            .then_use(
+            .then_demand(
                 expression::expression_node_p().or_syntax_error("Expected: string length after *"),
             )
             .parse_opt(reader)?;

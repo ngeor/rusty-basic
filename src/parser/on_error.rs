@@ -7,7 +7,7 @@ use crate::parser::{Expression, Keyword, OnErrorOption, Statement};
 
 pub fn statement_on_error_go_to_p() -> impl Parser<Output = Statement> {
     Seq2::new(keyword_pair(Keyword::On, Keyword::Error), whitespace())
-        .then_use(
+        .then_demand(
             next()
                 .or(goto())
                 .or_syntax_error("Expected: GOTO or RESUME"),
@@ -21,7 +21,7 @@ fn next() -> impl Parser<Output = OnErrorOption> {
 }
 
 fn goto() -> impl Parser<Output = OnErrorOption> {
-    keyword_followed_by_whitespace_p(Keyword::GoTo).then_use(
+    keyword_followed_by_whitespace_p(Keyword::GoTo).then_demand(
         goto_label()
             .or(goto_zero())
             .or_syntax_error("Expected: label or 0"),

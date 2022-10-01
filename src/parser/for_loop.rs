@@ -44,7 +44,7 @@ fn parse_for_step_p() -> impl Parser<
         .and_opt_factory(|(_, _, upper)| {
             whitespace_boundary_after_expr(upper)
                 .and(keyword(Keyword::Step))
-                .then_use(
+                .then_demand(
                     expression::guarded_expression_node_p()
                         .or_syntax_error("Expected: expression after STEP"),
                 )
@@ -70,7 +70,9 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
 }
 
 fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
-    whitespace().then_use(expression::word::word_p().with_pos())
+    whitespace()
+        .and(expression::word::word_p().with_pos())
+        .keep_right()
 }
 
 #[cfg(test)]

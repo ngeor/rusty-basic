@@ -139,7 +139,7 @@ pub trait Parser {
         AndOptFactoryPC::new(self, f)
     }
 
-    fn then_use<R>(self, other: R) -> GuardPC<Self, R>
+    fn then_demand<R>(self, other: R) -> GuardPC<Self, R>
     where
         Self: Sized,
         R: Parser,

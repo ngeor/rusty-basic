@@ -6,7 +6,7 @@ use crate::parser::types::*;
 
 pub fn do_loop_p() -> impl Parser<Output = Statement> {
     keyword(Keyword::Do)
-        .then_use(do_condition_top().or(do_condition_bottom()))
+        .then_demand(do_condition_top().or(do_condition_bottom()))
         .map(Statement::DoLoop)
 }
 

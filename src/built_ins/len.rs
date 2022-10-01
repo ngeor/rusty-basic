@@ -7,7 +7,7 @@ pub mod parser {
 
     pub fn parse() -> impl Parser<Output = Expression> {
         keyword(Keyword::Len)
-            .then_use(expressions_non_opt("Expected: variable"))
+            .then_demand(expressions_non_opt("Expected: variable"))
             .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
     }
 }

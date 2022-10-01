@@ -15,8 +15,9 @@ pub mod parser {
     }
 
     fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {
-        equal_sign()
-            .then_use(expression_node_p().or_syntax_error("Expected expression after equal sign"))
+        equal_sign().then_demand(
+            expression_node_p().or_syntax_error("Expected expression after equal sign"),
+        )
     }
 }
 

@@ -44,11 +44,9 @@ impl<'a> KeywordChoice<'a> {
             None
         }
     }
-}
 
-impl<'a> ErrorProvider for KeywordChoice<'a> {
-    fn provide_error_message(&self) -> String {
-        keyword_syntax_error(self.keywords.iter())
+    fn to_err(&self) -> Result<(Keyword, Token), QError> {
+        Err(QError::Expected(keyword_syntax_error(self.keywords.iter())))
     }
 }
 

@@ -2,7 +2,7 @@ use crate::common::QError;
 use crate::parser::char_reader::file_char_reader;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
-use crate::parser::{Keyword, SORTED_KEYWORDS_STR};
+use crate::parser::SORTED_KEYWORDS_STR;
 use std::fs::File;
 use std::str::Chars;
 
@@ -150,63 +150,6 @@ pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
 }
 
 //
-// KeywordParser
-//
-
-struct KeywordParser {
-    keyword: Keyword,
-}
-
-impl Parser for KeywordParser {
-    type Output = Token;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match tokenizer.read()? {
-            Some(token) => {
-                if self.keyword == token {
-                    // check for trailing dollar sign
-                    match tokenizer.read()? {
-                        Some(follow_up) => {
-                            if follow_up.kind == TokenType::DollarSign as i32 {
-                                tokenizer.unread(follow_up);
-                                tokenizer.unread(token);
-                                self.to_err()
-                            } else {
-                                tokenizer.unread(follow_up);
-                                Ok(token)
-                            }
-                        }
-                        None => Ok(token),
-                    }
-                } else {
-                    tokenizer.unread(token);
-                    self.to_err()
-                }
-            }
-            None => self.to_err(),
-        }
-    }
-}
-
-impl ErrorProvider for KeywordParser {
-    fn provide_error_message(&self) -> String {
-        format!("Expected: {}", self.keyword)
-    }
-}
-
-pub fn keyword(keyword: Keyword) -> impl Parser<Output = Token> {
-    KeywordParser { keyword }
-}
-
-// TODO #[deprecated]
-pub fn keyword_followed_by_whitespace_p(k: Keyword) -> impl Parser {
-    Seq2::new(keyword(k), whitespace())
-}
-
-pub fn keyword_pair(first: Keyword, second: Keyword) -> impl Parser {
-    Seq3::new(keyword(first), whitespace(), keyword(second))
-}
-
-//
 // OrError
 //
 
@@ -263,45 +206,21 @@ impl<S> OrErrorTrait for S {
     }
 }
 
-// IdentifierOrKeyword
-
-struct IdentifierOrKeyword;
-
-impl TokenPredicate for IdentifierOrKeyword {
-    fn test(&self, token: &Token) -> bool {
-        token.kind == TokenType::Keyword as i32 || token.kind == TokenType::Identifier as i32
-    }
-}
-
-impl ErrorProvider for IdentifierOrKeyword {
-    fn provide_error_message(&self) -> String {
-        // TODO: this is new because it used to be an opt parser
-        "Expected: identifier or keyword".to_owned()
-    }
-}
-
 pub fn identifier_or_keyword() -> impl Parser<Output = Token> {
-    IdentifierOrKeyword.parser()
-}
-
-struct IdentifierOrKeywordWithoutDot;
-
-impl TokenPredicate for IdentifierOrKeywordWithoutDot {
-    fn test(&self, token: &Token) -> bool {
-        (token.kind == TokenType::Keyword as i32 || token.kind == TokenType::Identifier as i32)
-            && !token.text.contains('.')
-    }
-}
-
-impl ErrorProvider for IdentifierOrKeywordWithoutDot {
-    fn provide_error_message(&self) -> String {
-        // TODO this didn't exist because it was an opt parser
-        "Expected: identifier or keyword without dot".to_owned()
-    }
+    any_token()
+        .filter(|token| {
+            token.kind == TokenType::Keyword as i32 || token.kind == TokenType::Identifier as i32
+        })
+        .map_incomplete_err(|| QError::Expected("Expected: identifier or keyword".to_owned()))
 }
 
 pub fn identifier_or_keyword_without_dot() -> impl Parser<Output = Token> {
-    IdentifierOrKeywordWithoutDot.parser()
+    any_token()
+        .filter(|token| {
+            (token.kind == TokenType::Keyword as i32 || token.kind == TokenType::Identifier as i32)
+                && !token.text.contains('.')
+        })
+        .map_incomplete_err(|| QError::Expected("Expected: identifier or keyword".to_owned()))
 }
 
 #[cfg(test)]

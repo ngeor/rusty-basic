@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::pc::{ErrorProvider, Parser, Tokenizer};
+use crate::parser::pc::{Parser, Tokenizer};
 use crate::parser::pc_specific::{keyword_syntax_error, TokenType};
 use crate::parser::Keyword;
 
@@ -41,8 +41,10 @@ where
     }
 }
 
-impl<T> ErrorProvider for KeywordMap<T> {
-    fn provide_error_message(&self) -> String {
-        keyword_syntax_error(self.mappings.iter().map(|(k, _)| k))
+impl<T> KeywordMap<T> {
+    fn to_err(&self) -> Result<T, QError> {
+        Err(QError::Expected(keyword_syntax_error(
+            self.mappings.iter().map(|(k, _)| k),
+        )))
     }
 }

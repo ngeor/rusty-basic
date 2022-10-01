@@ -113,6 +113,7 @@ impl From<TokenType> for QError {
             }
             _ => match token_type {
                 TokenType::Whitespace => "Expected: whitespace".to_owned(),
+                // TODO : implement and use Display
                 _ => format!("Expected: token of type {:?}", token_type),
             },
         })

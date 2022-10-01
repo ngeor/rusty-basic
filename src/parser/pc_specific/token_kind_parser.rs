@@ -2,43 +2,9 @@
 // TokenKindParser
 //
 
-use crate::common::{QError};
-use crate::parser::pc::{any_token, ErrorProvider, OptAndPC, Parser, Token, TokenPredicate};
+use crate::common::QError;
+use crate::parser::pc::{any_token, OptAndPC, Parser, Token};
 use crate::parser::pc_specific::TokenType;
-use std::convert::TryFrom;
-
-#[deprecated]
-pub struct TokenKindParser {
-    token_type: TokenType,
-}
-
-impl TokenKindParser {
-    pub fn new(token_type: TokenType) -> Self {
-        Self { token_type }
-    }
-}
-
-impl TokenPredicate for TokenKindParser {
-    fn test(&self, token: &Token) -> bool {
-        token.kind == self.token_type as i32
-    }
-}
-
-impl ErrorProvider for TokenKindParser {
-    fn provide_error_message(&self) -> String {
-        match char::try_from(self.token_type) {
-            Ok(ch) => format!("Expected: {}", ch),
-            _ => {
-                if self.token_type == TokenType::Whitespace {
-                    "Expected: whitespace".to_owned()
-                } else {
-                    // TODO use Display instead of Debug
-                    format!("Expected: token of type {:?}", self.token_type)
-                }
-            }
-        }
-    }
-}
 
 /// Equal sign, surrounded by optional whitespace.
 ///

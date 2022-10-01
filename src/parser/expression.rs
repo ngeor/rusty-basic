@@ -206,29 +206,22 @@ mod string_literal {
     pub fn string_literal_p() -> impl Parser<Output = Expression> {
         seq3(
             string_delimiter(),
-            InsideString.parser().zero_or_more(),
+            inside_string(),
             string_delimiter(),
             |_, token_list, _| Expression::StringLiteral(token_list_to_string(&token_list)),
         )
     }
 
-    fn string_delimiter() -> TokenPredicateParser<TokenKindParser> {
-        TokenKindParser::new(TokenType::DoubleQuote).parser()
+    fn string_delimiter() -> impl Parser<Output = Token> {
+        any_token_of(TokenType::DoubleQuote)
     }
 
-    struct InsideString;
-
-    impl TokenPredicate for InsideString {
-        fn test(&self, token: &Token) -> bool {
-            token.kind != TokenType::DoubleQuote as i32 && token.kind != TokenType::Eol as i32
-        }
-    }
-
-    impl ErrorProvider for InsideString {
-        fn provide_error_message(&self) -> String {
-            // TODO: this never gets called because InsideString used to be a opt-parser
-            "Expected: inside of string".to_owned()
-        }
+    fn inside_string() -> impl Parser<Output = TokenList> {
+        any_token()
+            .filter(|token| {
+                token.kind != TokenType::DoubleQuote as i32 && token.kind != TokenType::Eol as i32
+            })
+            .zero_or_more()
     }
 }
 
@@ -351,42 +344,38 @@ mod number_literal {
     }
 
     pub fn hexadecimal_literal_p() -> impl Parser<Output = Expression> {
-        TokenKindParser::new(TokenType::HexDigits)
-            .parser()
-            .and_then(|token| {
-                // token text is &HFFFF or &H-FFFF
-                let mut s: String = token.text;
-                // remove &
-                s.remove(0);
-                // remove H
-                s.remove(0);
-                if s.starts_with('-') {
-                    Err(QError::Overflow)
-                } else {
-                    convert_hex_digits(s)
-                }
-            })
+        any_token_of(TokenType::HexDigits).and_then(|token| {
+            // token text is &HFFFF or &H-FFFF
+            let mut s: String = token.text;
+            // remove &
+            s.remove(0);
+            // remove H
+            s.remove(0);
+            if s.starts_with('-') {
+                Err(QError::Overflow)
+            } else {
+                convert_hex_digits(s)
+            }
+        })
     }
 
     pub fn octal_literal_p() -> impl Parser<Output = Expression> {
-        TokenKindParser::new(TokenType::OctDigits)
-            .parser()
-            .and_then(|token| {
-                let mut s: String = token.text;
-                // remove &
-                s.remove(0);
-                // remove O
-                s.remove(0);
-                if s.starts_with('-') {
-                    Err(QError::Overflow)
-                } else {
-                    convert_oct_digits(s)
-                }
-            })
+        any_token_of(TokenType::OctDigits).and_then(|token| {
+            let mut s: String = token.text;
+            // remove &
+            s.remove(0);
+            // remove O
+            s.remove(0);
+            if s.starts_with('-') {
+                Err(QError::Overflow)
+            } else {
+                convert_oct_digits(s)
+            }
+        })
     }
 
-    pub fn digits() -> impl Parser<Output = Token> + Parser<Output = Token> {
-        TokenKindParser::new(TokenType::Digits).parser()
+    pub fn digits() -> impl Parser<Output = Token> {
+        any_token_of(TokenType::Digits)
     }
 }
 

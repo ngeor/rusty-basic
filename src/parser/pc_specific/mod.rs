@@ -1,5 +1,6 @@
 mod csv;
 mod in_parenthesis;
+mod keyword;
 mod keyword_choice;
 mod keyword_map;
 mod specific;
@@ -13,6 +14,7 @@ mod with_pos;
 
 pub use csv::*;
 pub use in_parenthesis::*;
+pub use keyword::*;
 pub use keyword_choice::*;
 pub use keyword_map::*;
 pub use specific::*;

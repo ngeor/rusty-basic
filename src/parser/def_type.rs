@@ -47,23 +47,10 @@ fn letter_range() -> impl Parser<Output = LetterRange> {
 }
 
 fn letter() -> impl Parser<Output = char> {
-    LetterToken.parser().map(token_to_char)
-}
-
-struct LetterToken;
-
-impl TokenPredicate for LetterToken {
-    fn test(&self, token: &Token) -> bool {
-        token.kind == TokenType::Identifier as i32
-            && token.text.chars().count() == 1
-            && is_letter(token_ref_to_char(token))
-    }
-}
-
-impl ErrorProvider for LetterToken {
-    fn provide_error_message(&self) -> String {
-        "Expected: letter".to_owned()
-    }
+    any_token_of(TokenType::Identifier)
+        .filter(|token| token.text.chars().count() == 1 && is_letter(token_ref_to_char(token)))
+        .map(token_to_char)
+        .map_incomplete_err(|| QError::expected("Expected: letter"))
 }
 
 fn token_ref_to_char(token: &Token) -> char {

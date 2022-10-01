@@ -39,7 +39,7 @@ pub fn name_with_dot_p() -> impl Parser<Output = Name> {
 
 pub fn bare_name_as_token() -> impl Parser<Output = Token> {
     UnlessFollowedBy(
-        TokenKindParser::new(TokenType::Identifier).parser(),
+        any_token_of(TokenType::Identifier),
         type_qualifier_as_token(),
     )
     .validate(ensure_length_and_not_keyword)

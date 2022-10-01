@@ -96,20 +96,17 @@ impl Parser for CommonSeparator {
 }
 
 pub fn peek_eof_or_statement_separator() -> impl Parser<Output = ()> {
-    PeekStatementSeparatorOrEof(StatementSeparator2)
+    PeekStatementSeparatorOrEof
 }
 
-struct PeekStatementSeparatorOrEof<P>(P);
+struct PeekStatementSeparatorOrEof;
 
-impl<P> Parser for PeekStatementSeparatorOrEof<P>
-where
-    P: TokenPredicate,
-{
+impl Parser for PeekStatementSeparatorOrEof {
     type Output = ();
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<(), QError> {
         match tokenizer.read()? {
             Some(token) => {
-                let found_it = self.0.test(&token);
+                let found_it = Self::test(&token);
                 tokenizer.unread(token);
                 if found_it {
                     Ok(())
@@ -122,10 +119,8 @@ where
     }
 }
 
-struct StatementSeparator2;
-
-impl TokenPredicate for StatementSeparator2 {
-    fn test(&self, token: &Token) -> bool {
+impl PeekStatementSeparatorOrEof {
+    fn test(token: &Token) -> bool {
         token.kind == TokenType::Colon as i32
             || token.kind == TokenType::SingleQuote as i32
             || token.kind == TokenType::Eol as i32

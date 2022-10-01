@@ -3,9 +3,7 @@ use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, Location};
 use crate::parser::expression::expression_node_p;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::{
-    comma, keyword, trailing_comma_error, whitespace,
-};
+use crate::parser::pc_specific::{comma, keyword, trailing_comma_error, whitespace};
 use crate::parser::{Expression, ExpressionNode, ExpressionNodes, Keyword, Statement};
 
 /// Parses built-in subs which have a special syntax.

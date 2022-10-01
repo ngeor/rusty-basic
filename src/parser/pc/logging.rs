@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::pc::parsers::{Parser};
+use crate::parser::pc::parsers::Parser;
 use crate::parser::pc::tokenizers::Tokenizer;
 use crate::parser_declaration;
 

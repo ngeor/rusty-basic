@@ -43,7 +43,7 @@ fn using_p(is_leading_whitespace_optional: bool) -> impl Parser<Output = Express
     seq3(
         whitespace_boundary(is_leading_whitespace_optional).and(keyword(Keyword::Using)),
         expression::guarded_expression_node_p().or_syntax_error("Expected: expression after USING"),
-        item_p(';'),
+        semicolon(),
         |_, using_expr, _| using_expr,
     )
 }

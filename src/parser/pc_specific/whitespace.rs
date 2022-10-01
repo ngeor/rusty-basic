@@ -3,13 +3,11 @@ use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser_declaration;
 
-pub fn whitespace() -> TokenPredicateParser<TokenKindParser> {
-    TokenKindParser::new(TokenType::Whitespace).parser()
-}
-
-parser_declaration!(struct LeadingWhitespace {
-    needs_whitespace: bool,
-});
+parser_declaration!(
+    struct LeadingWhitespace {
+        needs_whitespace: bool,
+    }
+);
 
 fn parse_opt_space(
     tokenizer: &mut impl Tokenizer,
@@ -49,18 +47,20 @@ where
     }
 }
 
-// TODO delete the `preceded_by_req_ws and preceded_by_opt_ws` traits
+#[deprecated]
 pub trait WhitespaceTrait
 where
     Self: Sized + Parser,
 {
+    #[deprecated]
     fn preceded_by_ws(self, mandatory: bool) -> LeadingWhitespace<Self>;
 
+    #[deprecated]
     fn preceded_by_opt_ws(self) -> LeadingWhitespace<Self> {
         self.preceded_by_ws(false)
     }
 
-    // TODO #[deprecated]
+    #[deprecated]
     fn preceded_by_req_ws(self) -> LeadingWhitespace<Self> {
         self.preceded_by_ws(true)
     }
@@ -77,5 +77,3 @@ where
         }
     }
 }
-
-// TODO get rid of the preceding ws trait

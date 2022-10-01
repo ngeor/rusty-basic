@@ -33,7 +33,7 @@ fn letter_range() -> impl Parser<Output = LetterRange> {
     // TODO prevent duplication of error message with ErrorProvider
     letter()
         .or_syntax_error("Expected: letter")
-        .and_opt(item_p('-').and(letter()))
+        .and_opt(minus_sign().and(letter()))
         .and_then(|(l, opt_r)| match opt_r {
             Some((_, r)) => {
                 if l < r {

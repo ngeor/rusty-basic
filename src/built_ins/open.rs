@@ -71,8 +71,7 @@ pub mod parser {
         seq3(
             whitespace().and(keyword(Keyword::Len)),
             equal_sign(),
-            expression::expression_node_p()
-                .or_syntax_error("Expected: expression after LEN ="),
+            expression::expression_node_p().or_syntax_error("Expected: expression after LEN ="),
             |_, _, e| e,
         )
     }

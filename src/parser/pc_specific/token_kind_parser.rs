@@ -2,10 +2,12 @@
 // TokenKindParser
 //
 
+use crate::common::{QError};
+use crate::parser::pc::{any_token, ErrorProvider, OptAndPC, Parser, Token, TokenPredicate};
+use crate::parser::pc_specific::TokenType;
 use std::convert::TryFrom;
-use crate::parser::pc::{ErrorProvider, OptAndPC, Parser, Token, TokenPredicate, TokenPredicateParser};
-use crate::parser::pc_specific::{TokenType, whitespace};
 
+#[deprecated]
 pub struct TokenKindParser {
     token_type: TokenType,
 }
@@ -38,54 +40,89 @@ impl ErrorProvider for TokenKindParser {
     }
 }
 
-// TODO #[deprecated]
-pub fn item_p(ch: char) -> TokenPredicateParser<TokenKindParser> {
-    TokenKindParser::new(match ch {
-        ',' => TokenType::Comma,
-        '=' => TokenType::Equals,
-        '$' => TokenType::DollarSign,
-        '\'' => TokenType::SingleQuote,
-        '-' => TokenType::Minus,
-        '*' => TokenType::Star,
-        '#' => TokenType::Pound,
-        '.' => TokenType::Dot,
-        ';' => TokenType::Semicolon,
-        '>' => TokenType::Greater,
-        '<' => TokenType::Less,
-        ':' => TokenType::Colon,
-        _ => panic!("not implemented {}", ch),
-    })
-        .parser()
-}
-
 /// Equal sign, surrounded by optional whitespace.
 ///
 /// `<ws>? = <ws>?`
 pub fn equal_sign() -> impl Parser<Output = Token> {
-    OptAndPC::new(whitespace(), item_p('=')).and_opt(whitespace())
-        .map(|((_, t), _)| t)
+    any_token_of_ws(TokenType::Equals)
 }
 
 /// Comma, surrounded by optional whitespace.
 ///
 /// `<ws>? , <ws>?`
 pub fn comma() -> impl Parser<Output = Token> {
-    OptAndPC::new(whitespace(), item_p(',')).and_opt(whitespace())
-        .map(|((_, t), _)| t)
+    any_token_of_ws(TokenType::Comma)
 }
 
 /// Star (*), surrounded by optional whitespace.
 ///
 /// `<ws>? * <ws>?`
 pub fn star() -> impl Parser<Output = Token> {
-    OptAndPC::new(whitespace(), item_p('*')).and_opt(whitespace())
-        .map(|((_, t), _)| t)
+    any_token_of_ws(TokenType::Star)
+}
+
+/// Colon.
+///
+/// `:`
+pub fn colon() -> impl Parser<Output = Token> {
+    any_token_of(TokenType::Colon)
 }
 
 /// Colon, surrounded by optional whitespace.
 ///
 /// `<ws>? : <ws>?`
-pub fn colon() -> impl Parser<Output = Token> {
-    OptAndPC::new(whitespace(), item_p(':')).and_opt(whitespace())
+pub fn colon_ws() -> impl Parser<Output = Token> {
+    any_token_of_ws(TokenType::Colon)
+}
+
+/// Dollar sign.
+///
+/// `$`
+pub fn dollar_sign() -> impl Parser<Output = Token> {
+    any_token_of(TokenType::DollarSign)
+}
+
+/// Minus sign.
+///
+/// `-`
+pub fn minus_sign() -> impl Parser<Output = Token> {
+    any_token_of(TokenType::Minus)
+}
+
+/// Dot.
+///
+/// `.`
+pub fn dot() -> impl Parser<Output = Token> {
+    any_token_of(TokenType::Dot)
+}
+
+/// Pound.
+///
+/// `#`
+pub fn pound() -> impl Parser<Output = Token> {
+    any_token_of(TokenType::Pound)
+}
+
+/// Semicolon.
+///
+/// `;`
+pub fn semicolon() -> impl Parser<Output = Token> {
+    any_token_of(TokenType::Semicolon)
+}
+
+/// Whitespace.
+pub fn whitespace() -> impl Parser<Output = Token> {
+    any_token_of(TokenType::Whitespace)
+}
+
+pub fn any_token_of(token_type: TokenType) -> impl Parser<Output = Token> {
+    any_token()
+        .filter(move |token| token.kind == token_type as i32)
+        .map_incomplete_err(move || QError::from(token_type))
+}
+
+fn any_token_of_ws(token_type: TokenType) -> impl Parser<Output = Token> {
+    OptAndPC::new(whitespace(), any_token_of(token_type))
+        .and_opt(whitespace())
         .map(|((_, t), _)| t)
 }

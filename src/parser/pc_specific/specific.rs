@@ -3,110 +3,8 @@ use crate::parser::char_reader::file_char_reader;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::{Keyword, SORTED_KEYWORDS_STR};
-use std::convert::TryFrom;
 use std::fs::File;
 use std::str::Chars;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum TokenType {
-    Eol,
-    Whitespace,
-    Digits,
-    LParen,
-    RParen,
-    Colon,
-    Semicolon,
-    Comma,
-    SingleQuote,
-    DoubleQuote,
-    Dot,
-    Equals,
-    Greater,
-    Less,
-    GreaterEquals,
-    LessEquals,
-    NotEquals,
-    Plus,
-    Minus,
-    Star,
-    Slash,
-    Ampersand,
-    ExclamationMark,
-    Pound,
-    DollarSign,
-    Percent,
-    // keyword needs to be before Identifier
-    Keyword,
-    Identifier,
-    OctDigits,
-    HexDigits,
-
-    // unknown must be last
-    Unknown,
-}
-
-impl TryFrom<i32> for TokenType {
-    type Error = QError;
-
-    fn try_from(value: i32) -> Result<Self, Self::Error> {
-        let all_tokens = [
-            TokenType::Eol,
-            TokenType::Whitespace,
-            TokenType::Digits,
-            TokenType::LParen,
-            TokenType::RParen,
-            TokenType::Colon,
-            TokenType::Semicolon,
-            TokenType::Comma,
-            TokenType::SingleQuote,
-            TokenType::DoubleQuote,
-            TokenType::Dot,
-            TokenType::Equals,
-            TokenType::Greater,
-            TokenType::Less,
-            TokenType::GreaterEquals,
-            TokenType::LessEquals,
-            TokenType::NotEquals,
-            TokenType::Plus,
-            TokenType::Minus,
-            TokenType::Star,
-            TokenType::Slash,
-            TokenType::Ampersand,
-            TokenType::ExclamationMark,
-            TokenType::Pound,
-            TokenType::DollarSign,
-            TokenType::Percent,
-            TokenType::Keyword,
-            TokenType::Identifier,
-            TokenType::OctDigits,
-            TokenType::HexDigits,
-            TokenType::Unknown,
-        ];
-        if value >= 0 && value < all_tokens.len() as i32 {
-            Ok(all_tokens[value as usize])
-        } else {
-            Err(QError::InternalError(format!(
-                "Token index {} out of bounds",
-                value
-            )))
-        }
-    }
-}
-
-impl TryFrom<TokenType> for char {
-    type Error = QError;
-
-    fn try_from(value: TokenType) -> Result<Self, Self::Error> {
-        match value {
-            TokenType::Semicolon => Ok(';'),
-            TokenType::Comma => Ok(','),
-            TokenType::Equals => Ok('='),
-            TokenType::Colon => Ok(':'),
-            TokenType::Star => Ok('*'),
-            _ => Err(QError::InternalError(format!("not implemented"))),
-        }
-    }
-}
 
 #[derive(Clone, Copy)]
 enum OctOrHex {
@@ -306,35 +204,6 @@ pub fn keyword_followed_by_whitespace_p(k: Keyword) -> impl Parser {
 
 pub fn keyword_pair(first: Keyword, second: Keyword) -> impl Parser {
     Seq3::new(keyword(first), whitespace(), keyword(second))
-}
-
-//
-// MapErr
-//
-
-pub struct MapErrParser<P>(P, QError);
-
-impl<P> Parser for MapErrParser<P>
-where
-    P: Parser,
-{
-    type Output = P::Output;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.0.parse(tokenizer).map_err(|_| self.1.clone())
-    }
-}
-
-// TODO #[deprecated]
-pub trait MapErrTrait {
-    fn map_err(self, err: QError) -> MapErrParser<Self>
-    where
-        Self: Sized;
-}
-
-impl<S> MapErrTrait for S {
-    fn map_err(self, err: QError) -> MapErrParser<Self> {
-        MapErrParser(self, err)
-    }
 }
 
 //

@@ -12,7 +12,7 @@ use crate::parser::types::*;
 pub fn for_loop_p() -> impl Parser<Output = Statement> {
     parse_for_step_p()
         .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::Next)))
-        .and_demand(keyword(Keyword::Next).map_err(QError::ForWithoutNext))
+        .and_demand(keyword(Keyword::Next).map_incomplete_err(|| QError::ForWithoutNext))
         .and_opt(next_counter_p())
         .map(
             |(

@@ -124,7 +124,7 @@ fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
 
 fn unary_minus_p() -> impl Parser<Output = ExpressionNode> {
     seq2(
-        item_p('-').with_pos(),
+        minus_sign().with_pos(),
         lazy_expression_node_p().or_syntax_error("Expected: expression after unary minus"),
         |l, r| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos),
     )
@@ -242,8 +242,8 @@ mod number_literal {
     pub fn number_literal_p() -> impl Parser<Output = ExpressionNode> {
         // TODO support more qualifiers besides '#'
         digits()
-            .and_opt(item_p('.').then_use(digits()))
-            .and_opt(item_p('#'))
+            .and_opt(dot().then_use(digits()))
+            .and_opt(pound())
             .and_then(
                 |((int_digits, opt_fraction_digits), opt_double)| match opt_fraction_digits {
                     Some(fraction_digits) => parse_floating_point_literal_no_pos(
@@ -258,9 +258,9 @@ mod number_literal {
     }
 
     pub fn float_without_leading_zero_p() -> impl Parser<Output = ExpressionNode> {
-        item_p('.')
+        dot()
             .and_demand(digits())
-            .and_opt(item_p('#'))
+            .and_opt(pound())
             .and_then(|((_, fraction_digits), opt_double)| {
                 parse_floating_point_literal_no_pos(
                     "0".to_string(),
@@ -495,7 +495,7 @@ pub mod word {
 
     // TODO rewrite this
     fn dot_property_name() -> impl Parser<Output = Vec<String>> {
-        item_p('.').then_use(Properties)
+        dot().then_use(Properties)
     }
 
     struct Properties;

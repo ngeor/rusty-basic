@@ -62,7 +62,7 @@ pub fn single_line_statement_p() -> impl Parser<Output = Statement> {
 fn statement_label_p() -> impl Parser<Output = Statement> {
     // labels can have dots
     bare_name_as_token()
-        .and(item_p(':'))
+        .and(colon())
         .keep_left()
         .map(|l| Statement::Label(l.text.into()))
 }

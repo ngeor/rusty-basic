@@ -5,6 +5,7 @@
 use crate::common::QError;
 use crate::parser::pc::{Parser, Token, Tokenizer};
 
+#[deprecated]
 pub trait TokenPredicate
 where
     Self: Sized,
@@ -16,6 +17,7 @@ where
     }
 }
 
+#[deprecated]
 pub trait ErrorProvider {
     fn provide_error_message(&self) -> String;
 

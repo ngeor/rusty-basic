@@ -4,8 +4,8 @@ use crate::parser::pc::and_opt_factory::AndOptFactoryPC;
 use crate::parser::pc::many::ManyParser;
 use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
-    Alt2, AndDemandLookingBack, AndPC, AndThen, GuardPC, LoggingPC, LoopWhile, Seq2, Tokenizer,
-    Undo, ValidateParser,
+    Alt2, AndDemandLookingBack, AndPC, AndThen, FilterParser, GuardPC, LoggingPC, LoopWhile,
+    MapIncompleteErrParser, Seq2, Tokenizer, Undo, ValidateParser,
 };
 
 pub trait Parser {
@@ -37,6 +37,15 @@ pub trait Parser {
         AndThen::new(self, mapper)
     }
 
+    fn filter<F>(self, predicate: F) -> FilterParser<Self, F>
+    where
+        Self: Sized,
+        F: Fn(&Self::Output) -> bool,
+        Self::Output: Undo,
+    {
+        FilterParser::new(self, predicate)
+    }
+
     fn loop_while<F>(self, predicate: F, allow_empty: bool) -> LoopWhile<Self, F>
     where
         Self: Sized,
@@ -51,6 +60,14 @@ pub trait Parser {
         F: Fn(Self::Output) -> U,
     {
         FnMapper::new(self, mapper)
+    }
+
+    fn map_incomplete_err<F>(self, supplier: F) -> MapIncompleteErrParser<Self, F>
+    where
+        Self: Sized,
+        F: Fn() -> QError,
+    {
+        MapIncompleteErrParser::new(self, supplier)
     }
 
     fn keep_left<L, R>(self) -> KeepLeftMapper<Self>
@@ -89,7 +106,6 @@ pub trait Parser {
     {
         LoggingPC::new(self, tag.to_owned())
     }
-
 
     // TODO #[deprecated]
     fn parse_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {

@@ -26,7 +26,7 @@ pub fn token_list_to_string(list: &[Token]) -> String {
 }
 
 pub trait Tokenizer {
-    // TODO this can also be Result<Token, ?> where ? is Fatal/NotFound
+    // TODO this can also be Result<Token, ?> where ? is Fatal/NotFound, or an Iterator
     fn read(&mut self) -> std::io::Result<Option<Token>>;
     fn unread(&mut self, token: Token);
     fn position(&self) -> Location;
@@ -161,7 +161,11 @@ impl<R: CharReader> TokenizerImpl<R> {
                 },
             }))
         } else {
-            Ok(None)
+            if buffer.is_empty() {
+                Ok(None)
+            } else {
+                Err(std::io::Error::new(std::io::ErrorKind::Other, "Could not recognize token!"))
+            }
         }
     }
 }

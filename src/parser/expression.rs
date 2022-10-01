@@ -94,16 +94,9 @@ pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
 /// Missing expressions are not allowed.
 /// The first expression needs to be preceded by space or surrounded in parenthesis.
 pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
-    // TODO this is a form of ManyParser
-    seq2(
+    AccumulateParser::new(
         guarded_expression_node_p(),
-        comma()
-            .then_use(expression_node_p().or_syntax_error("Expected: expression after comma"))
-            .zero_or_more(),
-        |first, mut remaining| {
-            remaining.insert(0, first);
-            remaining
-        },
+        comma().then_use(expression_node_p().or_syntax_error("Expected: expression after comma")),
     )
 }
 

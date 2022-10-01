@@ -7,6 +7,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
+    /// Example: FIELD #1, 10 AS FirstName$, 20 AS LastName$
     pub fn parse() -> impl Parser<Output = Statement> {
         seq5(
             keyword(Keyword::Field),
@@ -21,8 +22,6 @@ pub mod parser {
     }
 
     fn field_item_p() -> impl Parser<Output = (ExpressionNode, NameNode)> {
-        // TODO 'AS' does not need leading whitespace if expression has parenthesis
-        // TODO solve this not by peeking the previous but with a new expression:: function
         seq4(
             expression_node_followed_by_ws(),
             keyword(Keyword::As),

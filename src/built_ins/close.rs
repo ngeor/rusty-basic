@@ -13,12 +13,11 @@ pub mod parser {
     // first_file_handle ::= "(" <file_handle> ")" | <ws> <file_handle>
     // file_handle ::= "#" <digits> | <expr>
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword(Keyword::Close)
-            .and_opt(file_handles())
-            .keep_right()
-            .map(|opt_file_handles| {
-                Statement::BuiltInSubCall(BuiltInSub::Close, opt_file_handles.unwrap_or_default())
-            })
+        seq2(
+            keyword(Keyword::Close),
+            file_handles(),
+            |_, file_handles| Statement::BuiltInSubCall(BuiltInSub::Close, file_handles),
+        )
     }
 
     fn file_handles() -> impl Parser<Output = ExpressionNodes> {
@@ -26,6 +25,7 @@ pub mod parser {
             guarded_file_handle_or_expression_p(),
             comma().then_demand(file_handle_or_expression_p()),
         )
+        .allow_default()
     }
 }
 

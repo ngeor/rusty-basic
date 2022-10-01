@@ -1,34 +1,25 @@
 pub mod parser {
+    use crate::built_ins::parser::{encode_opt_file_handle_arg, opt_file_handle_comma_p};
     use crate::built_ins::BuiltInSub;
-    use crate::common::*;
     use crate::parser::expression::expression_node_p;
-    use crate::parser::expression::file_handle::file_handle_comma_p;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
+    // INPUT variable-list
+    // INPUT #file-number%, variable-list
     pub fn parse() -> impl Parser<Output = Statement> {
-        // INPUT variable-list
-        // LINE INPUT variable$
-        // INPUT #file-number%, variable-list
-        // LINE INPUT #file-number%, variable$
-        keyword_followed_by_whitespace_p(Keyword::Input)
-            .and_opt(file_handle_comma_p())
-            .and_demand(
-                csv(expression_node_p(), false)
-                    .or_syntax_error("Expected: #file-number or variable"),
-            )
-            .map(|((_, opt_loc_file_number), variables)| {
-                let mut args: Vec<ExpressionNode> = vec![];
-                if let Some(Locatable { element, pos }) = opt_loc_file_number {
-                    args.push(Expression::IntegerLiteral(1.into()).at(Location::start()));
-                    args.push(Expression::from(element).at(pos));
-                } else {
-                    args.push(Expression::IntegerLiteral(0.into()).at(Location::start()));
-                }
+        seq4(
+            keyword(Keyword::Input),
+            whitespace(),
+            opt_file_handle_comma_p(),
+            csv(expression_node_p(), false).or_syntax_error("Expected: #file-number or variable"),
+            |_, _, opt_loc_file_number, variables| {
+                let mut args: Vec<ExpressionNode> = encode_opt_file_handle_arg(opt_loc_file_number);
                 args.extend(variables);
                 Statement::BuiltInSubCall(BuiltInSub::Input, args)
-            })
+            },
+        )
     }
 }
 

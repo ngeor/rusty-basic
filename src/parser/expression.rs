@@ -181,10 +181,6 @@ pub mod file_handle {
         file_handle_as_expression_node_p().or(expression_node_p())
     }
 
-    pub fn file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
-        seq2(file_handle_p(), comma(), |l, _| l)
-    }
-
     pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
         ws_file_handle().or(guarded_expression_node_p())
     }

@@ -7,11 +7,13 @@ pub mod parser {
 
     // DEF SEG(=expr)?
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword_pair(Keyword::Def, Keyword::Seg)
-            .and_opt(equal_sign_and_expression())
-            .map(|(_, opt_expr_node)| {
+        seq2(
+            keyword_pair(Keyword::Def, Keyword::Seg),
+            equal_sign_and_expression().allow_none(),
+            |_, opt_expr_node| {
                 Statement::BuiltInSubCall(BuiltInSub::DefSeg, opt_expr_node.into_iter().collect())
-            })
+            },
+        )
     }
 
     fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {

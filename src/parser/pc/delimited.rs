@@ -33,6 +33,7 @@ impl<L, R> Delimited<L> for (L, Option<R>) {
     }
 }
 
+// TODO : delete all `allow_empty` replace by the new `AllowDefault` parser
 /// Gets a list of items separated by a delimiter.
 /// One or more if parser, zero or more if non-opt-parser.
 pub fn delimited_by<P: Parser, D: Parser>(

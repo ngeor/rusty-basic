@@ -1,7 +1,8 @@
 use crate::built_ins;
 use crate::built_ins::BuiltInSub;
-use crate::common::{AtLocation, Location};
+use crate::common::{AtLocation, FileHandle, Locatable, Location};
 use crate::parser::expression::expression_node_p;
+use crate::parser::expression::file_handle::file_handle_p;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{comma, keyword, trailing_comma_error, whitespace};
 use crate::parser::{Expression, ExpressionNode, ExpressionNodes, Keyword, Statement};
@@ -74,4 +75,28 @@ pub fn csv_allow_missing() -> impl Parser<Output = Vec<Option<ExpressionNode>>> 
         true,
         trailing_comma_error(),
     )
+}
+
+/// Used in `INPUT` and `LINE INPUT`, parsing an optional file number.
+pub fn opt_file_handle_comma_p() -> impl Parser<Output = Option<Locatable<FileHandle>>> {
+    seq2(file_handle_p(), comma(), |l, _| l).allow_none()
+}
+
+/// Used in `INPUT` and `LINE INPUT`, converts an optional file-number into arguments.
+pub fn encode_opt_file_handle_arg(
+    opt_file_number_node: Option<Locatable<FileHandle>>,
+) -> ExpressionNodes {
+    match opt_file_number_node {
+        Some(file_number_node) => {
+            vec![
+                // 1 == present
+                Expression::IntegerLiteral(1).at(Location::start()),
+                file_number_node.map(Expression::from),
+            ]
+        }
+        None => {
+            // 0 == absent
+            vec![Expression::IntegerLiteral(0).at(Location::start())]
+        }
+    }
 }

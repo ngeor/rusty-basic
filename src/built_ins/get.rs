@@ -7,15 +7,22 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
+        parse_get_or_put(Keyword::Get, BuiltInSub::Get)
+    }
+
+    pub fn parse_get_or_put(
+        k: Keyword,
+        built_in_sub: BuiltInSub,
+    ) -> impl Parser<Output = Statement> {
         seq5(
-            keyword(Keyword::Get),
+            keyword(k),
             whitespace(),
             file_handle_p().or_syntax_error("Expected: file-number"),
             comma(),
             expression_node_p().or_syntax_error("Expected: record-number"),
-            |_, _, file_number_node, _, record_number_expr_node| {
+            move |_, _, file_number_node, _, record_number_expr_node| {
                 Statement::BuiltInSubCall(
-                    BuiltInSub::Get,
+                    built_in_sub,
                     vec![
                         file_number_node.map(Expression::from),
                         record_number_expr_node,

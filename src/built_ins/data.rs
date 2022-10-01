@@ -6,12 +6,11 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword(Keyword::Data)
-            .and_opt(expression_nodes_p())
-            .keep_right()
-            .map(|opt_args| {
-                Statement::BuiltInSubCall(BuiltInSub::Data, opt_args.unwrap_or_default())
-            })
+        seq2(
+            keyword(Keyword::Data),
+            expression_nodes_p().allow_default(),
+            |_, args| Statement::BuiltInSubCall(BuiltInSub::Data, args),
+        )
     }
 }
 

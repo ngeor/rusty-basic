@@ -4,8 +4,8 @@ use crate::parser::pc::and_opt_factory::AndOptFactoryPC;
 use crate::parser::pc::many::ManyParser;
 use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
-    Alt2, AndDemandLookingBack, AndPC, AndThen, FilterParser, GuardPC, LoggingPC, LoopWhile,
-    MapIncompleteErrParser, Seq2, Tokenizer, Undo, ValidateParser,
+    AllowDefaultParser, AllowNoneParser, Alt2, AndDemandLookingBack, AndPC, AndThen, FilterParser,
+    GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, Seq2, Tokenizer, Undo, ValidateParser,
 };
 
 pub trait Parser {
@@ -114,6 +114,21 @@ pub trait Parser {
             Err(QError::Incomplete) | Err(QError::Expected(_)) => Ok(None),
             Err(err) => Err(err),
         }
+    }
+
+    fn allow_none(self) -> AllowNoneParser<Self>
+    where
+        Self: Sized,
+    {
+        AllowNoneParser::new(self)
+    }
+
+    fn allow_default(self) -> AllowDefaultParser<Self>
+    where
+        Self: Sized,
+        Self::Output: Default,
+    {
+        AllowDefaultParser::new(self)
     }
 
     fn and<R>(self, right: R) -> AndPC<Self, R>

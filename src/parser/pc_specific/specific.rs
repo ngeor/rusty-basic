@@ -1,4 +1,4 @@
-use crate::common::QError;
+use crate::common::{ParserErrorTrait, QError};
 use crate::parser::char_reader::file_char_reader;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
@@ -179,10 +179,13 @@ where
     P: Parser,
 {
     type Output = P::Output;
+
+    // TODO there is duplication with the map_incomplete_err fn
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match self.0.parse_opt(tokenizer)? {
-            Some(value) => Ok(value),
-            None => Err(QError::syntax_error(self.1)),
+        match self.0.parse(tokenizer) {
+            Ok(value) => Ok(value),
+            Err(err) if err.is_incomplete() => Err(QError::syntax_error(self.1)),
+            Err(err) => Err(err)
         }
     }
 }

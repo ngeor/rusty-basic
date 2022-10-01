@@ -3,12 +3,13 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::expressions_non_opt;
 
     pub fn parse() -> impl Parser<Output = Expression> {
         seq3(
             keyword(Keyword::String_),
             dollar_sign(),
-            expression::expressions_non_opt("Expected: expression"),
+            expressions_non_opt("Expected: expression"),
             |_, _, v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v),
         )
     }

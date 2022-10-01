@@ -3,6 +3,7 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::expression_node_p;
 
     // DEF SEG(=expr)?
     pub fn parse() -> impl Parser<Output = Statement> {
@@ -15,7 +16,7 @@ pub mod parser {
 
     fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {
         equal_sign().then_use(
-            expression::expression_node_p().or_syntax_error("Expected expression after equal sign"),
+            expression_node_p().or_syntax_error("Expected expression after equal sign"),
         )
     }
 

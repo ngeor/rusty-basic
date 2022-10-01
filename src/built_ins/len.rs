@@ -3,10 +3,11 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::expressions_non_opt;
 
     pub fn parse() -> impl Parser<Output = Expression> {
         keyword(Keyword::Len)
-            .then_use(expression::expressions_non_opt("Expected: variable"))
+            .then_use(expressions_non_opt("Expected: variable"))
             .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
     }
 }

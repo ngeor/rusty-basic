@@ -3,10 +3,11 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::expression_nodes_p;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword(Keyword::Read)
-            .then_use(expression::expression_nodes_p().or_syntax_error("Expected: variable"))
+            .then_use(expression_nodes_p().or_syntax_error("Expected: variable"))
             .map(|args| Statement::BuiltInSubCall(BuiltInSub::Read, args))
     }
 }

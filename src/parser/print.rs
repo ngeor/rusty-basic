@@ -1,9 +1,10 @@
 use crate::common::*;
-use crate::parser::expression;
+use crate::parser::expression::{expression_node_p, guarded_expression_node_p};
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::convert::TryFrom;
+use crate::parser::expression::file_handle::file_handle_p;
 
 pub fn parse_print_p() -> impl Parser<Output = Statement> {
     keyword(Keyword::Print)
@@ -42,7 +43,7 @@ pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
 fn using_p(is_leading_whitespace_optional: bool) -> impl Parser<Output = ExpressionNode> {
     seq3(
         whitespace_boundary(is_leading_whitespace_optional).and(keyword(Keyword::Using)),
-        expression::guarded_expression_node_p().or_syntax_error("Expected: expression after USING"),
+        guarded_expression_node_p().or_syntax_error("Expected: expression after USING"),
         semicolon(),
         |_, using_expr, _| using_expr,
     )
@@ -58,7 +59,7 @@ impl Parser for FirstPrintArg {
         if self.needs_leading_whitespace_for_expression {
             semicolon_or_comma_as_print_arg_p()
                 .preceded_by_opt_ws()
-                .or(expression::guarded_expression_node_p().map(PrintArg::Expression))
+                .or(guarded_expression_node_p().map(PrintArg::Expression))
                 .parse(reader)
         } else {
             any_print_arg_p().preceded_by_opt_ws().parse(reader)
@@ -68,7 +69,7 @@ impl Parser for FirstPrintArg {
 
 fn any_print_arg_p() -> impl Parser<Output = PrintArg> {
     semicolon_or_comma_as_print_arg_p()
-        .or(expression::expression_node_p().map(PrintArg::Expression))
+        .or(expression_node_p().map(PrintArg::Expression))
 }
 
 impl TryFrom<TokenType> for PrintArg {
@@ -108,7 +109,7 @@ impl Parser for PrintArgLookingBack {
 
 fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
     seq2(
-        expression::file_handle_p().preceded_by_req_ws(),
+        file_handle_p().preceded_by_req_ws(),
         comma(),
         |l, _| l,
     )

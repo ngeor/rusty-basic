@@ -3,13 +3,14 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::{back_guarded_expression_node_p, guarded_expression_node_p};
 
     pub fn parse() -> impl Parser<Output = Statement> {
         seq4(
             keyword(Keyword::Name),
-            expression::back_guarded_expression_node_p().or_syntax_error("Expected: old file name"),
+            back_guarded_expression_node_p().or_syntax_error("Expected: old file name"),
             keyword(Keyword::As),
-            expression::guarded_expression_node_p().or_syntax_error("Expected: new file name"),
+            guarded_expression_node_p().or_syntax_error("Expected: new file name"),
             |_, l, _, r| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]),
         )
     }

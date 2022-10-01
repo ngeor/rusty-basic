@@ -3,6 +3,7 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::{back_guarded_expression_node_p, guarded_expression_node_p};
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair(Keyword::View, Keyword::Print)
@@ -15,9 +16,9 @@ pub mod parser {
 
     fn parse_args() -> impl Parser<Output = ExpressionNodes> {
         seq3(
-            expression::back_guarded_expression_node_p(),
+            back_guarded_expression_node_p(),
             keyword(Keyword::To),
-            expression::guarded_expression_node_p().or_syntax_error("Expected: expression"),
+            guarded_expression_node_p().or_syntax_error("Expected: expression"),
             |l, _, r| vec![l, r],
         )
     }

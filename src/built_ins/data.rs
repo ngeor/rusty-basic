@@ -3,10 +3,11 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::expression_nodes_p;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword(Keyword::Data)
-            .and_opt(expression::expression_nodes_p())
+            .and_opt(expression_nodes_p())
             .keep_right()
             .map(|opt_args| {
                 Statement::BuiltInSubCall(BuiltInSub::Data, opt_args.unwrap_or_default())

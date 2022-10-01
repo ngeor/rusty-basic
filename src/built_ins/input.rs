@@ -4,6 +4,8 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::expression_node_p;
+    use crate::parser::expression::file_handle::file_handle_comma_p;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         // INPUT variable-list
@@ -11,9 +13,9 @@ pub mod parser {
         // INPUT #file-number%, variable-list
         // LINE INPUT #file-number%, variable$
         keyword_followed_by_whitespace_p(Keyword::Input)
-            .and_opt(expression::file_handle_comma_p())
+            .and_opt(file_handle_comma_p())
             .and_demand(
-                csv(expression::expression_node_p(), false)
+                csv(expression_node_p(), false)
                     .or_syntax_error("Expected: #file-number or variable"),
             )
             .map(|((_, opt_loc_file_number), variables)| {

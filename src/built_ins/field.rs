@@ -4,12 +4,14 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::expression_node_followed_by_ws;
+    use crate::parser::expression::file_handle::file_handle_p;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         seq5(
             keyword(Keyword::Field),
             whitespace(),
-            expression::file_handle_p().or_syntax_error("Expected: file-number"),
+            file_handle_p().or_syntax_error("Expected: file-number"),
             comma(),
             csv(field_item_p(), false).or_syntax_error("Expected: field width"),
             |_, _, file_number, _, fields| {
@@ -22,7 +24,7 @@ pub mod parser {
         // TODO 'AS' does not need leading whitespace if expression has parenthesis
         // TODO solve this not by peeking the previous but with a new expression:: function
         seq4(
-            expression::expression_node_followed_by_ws(),
+            expression_node_followed_by_ws(),
             keyword(Keyword::As),
             whitespace(),
             name::name_with_dot_p()

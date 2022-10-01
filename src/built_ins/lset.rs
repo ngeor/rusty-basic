@@ -4,6 +4,7 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::expression_node_p;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         seq4(
@@ -12,7 +13,7 @@ pub mod parser {
                 .with_pos()
                 .or_syntax_error("Expected: variable after LSET"),
             equal_sign(),
-            expression::expression_node_p().or_syntax_error("Expected: expression"),
+            expression_node_p().or_syntax_error("Expected: expression"),
             |_, name_node, _, value_expr_node| {
                 Statement::BuiltInSubCall(BuiltInSub::LSet, build_args(name_node, value_expr_node))
             },

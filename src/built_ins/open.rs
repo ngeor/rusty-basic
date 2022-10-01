@@ -4,11 +4,13 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::{back_guarded_expression_node_p, expression_node_p};
+    use crate::parser::expression::file_handle::guarded_file_handle_or_expression_p;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword(Keyword::Open)
             .and_demand(
-                expression::back_guarded_expression_node_p()
+                back_guarded_expression_node_p()
                     .or_syntax_error("Expected: file name after OPEN"),
             )
             .and_opt(parse_open_mode_p())
@@ -62,7 +64,7 @@ pub mod parser {
     // AS ( expression )
     fn parse_file_number_p() -> impl Parser<Output = ExpressionNode> {
         keyword(Keyword::As).then_use(
-            expression::guarded_file_handle_or_expression_p()
+            guarded_file_handle_or_expression_p()
                 .or_syntax_error("Expected: #file-number%"),
         )
     }
@@ -71,7 +73,7 @@ pub mod parser {
         seq3(
             whitespace().and(keyword(Keyword::Len)),
             equal_sign(),
-            expression::expression_node_p().or_syntax_error("Expected: expression after LEN ="),
+            expression_node_p().or_syntax_error("Expected: expression after LEN ="),
             |_, _, e| e,
         )
     }

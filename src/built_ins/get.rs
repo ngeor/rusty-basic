@@ -3,13 +3,15 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::expression_node_p;
+    use crate::parser::expression::file_handle::file_handle_p;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         seq4(
             keyword_followed_by_whitespace_p(Keyword::Get),
-            expression::file_handle_p().or_syntax_error("Expected: file-number"),
+            file_handle_p().or_syntax_error("Expected: file-number"),
             comma(),
-            expression::expression_node_p().or_syntax_error("Expected: record-number"),
+            expression_node_p().or_syntax_error("Expected: record-number"),
             |_, file_number, _, r| {
                 Statement::BuiltInSubCall(
                     BuiltInSub::Get,

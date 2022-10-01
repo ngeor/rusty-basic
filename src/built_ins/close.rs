@@ -3,14 +3,15 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::file_handle::{file_handle_or_expression_p, guarded_file_handle_or_expression_p};
 
     pub fn parse() -> impl Parser<Output = Statement> {
         // TODO rewrite this
         keyword(Keyword::Close)
             .and_opt(
-                expression::guarded_file_handle_or_expression_p().and_opt(
+                guarded_file_handle_or_expression_p().and_opt(
                     comma()
-                        .and(expression::file_handle_or_expression_p())
+                        .and(file_handle_or_expression_p())
                         .keep_right()
                         .one_or_more(),
                 ),

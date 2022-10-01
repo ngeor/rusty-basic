@@ -4,12 +4,14 @@ pub mod parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
+    use crate::parser::expression::expression_node_p;
+    use crate::parser::expression::file_handle::file_handle_comma_p;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         Seq2::new(keyword_pair(Keyword::Line, Keyword::Input), whitespace())
-            .and_opt(expression::file_handle_comma_p())
+            .and_opt(file_handle_comma_p())
             .and_demand(
-                expression::expression_node_p()
+                expression_node_p()
                     .or_syntax_error("Expected: #file-number or variable"),
             )
             .map(|((_, opt_loc_file_handle), variable)| {

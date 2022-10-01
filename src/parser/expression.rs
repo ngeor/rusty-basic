@@ -138,47 +138,65 @@ pub fn unary_not_p() -> impl Parser<Output = ExpressionNode> {
     )
 }
 
-// TODO move the file handle logic into the built_ins as it is only used there
+pub mod file_handle {
+    //! Used by PRINT and built-ins
 
-pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
-    FileHandleParser
-}
+    use crate::common::*;
+    use crate::parser::{Expression, ExpressionNode};
+    use crate::parser::expression::{expression_node_p, guarded_expression_node_p};
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
+
+    pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
+        FileHandleParser
+    }
 
 // TODO support simple functions without `&self` for cases like FileHandleParser
 
-struct FileHandleParser;
+    struct FileHandleParser;
 
-impl Parser for FileHandleParser {
-    type Output = Locatable<FileHandle>;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let pos = tokenizer.position();
-        match tokenizer.read()? {
-            Some(token) if token.kind == TokenType::Pound as i32 => match tokenizer.read()? {
-                Some(token) if token.kind == TokenType::Digits as i32 => {
-                    match token.text.parse::<u8>() {
-                        Ok(d) if d > 0 => Ok(FileHandle::from(d).at(pos)),
-                        _ => Err(QError::BadFileNameOrNumber),
+    impl Parser for FileHandleParser {
+        type Output = Locatable<FileHandle>;
+        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+            let pos = tokenizer.position();
+            match tokenizer.read()? {
+                Some(token) if token.kind == TokenType::Pound as i32 => match tokenizer.read()? {
+                    Some(token) if token.kind == TokenType::Digits as i32 => {
+                        match token.text.parse::<u8>() {
+                            Ok(d) if d > 0 => Ok(FileHandle::from(d).at(pos)),
+                            _ => Err(QError::BadFileNameOrNumber),
+                        }
                     }
+                    _ => Err(QError::syntax_error("Expected: digits after #")),
+                },
+                Some(token) => {
+                    tokenizer.unread(token);
+                    Err(QError::Incomplete)
                 }
-                _ => Err(QError::syntax_error("Expected: digits after #")),
-            },
-            Some(token) => {
-                tokenizer.unread(token);
-                Err(QError::Incomplete)
+                _ => Err(QError::Incomplete),
             }
-            _ => Err(QError::Incomplete),
         }
     }
-}
 
-/// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
-pub fn file_handle_as_expression_node_p() -> impl Parser<Output = ExpressionNode> {
-    file_handle_p()
-        .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
-}
+    /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
+    pub fn file_handle_as_expression_node_p() -> impl Parser<Output = ExpressionNode> {
+        file_handle_p()
+            .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
+    }
 
-pub fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
-    file_handle_as_expression_node_p().or(expression_node_p())
+    pub fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
+        file_handle_as_expression_node_p().or(expression_node_p())
+    }
+
+    pub fn file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
+        seq2(file_handle_p(), comma(), |l, _| l)
+    }
+
+    pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
+        file_handle_as_expression_node_p()
+            .preceded_by_req_ws()
+            .or(guarded_expression_node_p())
+    }
 }
 
 pub fn parenthesis_p() -> impl Parser<Output = Expression> {
@@ -186,16 +204,6 @@ pub fn parenthesis_p() -> impl Parser<Output = Expression> {
         lazy_expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
     )
     .map(|child| Expression::Parenthesis(Box::new(child)))
-}
-
-pub fn file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
-    seq2(file_handle_p(), comma(), |l, _| l)
-}
-
-pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
-    file_handle_as_expression_node_p()
-        .preceded_by_req_ws()
-        .or(guarded_expression_node_p())
 }
 
 mod string_literal {

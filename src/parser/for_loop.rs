@@ -70,7 +70,7 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
 }
 
 fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
-    expression::word::word_p().with_pos().preceded_by_req_ws()
+    whitespace().then_use(expression::word::word_p().with_pos())
 }
 
 #[cfg(test)]

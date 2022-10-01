@@ -13,10 +13,13 @@ pub mod parser {
             file_handle_p().or_syntax_error("Expected: file-number"),
             comma(),
             expression_node_p().or_syntax_error("Expected: record-number"),
-            |_, _, file_number, _, r| {
+            |_, _, file_number_node, _, record_number_expr_node| {
                 Statement::BuiltInSubCall(
                     BuiltInSub::Get,
-                    vec![file_number.map(|x| Expression::IntegerLiteral(x.into())), r],
+                    vec![
+                        file_number_node.map(Expression::from),
+                        record_number_expr_node,
+                    ],
                 )
             },
         )

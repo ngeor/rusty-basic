@@ -34,11 +34,11 @@ pub mod parser {
     }
 
     fn build_args(
-        file_number: Locatable<FileHandle>,
+        file_number_node: Locatable<FileHandle>,
         fields: Vec<(ExpressionNode, NameNode)>,
     ) -> ExpressionNodes {
         let mut args: ExpressionNodes = vec![];
-        args.push(file_number.map(|x| Expression::IntegerLiteral(x.into())));
+        args.push(file_number_node.map(Expression::from));
         for (width, Locatable { element: name, pos }) in fields {
             args.push(width);
             let variable_name: String = name.bare_name().as_ref().to_string();

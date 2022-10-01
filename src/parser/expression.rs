@@ -174,8 +174,7 @@ pub mod file_handle {
 
     /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
     pub fn file_handle_as_expression_node_p() -> impl Parser<Output = ExpressionNode> {
-        file_handle_p()
-            .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
+        file_handle_p().map(|file_handle_node| file_handle_node.map(Expression::from))
     }
 
     pub fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {

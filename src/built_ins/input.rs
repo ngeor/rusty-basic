@@ -22,7 +22,7 @@ pub mod parser {
                 let mut args: Vec<ExpressionNode> = vec![];
                 if let Some(Locatable { element, pos }) = opt_loc_file_number {
                     args.push(Expression::IntegerLiteral(1.into()).at(Location::start()));
-                    args.push(Expression::IntegerLiteral(element.into()).at(pos));
+                    args.push(Expression::from(element).at(pos));
                 } else {
                     args.push(Expression::IntegerLiteral(0.into()).at(Location::start()));
                 }

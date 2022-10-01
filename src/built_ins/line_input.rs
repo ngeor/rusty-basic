@@ -16,7 +16,7 @@ pub mod parser {
                 // add dummy arguments to encode the file number
                 if let Some(Locatable { element, pos }) = opt_loc_file_handle {
                     args.push(Expression::IntegerLiteral(1.into()).at(Location::start()));
-                    args.push(Expression::IntegerLiteral(element.into()).at(pos));
+                    args.push(Expression::from(element).at(pos));
                 } else {
                     args.push(Expression::IntegerLiteral(0.into()).at(Location::start()));
                 }

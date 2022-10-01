@@ -82,6 +82,12 @@ impl From<i64> for Expression {
     }
 }
 
+impl From<FileHandle> for Expression {
+    fn from(file_handle: FileHandle) -> Self {
+        Expression::IntegerLiteral(file_handle.into())
+    }
+}
+
 impl Expression {
     pub fn from_constant(value: Variant) -> Result<Self, QError> {
         match value {

@@ -13,7 +13,7 @@ use crate::parser::types::*;
 // A AS INTEGER
 // A AS UserDefinedType
 
-pub fn param_name_node_p() -> impl OptParser<Output = ParamNameNode> {
+pub fn param_name_node_p() -> impl Parser<Output = ParamNameNode> {
     param_name_p()
         .with_pos()
         .and_opt(type_definition_extended_p())
@@ -61,7 +61,7 @@ pub fn param_name_node_p() -> impl OptParser<Output = ParamNameNode> {
         )
 }
 
-fn param_name_p() -> impl OptParser<Output = (Name, bool)> {
+fn param_name_p() -> impl Parser<Output = (Name, bool)> {
     expression::word::word_p().and_then(|name_expr| match name_expr {
         Expression::Variable(var_name, _) => Ok((var_name, false)),
         Expression::Property(_, _, _) => {
@@ -90,14 +90,14 @@ fn final_param_type(param_type: ParamType, is_array: bool) -> ParamType {
     }
 }
 
-fn type_definition_extended_p() -> impl OptParser<Output = ParamType> {
+fn type_definition_extended_p() -> impl Parser<Output = ParamType> {
     // <ws+> AS <ws+> identifier
     keyword_followed_by_whitespace_p(Keyword::As)
         .preceded_by_req_ws()
         .then_use(extended_type_p().or_syntax_error("Expected: type after AS"))
 }
 
-fn extended_type_p() -> impl OptParser<Output = ParamType> {
+fn extended_type_p() -> impl Parser<Output = ParamType> {
     identifier_or_keyword_without_dot()
         .with_pos()
         .and_then(

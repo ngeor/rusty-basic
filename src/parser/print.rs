@@ -5,7 +5,7 @@ use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::convert::TryFrom;
 
-pub fn parse_print_p() -> impl OptParser<Output = Statement> {
+pub fn parse_print_p() -> impl Parser<Output = Statement> {
     keyword(Keyword::Print)
         .and_opt(ws_file_handle_comma_p())
         .and_opt_factory(|(_, opt_file_number)| using_p(opt_file_number.is_some()))
@@ -22,7 +22,7 @@ pub fn parse_print_p() -> impl OptParser<Output = Statement> {
         })
 }
 
-pub fn parse_lprint_p() -> impl OptParser<Output = Statement> {
+pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
     keyword(Keyword::LPrint)
         .and_opt(using_p(true))
         .and_opt_factory(|(_keyword, opt_using)| {
@@ -39,7 +39,7 @@ pub fn parse_lprint_p() -> impl OptParser<Output = Statement> {
         })
 }
 
-fn using_p(is_leading_whitespace_optional: bool) -> impl OptParser<Output = ExpressionNode> {
+fn using_p(is_leading_whitespace_optional: bool) -> impl Parser<Output = ExpressionNode> {
     seq3(
         whitespace_boundary(is_leading_whitespace_optional).and(keyword(Keyword::Using)),
         expression::guarded_expression_node_p().or_syntax_error("Expected: expression after USING"),
@@ -56,8 +56,8 @@ impl ParserBase for FirstPrintArg {
     type Output = PrintArg;
 }
 
-impl OptParser for FirstPrintArg {
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+impl Parser for FirstPrintArg {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         if self.needs_leading_whitespace_for_expression {
             semicolon_or_comma_as_print_arg_p()
                 .preceded_by_opt_ws()
@@ -69,7 +69,7 @@ impl OptParser for FirstPrintArg {
     }
 }
 
-fn any_print_arg_p() -> impl OptParser<Output = PrintArg> {
+fn any_print_arg_p() -> impl Parser<Output = PrintArg> {
     semicolon_or_comma_as_print_arg_p()
         .or(expression::expression_node_p().map(PrintArg::Expression))
 }
@@ -86,7 +86,7 @@ impl TryFrom<TokenType> for PrintArg {
     }
 }
 
-fn semicolon_or_comma_as_print_arg_p() -> impl OptParser<Output = PrintArg> {
+fn semicolon_or_comma_as_print_arg_p() -> impl Parser<Output = PrintArg> {
     TryFromParser::new()
 }
 
@@ -98,8 +98,8 @@ impl ParserBase for PrintArgLookingBack {
     type Output = PrintArg;
 }
 
-impl OptParser for PrintArgLookingBack {
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+impl Parser for PrintArgLookingBack {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         if self.prev_print_arg_was_expression {
             // only comma or semicolon is allowed
             semicolon_or_comma_as_print_arg_p()
@@ -112,7 +112,7 @@ impl OptParser for PrintArgLookingBack {
     }
 }
 
-fn ws_file_handle_comma_p() -> impl OptParser<Output = Locatable<FileHandle>> {
+fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
     seq2(
         expression::file_handle_p().preceded_by_req_ws(),
         comma_surrounded_by_opt_ws(),
@@ -138,25 +138,20 @@ impl ParserBase for PrintArgsParser {
     type Output = Vec<PrintArg>;
 }
 
-impl OptParser for PrintArgsParser {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let opt_first_arg = self.seed_parser.parse(tokenizer)?;
-        match opt_first_arg {
-            Some(first_arg) => {
-                let mut args = vec![first_arg];
-                loop {
-                    let parser = PrintArgLookingBack {
-                        prev_print_arg_was_expression: args.last().unwrap().is_expression(),
-                    };
-                    match parser.parse(tokenizer)? {
-                        Some(next_arg) => args.push(next_arg),
-                        None => break,
-                    }
-                }
-                Ok(Some(args))
+impl Parser for PrintArgsParser {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let first_arg = self.seed_parser.parse(tokenizer)?;
+        let mut args = vec![first_arg];
+        loop {
+            let parser = PrintArgLookingBack {
+                prev_print_arg_was_expression: args.last().unwrap().is_expression(),
+            };
+            match parser.parse_opt(tokenizer)? {
+                Some(next_arg) => args.push(next_arg),
+                None => break,
             }
-            None => Ok(None),
         }
+        Ok(args)
     }
 }
 

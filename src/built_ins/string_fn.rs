@@ -4,7 +4,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl OptParser<Output = Expression> {
+    pub fn parse() -> impl Parser<Output = Expression> {
         seq3(
             keyword(Keyword::String_),
             item_p('$'),

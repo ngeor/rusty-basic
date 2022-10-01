@@ -26,6 +26,7 @@ pub fn token_list_to_string(list: &[Token]) -> String {
 }
 
 pub trait Tokenizer {
+    // TODO this can also be Result<Token, ?> where ? is Fatal/NotFound
     fn read(&mut self) -> std::io::Result<Option<Token>>;
     fn unread(&mut self, token: Token);
     fn position(&self) -> Location;

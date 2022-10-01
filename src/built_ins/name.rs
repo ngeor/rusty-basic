@@ -4,7 +4,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl OptParser<Output = Statement> {
+    pub fn parse() -> impl Parser<Output = Statement> {
         seq4(
             keyword(Keyword::Name),
             expression::back_guarded_expression_node_p().or_syntax_error("Expected: old file name"),

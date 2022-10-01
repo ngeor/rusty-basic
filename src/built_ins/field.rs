@@ -5,20 +5,20 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl OptParser<Output = Statement> {
+    pub fn parse() -> impl Parser<Output = Statement> {
         seq5(
             keyword(Keyword::Field),
             whitespace(),
             expression::file_handle_p().or_syntax_error("Expected: file-number"),
             comma_surrounded_by_opt_ws(),
-            csv(field_item_p()).or_syntax_error("Expected: field width"),
+            csv(field_item_p(), false).or_syntax_error("Expected: field width"),
             |_, _, file_number, _, fields| {
                 Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
             },
         )
     }
 
-    fn field_item_p() -> impl OptParser<Output = (ExpressionNode, NameNode)> {
+    fn field_item_p() -> impl Parser<Output = (ExpressionNode, NameNode)> {
         // TODO 'AS' does not need leading whitespace if expression has parenthesis
         // TODO solve this not by peeking the previous but with a new expression:: function
         seq3(

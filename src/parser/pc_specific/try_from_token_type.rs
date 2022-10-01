@@ -16,20 +16,20 @@ impl<O> ParserBase for TryFromParser<O> {
     type Output = O;
 }
 
-impl<O> OptParser for TryFromParser<O>
+impl<O> Parser for TryFromParser<O>
 where
     O: TryFrom<TokenType, Error = QError>,
 {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) => match TokenType::try_from(token.kind).and_then(O::try_from) {
-                Ok(value) => Ok(Some(value)),
+                Ok(value) => Ok(value),
                 Err(_) => {
                     tokenizer.unread(token);
-                    Ok(None)
+                    Err(QError::Incomplete)
                 }
             },
-            None => Ok(None),
+            None => Err(QError::Incomplete),
         }
     }
 }

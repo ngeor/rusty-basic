@@ -9,7 +9,7 @@ use crate::parser::types::*;
 // statements
 // NEXT (I)
 
-pub fn for_loop_p() -> impl OptParser<Output = Statement> {
+pub fn for_loop_p() -> impl Parser<Output = Statement> {
     parse_for_step_p()
         .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::Next)))
         .and_demand(keyword(Keyword::Next).map_err(QError::ForWithoutNext))
@@ -32,7 +32,7 @@ pub fn for_loop_p() -> impl OptParser<Output = Statement> {
 }
 
 /// Parses the "FOR I = 1 TO 2 [STEP X]" part
-fn parse_for_step_p() -> impl OptParser<
+fn parse_for_step_p() -> impl Parser<
     Output = (
         ExpressionNode,
         ExpressionNode,
@@ -53,7 +53,7 @@ fn parse_for_step_p() -> impl OptParser<
 }
 
 /// Parses the "FOR I = 1 TO 2" part
-fn parse_for_p() -> impl OptParser<Output = (ExpressionNode, ExpressionNode, ExpressionNode)> {
+fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, ExpressionNode)> {
     seq6(
         keyword_followed_by_whitespace_p(Keyword::For),
         expression::word::word_p()
@@ -71,7 +71,7 @@ fn parse_for_p() -> impl OptParser<Output = (ExpressionNode, ExpressionNode, Exp
     )
 }
 
-fn next_counter_p() -> impl OptParser<Output = ExpressionNode> {
+fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
     expression::word::word_p().with_pos().preceded_by_req_ws()
 }
 

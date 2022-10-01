@@ -4,12 +4,12 @@ use crate::common::{AtLocation, Location};
 use crate::parser::expression::expression_node_p;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{
-    comma_surrounded_by_opt_ws, keyword_followed_by_whitespace_p, trailing_comma_error,
+    comma_surrounded_by_opt_ws, keyword, trailing_comma_error, whitespace,
 };
 use crate::parser::{Expression, ExpressionNode, ExpressionNodes, Keyword, Statement};
 
 /// Parses built-in subs which have a special syntax.
-pub fn parse() -> impl OptParser<Output = Statement> {
+pub fn parse() -> impl Parser<Output = Statement> {
     Alt16::new(
         built_ins::close::parser::parse(),
         built_ins::color::parser::parse(),
@@ -32,21 +32,24 @@ pub fn parse() -> impl OptParser<Output = Statement> {
 
 // needed for built-in functions that are also keywords (e.g. LEN), so they
 // cannot be parsed by the `word` module.
-pub fn built_in_function_call_p() -> impl OptParser<Output = Expression> {
+pub fn built_in_function_call_p() -> impl Parser<Output = Expression> {
     built_ins::len::parser::parse().or(built_ins::string_fn::parser::parse())
 }
 
 /// Parses built-in subs with optional arguments.
 /// Used only by `COLOR` and `LOCATE`.
 pub fn parse_built_in_sub_with_opt_args(
-    keyword: Keyword,
+    k: Keyword,
     built_in_sub: BuiltInSub,
-) -> impl OptParser<Output = Statement> {
-    keyword_followed_by_whitespace_p(keyword)
-        .then_use(csv_allow_missing())
-        .map(move |opt_args| {
+) -> impl Parser<Output = Statement> {
+    seq3(
+        keyword(k),
+        whitespace(),
+        csv_allow_missing(),
+        move |_, _, opt_args| {
             Statement::BuiltInSubCall(built_in_sub, map_opt_args_to_flags(opt_args))
-        })
+        },
+    )
 }
 
 /// Maps optional arguments to arguments, inserting a dummy first argument indicating
@@ -67,9 +70,10 @@ fn map_opt_args_to_flags(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {
 }
 
 /// Comma separated list of items, allowing items to be missing between commas.
-pub fn csv_allow_missing() -> impl NonOptParser<Output = Vec<Option<ExpressionNode>>> {
+pub fn csv_allow_missing() -> impl Parser<Output = Vec<Option<ExpressionNode>>> {
     parse_delimited_to_items(
         opt_zip(expression_node_p(), comma_surrounded_by_opt_ws()),
+        true,
         trailing_comma_error(),
     )
 }

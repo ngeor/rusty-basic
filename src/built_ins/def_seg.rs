@@ -4,7 +4,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl OptParser<Output = Statement> {
+    pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair(Keyword::Def, Keyword::Seg)
             .and_opt(equal_sign_and_expression())
             .keep_right()
@@ -12,7 +12,7 @@ pub mod parser {
             .map(|args| Statement::BuiltInSubCall(BuiltInSub::DefSeg, args))
     }
 
-    fn equal_sign_and_expression() -> impl OptParser<Output = ExpressionNode> {
+    fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {
         item_p('=').surrounded_by_opt_ws().then_use(
             expression::expression_node_p().or_syntax_error("Expected expression after equal sign"),
         )

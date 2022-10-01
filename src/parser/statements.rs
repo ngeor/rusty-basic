@@ -5,19 +5,20 @@ use crate::parser::statement;
 use crate::parser::statement_separator::Separator;
 use crate::parser::types::*;
 
-pub fn single_line_non_comment_statements_p() -> impl OptParser<Output = StatementNodes> {
+pub fn single_line_non_comment_statements_p() -> impl Parser<Output = StatementNodes> {
     delimited_by_colon(statement::single_line_non_comment_statement_p().with_pos())
         .preceded_by_req_ws()
 }
 
-pub fn single_line_statements_p() -> impl OptParser<Output = StatementNodes> {
+pub fn single_line_statements_p() -> impl Parser<Output = StatementNodes> {
     delimited_by_colon(statement::single_line_statement_p().with_pos()).preceded_by_req_ws()
 }
 
-fn delimited_by_colon<P: OptParser>(parser: P) -> impl OptParser<Output = Vec<P::Output>> {
+fn delimited_by_colon<P: Parser>(parser: P) -> impl Parser<Output = Vec<P::Output>> {
     delimited_by(
         parser,
         item_p(':').surrounded_by_opt_ws(),
+        false,
         QError::syntax_error("Error: trailing colon"),
     )
 }
@@ -38,25 +39,25 @@ impl<S> ParserBase for ZeroOrMoreStatements<S> {
     type Output = StatementNodes;
 }
 
-impl<S> NonOptParser for ZeroOrMoreStatements<S>
+impl<S> Parser for ZeroOrMoreStatements<S>
 where
-    S: OptParser,
+    S: Parser,
     S::Output: Undo,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         // must start with a separator (e.g. after a WHILE condition)
         Separator::NonComment
-            .parse(tokenizer)?
+            .parse_opt(tokenizer)?
             .ok_or(QError::syntax_error("Expected: end-of-statement"))?;
         let mut result: StatementNodes = vec![];
         // TODO rewrite the numeric state or add constants
         let mut state = 0;
         // while not found exit
-        while self.0.parse(tokenizer)?.is_some() {
+        while self.0.parse_opt(tokenizer)?.is_some() {
             if state == 0 || state == 2 {
                 // looking for statement
                 if let Some(statement_node) =
-                    statement::statement_p().with_pos().parse(tokenizer)?
+                    statement::statement_p().with_pos().parse_opt(tokenizer)?
                 {
                     result.push(statement_node);
                     state = 1;
@@ -71,9 +72,9 @@ where
                 let found_separator =
                     if let Some(Statement::Comment(_)) = result.last().map(|x| &x.element) {
                         // last element was comment
-                        Separator::Comment.parse(tokenizer)?.is_some()
+                        Separator::Comment.parse_opt(tokenizer)?.is_some()
                     } else {
-                        Separator::NonComment.parse(tokenizer)?.is_some()
+                        Separator::NonComment.parse_opt(tokenizer)?.is_some()
                     };
                 if found_separator {
                     state = 2;
@@ -94,18 +95,18 @@ impl<P> ParserBase for NegateParser<P> {
     type Output = ();
 }
 
-impl<P> OptParser for NegateParser<P>
+impl<P> Parser for NegateParser<P>
 where
-    P: OptParser,
+    P: Parser,
     P::Output: Undo,
 {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.0.parse(tokenizer)? {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        match self.0.parse_opt(tokenizer)? {
             Some(value) => {
                 value.undo(tokenizer);
-                Ok(None)
+                Err(QError::Incomplete)
             }
-            None => Ok(Some(())),
+            None => Ok(()),
         }
     }
 }

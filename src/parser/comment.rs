@@ -4,7 +4,7 @@ use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
 /// Tries to read a comment.
-pub fn comment_p() -> impl OptParser<Output = Statement> {
+pub fn comment_p() -> impl Parser<Output = Statement> {
     CommentAsString.map(Statement::Comment)
 }
 
@@ -14,8 +14,8 @@ impl ParserBase for CommentAsString {
     type Output = String;
 }
 
-impl OptParser for CommentAsString {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+impl Parser for CommentAsString {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) if token.kind == TokenType::SingleQuote as i32 => {
                 let mut result = String::new();
@@ -27,13 +27,13 @@ impl OptParser for CommentAsString {
                         result.push_str(&token.text);
                     }
                 }
-                Ok(Some(result))
+                Ok(result)
             }
             Some(token) => {
                 tokenizer.unread(token);
-                Ok(None)
+                Err(QError::Incomplete)
             }
-            None => Ok(None),
+            None => Err(QError::Incomplete),
         }
     }
 }

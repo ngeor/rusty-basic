@@ -19,7 +19,7 @@ use crate::parser::types::*;
 // A$(1 TO 2, 0 TO 10)
 // A(1 TO 5) AS INTEGER
 
-pub fn dim_name_node_p() -> impl OptParser<Output = DimNameNode> {
+pub fn dim_name_node_p() -> impl Parser<Output = DimNameNode> {
     name_with_dot_p()
         .with_pos()
         .and_opt(array_dimensions_p())
@@ -35,7 +35,7 @@ pub fn dim_name_node_p() -> impl OptParser<Output = DimNameNode> {
         )
 }
 
-pub fn redim_name_node_p() -> impl OptParser<Output = DimNameNode> {
+pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
     name_with_dot_p()
         .with_pos()
         .and_demand(array_dimensions_p().or_syntax_error("Expected: array dimensions"))
@@ -51,14 +51,14 @@ pub fn redim_name_node_p() -> impl OptParser<Output = DimNameNode> {
         )
 }
 
-fn array_dimensions_p() -> impl OptParser<Output = ArrayDimensions> {
-    in_parenthesis(csv(array_dimension_p()).or_syntax_error("Expected: array dimension"))
+fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
+    in_parenthesis(csv(array_dimension_p(), false).or_syntax_error("Expected: array dimension"))
 }
 
 // expr (e.g. 10)
 // expr ws+ TO ws+ expr (e.g. 1 TO 10)
 // paren_expr ws* TO ws* paren_expr
-fn array_dimension_p() -> impl OptParser<Output = ArrayDimension> {
+fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
     expression::expression_node_p()
         .and_opt_factory(|lower_bound_expr| {
             whitespace_boundary_after_expr(lower_bound_expr)
@@ -80,7 +80,7 @@ fn array_dimension_p() -> impl OptParser<Output = ArrayDimension> {
         })
 }
 
-fn type_definition_extended_p() -> impl OptParser<Output = DimType> {
+fn type_definition_extended_p() -> impl Parser<Output = DimType> {
     // <ws+> AS <ws+> identifier
     seq3(
         whitespace().and(keyword(Keyword::As)),
@@ -90,7 +90,7 @@ fn type_definition_extended_p() -> impl OptParser<Output = DimType> {
     )
 }
 
-fn extended_type_p() -> impl OptParser<Output = DimType> {
+fn extended_type_p() -> impl Parser<Output = DimType> {
     ExtendedTypeParser {}
 }
 
@@ -100,42 +100,39 @@ impl ParserBase for ExtendedTypeParser {
     type Output = DimType;
 }
 
-impl OptParser for ExtendedTypeParser {
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+impl Parser for ExtendedTypeParser {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         // TODO rewrite this
         // TODO only try to parse keyword if the token kind matches
-        let opt_identifier = identifier_or_keyword_without_dot()
+        let Locatable { element: x, pos } = identifier_or_keyword_without_dot()
             .with_pos()
             .parse(reader)?;
-        match opt_identifier {
-            Some(Locatable { element: x, pos }) => match Keyword::from_str(&x.text) {
-                Ok(Keyword::Single) => Self::built_in(TypeQualifier::BangSingle),
-                Ok(Keyword::Double) => Self::built_in(TypeQualifier::HashDouble),
-                Ok(Keyword::String_) => Self::string(reader),
-                Ok(Keyword::Integer) => Self::built_in(TypeQualifier::PercentInteger),
-                Ok(Keyword::Long) => Self::built_in(TypeQualifier::AmpersandLong),
-                Ok(_) => Err(QError::syntax_error(
-                    "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-                )),
-                Err(_) => {
-                    if x.text.chars().count() > name::MAX_LENGTH {
-                        Err(QError::IdentifierTooLong)
-                    } else {
-                        Ok(Some(DimType::UserDefined(BareName::from(x.text).at(pos))))
-                    }
+        match Keyword::from_str(&x.text) {
+            Ok(Keyword::Single) => Self::built_in(TypeQualifier::BangSingle),
+            Ok(Keyword::Double) => Self::built_in(TypeQualifier::HashDouble),
+            Ok(Keyword::String_) => Self::string(reader),
+            Ok(Keyword::Integer) => Self::built_in(TypeQualifier::PercentInteger),
+            Ok(Keyword::Long) => Self::built_in(TypeQualifier::AmpersandLong),
+            Ok(_) => Err(QError::syntax_error(
+                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
+            )),
+            Err(_) => {
+                if x.text.chars().count() > name::MAX_LENGTH {
+                    Err(QError::IdentifierTooLong)
+                } else {
+                    Ok(DimType::UserDefined(BareName::from(x.text).at(pos)))
                 }
-            },
-            _ => Ok(None),
+            }
         }
     }
 }
 
 impl ExtendedTypeParser {
-    fn built_in(q: TypeQualifier) -> Result<Option<DimType>, QError> {
-        Ok(Some(DimType::BuiltIn(q, BuiltInStyle::Extended)))
+    fn built_in(q: TypeQualifier) -> Result<DimType, QError> {
+        Ok(DimType::BuiltIn(q, BuiltInStyle::Extended))
     }
 
-    fn string(reader: &mut impl Tokenizer) -> Result<Option<DimType>, QError> {
+    fn string(reader: &mut impl Tokenizer) -> Result<DimType, QError> {
         let opt_len = whitespace_boundary(true)
             .and(item_p('*'))
             .and_demand(
@@ -143,9 +140,9 @@ impl ExtendedTypeParser {
                     .or_syntax_error("Expected: string length after *"),
             )
             .keep_right()
-            .parse(reader)?;
+            .parse_opt(reader)?;
         match opt_len {
-            Some(len) => Ok(Some(DimType::FixedLengthString(len, 0))),
+            Some(len) => Ok(DimType::FixedLengthString(len, 0)),
             _ => Self::built_in(TypeQualifier::DollarString),
         }
     }

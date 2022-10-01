@@ -10,21 +10,9 @@ where
     type Output = Locatable<P::Output>;
 }
 
-impl<P> OptParser for WithPosMapper<P>
+impl<P> Parser for WithPosMapper<P>
 where
-    P: OptParser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let pos = tokenizer.position();
-        self.0
-            .parse(tokenizer)
-            .map(|opt_x| opt_x.map(|x| x.at(pos)))
-    }
-}
-
-impl<P> NonOptParser for WithPosMapper<P>
-where
-    P: NonOptParser,
+    P: Parser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let pos = tokenizer.position();
@@ -32,6 +20,7 @@ where
     }
 }
 
+// TODO remove the traits from pc_specific too
 pub trait WithPosTrait {
     fn with_pos(self) -> WithPosMapper<Self>
     where

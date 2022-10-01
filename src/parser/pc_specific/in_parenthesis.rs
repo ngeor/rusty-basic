@@ -13,24 +13,9 @@ pub fn in_parenthesis<P>(parser: P) -> InParenthesisParser<P> {
 
 parser_decorator!(struct InParenthesisParser);
 
-impl<P> OptParser for InParenthesisParser<P>
+impl<P> Parser for InParenthesisParser<P>
 where
-    P: NonOptParser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        if let Some(_) = left_paren(tokenizer)? {
-            let value = self.parser.parse(tokenizer)?;
-            right_paren(tokenizer)?;
-            Ok(Some(value))
-        } else {
-            Ok(None)
-        }
-    }
-}
-
-impl<P> NonOptParser for InParenthesisParser<P>
-where
-    P: NonOptParser,
+    P: Parser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         if let Some(_) = left_paren(tokenizer)? {
@@ -38,29 +23,7 @@ where
             right_paren(tokenizer)?;
             Ok(value)
         } else {
-            Err(QError::syntax_error("Expected: ("))
-        }
-    }
-}
-
-/// Allows missing left parenthesis and allows zero elements inside the parenthesis
-pub fn in_parenthesis_allow_no_elements<P>(parser: P) -> InParenthesisAllowNoElements<P> {
-    InParenthesisAllowNoElements::new(parser)
-}
-
-parser_decorator!(struct InParenthesisAllowNoElements);
-
-impl<P> OptParser for InParenthesisAllowNoElements<P>
-where
-    P: OptParser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        if let Some(_) = left_paren(tokenizer)? {
-            let opt_value = self.parser.parse(tokenizer)?;
-            right_paren(tokenizer)?;
-            Ok(opt_value)
-        } else {
-            Ok(None)
+            Err(QError::expected("Expected: ("))
         }
     }
 }

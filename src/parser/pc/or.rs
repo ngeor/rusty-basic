@@ -27,14 +27,15 @@ macro_rules! alt_pc {
             type Output = OUT;
         }
 
-        impl <OUT, $($generics : OptParser<Output=OUT>),+> OptParser for $name <OUT, $($generics),+> {
-            fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<OUT>, QError> {
+        // TODO modify macro to have a last_type, so that the last return statement is just invoking the last parser
+        impl <OUT, $($generics : Parser<Output=OUT>),+> Parser for $name <OUT, $($generics),+> {
+            fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<OUT, QError> {
                 $(
-                    if let Some(value) = self.$generics.parse(tokenizer)? {
-                        return Ok(Some(value));
+                    if let Some(value) = self.$generics.parse_opt(tokenizer)? {
+                        return Ok(value);
                     }
                 )+
-                Ok(None)
+                Err(QError::Incomplete)
             }
         }
     }
@@ -85,16 +86,3 @@ alt_pc!(
 alt_pc!(
     Alt16 ; A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P
 );
-
-impl<O, L, R> NonOptParser for Alt2<O, L, R>
-where
-    L: OptParser<Output = O>,
-    R: NonOptParser<Output = O>,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match self.A.parse(tokenizer)? {
-            Some(left) => Ok(left),
-            _ => self.B.parse(tokenizer),
-        }
-    }
-}

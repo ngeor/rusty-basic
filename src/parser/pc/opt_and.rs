@@ -1,6 +1,6 @@
 use crate::binary_parser_declaration;
-use crate::common::QError;
-use crate::parser::pc::{OptParser, ParserBase, Token, Tokenizer};
+use crate::common::{ParserErrorTrait, QError};
+use crate::parser::pc::{Parser, ParserBase, Token, Tokenizer, Undo};
 
 // The left side is optional, the right is not.
 // If the right is missing, the left is reverted.
@@ -15,20 +15,20 @@ where
     type Output = (Option<Token>, R::Output);
 }
 
-impl<L, R> OptParser for OptAndPC<L, R>
+impl<L, R> Parser for OptAndPC<L, R>
 where
-    L: OptParser<Output = Token>,
-    R: OptParser,
+    L: Parser<Output = Token>,
+    R: Parser,
 {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let opt_leading = self.0.parse(tokenizer)?;
-        match self.1.parse(tokenizer)? {
-            Some(value) => Ok(Some((opt_leading, value))),
-            None => {
-                if let Some(token) = opt_leading {
-                    tokenizer.unread(token);
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let opt_leading = self.0.parse_opt(tokenizer)?;
+        match self.1.parse(tokenizer) {
+            Ok(value) => Ok((opt_leading, value)),
+            Err(err) => {
+                if err.is_incomplete() {
+                    opt_leading.undo(tokenizer);
                 }
-                Ok(None)
+                Err(err)
             }
         }
     }

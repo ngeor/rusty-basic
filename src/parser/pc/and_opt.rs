@@ -1,6 +1,6 @@
 use crate::binary_parser_declaration;
 use crate::common::QError;
-use crate::parser::pc::{NonOptParser, OptParser, ParserBase, Tokenizer};
+use crate::parser::pc::{Parser, ParserBase, Tokenizer};
 //
 // The left side can be followed by an optional right.
 //
@@ -14,30 +14,14 @@ where
     type Output = (L::Output, Option<R::Output>);
 }
 
-impl<L, R> OptParser for AndOptPC<L, R>
+impl<L, R> Parser for AndOptPC<L, R>
 where
-    L: OptParser,
-    R: OptParser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.0.parse(tokenizer)? {
-            Some(left) => {
-                let opt_right = self.1.parse(tokenizer)?;
-                Ok(Some((left, opt_right)))
-            }
-            None => Ok(None),
-        }
-    }
-}
-
-impl<L, R> NonOptParser for AndOptPC<L, R>
-where
-    L: NonOptParser,
-    R: OptParser,
+    L: Parser,
+    R: Parser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let left = self.0.parse(tokenizer)?;
-        let opt_right = self.1.parse(tokenizer)?;
+        let opt_right = self.1.parse_opt(tokenizer)?;
         Ok((left, opt_right))
     }
 }

@@ -4,18 +4,18 @@ use crate::parser::pc::and_opt_factory::AndOptFactoryPC;
 use crate::parser::pc::many::ManyParser;
 use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
-    Alt2, AndDemandLookingBack, AndPC, AndThen, GuardPC, LoggingPC, LoopWhile, LoopWhileNonOpt,
-    Seq2, Tokenizer, Undo, ValidateParser,
+    Alt2, AndDemandLookingBack, AndPC, AndThen, GuardPC, LoggingPC, LoopWhile, Seq2, Tokenizer,
+    Undo, ValidateParser,
 };
 
 pub trait ParserBase {
     type Output;
 
-    // TODO deprecate
+    // TODO #[deprecated]
     fn and_demand<R>(self, right: R) -> Seq2<Self, R>
     where
         Self: Sized,
-        R: NonOptParser,
+        R: Parser,
     {
         Seq2::new(self, right)
     }
@@ -23,7 +23,6 @@ pub trait ParserBase {
     fn and_opt<R>(self, right: R) -> AndOptPC<Self, R>
     where
         Self: Sized,
-        R: OptParser,
     {
         AndOptPC::new(self, right)
     }
@@ -36,12 +35,12 @@ pub trait ParserBase {
         AndThen::new(self, mapper)
     }
 
-    fn loop_while<F>(self, predicate: F) -> LoopWhile<Self, F>
+    fn loop_while<F>(self, predicate: F, allow_empty: bool) -> LoopWhile<Self, F>
     where
         Self: Sized,
         F: Fn(&Self::Output) -> bool,
     {
-        LoopWhile::new(self, predicate)
+        LoopWhile::new(self, predicate, allow_empty)
     }
 
     fn map<F, U>(self, mapper: F) -> FnMapper<Self, F>
@@ -91,24 +90,17 @@ pub trait ParserBase {
 }
 
 /// A parser that either succeeds or returns an error.
-pub trait NonOptParser: ParserBase {
-    // TODO it is possible to have a default implementation for `parse` based on `parse` if we have a QError that means "no match"
+pub trait Parser: ParserBase {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
 
-    fn loop_while_non_opt<F>(self, f: F) -> LoopWhileNonOpt<Self, F>
-    where
-        Self: Sized,
-    {
-        LoopWhileNonOpt::new(self, f)
+    // TODO #[deprecated]
+    fn parse_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match self.parse(tokenizer) {
+            Ok(value) => Ok(Some(value)),
+            Err(QError::Incomplete) | Err(QError::Expected(_)) => Ok(None),
+            Err(err) => Err(err),
+        }
     }
-}
-
-// TODO rename to OptParser
-/// A parser that either succeeds, or returns nothing, or returns an error.
-pub trait OptParser: ParserBase {
-    // note that because of the mut impl parameter, Rust can't convert this trait into
-    // an object
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError>;
 
     fn and<R>(self, right: R) -> AndPC<Self, R>
     where
@@ -128,7 +120,7 @@ pub trait OptParser: ParserBase {
     where
         Self: Sized,
         F: Fn(&Self::Output) -> R,
-        R: OptParser,
+        R: Parser,
     {
         AndOptFactoryPC::new(self, f)
     }
@@ -136,7 +128,7 @@ pub trait OptParser: ParserBase {
     fn then_use<R>(self, other: R) -> GuardPC<Self, R>
     where
         Self: Sized,
-        R: NonOptParser,
+        R: Parser,
     {
         GuardPC::new(self, other)
     }
@@ -156,6 +148,7 @@ pub trait OptParser: ParserBase {
     {
         ManyParser::new(self, true)
     }
+
     fn one_or_more(self) -> ManyParser<Self>
     where
         Self: Sized,

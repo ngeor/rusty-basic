@@ -12,7 +12,7 @@ use crate::parser::{BareName, Keyword, Name, TypeQualifier};
 ///
 /// The parser validates the maximum length of the name and checks that the name
 /// is not a keyword (with the exception of strings, e.g. `end$`).
-pub fn name_with_dot_p() -> impl OptParser<Output = Name> {
+pub fn name_with_dot_p() -> impl Parser<Output = Name> {
     identifier_or_keyword()
         .and_then(ensure_token_list_length)
         .and_opt(type_qualifier_as_token())
@@ -37,7 +37,7 @@ pub fn name_with_dot_p() -> impl OptParser<Output = Name> {
 
 // bare name node
 
-pub fn bare_name_as_token() -> impl OptParser<Output = Token> {
+pub fn bare_name_as_token() -> impl Parser<Output = Token> {
     UnlessFollowedBy(
         TokenKindParser::new(TokenType::Identifier).parser(),
         type_qualifier_as_token(),
@@ -45,7 +45,7 @@ pub fn bare_name_as_token() -> impl OptParser<Output = Token> {
     .validate(ensure_length_and_not_keyword)
 }
 
-pub fn bare_name_p() -> impl OptParser<Output = BareName> {
+pub fn bare_name_p() -> impl Parser<Output = BareName> {
     bare_name_as_token().map(|x| x.text.into()) // TODO make a parser for simpler .into() cases
 }
 
@@ -58,24 +58,22 @@ where
     type Output = L::Output;
 }
 
-impl<L, R> OptParser for UnlessFollowedBy<L, R>
+impl<L, R> Parser for UnlessFollowedBy<L, R>
 where
-    L: OptParser,
+    L: Parser,
     L::Output: Undo,
-    R: OptParser,
+    R: Parser,
     R::Output: Undo,
 {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.0.parse(tokenizer)? {
-            Some(value) => match self.1.parse(tokenizer)? {
-                Some(needle) => {
-                    needle.undo(tokenizer);
-                    value.undo(tokenizer);
-                    Ok(None)
-                }
-                None => Ok(Some(value)),
-            },
-            None => Ok(None),
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let value = self.0.parse(tokenizer)?;
+        match self.1.parse_opt(tokenizer)? {
+            Some(needle) => {
+                needle.undo(tokenizer);
+                value.undo(tokenizer);
+                Err(QError::Incomplete)
+            }
+            None => Ok(value),
         }
     }
 }
@@ -116,7 +114,7 @@ mod tests {
             let mut eol_reader = create_string_tokenizer(input);
             let parser = bare_name_p();
             let result = parser.parse(&mut eol_reader).expect("Should succeed");
-            assert_eq!(result, Some(BareName::from(expected_output)));
+            assert_eq!(result, BareName::from(expected_output));
         }
     }
 }

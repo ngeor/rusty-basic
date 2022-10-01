@@ -5,7 +5,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl OptParser<Output = Statement> {
+    pub fn parse() -> impl Parser<Output = Statement> {
         keyword(Keyword::Open)
             .and_demand(
                 expression::back_guarded_expression_node_p()
@@ -32,7 +32,7 @@ pub mod parser {
     }
 
     // FOR <ws+> INPUT <ws+>
-    fn parse_open_mode_p() -> impl OptParser<Output = Locatable<FileMode>> {
+    fn parse_open_mode_p() -> impl Parser<Output = Locatable<FileMode>> {
         seq3(
             keyword_followed_by_whitespace_p(Keyword::For),
             keyword_map(&[
@@ -48,7 +48,7 @@ pub mod parser {
     }
 
     // ACCESS <ws+> READ <ws+>
-    fn parse_open_access_p() -> impl OptParser<Output = Locatable<FileAccess>> {
+    fn parse_open_access_p() -> impl Parser<Output = Locatable<FileAccess>> {
         seq4(
             keyword(Keyword::Access),
             whitespace(),
@@ -60,14 +60,14 @@ pub mod parser {
 
     // AS <ws+> expression
     // AS ( expression )
-    fn parse_file_number_p() -> impl OptParser<Output = ExpressionNode> {
+    fn parse_file_number_p() -> impl Parser<Output = ExpressionNode> {
         keyword(Keyword::As).then_use(
             expression::guarded_file_handle_or_expression_p()
                 .or_syntax_error("Expected: #file-number%"),
         )
     }
 
-    fn parse_len_p() -> impl OptParser<Output = ExpressionNode> {
+    fn parse_len_p() -> impl Parser<Output = ExpressionNode> {
         seq3(
             whitespace().and(keyword(Keyword::Len)),
             item_p('=').preceded_by_opt_ws(),

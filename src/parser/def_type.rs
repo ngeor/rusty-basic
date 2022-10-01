@@ -9,13 +9,13 @@ use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 // LetterRange  ::= <Letter> | <Letter>-<Letter>
 // Letter       ::= [a-zA-Z]
 
-pub fn def_type_p() -> impl OptParser<Output = DefType> {
+pub fn def_type_p() -> impl Parser<Output = DefType> {
     seq3(def_keyword_p(), whitespace(), letter_ranges(), |l, _, r| {
         DefType::new(l, r)
     })
 }
 
-fn def_keyword_p() -> impl OptParser<Output = TypeQualifier> {
+fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
     keyword_map(&[
         (Keyword::DefInt, TypeQualifier::PercentInteger),
         (Keyword::DefLng, TypeQualifier::AmpersandLong),
@@ -25,12 +25,14 @@ fn def_keyword_p() -> impl OptParser<Output = TypeQualifier> {
     ])
 }
 
-fn letter_ranges() -> impl NonOptParser<Output = Vec<LetterRange>> {
-    csv_non_opt(letter_range())
+fn letter_ranges() -> impl Parser<Output = Vec<LetterRange>> {
+    csv(letter_range(), false)
 }
 
-fn letter_range() -> impl NonOptParser<Output = LetterRange> {
+fn letter_range() -> impl Parser<Output = LetterRange> {
+    // TODO prevent duplication of error message with ErrorProvider
     letter()
+        .or_syntax_error("Expected: letter")
         .and_opt(item_p('-').and(letter()))
         .and_then(|(l, opt_r)| match opt_r {
             Some((_, r)) => {
@@ -44,7 +46,7 @@ fn letter_range() -> impl NonOptParser<Output = LetterRange> {
         })
 }
 
-fn letter() -> impl OptParser<Output = char> + NonOptParser<Output = char> {
+fn letter() -> impl Parser<Output = char> {
     LetterToken.parser().map(token_to_char)
 }
 
@@ -59,8 +61,8 @@ impl TokenPredicate for LetterToken {
 }
 
 impl ErrorProvider for LetterToken {
-    fn provide_error(&self) -> QError {
-        QError::syntax_error("Expected: letter")
+    fn provide_error_message(&self) -> String {
+        "Expected: letter".to_owned()
     }
 }
 

@@ -7,7 +7,7 @@ use crate::parser::statements::{
 };
 use crate::parser::types::*;
 
-pub fn if_block_p() -> impl OptParser<Output = Statement> {
+pub fn if_block_p() -> impl Parser<Output = Statement> {
     if_expr_then_p()
         .and_demand(single_line_if_else_p().or(multi_line_if_p()))
         .map(|(condition, (statements, else_if_blocks, else_block))| {
@@ -27,7 +27,7 @@ pub fn if_block_p() -> impl OptParser<Output = Statement> {
 // single line else ::= ELSE non-comment-statements-separated-by-colon comment-statement
 // multi line if    ::= statements else-if-blocks else-block END IF
 
-fn if_expr_then_p() -> impl OptParser<Output = ExpressionNode> {
+fn if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
     seq3(
         keyword(Keyword::If),
         expression::back_guarded_expression_node_p()
@@ -37,7 +37,7 @@ fn if_expr_then_p() -> impl OptParser<Output = ExpressionNode> {
     )
 }
 
-fn single_line_if_else_p() -> impl OptParser<
+fn single_line_if_else_p() -> impl Parser<
     Output = (
         StatementNodes,
         Vec<ConditionalBlockNode>,
@@ -56,13 +56,13 @@ fn single_line_if_else_p() -> impl OptParser<
         .map(|(l, r)| (l, vec![], r))
 }
 
-fn single_line_else_p() -> impl OptParser<Output = StatementNodes> {
+fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
     keyword(Keyword::Else).preceded_by_req_ws().then_use(
         single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
     )
 }
 
-fn multi_line_if_p() -> impl NonOptParser<
+fn multi_line_if_p() -> impl Parser<
     Output = (
         StatementNodes,
         Vec<ConditionalBlockNode>,
@@ -80,7 +80,7 @@ fn multi_line_if_p() -> impl NonOptParser<
     .map(|(((if_block, else_if_blocks), opt_else), _)| (if_block, else_if_blocks, opt_else))
 }
 
-fn else_if_expr_then_p() -> impl OptParser<Output = ExpressionNode> {
+fn else_if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
     seq3(
         keyword(Keyword::ElseIf),
         expression::back_guarded_expression_node_p()
@@ -90,7 +90,7 @@ fn else_if_expr_then_p() -> impl OptParser<Output = ExpressionNode> {
     )
 }
 
-fn else_if_block_p() -> impl OptParser<Output = ConditionalBlockNode> {
+fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {
     seq2(
         else_if_expr_then_p(),
         ZeroOrMoreStatements::new(keyword_choice(&[
@@ -105,7 +105,7 @@ fn else_if_block_p() -> impl OptParser<Output = ConditionalBlockNode> {
     )
 }
 
-fn else_block_p() -> impl OptParser<Output = StatementNodes> {
+fn else_block_p() -> impl Parser<Output = StatementNodes> {
     keyword(Keyword::Else).then_use(ZeroOrMoreStatements::new(keyword(Keyword::End)))
 }
 

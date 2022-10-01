@@ -4,7 +4,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl OptParser<Output = Statement> {
+    pub fn parse() -> impl Parser<Output = Statement> {
         keyword(Keyword::Data)
             .and_opt(expression::expression_nodes_p())
             .keep_right()

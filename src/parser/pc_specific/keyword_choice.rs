@@ -18,29 +18,17 @@ impl Undo for (Keyword, Token) {
     }
 }
 
-impl<'a> OptParser for KeywordChoice<'a> {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match tokenizer.read()? {
-            Some(token) => match self.find_keyword(&token) {
-                Some(keyword) => Ok(Some((keyword, token))),
-                None => {
-                    tokenizer.unread(token);
-                    Ok(None)
-                }
-            },
-            None => Ok(None),
-        }
-    }
-}
-
-impl<'a> NonOptParser for KeywordChoice<'a> {
+impl<'a> Parser for KeywordChoice<'a> {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) => match self.find_keyword(&token) {
                 Some(keyword) => Ok((keyword, token)),
-                None => Err(self.provide_error()),
+                None => {
+                    tokenizer.unread(token);
+                    self.to_err()
+                }
             },
-            None => Err(self.provide_error()),
+            None => self.to_err(),
         }
     }
 }
@@ -62,18 +50,16 @@ impl<'a> KeywordChoice<'a> {
 }
 
 impl<'a> ErrorProvider for KeywordChoice<'a> {
-    fn provide_error(&self) -> QError {
+    fn provide_error_message(&self) -> String {
         keyword_syntax_error(self.keywords.iter())
     }
 }
 
-pub fn keyword_choice(
-    keywords: &[Keyword],
-) -> impl OptParser<Output = (Keyword, Token)> + NonOptParser<Output = (Keyword, Token)> + '_ {
+pub fn keyword_choice(keywords: &[Keyword]) -> impl Parser<Output = (Keyword, Token)> + '_ {
     KeywordChoice { keywords }
 }
 
-pub fn keyword_syntax_error<'a>(keywords: impl Iterator<Item = &'a Keyword>) -> QError {
+pub fn keyword_syntax_error<'a>(keywords: impl Iterator<Item = &'a Keyword>) -> String {
     let mut s = String::new();
     for keyword in keywords {
         if !s.is_empty() {
@@ -81,5 +67,5 @@ pub fn keyword_syntax_error<'a>(keywords: impl Iterator<Item = &'a Keyword>) -> 
         }
         s.push_str(keyword.as_str());
     }
-    QError::SyntaxError(format!("Expected: {}", s))
+    format!("Expected: {}", s)
 }

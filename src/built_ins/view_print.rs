@@ -4,7 +4,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl OptParser<Output = Statement> {
+    pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair(Keyword::View, Keyword::Print)
             .and_opt(parse_args())
             .keep_right()
@@ -13,7 +13,7 @@ pub mod parser {
             })
     }
 
-    fn parse_args() -> impl OptParser<Output = ExpressionNodes> {
+    fn parse_args() -> impl Parser<Output = ExpressionNodes> {
         seq3(
             expression::back_guarded_expression_node_p(),
             keyword(Keyword::To),

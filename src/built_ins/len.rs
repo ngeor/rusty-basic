@@ -4,7 +4,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl OptParser<Output = Expression> {
+    pub fn parse() -> impl Parser<Output = Expression> {
         keyword(Keyword::Len)
             .then_use(expression::expressions_non_opt("Expected: variable"))
             .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))

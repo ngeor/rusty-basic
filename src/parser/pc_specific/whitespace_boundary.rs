@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::pc::{NonOptParser, OptParser, ParserBase, Token, Tokenizer, Undo};
+use crate::parser::pc::{Parser, ParserBase, Token, Tokenizer, Undo};
 use crate::parser::pc_specific::TokenType;
 use crate::parser::ExpressionNode;
 
@@ -37,22 +37,7 @@ impl ParserBase for WhitespaceBoundaryParser {
     type Output = WhitespaceBoundary;
 }
 
-impl OptParser for WhitespaceBoundaryParser {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match tokenizer.read()? {
-            Some(token) if token.kind == TokenType::Whitespace as i32 => {
-                Ok(Some(WhitespaceBoundary(Some(token))))
-            }
-            Some(token) => {
-                tokenizer.unread(token);
-                Ok(self.none())
-            }
-            None => Ok(self.none()),
-        }
-    }
-}
-
-impl NonOptParser for WhitespaceBoundaryParser {
+impl Parser for WhitespaceBoundaryParser {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) if token.kind == TokenType::Whitespace as i32 => {
@@ -60,12 +45,9 @@ impl NonOptParser for WhitespaceBoundaryParser {
             }
             Some(token) => {
                 tokenizer.unread(token);
-                self.none()
-                    .ok_or(QError::syntax_error("Expected: whitespace"))
+                self.none().ok_or(QError::expected("Expected: whitespace"))
             }
-            None => self
-                .none()
-                .ok_or(QError::syntax_error("Expected: whitespace")),
+            None => self.none().ok_or(QError::expected("Expected: whitespace")),
         }
     }
 }

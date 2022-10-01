@@ -53,7 +53,7 @@ use crate::parser::types::{
     UserDefinedType,
 };
 
-pub fn user_defined_type_p() -> impl OptParser<Output = UserDefinedType> {
+pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
     seq5(
         keyword_followed_by_whitespace_p(Keyword::Type),
         bare_name_without_dot_p()
@@ -66,7 +66,7 @@ pub fn user_defined_type_p() -> impl OptParser<Output = UserDefinedType> {
     )
 }
 
-fn bare_name_without_dot_p() -> impl OptParser<Output = BareName> {
+fn bare_name_without_dot_p() -> impl Parser<Output = BareName> {
     name::name_with_dot_p().and_then(|n| match n {
         Name::Bare(b) => {
             if b.contains('.') {
@@ -81,24 +81,26 @@ fn bare_name_without_dot_p() -> impl OptParser<Output = BareName> {
     })
 }
 
-fn element_nodes_p() -> impl NonOptParser<Output = Vec<ElementNode>> {
+fn element_nodes_p() -> impl Parser<Output = Vec<ElementNode>> {
     element_node_p()
         .one_or_more()
         .or_error(QError::ElementNotDefined)
 }
 
-fn element_node_p() -> impl OptParser<Output = ElementNode> {
-    seq4(
-        bare_name_without_dot_p().followed_by_req_ws(),
-        keyword_followed_by_whitespace_p(Keyword::As).or_syntax_error("Expected: AS"),
+fn element_node_p() -> impl Parser<Output = ElementNode> {
+    seq6(
+        bare_name_without_dot_p(),
+        whitespace(),
+        keyword(Keyword::As),
+        whitespace(),
         element_type_p().or_syntax_error("Expected: element type"),
         comments_and_whitespace_p(),
-        |element, _, element_type, comments| Element::new(element, element_type, comments),
+        |element, _, _, _, element_type, comments| Element::new(element, element_type, comments),
     )
     .with_pos()
 }
 
-fn element_type_p() -> impl OptParser<Output = ElementType> {
+fn element_type_p() -> impl Parser<Output = ElementType> {
     Alt3::new(
         keyword_map(&[
             (Keyword::Integer, ElementType::Integer),
@@ -120,7 +122,7 @@ fn element_type_p() -> impl OptParser<Output = ElementType> {
     )
 }
 
-fn demand_string_length_p() -> impl NonOptParser<Output = ExpressionNode> {
+fn demand_string_length_p() -> impl Parser<Output = ExpressionNode> {
     expression_node_p()
         .and_then(|Locatable { element, pos }| match element {
             Expression::IntegerLiteral(i) => {

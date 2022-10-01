@@ -3,7 +3,7 @@
 //
 
 use crate::common::QError;
-use crate::parser::pc::{NonOptParser, OptParser, ParserBase, Tokenizer};
+use crate::parser::pc::{Parser, ParserBase, Tokenizer};
 
 pub struct ManyParser<P> {
     parser: P,
@@ -26,38 +26,14 @@ where
     type Output = Vec<P::Output>;
 }
 
-impl<P> OptParser for ManyParser<P>
+impl<P> Parser for ManyParser<P>
 where
-    P: OptParser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let mut result: Vec<P::Output> = Vec::new();
-        loop {
-            match self.parser.parse(tokenizer)? {
-                Some(value) => {
-                    result.push(value);
-                }
-                None => {
-                    break;
-                }
-            }
-        }
-        if result.is_empty() && !self.allow_empty {
-            Ok(None)
-        } else {
-            Ok(Some(result))
-        }
-    }
-}
-
-impl<P> NonOptParser for ManyParser<P>
-where
-    P: OptParser,
+    P: Parser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut result: Vec<P::Output> = Vec::new();
         loop {
-            match self.parser.parse(tokenizer)? {
+            match self.parser.parse_opt(tokenizer)? {
                 Some(value) => {
                     result.push(value);
                 }
@@ -67,7 +43,7 @@ where
             }
         }
         if result.is_empty() && !self.allow_empty {
-            Err(QError::ArgumentCountMismatch)
+            Err(QError::Incomplete)
         } else {
             Ok(result)
         }

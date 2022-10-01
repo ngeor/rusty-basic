@@ -19,8 +19,8 @@ impl ParserBase for Separator {
     type Output = ();
 }
 
-impl OptParser for Separator {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+impl Parser for Separator {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match self {
             Self::Comment => CommentSeparator.parse(tokenizer),
             Self::NonComment => CommonSeparator.parse(tokenizer),
@@ -34,8 +34,8 @@ impl ParserBase for CommentSeparator {
     type Output = ();
 }
 
-impl OptParser for CommentSeparator {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+impl Parser for CommentSeparator {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut tokens: TokenList = vec![];
         let mut found_eol = false;
         while let Some(token) = tokenizer.read()? {
@@ -52,10 +52,10 @@ impl OptParser for CommentSeparator {
             }
         }
         if found_eol {
-            Ok(Some(()))
+            Ok(())
         } else {
             tokens.undo(tokenizer);
-            Ok(None)
+            Err(QError::Incomplete)
         }
     }
 }
@@ -66,15 +66,15 @@ impl ParserBase for CommonSeparator {
     type Output = ();
 }
 
-impl OptParser for CommonSeparator {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+impl Parser for CommonSeparator {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut sep = TokenType::Unknown;
         while let Some(token) = tokenizer.read()? {
             if token.kind == TokenType::Whitespace as i32 {
                 // skip whitespace
             } else if token.kind == TokenType::SingleQuote as i32 {
                 tokenizer.unread(token);
-                return Ok(Some(()));
+                return Ok(());
             } else if token.kind == TokenType::Colon as i32 {
                 if sep == TokenType::Unknown {
                     // same line separator
@@ -96,15 +96,15 @@ impl OptParser for CommonSeparator {
                 break;
             }
         }
-        Ok(if sep != TokenType::Unknown {
-            Some(())
+        if sep != TokenType::Unknown {
+            Ok(())
         } else {
-            None
-        })
+            Err(QError::Incomplete)
+        }
     }
 }
 
-pub fn peek_eof_or_statement_separator() -> impl OptParser<Output = ()> {
+pub fn peek_eof_or_statement_separator() -> impl Parser<Output = ()> {
     PeekStatementSeparatorOrEof(StatementSeparator2)
 }
 
@@ -114,18 +114,22 @@ impl<P> ParserBase for PeekStatementSeparatorOrEof<P> {
     type Output = ();
 }
 
-impl<P> OptParser for PeekStatementSeparatorOrEof<P>
+impl<P> Parser for PeekStatementSeparatorOrEof<P>
 where
     P: TokenPredicate,
 {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<()>, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<(), QError> {
         match tokenizer.read()? {
             Some(token) => {
                 let found_it = self.0.test(&token);
                 tokenizer.unread(token);
-                Ok(if found_it { Some(()) } else { None })
+                if found_it {
+                    Ok(())
+                } else {
+                    Err(QError::Incomplete)
+                }
             }
-            None => Ok(Some(())),
+            None => Ok(()),
         }
     }
 }
@@ -141,7 +145,7 @@ impl TokenPredicate for StatementSeparator2 {
 }
 
 /// Reads multiple comments and the surrounding whitespace.
-pub fn comments_and_whitespace_p() -> impl NonOptParser<Output = Vec<Locatable<String>>> {
+pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>>> {
     CommentsAndWhitespace.preceded_by_opt_ws()
 }
 
@@ -151,7 +155,7 @@ impl ParserBase for CommentsAndWhitespace {
     type Output = Vec<Locatable<String>>;
 }
 
-impl NonOptParser for CommentsAndWhitespace {
+impl Parser for CommentsAndWhitespace {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut result: Vec<Locatable<String>> = vec![];
         let sep = Separator::Comment;
@@ -159,8 +163,8 @@ impl NonOptParser for CommentsAndWhitespace {
         let mut found_separator = true;
         let mut found_comment = true;
         while found_separator || found_comment {
-            found_separator = sep.parse(tokenizer)?.is_some();
-            match parser.parse(tokenizer)? {
+            found_separator = sep.parse_opt(tokenizer)?.is_some();
+            match parser.parse_opt(tokenizer)? {
                 Some(comment) => {
                     result.push(comment);
                     found_comment = true;

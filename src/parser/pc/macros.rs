@@ -8,17 +8,17 @@ macro_rules! parser_declaration {
         $($field_name: tt: $field_type: tt),*$(,)?
     })?) => {
         pub struct $name<P$(, $($generic_type),*)?> {
-            parser: P,
-            $($($generic_var_name: $generic_type),*)?
-            $($($field_name: $field_type),*)?
+            parser: P$(,
+            $($generic_var_name: $generic_type),*)?$(,
+            $($field_name: $field_type),*)?
         }
 
         impl<P$(, $($generic_type),*)?> $name<P$(, $($generic_type),*)?> {
             pub fn new(parser: P$(, $($generic_var_name: $generic_type),*)?$(, $($field_name: $field_type),*)?) -> Self {
                 Self {
-                    parser,
-                    $($($generic_var_name),*)?
-                    $($($field_name),*)?
+                    parser$(,
+                    $($generic_var_name),*)?$(,
+                    $($field_name),*)?
                 }
             }
         }
@@ -29,6 +29,8 @@ macro_rules! parser_declaration {
 // binary parser declaration, two implicit parameters:
 // left: L, right: R
 //
+
+// TODO: use left and right instead of 0 and 1
 
 #[macro_export]
 macro_rules! binary_parser_declaration {

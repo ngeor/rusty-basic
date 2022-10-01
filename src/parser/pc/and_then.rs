@@ -14,22 +14,9 @@ where
     type Output = U;
 }
 
-impl<P, F, U> OptParser for AndThen<P, F>
+impl<P, F, U> Parser for AndThen<P, F>
 where
-    P: OptParser,
-    F: Fn(P::Output) -> Result<U, QError>,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.parser.parse(tokenizer)? {
-            Some(value) => (self.mapper)(value).map(Some),
-            None => Ok(None),
-        }
-    }
-}
-
-impl<P, F, U> NonOptParser for AndThen<P, F>
-where
-    P: NonOptParser,
+    P: Parser,
     F: Fn(P::Output) -> Result<U, QError>,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {

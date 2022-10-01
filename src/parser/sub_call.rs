@@ -9,7 +9,7 @@ use crate::parser::types::*;
 // SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
 // SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
 
-pub fn sub_call_or_assignment_p() -> impl OptParser<Output = Statement> {
+pub fn sub_call_or_assignment_p() -> impl Parser<Output = Statement> {
     SubCallOrAssignment
 }
 
@@ -19,36 +19,30 @@ impl ParserBase for SubCallOrAssignment {
     type Output = Statement;
 }
 
-impl OptParser for SubCallOrAssignment {
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let opt_item = Self::name_and_opt_eq_sign().parse(reader)?;
-        match opt_item {
-            Some((name_expr, opt_equal_sign)) => match opt_equal_sign {
-                Some(_) => {
-                    let right_side_expr = expression::expression_node_p()
-                        .or_syntax_error("Expected: expression for assignment")
-                        .parse(reader)?;
-                    Ok(Some(Statement::Assignment(name_expr, right_side_expr)))
+impl Parser for SubCallOrAssignment {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let (name_expr, opt_equal_sign) = Self::name_and_opt_eq_sign().parse(reader)?;
+        match opt_equal_sign {
+            Some(_) => {
+                let right_side_expr = expression::expression_node_p()
+                    .or_syntax_error("Expected: expression for assignment")
+                    .parse(reader)?;
+                Ok(Statement::Assignment(name_expr, right_side_expr))
+            }
+            _ => match expr_to_bare_name_args(name_expr) {
+                Ok((bare_name, Some(args))) => Ok(Statement::SubCall(bare_name, args)),
+                Ok((bare_name, None)) => {
+                    let args = expression::expression_nodes_p().parse_opt(reader)?;
+                    Ok(Statement::SubCall(bare_name, args.unwrap_or_default()))
                 }
-                _ => match expr_to_bare_name_args(name_expr) {
-                    Ok((bare_name, Some(args))) => Ok(Some(Statement::SubCall(bare_name, args))),
-                    Ok((bare_name, None)) => {
-                        let args = expression::expression_nodes_p().parse(reader)?;
-                        Ok(Some(Statement::SubCall(
-                            bare_name,
-                            args.unwrap_or_default(),
-                        )))
-                    }
-                    Err(err) => Err(err),
-                },
+                Err(err) => Err(err),
             },
-            _ => Ok(None),
         }
     }
 }
 
 impl SubCallOrAssignment {
-    fn name_and_opt_eq_sign() -> impl OptParser<Output = (Expression, Option<Token>)> {
+    fn name_and_opt_eq_sign() -> impl Parser<Output = (Expression, Option<Token>)> {
         expression::word::word_p().and_opt(item_p('=').surrounded_by_opt_ws())
     }
 }

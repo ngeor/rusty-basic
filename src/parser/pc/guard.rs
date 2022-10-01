@@ -11,15 +11,13 @@ where
     type Output = R::Output;
 }
 
-impl<L, R> OptParser for GuardPC<L, R>
+impl<L, R> Parser for GuardPC<L, R>
 where
-    L: OptParser,
-    R: NonOptParser,
+    L: Parser,
+    R: Parser,
 {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.0.parse(tokenizer)? {
-            Some(_) => self.1.parse(tokenizer).map(Some),
-            None => Ok(None),
-        }
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        self.0.parse(tokenizer)?;
+        self.1.parse(tokenizer)
     }
 }

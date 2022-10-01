@@ -259,36 +259,7 @@ impl ParserBase for KeywordParser {
     type Output = Token;
 }
 
-impl OptParser for KeywordParser {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match tokenizer.read()? {
-            Some(token) => {
-                if self.keyword == token {
-                    // check for trailing dollar sign
-                    match tokenizer.read()? {
-                        Some(follow_up) => {
-                            if follow_up.kind == TokenType::DollarSign as i32 {
-                                tokenizer.unread(follow_up);
-                                tokenizer.unread(token);
-                                Ok(None)
-                            } else {
-                                tokenizer.unread(follow_up);
-                                Ok(Some(token))
-                            }
-                        }
-                        None => Ok(Some(token)),
-                    }
-                } else {
-                    tokenizer.unread(token);
-                    Ok(None)
-                }
-            }
-            None => Ok(None),
-        }
-    }
-}
-
-impl NonOptParser for KeywordParser {
+impl Parser for KeywordParser {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) => {
@@ -299,7 +270,7 @@ impl NonOptParser for KeywordParser {
                             if follow_up.kind == TokenType::DollarSign as i32 {
                                 tokenizer.unread(follow_up);
                                 tokenizer.unread(token);
-                                Err(QError::SyntaxError(format!("Expected: {}", self.keyword)))
+                                self.to_err()
                             } else {
                                 tokenizer.unread(follow_up);
                                 Ok(token)
@@ -309,24 +280,30 @@ impl NonOptParser for KeywordParser {
                     }
                 } else {
                     tokenizer.unread(token);
-                    Err(QError::SyntaxError(format!("Expected: {}", self.keyword)))
+                    self.to_err()
                 }
             }
-            None => Err(QError::InputPastEndOfFile),
+            None => self.to_err(),
         }
     }
 }
 
-pub fn keyword(keyword: Keyword) -> impl OptParser<Output = Token> + NonOptParser<Output = Token> {
+impl ErrorProvider for KeywordParser {
+    fn provide_error_message(&self) -> String {
+        format!("Expected: {}", self.keyword)
+    }
+}
+
+pub fn keyword(keyword: Keyword) -> impl Parser<Output = Token> {
     KeywordParser { keyword }
 }
 
-// TODO deprecate this
-pub fn keyword_followed_by_whitespace_p(k: Keyword) -> impl OptParser {
-    keyword(k).followed_by_req_ws()
+// TODO #[deprecated]
+pub fn keyword_followed_by_whitespace_p(k: Keyword) -> impl Parser {
+    Seq2::new(keyword(k), whitespace())
 }
 
-pub fn keyword_pair(first: Keyword, second: Keyword) -> impl OptParser + NonOptParser {
+pub fn keyword_pair(first: Keyword, second: Keyword) -> impl Parser {
     Seq3::new(keyword(first), whitespace(), keyword(second))
 }
 
@@ -351,18 +328,22 @@ impl TokenPredicate for TokenKindParser {
 }
 
 impl ErrorProvider for TokenKindParser {
-    fn provide_error(&self) -> QError {
+    fn provide_error_message(&self) -> String {
         match char::try_from(self.token_type) {
-            Ok(ch) => QError::SyntaxError(format!("Expected: {}", ch)),
+            Ok(ch) => format!("Expected: {}", ch),
             _ => {
-                // TODO use Display instead of Debug
-                QError::SyntaxError(format!("Expected: token of type {:?}", self.token_type))
+                if self.token_type == TokenType::Whitespace {
+                    "Expected: whitespace".to_owned()
+                } else {
+                    // TODO use Display instead of Debug
+                    format!("Expected: token of type {:?}", self.token_type)
+                }
             }
         }
     }
 }
 
-// TODO deprecate this
+// TODO #[deprecated]
 pub fn item_p(ch: char) -> TokenPredicateParser<TokenKindParser> {
     TokenKindParser::new(match ch {
         ',' => TokenType::Comma,
@@ -395,26 +376,16 @@ where
     type Output = P::Output;
 }
 
-impl<P> OptParser for MapErrParser<P>
+impl<P> Parser for MapErrParser<P>
 where
-    P: OptParser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        self.0.parse(tokenizer).map_err(|_| self.1.clone())
-    }
-}
-
-impl<P> NonOptParser for MapErrParser<P>
-where
-    P: NonOptParser,
+    P: Parser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         self.0.parse(tokenizer).map_err(|_| self.1.clone())
     }
 }
 
-// TODO remove MapErrTrait
-
+// TODO #[deprecated]
 pub trait MapErrTrait {
     fn map_err(self, err: QError) -> MapErrParser<Self>
     where
@@ -440,12 +411,12 @@ where
     type Output = P::Output;
 }
 
-impl<P> NonOptParser for OrError<P>
+impl<P> Parser for OrError<P>
 where
-    P: OptParser,
+    P: Parser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match self.0.parse(tokenizer)? {
+        match self.0.parse_opt(tokenizer)? {
             Some(value) => Ok(value),
             _ => Err(self.1.clone()),
         }
@@ -465,12 +436,12 @@ where
     type Output = P::Output;
 }
 
-impl<'a, P> NonOptParser for OrSyntaxError<'a, P>
+impl<'a, P> Parser for OrSyntaxError<'a, P>
 where
-    P: OptParser,
+    P: Parser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match self.0.parse(tokenizer)? {
+        match self.0.parse_opt(tokenizer)? {
             Some(value) => Ok(value),
             None => Err(QError::syntax_error(self.1)),
         }
@@ -506,7 +477,14 @@ impl TokenPredicate for IdentifierOrKeyword {
     }
 }
 
-pub fn identifier_or_keyword() -> impl OptParser<Output = Token> {
+impl ErrorProvider for IdentifierOrKeyword {
+    fn provide_error_message(&self) -> String {
+        // TODO: this is new because it used to be an opt parser
+        "Expected: identifier or keyword".to_owned()
+    }
+}
+
+pub fn identifier_or_keyword() -> impl Parser<Output = Token> {
     IdentifierOrKeyword.parser()
 }
 
@@ -519,7 +497,14 @@ impl TokenPredicate for IdentifierOrKeywordWithoutDot {
     }
 }
 
-pub fn identifier_or_keyword_without_dot() -> impl OptParser<Output = Token> {
+impl ErrorProvider for IdentifierOrKeywordWithoutDot {
+    fn provide_error_message(&self) -> String {
+        // TODO this didn't exist because it was an opt parser
+        "Expected: identifier or keyword without dot".to_owned()
+    }
+}
+
+pub fn identifier_or_keyword_without_dot() -> impl Parser<Output = Token> {
     IdentifierOrKeywordWithoutDot.parser()
 }
 

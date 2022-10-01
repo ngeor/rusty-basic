@@ -5,9 +5,8 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl OptParser<Output = Statement> {
-        keyword_pair(Keyword::Line, Keyword::Input)
-            .followed_by_req_ws()
+    pub fn parse() -> impl Parser<Output = Statement> {
+        Seq2::new(keyword_pair(Keyword::Line, Keyword::Input), whitespace())
             .and_opt(expression::file_handle_comma_p())
             .and_demand(
                 expression::expression_node_p()

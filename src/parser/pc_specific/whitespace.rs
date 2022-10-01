@@ -1,6 +1,7 @@
-use crate::common::QError;
+use crate::common::{ParserErrorTrait, QError};
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
+use crate::parser_declaration;
 
 pub fn whitespace() -> TokenPredicateParser<TokenKindParser> {
     TokenKindParser::new(TokenType::Whitespace).parser()
@@ -33,110 +34,45 @@ where
     type Output = P::Output;
 }
 
-impl<P> OptParser for LeadingWhitespace<P>
-where
-    P: OptParser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let opt_space = OptParser::parse(&whitespace(), tokenizer)?;
-        if self.needs_whitespace && opt_space.is_none() {
-            Ok(None)
-        } else {
-            match self.parser.parse(tokenizer)? {
-                Some(value) => Ok(Some(value)),
-                None => {
-                    if let Some(space) = opt_space {
-                        tokenizer.unread(space);
-                    }
-                    Ok(None)
-                }
-            }
-        }
-    }
-}
-
-impl<P> NonOptParser for LeadingWhitespace<P>
-where
-    P: NonOptParser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let opt_space = OptParser::parse(&whitespace(), tokenizer)?;
-        if self.needs_whitespace && opt_space.is_none() {
-            Err(QError::syntax_error("Expected: whitespace"))
-        } else {
-            self.parser.parse(tokenizer)
-        }
-    }
-}
-
-pub struct TrailingWhitespace<P>
-where
-    P: ParserBase,
-{
-    parser: P,
+fn parse_opt_space(
+    tokenizer: &mut impl Tokenizer,
     needs_whitespace: bool,
-}
-
-impl<P> TrailingWhitespace<P>
-where
-    P: ParserBase,
-{
-    pub fn new(parser: P, needs_whitespace: bool) -> Self {
-        Self {
-            parser,
-            needs_whitespace,
-        }
-    }
-}
-
-impl<P> ParserBase for TrailingWhitespace<P>
-where
-    P: ParserBase,
-{
-    type Output = P::Output;
-}
-
-impl<P> OptParser for TrailingWhitespace<P>
-where
-    P: OptParser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.parser.parse(tokenizer)? {
-            Some(value) => {
-                if self.needs_whitespace {
-                    match OptParser::parse(&whitespace(), tokenizer)? {
-                        Some(_) => Ok(Some(value)),
-                        None => Err(QError::syntax_error("Expected: whitespace")),
-                    }
-                } else {
-                    OptParser::parse(&whitespace(), tokenizer)?;
-                    Ok(Some(value))
-                }
+) -> Result<Option<Token>, QError> {
+    match whitespace().parse(tokenizer) {
+        Ok(t) => Ok(Some(t)),
+        Err(err) if err.is_incomplete() => {
+            if needs_whitespace {
+                Err(err)
+            } else {
+                Ok(None)
             }
-            None => Ok(None),
         }
+        Err(err) => Err(err),
     }
 }
 
-impl<P> NonOptParser for TrailingWhitespace<P>
+// TODO: this looks like OptAnd
+
+impl<P> Parser for LeadingWhitespace<P>
 where
-    P: NonOptParser,
+    P: Parser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let result = self.parser.parse(tokenizer)?;
-        if self.needs_whitespace {
-            NonOptParser::parse(&whitespace(), tokenizer)?;
-        } else {
-            OptParser::parse(&whitespace(), tokenizer)?;
+        let opt_space = parse_opt_space(tokenizer, self.needs_whitespace)?;
+        match self.parser.parse(tokenizer) {
+            Ok(value) => Ok(value),
+            Err(err) => {
+                if err.is_incomplete() {
+                    opt_space.undo(tokenizer);
+                }
+                Err(err)
+            }
         }
-        Ok(result)
     }
 }
 
 // TODO refactor so that LeadingWhitespace becomes a smaller type that depends on this one
-pub struct LeadingWhitespacePreserving<P>(P)
-where
-    P: ParserBase;
+parser_declaration!(struct LeadingWhitespacePreserving);
 
 impl<P> ParserBase for LeadingWhitespacePreserving<P>
 where
@@ -145,17 +81,21 @@ where
     type Output = (Option<Token>, P::Output);
 }
 
-impl<P> OptParser for LeadingWhitespacePreserving<P>
+// TODO this is like OptAnd and LeadingWhitespace is identical to this only it drops the whitespace from the output
+
+impl<P> Parser for LeadingWhitespacePreserving<P>
 where
-    P: OptParser,
+    P: Parser,
 {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let opt_ws = OptParser::parse(&whitespace(), tokenizer)?;
-        match self.0.parse(tokenizer)? {
-            Some(value) => Ok(Some((opt_ws, value))),
-            None => {
-                opt_ws.undo(tokenizer);
-                Ok(None)
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let opt_space = parse_opt_space(tokenizer, false)?;
+        match self.parser.parse(tokenizer) {
+            Ok(value) => Ok((opt_space, value)),
+            Err(err) => {
+                if err.is_incomplete() {
+                    opt_space.undo(tokenizer);
+                }
+                Err(err)
             }
         }
     }
@@ -175,18 +115,14 @@ where
     type Output = (Option<Token>, P::Output, Option<Token>);
 }
 
-impl<P> OptParser for SurroundedByWhitespacePreserving<P>
+impl<P> Parser for SurroundedByWhitespacePreserving<P>
 where
-    P: OptParser,
+    P: Parser,
 {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.leading_parser.parse(tokenizer)? {
-            Some((opt_lead_ws, value)) => {
-                let opt_trail_ws = OptParser::parse(&whitespace(), tokenizer)?;
-                Ok(Some((opt_lead_ws, value, opt_trail_ws)))
-            }
-            None => Ok(None),
-        }
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let (opt_leading, value) = self.leading_parser.parse(tokenizer)?;
+        let opt_trailing = parse_opt_space(tokenizer, false)?;
+        Ok((opt_leading, value, opt_trailing))
     }
 }
 
@@ -204,14 +140,12 @@ where
     type Output = P::Output;
 }
 
-impl<P> OptParser for SurroundedByWhitespace<P>
+impl<P> Parser for SurroundedByWhitespace<P>
 where
-    P: OptParser,
+    P: Parser,
 {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        self.parser
-            .parse(tokenizer)
-            .map(|opt_result| opt_result.map(|(_, m, _)| m))
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        self.parser.parse(tokenizer).map(|(_, m, _)| m)
     }
 }
 
@@ -226,18 +160,9 @@ where
         self.preceded_by_ws(false)
     }
 
+    // TODO #[deprecated]
     fn preceded_by_req_ws(self) -> LeadingWhitespace<Self> {
         self.preceded_by_ws(true)
-    }
-
-    fn followed_by_ws(self, mandatory: bool) -> TrailingWhitespace<Self>;
-
-    fn followed_by_opt_ws(self) -> TrailingWhitespace<Self> {
-        self.followed_by_ws(false)
-    }
-
-    fn followed_by_req_ws(self) -> TrailingWhitespace<Self> {
-        self.followed_by_ws(true)
     }
 
     fn preceded_by_ws_preserving(self) -> LeadingWhitespacePreserving<Self>;
@@ -258,15 +183,8 @@ where
         }
     }
 
-    fn followed_by_ws(self, mandatory: bool) -> TrailingWhitespace<Self> {
-        TrailingWhitespace {
-            parser: self,
-            needs_whitespace: mandatory,
-        }
-    }
-
     fn preceded_by_ws_preserving(self) -> LeadingWhitespacePreserving<Self> {
-        LeadingWhitespacePreserving(self)
+        LeadingWhitespacePreserving::new(self)
     }
 
     fn surrounded_by_ws_preserving(self) -> SurroundedByWhitespacePreserving<Self> {

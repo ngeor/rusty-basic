@@ -4,7 +4,7 @@ use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::{Keyword, Statement};
 
-pub fn constant_p() -> impl OptParser<Output = Statement> {
+pub fn constant_p() -> impl Parser<Output = Statement> {
     seq5(
         keyword(Keyword::Const),
         whitespace(),

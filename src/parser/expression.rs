@@ -5,12 +5,14 @@ use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 
 /// `( expr [, expr]* )`
-pub fn expressions_non_opt(err_msg: &str) -> impl NonOptParser<Output = ExpressionNodes> + '_ {
-    in_parenthesis(csv(lazy_expression_node_p()).or_syntax_error(err_msg))
+// TODO #[deprecated]
+pub fn expressions_non_opt(err_msg: &str) -> impl Parser<Output = ExpressionNodes> + '_ {
+    in_parenthesis(csv(lazy_expression_node_p(), false).or_syntax_error(err_msg))
+        .or_syntax_error("Expected: (")
 }
 
-fn parenthesis_with_zero_or_more_expressions_p() -> impl OptParser<Output = ExpressionNodes> {
-    in_parenthesis(csv(lazy_expression_node_p()))
+fn parenthesis_with_zero_or_more_expressions_p() -> impl Parser<Output = ExpressionNodes> {
+    in_parenthesis(csv(lazy_expression_node_p(), true))
 }
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {
@@ -23,8 +25,8 @@ impl ParserBase for LazyExpressionParser {
     type Output = ExpressionNode;
 }
 
-impl OptParser for LazyExpressionParser {
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+impl Parser for LazyExpressionParser {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let parser = expression_node_p();
         parser.parse(reader)
     }
@@ -32,7 +34,7 @@ impl OptParser for LazyExpressionParser {
 
 // TODO check if all usages are "demand"
 // TODO rename to expression_preceded_by_ws
-pub fn guarded_expression_node_p() -> impl OptParser<Output = ExpressionNode> {
+pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr
     OptAndPC::new(whitespace(), lazy_expression_node_p()).and_then(
@@ -51,7 +53,7 @@ pub fn guarded_expression_node_p() -> impl OptParser<Output = ExpressionNode> {
 }
 
 // TODO rename to expression_surrounded_by_ws
-pub fn back_guarded_expression_node_p() -> impl OptParser<Output = ExpressionNode> {
+pub fn back_guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr ) ws*
     // ws+ expr ws+
     guarded_expression_node_p()
@@ -60,7 +62,7 @@ pub fn back_guarded_expression_node_p() -> impl OptParser<Output = ExpressionNod
 }
 
 /// Parses an expression
-pub fn expression_node_p() -> impl OptParser<Output = ExpressionNode> {
+pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
     single_expression_node_p()
         .and_opt_factory(|first_expr| {
             operator_p(first_expr.is_parenthesis()).and_demand(
@@ -85,7 +87,7 @@ pub fn expression_node_p() -> impl OptParser<Output = ExpressionNode> {
 /// Trailing commas are not allowed.
 /// Missing expressions are not allowed.
 /// The first expression needs to be preceded by space or surrounded in parenthesis.
-pub fn expression_nodes_p() -> impl OptParser<Output = ExpressionNodes> {
+pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
     // TODO this is a form of ManyParser
     seq2(
         guarded_expression_node_p(),
@@ -99,7 +101,7 @@ pub fn expression_nodes_p() -> impl OptParser<Output = ExpressionNodes> {
     )
 }
 
-fn single_expression_node_p() -> impl OptParser<Output = ExpressionNode> {
+fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     Alt10::new(
         string_literal::string_literal_p().with_pos(),
         built_in_function_call_p().with_pos(),
@@ -114,7 +116,7 @@ fn single_expression_node_p() -> impl OptParser<Output = ExpressionNode> {
     )
 }
 
-fn unary_minus_p() -> impl OptParser<Output = ExpressionNode> {
+fn unary_minus_p() -> impl Parser<Output = ExpressionNode> {
     seq2(
         item_p('-').with_pos(),
         lazy_expression_node_p().or_syntax_error("Expected: expression after unary minus"),
@@ -122,7 +124,7 @@ fn unary_minus_p() -> impl OptParser<Output = ExpressionNode> {
     )
 }
 
-pub fn unary_not_p() -> impl OptParser<Output = ExpressionNode> {
+pub fn unary_not_p() -> impl Parser<Output = ExpressionNode> {
     seq2(
         keyword(Keyword::Not).with_pos(),
         guarded_expression_node_p().or_syntax_error("Expected: expression after NOT"),
@@ -132,7 +134,7 @@ pub fn unary_not_p() -> impl OptParser<Output = ExpressionNode> {
 
 // TODO move the file handle logic into the built_ins as it is only used there
 
-pub fn file_handle_p() -> impl OptParser<Output = Locatable<FileHandle>> {
+pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
     FileHandleParser
 }
 
@@ -144,14 +146,14 @@ impl ParserBase for FileHandleParser {
     type Output = Locatable<FileHandle>;
 }
 
-impl OptParser for FileHandleParser {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+impl Parser for FileHandleParser {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let pos = tokenizer.position();
         match tokenizer.read()? {
             Some(token) if token.kind == TokenType::Pound as i32 => match tokenizer.read()? {
                 Some(token) if token.kind == TokenType::Digits as i32 => {
                     match token.text.parse::<u8>() {
-                        Ok(d) if d > 0 => Ok(Some(FileHandle::from(d).at(pos))),
+                        Ok(d) if d > 0 => Ok(FileHandle::from(d).at(pos)),
                         _ => Err(QError::BadFileNameOrNumber),
                     }
                 }
@@ -159,35 +161,35 @@ impl OptParser for FileHandleParser {
             },
             Some(token) => {
                 tokenizer.unread(token);
-                Ok(None)
+                Err(QError::Incomplete)
             }
-            _ => Ok(None),
+            _ => Err(QError::Incomplete),
         }
     }
 }
 
 /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
-pub fn file_handle_as_expression_node_p() -> impl OptParser<Output = ExpressionNode> {
+pub fn file_handle_as_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     file_handle_p()
         .map(|Locatable { element, pos }| Expression::IntegerLiteral(element.into()).at(pos))
 }
 
-pub fn file_handle_or_expression_p() -> impl OptParser<Output = ExpressionNode> {
+pub fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
     file_handle_as_expression_node_p().or(expression_node_p())
 }
 
-pub fn parenthesis_p() -> impl OptParser<Output = Expression> {
+pub fn parenthesis_p() -> impl Parser<Output = Expression> {
     in_parenthesis(
         lazy_expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
     )
     .map(|child| Expression::Parenthesis(Box::new(child)))
 }
 
-pub fn file_handle_comma_p() -> impl OptParser<Output = Locatable<FileHandle>> {
+pub fn file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
     seq2(file_handle_p(), comma_surrounded_by_opt_ws(), |l, _| l)
 }
 
-pub fn guarded_file_handle_or_expression_p() -> impl OptParser<Output = ExpressionNode> {
+pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
     file_handle_as_expression_node_p()
         .preceded_by_req_ws()
         .or(guarded_expression_node_p())
@@ -198,7 +200,7 @@ mod string_literal {
     use crate::parser::pc_specific::*;
     use crate::parser::Expression;
 
-    pub fn string_literal_p() -> impl OptParser<Output = Expression> {
+    pub fn string_literal_p() -> impl Parser<Output = Expression> {
         seq3(
             string_delimiter(),
             InsideString.parser().zero_or_more(),
@@ -218,6 +220,13 @@ mod string_literal {
             token.kind != TokenType::DoubleQuote as i32 && token.kind != TokenType::Eol as i32
         }
     }
+
+    impl ErrorProvider for InsideString {
+        fn provide_error_message(&self) -> String {
+            // TODO: this never gets called because InsideString used to be a opt-parser
+            "Expected: inside of string".to_owned()
+        }
+    }
 }
 
 mod number_literal {
@@ -227,7 +236,7 @@ mod number_literal {
     use crate::parser::types::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
 
-    pub fn number_literal_p() -> impl OptParser<Output = ExpressionNode> {
+    pub fn number_literal_p() -> impl Parser<Output = ExpressionNode> {
         // TODO support more qualifiers besides '#'
         digits()
             .and_opt(item_p('.').then_use(digits()))
@@ -245,7 +254,7 @@ mod number_literal {
             .with_pos()
     }
 
-    pub fn float_without_leading_zero_p() -> impl OptParser<Output = ExpressionNode> {
+    pub fn float_without_leading_zero_p() -> impl Parser<Output = ExpressionNode> {
         item_p('.')
             .and_demand(digits())
             .and_opt(item_p('#'))
@@ -338,7 +347,7 @@ mod number_literal {
         }
     }
 
-    pub fn hexadecimal_literal_p() -> impl OptParser<Output = Expression> {
+    pub fn hexadecimal_literal_p() -> impl Parser<Output = Expression> {
         TokenKindParser::new(TokenType::HexDigits)
             .parser()
             .and_then(|token| {
@@ -356,7 +365,7 @@ mod number_literal {
             })
     }
 
-    pub fn octal_literal_p() -> impl OptParser<Output = Expression> {
+    pub fn octal_literal_p() -> impl Parser<Output = Expression> {
         TokenKindParser::new(TokenType::OctDigits)
             .parser()
             .and_then(|token| {
@@ -373,7 +382,7 @@ mod number_literal {
             })
     }
 
-    pub fn digits() -> impl OptParser<Output = Token> + NonOptParser<Output = Token> {
+    pub fn digits() -> impl Parser<Output = Token> + Parser<Output = Token> {
         TokenKindParser::new(TokenType::Digits).parser()
     }
 }
@@ -388,7 +397,7 @@ pub mod word {
     use crate::parser::types::*;
     use std::convert::TryFrom;
 
-    pub fn word_p() -> impl OptParser<Output = Expression> {
+    pub fn word_p() -> impl Parser<Output = Expression> {
         name_with_dot_p()
             .and_opt(parenthesis_with_zero_or_more_expressions_p())
             .and_opt(
@@ -482,7 +491,7 @@ pub mod word {
     }
 
     // TODO rewrite this
-    fn dot_property_name() -> impl OptParser<Output = Vec<String>> {
+    fn dot_property_name() -> impl Parser<Output = Vec<String>> {
         item_p('.').then_use(Properties)
     }
 
@@ -492,7 +501,7 @@ pub mod word {
         type Output = Vec<String>;
     }
 
-    impl NonOptParser for Properties {
+    impl Parser for Properties {
         fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
             let mut result: Vec<String> = vec![];
             while let Some(token) = tokenizer.read()? {
@@ -522,8 +531,8 @@ pub mod word {
         type Output = ();
     }
 
-    impl OptParser for EnsureEndOfNameParser {
-        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+    impl Parser for EnsureEndOfNameParser {
+        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
             match tokenizer.read()? {
                 Some(token) => {
                     let token_type = TokenType::try_from(token.kind)?;
@@ -537,10 +546,10 @@ pub mod word {
                         | TokenType::DollarSign => {
                             Err(QError::syntax_error("Expected: end of name expr"))
                         }
-                        _ => Ok(Some(())),
+                        _ => Ok(()),
                     }
                 }
-                None => Ok(Some(())),
+                None => Ok(()),
             }
         }
     }
@@ -564,7 +573,7 @@ pub mod word {
                     let mut eol_reader = create_string_tokenizer(input);
                     let parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var_unresolved(input)));
+                    assert_eq!(result, Expression::var_unresolved(input));
                 }
 
                 #[test]
@@ -575,7 +584,7 @@ pub mod word {
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
-                        Some(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)]))
+                        Expression::func("A".into(), vec![1.as_lit_expr(1, 3)])
                     );
                 }
             }
@@ -589,7 +598,7 @@ pub mod word {
                     let mut eol_reader = create_string_tokenizer(input);
                     let parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var_unresolved(input)));
+                    assert_eq!(result, Expression::var_unresolved(input));
                 }
 
                 #[test]
@@ -598,7 +607,7 @@ pub mod word {
                     let mut eol_reader = create_string_tokenizer(input);
                     let parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var_unresolved(input)));
+                    assert_eq!(result, Expression::var_unresolved(input));
                 }
 
                 #[test]
@@ -609,7 +618,7 @@ pub mod word {
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
-                        Some(Expression::Property(
+                        Expression::Property(
                             Box::new(Expression::Property(
                                 Box::new(Expression::var_unresolved("a")),
                                 "b".into(),
@@ -617,7 +626,7 @@ pub mod word {
                             )),
                             "c".into(),
                             ExpressionType::Unresolved
-                        ))
+                        )
                     );
                 }
 
@@ -627,7 +636,7 @@ pub mod word {
                     let mut eol_reader = create_string_tokenizer(input);
                     let parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var_unresolved("a.b.c.")));
+                    assert_eq!(result, Expression::var_unresolved("a.b.c."));
                 }
 
                 #[test]
@@ -650,11 +659,11 @@ pub mod word {
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
-                        Some(Expression::Property(
+                        Expression::Property(
                             Box::new(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)])),
                             Name::Bare("Suit".into()),
                             ExpressionType::Unresolved
-                        ))
+                        )
                     );
                 }
             }
@@ -672,7 +681,7 @@ pub mod word {
                     let mut eol_reader = create_string_tokenizer(input);
                     let parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var_unresolved(input)));
+                    assert_eq!(result, Expression::var_unresolved(input));
                 }
 
                 #[test]
@@ -692,7 +701,7 @@ pub mod word {
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
-                        Some(Expression::func("A$".into(), vec![1.as_lit_expr(1, 4)]))
+                        Expression::func("A$".into(), vec![1.as_lit_expr(1, 4)])
                     );
                 }
             }
@@ -708,11 +717,11 @@ pub mod word {
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
-                        Some(Expression::Property(
+                        Expression::Property(
                             Box::new(Expression::var_unresolved("a".into())),
                             "b$".into(),
                             ExpressionType::Unresolved
-                        ))
+                        )
                     );
                 }
 
@@ -724,7 +733,7 @@ pub mod word {
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
-                        Some(Expression::func("a.b$".into(), vec![1.as_lit_expr(1, 6)]))
+                        Expression::func("a.b$".into(), vec![1.as_lit_expr(1, 6)])
                     );
                 }
 
@@ -734,7 +743,7 @@ pub mod word {
                     let mut eol_reader = create_string_tokenizer(input);
                     let parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var_unresolved(input)));
+                    assert_eq!(result, Expression::var_unresolved(input));
                 }
 
                 #[test]
@@ -743,7 +752,7 @@ pub mod word {
                     let mut eol_reader = create_string_tokenizer(input);
                     let parser = word_p();
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Some(Expression::var_unresolved(input)));
+                    assert_eq!(result, Expression::var_unresolved(input));
                 }
 
                 #[test]
@@ -766,7 +775,7 @@ pub mod word {
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
-                        Some(Expression::func("A.B$".into(), vec![1.as_lit_expr(1, 6)]))
+                        Expression::func("A.B$".into(), vec![1.as_lit_expr(1, 6)])
                     );
                 }
 
@@ -790,11 +799,11 @@ pub mod word {
                     let result = parser.parse(&mut eol_reader).expect("Should parse");
                     assert_eq!(
                         result,
-                        Some(Expression::Property(
+                        Expression::Property(
                             Box::new(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)])),
                             "Suit$".into(),
                             ExpressionType::Unresolved
-                        ))
+                        )
                     );
                 }
 
@@ -820,7 +829,7 @@ pub mod word {
     }
 }
 
-fn operator_p(had_parenthesis_before: bool) -> impl OptParser<Output = Locatable<Operator>> {
+fn operator_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
     Alt5::new(
         relational_operator_p().preceded_by_opt_ws(),
         arithmetic_op_p().with_pos().preceded_by_opt_ws(),
@@ -834,7 +843,7 @@ fn and_or_p(
     had_parenthesis_before: bool,
     k: Keyword,
     operator: Operator,
-) -> impl OptParser<Output = Locatable<Operator>> {
+) -> impl Parser<Output = Locatable<Operator>> {
     keyword(k)
         .with_pos()
         .preceded_by_ws(!had_parenthesis_before)
@@ -859,11 +868,11 @@ impl TokenTypeMap for ArithmeticMap {
     }
 }
 
-fn arithmetic_op_p() -> impl OptParser<Output = Operator> {
+fn arithmetic_op_p() -> impl Parser<Output = Operator> {
     ArithmeticMap.parser()
 }
 
-fn modulo_op_p(had_parenthesis_before: bool) -> impl OptParser<Output = Locatable<Operator>> {
+fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
     keyword(Keyword::Mod)
         .preceded_by_ws(!had_parenthesis_before)
         .map(|_| Operator::Modulo)
@@ -890,7 +899,7 @@ impl TokenTypeMap for RelationalMap {
     }
 }
 
-pub fn relational_operator_p() -> impl OptParser<Output = Locatable<Operator>> {
+pub fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
     RelationalMap.parser().with_pos()
 }
 

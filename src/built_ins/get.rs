@@ -4,7 +4,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn parse() -> impl OptParser<Output = Statement> {
+    pub fn parse() -> impl Parser<Output = Statement> {
         seq4(
             keyword_followed_by_whitespace_p(Keyword::Get),
             expression::file_handle_p().or_syntax_error("Expected: file-number"),

@@ -5,7 +5,7 @@ use crate::parser::pc_specific::*;
 use crate::parser::statements::*;
 use crate::parser::types::*;
 
-pub fn while_wend_p() -> impl OptParser<Output = Statement> {
+pub fn while_wend_p() -> impl Parser<Output = Statement> {
     seq4(
         keyword(Keyword::While),
         guarded_expression_node_p().or_syntax_error("Expected: expression after WHILE"),

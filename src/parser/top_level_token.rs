@@ -21,8 +21,8 @@ impl ParserBase for TopLevelTokensParser {
     type Output = ProgramNode;
 }
 
-impl OptParser for TopLevelTokensParser {
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+impl Parser for TopLevelTokensParser {
+    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut read_separator = true; // we are at the beginning of the file
         let mut top_level_tokens: ProgramNode = vec![];
         loop {
@@ -41,7 +41,7 @@ impl OptParser for TopLevelTokensParser {
                             return Err(QError::SyntaxError(format!("No separator: {}", ch.text)));
                         }
                         reader.unread(ch);
-                        let opt_top_level_token = top_level_token_one_p().parse(reader)?;
+                        let opt_top_level_token = top_level_token_one_p().parse_opt(reader)?;
                         match opt_top_level_token {
                             Some(top_level_token) => {
                                 top_level_tokens.push(top_level_token);
@@ -58,11 +58,11 @@ impl OptParser for TopLevelTokensParser {
                 }
             }
         }
-        Ok(Some(top_level_tokens))
+        Ok(top_level_tokens)
     }
 }
 
-fn top_level_token_one_p() -> impl OptParser<Output = TopLevelTokenNode> {
+fn top_level_token_one_p() -> impl Parser<Output = TopLevelTokenNode> {
     Alt5::new(
         def_type::def_type_p().map(TopLevelToken::DefType),
         declaration::declaration_p(),

@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::pc::parsers::{NonOptParser, OptParser, ParserBase};
+use crate::parser::pc::parsers::{Parser, ParserBase};
 use crate::parser::pc::tokenizers::Tokenizer;
 use crate::parser_decorator;
 
@@ -21,63 +21,9 @@ fn indentation() -> String {
     s
 }
 
-impl<P> OptParser for LoggingPC<P>
+impl<P> Parser for LoggingPC<P>
 where
-    P: OptParser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        println!(
-            "{}{} Parsing current position {:?} peek token {}",
-            indentation(),
-            self.tag,
-            tokenizer.position(),
-            peek_token(tokenizer)
-        );
-        unsafe {
-            INDENTATION_LEVEL += 1;
-        }
-        let result = self.parser.parse(tokenizer);
-        unsafe {
-            INDENTATION_LEVEL -= 1;
-        }
-        match result {
-            Ok(Some(value)) => {
-                println!(
-                    "{}{} Success current position {:?} peek token {}",
-                    indentation(),
-                    self.tag,
-                    tokenizer.position(),
-                    peek_token(tokenizer)
-                );
-                Ok(Some(value))
-            }
-            Ok(None) => {
-                println!(
-                    "{}{} None current position {:?} peek token {}",
-                    indentation(),
-                    self.tag,
-                    tokenizer.position(),
-                    peek_token(tokenizer)
-                );
-                Ok(None)
-            }
-            Err(err) => {
-                println!(
-                    "{}{} Err current position {:?} peek token {}",
-                    indentation(),
-                    self.tag,
-                    tokenizer.position(),
-                    peek_token(tokenizer)
-                );
-                Err(err)
-            }
-        }
-    }
-}
-
-impl<P> NonOptParser for LoggingPC<P>
-where
-    P: NonOptParser,
+    P: Parser,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         println!(

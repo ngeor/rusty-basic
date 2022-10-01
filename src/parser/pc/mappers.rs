@@ -5,7 +5,7 @@
 // TODO make QError generic param too after figuring out <T> vs associated type
 
 use crate::common::QError;
-use crate::parser::pc::{NonOptParser, OptParser, ParserBase, Tokenizer};
+use crate::parser::pc::{Parser, ParserBase, Tokenizer};
 use crate::parser_declaration;
 
 parser_declaration!(struct FnMapper<mapper: F>);
@@ -18,21 +18,9 @@ where
     type Output = U;
 }
 
-impl<P, F, U> OptParser for FnMapper<P, F>
+impl<P, F, U> Parser for FnMapper<P, F>
 where
-    P: OptParser,
-    F: Fn(P::Output) -> U,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        self.parser
-            .parse(tokenizer)
-            .map(|opt_result| opt_result.map(&self.mapper))
-    }
-}
-
-impl<P, F, U> NonOptParser for FnMapper<P, F>
-where
-    P: NonOptParser,
+    P: Parser,
     F: Fn(P::Output) -> U,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
@@ -53,20 +41,9 @@ where
     type Output = L;
 }
 
-impl<P, L, R> OptParser for KeepLeftMapper<P>
+impl<P, L, R> Parser for KeepLeftMapper<P>
 where
-    P: OptParser<Output = (L, R)>,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        self.parser
-            .parse(tokenizer)
-            .map(|opt_result| opt_result.map(|(l, _)| l))
-    }
-}
-
-impl<P, L, R> NonOptParser for KeepLeftMapper<P>
-where
-    P: NonOptParser<Output = (L, R)>,
+    P: Parser<Output = (L, R)>,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         self.parser.parse(tokenizer).map(|(l, _)| l)
@@ -86,20 +63,9 @@ where
     type Output = M;
 }
 
-impl<P, L, M, R> OptParser for KeepMiddleMapper<P>
+impl<P, L, M, R> Parser for KeepMiddleMapper<P>
 where
-    P: OptParser<Output = ((L, M), R)>,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        self.parser
-            .parse(tokenizer)
-            .map(|opt_result| opt_result.map(|((_, m), _)| m))
-    }
-}
-
-impl<P, L, M, R> NonOptParser for KeepMiddleMapper<P>
-where
-    P: NonOptParser<Output = ((L, M), R)>,
+    P: Parser<Output = ((L, M), R)>,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         self.parser.parse(tokenizer).map(|((_, m), _)| m)
@@ -119,20 +85,9 @@ where
     type Output = R;
 }
 
-impl<P, L, R> OptParser for KeepRightMapper<P>
+impl<P, L, R> Parser for KeepRightMapper<P>
 where
-    P: OptParser<Output = (L, R)>,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        self.parser
-            .parse(tokenizer)
-            .map(|opt_result| opt_result.map(|(_, r)| r))
-    }
-}
-
-impl<P, L, R> NonOptParser for KeepRightMapper<P>
-where
-    P: NonOptParser<Output = (L, R)>,
+    P: Parser<Output = (L, R)>,
 {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         self.parser.parse(tokenizer).map(|(_, r)| r)

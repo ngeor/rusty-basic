@@ -2,7 +2,7 @@
 
 use crate::binary_parser_declaration;
 use crate::common::QError;
-use crate::parser::pc::{OptParser, ParserBase, Tokenizer};
+use crate::parser::pc::{Parser, ParserBase, Tokenizer};
 
 pub enum ZipValue<L, R> {
     Left(L),
@@ -47,22 +47,22 @@ where
     type Output = ZipValue<L::Output, R::Output>;
 }
 
-impl<L, R> OptParser for OptZip<L, R>
+impl<L, R> Parser for OptZip<L, R>
 where
-    L: OptParser,
-    R: OptParser,
+    L: Parser,
+    R: Parser,
 {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let opt_left = self.0.parse(tokenizer)?;
-        let opt_right = self.1.parse(tokenizer)?;
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let opt_left = self.0.parse_opt(tokenizer)?;
+        let opt_right = self.1.parse_opt(tokenizer)?;
         match opt_left {
             Some(left) => match opt_right {
-                Some(right) => Ok(Some(ZipValue::Both(left, right))),
-                _ => Ok(Some(ZipValue::Left(left))),
+                Some(right) => Ok(ZipValue::Both(left, right)),
+                _ => Ok(ZipValue::Left(left)),
             },
             None => match opt_right {
-                Some(right) => Ok(Some(ZipValue::Right(right))),
-                _ => Ok(None),
+                Some(right) => Ok(ZipValue::Right(right)),
+                _ => Err(QError::Incomplete),
             },
         }
     }

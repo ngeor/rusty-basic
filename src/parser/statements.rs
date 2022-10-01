@@ -17,7 +17,7 @@ pub fn single_line_statements_p() -> impl Parser<Output = StatementNodes> {
 fn delimited_by_colon<P: Parser>(parser: P) -> impl Parser<Output = Vec<P::Output>> {
     delimited_by(
         parser,
-        item_p(':').surrounded_by_opt_ws(),
+        colon(),
         false,
         QError::syntax_error("Error: trailing colon"),
     )

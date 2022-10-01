@@ -109,7 +109,7 @@ impl Parser for PrintArgLookingBack {
 fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
     seq2(
         expression::file_handle_p().preceded_by_req_ws(),
-        comma_surrounded_by_opt_ws(),
+        comma(),
         |l, _| l,
     )
 }

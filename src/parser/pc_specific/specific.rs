@@ -99,6 +99,10 @@ impl TryFrom<TokenType> for char {
     fn try_from(value: TokenType) -> Result<Self, Self::Error> {
         match value {
             TokenType::Semicolon => Ok(';'),
+            TokenType::Comma => Ok(','),
+            TokenType::Equals => Ok('='),
+            TokenType::Colon => Ok(':'),
+            TokenType::Star => Ok('*'),
             _ => Err(QError::InternalError(format!("not implemented"))),
         }
     }
@@ -302,62 +306,6 @@ pub fn keyword_followed_by_whitespace_p(k: Keyword) -> impl Parser {
 
 pub fn keyword_pair(first: Keyword, second: Keyword) -> impl Parser {
     Seq3::new(keyword(first), whitespace(), keyword(second))
-}
-
-//
-// TokenKindParser
-//
-
-pub struct TokenKindParser {
-    token_type: TokenType,
-}
-
-impl TokenKindParser {
-    pub fn new(token_type: TokenType) -> Self {
-        Self { token_type }
-    }
-}
-
-impl TokenPredicate for TokenKindParser {
-    fn test(&self, token: &Token) -> bool {
-        token.kind == self.token_type as i32
-    }
-}
-
-impl ErrorProvider for TokenKindParser {
-    fn provide_error_message(&self) -> String {
-        match char::try_from(self.token_type) {
-            Ok(ch) => format!("Expected: {}", ch),
-            _ => {
-                if self.token_type == TokenType::Whitespace {
-                    "Expected: whitespace".to_owned()
-                } else {
-                    // TODO use Display instead of Debug
-                    format!("Expected: token of type {:?}", self.token_type)
-                }
-            }
-        }
-    }
-}
-
-// TODO #[deprecated]
-pub fn item_p(ch: char) -> TokenPredicateParser<TokenKindParser> {
-    TokenKindParser::new(match ch {
-        ',' => TokenType::Comma,
-        '=' => TokenType::Equals,
-        '$' => TokenType::DollarSign,
-        '\'' => TokenType::SingleQuote,
-        '-' => TokenType::Minus,
-        '*' => TokenType::Star,
-        '#' => TokenType::Pound,
-        '.' => TokenType::Dot,
-        ';' => TokenType::Semicolon,
-        '>' => TokenType::Greater,
-        '<' => TokenType::Less,
-        ':' => TokenType::Colon,
-        _ => panic!("not implemented {}", ch),
-    })
-    .parser()
 }
 
 //

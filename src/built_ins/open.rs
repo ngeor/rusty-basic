@@ -70,8 +70,8 @@ pub mod parser {
     fn parse_len_p() -> impl Parser<Output = ExpressionNode> {
         seq3(
             whitespace().and(keyword(Keyword::Len)),
-            item_p('=').preceded_by_opt_ws(),
-            expression::guarded_expression_node_p()
+            equal_sign(),
+            expression::expression_node_p()
                 .or_syntax_error("Expected: expression after LEN ="),
             |_, _, e| e,
         )

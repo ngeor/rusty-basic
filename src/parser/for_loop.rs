@@ -59,10 +59,8 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
         expression::word::word_p()
             .with_pos()
             .or_syntax_error("Expected: name after FOR"),
-        item_p('=')
-            .preceded_by_opt_ws()
-            .or_syntax_error("Expected: = after name"),
-        expression::back_guarded_expression_node_p()
+        equal_sign(),
+        expression::expression_node_followed_by_ws()
             .or_syntax_error("Expected: lower bound of FOR loop"),
         keyword(Keyword::To),
         expression::guarded_expression_node_p()

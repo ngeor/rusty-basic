@@ -4,6 +4,7 @@ pub mod parser {
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
+    // DEF SEG(=expr)?
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair(Keyword::Def, Keyword::Seg)
             .and_opt(equal_sign_and_expression())
@@ -13,7 +14,7 @@ pub mod parser {
     }
 
     fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {
-        item_p('=').surrounded_by_opt_ws().then_use(
+        equal_sign().then_use(
             expression::expression_node_p().or_syntax_error("Expected expression after equal sign"),
         )
     }

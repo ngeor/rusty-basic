@@ -59,6 +59,14 @@ pub fn back_guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> 
         .keep_left()
 }
 
+pub fn expression_node_followed_by_ws() -> impl Parser<Output = ExpressionNode> {
+    // ( expr ) ws*
+    // expr ws+
+    expression_node_p()
+        .and_demand_looking_back(whitespace_boundary_after_expr)
+        .keep_left()
+}
+
 /// Parses an expression
 pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
     single_expression_node_p()
@@ -89,7 +97,7 @@ pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
     // TODO this is a form of ManyParser
     seq2(
         guarded_expression_node_p(),
-        comma_surrounded_by_opt_ws()
+        comma()
             .then_use(expression_node_p().or_syntax_error("Expected: expression after comma"))
             .zero_or_more(),
         |first, mut remaining| {
@@ -181,7 +189,7 @@ pub fn parenthesis_p() -> impl Parser<Output = Expression> {
 }
 
 pub fn file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
-    seq2(file_handle_p(), comma_surrounded_by_opt_ws(), |l, _| l)
+    seq2(file_handle_p(), comma(), |l, _| l)
 }
 
 pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {

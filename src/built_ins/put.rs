@@ -8,7 +8,7 @@ pub mod parser {
         seq4(
             keyword_followed_by_whitespace_p(Keyword::Put),
             expression::file_handle_p().or_syntax_error("Expected: file-number"),
-            comma_surrounded_by_opt_ws(),
+            comma(),
             expression::expression_node_p().or_syntax_error("Expected: record-number"),
             |_, file_number, _, r| {
                 Statement::BuiltInSubCall(

@@ -11,9 +11,7 @@ pub mod parser {
             name::name_with_dot_p()
                 .with_pos()
                 .or_syntax_error("Expected: variable after LSET"),
-            item_p('=')
-                .surrounded_by_opt_ws()
-                .or_syntax_error("Expected: ="),
+            equal_sign(),
             expression::expression_node_p().or_syntax_error("Expected: expression"),
             |_, name_node, _, value_expr_node| {
                 Statement::BuiltInSubCall(BuiltInSub::LSet, build_args(name_node, value_expr_node))

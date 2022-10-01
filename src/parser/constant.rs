@@ -11,9 +11,7 @@ pub fn constant_p() -> impl Parser<Output = Statement> {
         name::name_with_dot_p()
             .with_pos()
             .or_syntax_error("Expected: const name"),
-        item_p('=')
-            .surrounded_by_opt_ws()
-            .or_syntax_error("Expected: ="),
+        equal_sign(),
         expression_node_p().or_syntax_error("Expected: const value"),
         |_, _, const_name, _, const_value_expr| Statement::Const(const_name, const_value_expr),
     )

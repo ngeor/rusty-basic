@@ -110,9 +110,7 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
         ]),
         seq3(
             keyword(Keyword::String_),
-            item_p('*')
-                .surrounded_by_opt_ws()
-                .or_syntax_error("Expected: *"),
+            star(),
             demand_string_length_p(),
             |_, _, e| ElementType::FixedLengthString(e, 0),
         ),

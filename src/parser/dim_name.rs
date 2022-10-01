@@ -130,13 +130,11 @@ impl ExtendedTypeParser {
     }
 
     fn string(reader: &mut impl Tokenizer) -> Result<DimType, QError> {
-        let opt_len = whitespace_boundary(true)
-            .and(item_p('*'))
-            .and_demand(
-                expression::guarded_expression_node_p()
+        let opt_len = star()
+            .then_use(
+                expression::expression_node_p()
                     .or_syntax_error("Expected: string length after *"),
             )
-            .keep_right()
             .parse_opt(reader)?;
         match opt_len {
             Some(len) => Ok(DimType::FixedLengthString(len, 0)),

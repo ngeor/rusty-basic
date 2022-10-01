@@ -9,7 +9,7 @@ pub mod parser {
         keyword(Keyword::Close)
             .and_opt(
                 expression::guarded_file_handle_or_expression_p().and_opt(
-                    comma_surrounded_by_opt_ws()
+                    comma()
                         .and(expression::file_handle_or_expression_p())
                         .keep_right()
                         .one_or_more(),

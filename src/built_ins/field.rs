@@ -10,7 +10,7 @@ pub mod parser {
             keyword(Keyword::Field),
             whitespace(),
             expression::file_handle_p().or_syntax_error("Expected: file-number"),
-            comma_surrounded_by_opt_ws(),
+            comma(),
             csv(field_item_p(), false).or_syntax_error("Expected: field width"),
             |_, _, file_number, _, fields| {
                 Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
@@ -21,15 +21,14 @@ pub mod parser {
     fn field_item_p() -> impl Parser<Output = (ExpressionNode, NameNode)> {
         // TODO 'AS' does not need leading whitespace if expression has parenthesis
         // TODO solve this not by peeking the previous but with a new expression:: function
-        seq3(
-            expression::expression_node_p(),
-            keyword(Keyword::As)
-                .surrounded_by_opt_ws()
-                .or_syntax_error("Expected: AS"),
+        seq4(
+            expression::expression_node_followed_by_ws(),
+            keyword(Keyword::As),
+            whitespace(),
             name::name_with_dot_p()
                 .with_pos()
                 .or_syntax_error("Expected: variable name"),
-            |width, _, name| (width, name),
+            |width, _, _, name| (width, name),
         )
     }
 

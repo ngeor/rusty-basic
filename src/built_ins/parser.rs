@@ -4,7 +4,7 @@ use crate::common::{AtLocation, Location};
 use crate::parser::expression::expression_node_p;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{
-    comma_surrounded_by_opt_ws, keyword, trailing_comma_error, whitespace,
+    comma, keyword, trailing_comma_error, whitespace,
 };
 use crate::parser::{Expression, ExpressionNode, ExpressionNodes, Keyword, Statement};
 
@@ -72,7 +72,7 @@ fn map_opt_args_to_flags(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {
 /// Comma separated list of items, allowing items to be missing between commas.
 pub fn csv_allow_missing() -> impl Parser<Output = Vec<Option<ExpressionNode>>> {
     parse_delimited_to_items(
-        opt_zip(expression_node_p(), comma_surrounded_by_opt_ws()),
+        opt_zip(expression_node_p(), comma()),
         true,
         trailing_comma_error(),
     )

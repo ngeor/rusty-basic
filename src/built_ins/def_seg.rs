@@ -9,21 +9,14 @@ pub mod parser {
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair(Keyword::Def, Keyword::Seg)
             .and_opt(equal_sign_and_expression())
-            .keep_right()
-            .map(opt_arg_to_args)
-            .map(|args| Statement::BuiltInSubCall(BuiltInSub::DefSeg, args))
+            .map(|(_, opt_expr_node)| {
+                Statement::BuiltInSubCall(BuiltInSub::DefSeg, opt_expr_node.into_iter().collect())
+            })
     }
 
     fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {
         equal_sign()
             .then_use(expression_node_p().or_syntax_error("Expected expression after equal sign"))
-    }
-
-    fn opt_arg_to_args(opt_arg: Option<ExpressionNode>) -> ExpressionNodes {
-        match opt_arg {
-            Some(arg) => vec![arg],
-            _ => vec![],
-        }
     }
 }
 

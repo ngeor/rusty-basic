@@ -170,3 +170,15 @@ pub trait Parser {
         ManyParser::new(self, false)
     }
 }
+
+// TODO use this new trait ParseLookingBack
+pub trait ParseLookingBack {
+    type Input;
+    type Output;
+
+    fn parse(
+        &self,
+        prev: &Self::Input,
+        tokenizer: &mut impl Tokenizer,
+    ) -> Result<Self::Output, QError>;
+}

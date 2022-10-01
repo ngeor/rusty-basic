@@ -127,9 +127,10 @@ impl PeekStatementSeparatorOrEof {
     }
 }
 
+// TODO review all parsers that return a collection, implement some `accumulate` method
 /// Reads multiple comments and the surrounding whitespace.
 pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>>> {
-    CommentsAndWhitespace.preceded_by_opt_ws()
+    CommentsAndWhitespace
 }
 
 struct CommentsAndWhitespace;
@@ -138,6 +139,8 @@ impl Parser for CommentsAndWhitespace {
     type Output = Vec<Locatable<String>>;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut result: Vec<Locatable<String>> = vec![];
+        // TODO review all instantiations of parsers within a parse method
+        whitespace().parse_opt(tokenizer)?;
         let sep = Separator::Comment;
         let parser = CommentAsString.with_pos();
         let mut found_separator = true;

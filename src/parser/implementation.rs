@@ -48,7 +48,7 @@ where
     P: Parser<Output = T> + 'static,
 {
     parser
-        .and_opt(keyword(Keyword::Static).preceded_by_opt_ws())
+        .and_opt(OptAndPC::new(whitespace(), keyword(Keyword::Static)))
         .map(|(l, r)| (l, r.is_some()))
 }
 

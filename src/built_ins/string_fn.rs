@@ -1,9 +1,9 @@
 pub mod parser {
     use crate::built_ins::BuiltInFunction;
+    use crate::parser::expression::expressions_non_opt;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
-    use crate::parser::expression::expressions_non_opt;
 
     pub fn parse() -> impl Parser<Output = Expression> {
         seq3(

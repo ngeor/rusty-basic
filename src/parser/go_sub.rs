@@ -11,7 +11,7 @@ pub fn statement_go_sub_p() -> impl Parser<Output = Statement> {
 
 pub fn statement_return_p() -> impl Parser<Output = Statement> {
     keyword(Keyword::Return)
-        .and_opt(bare_name_p().preceded_by_req_ws())
+        .and_opt(whitespace().then_use(bare_name_p()))
         .keep_right()
         .map(Statement::Return)
 }

@@ -47,9 +47,9 @@ fn single_line_if_else_p() -> impl Parser<
     single_line_non_comment_statements_p()
         .and_opt(
             // comment or ELSE
-            comment::comment_p()
-                .preceded_by_req_ws()
-                .with_pos()
+            whitespace()
+                .and(comment::comment_p().with_pos())
+                .keep_right()
                 .map(|s| vec![s])
                 .or(single_line_else_p()),
         )
@@ -57,7 +57,7 @@ fn single_line_if_else_p() -> impl Parser<
 }
 
 fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
-    keyword(Keyword::Else).preceded_by_req_ws().then_use(
+    whitespace().and(keyword(Keyword::Else)).then_use(
         single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
     )
 }

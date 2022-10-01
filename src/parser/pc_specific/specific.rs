@@ -185,7 +185,7 @@ where
         match self.0.parse(tokenizer) {
             Ok(value) => Ok(value),
             Err(err) if err.is_incomplete() => Err(QError::syntax_error(self.1)),
-            Err(err) => Err(err)
+            Err(err) => Err(err),
         }
     }
 }

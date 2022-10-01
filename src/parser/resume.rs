@@ -23,13 +23,16 @@ fn blank_resume() -> impl Parser<Output = ResumeOption> {
 }
 
 fn resume_next() -> impl Parser<Output = ResumeOption> {
-    keyword(Keyword::Next)
-        .preceded_by_req_ws()
+    whitespace()
+        .and(keyword(Keyword::Next))
         .map(|_| ResumeOption::Next)
 }
 
 fn resume_label() -> impl Parser<Output = ResumeOption> {
-    bare_name_p().preceded_by_req_ws().map(ResumeOption::Label)
+    whitespace()
+        .and(bare_name_p())
+        .keep_right()
+        .map(ResumeOption::Label)
 }
 
 #[cfg(test)]

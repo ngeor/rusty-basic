@@ -1,9 +1,11 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
+    use crate::parser::expression::file_handle::{
+        file_handle_or_expression_p, guarded_file_handle_or_expression_p,
+    };
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
-    use crate::parser::expression::file_handle::{file_handle_or_expression_p, guarded_file_handle_or_expression_p};
 
     pub fn parse() -> impl Parser<Output = Statement> {
         // TODO rewrite this

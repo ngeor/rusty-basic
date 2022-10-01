@@ -1,10 +1,10 @@
 use crate::common::*;
+use crate::parser::expression::file_handle::file_handle_p;
 use crate::parser::expression::{expression_node_p, guarded_expression_node_p};
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
 use std::convert::TryFrom;
-use crate::parser::expression::file_handle::file_handle_p;
 
 pub fn parse_print_p() -> impl Parser<Output = Statement> {
     keyword(Keyword::Print)
@@ -57,19 +57,20 @@ impl Parser for FirstPrintArg {
     type Output = PrintArg;
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         if self.needs_leading_whitespace_for_expression {
-            semicolon_or_comma_as_print_arg_p()
-                .preceded_by_opt_ws()
+            OptAndPC::new(whitespace(), semicolon_or_comma_as_print_arg_p())
+                .keep_right()
                 .or(guarded_expression_node_p().map(PrintArg::Expression))
                 .parse(reader)
         } else {
-            any_print_arg_p().preceded_by_opt_ws().parse(reader)
+            OptAndPC::new(whitespace(), any_print_arg_p())
+                .keep_right()
+                .parse(reader)
         }
     }
 }
 
 fn any_print_arg_p() -> impl Parser<Output = PrintArg> {
-    semicolon_or_comma_as_print_arg_p()
-        .or(expression_node_p().map(PrintArg::Expression))
+    semicolon_or_comma_as_print_arg_p().or(expression_node_p().map(PrintArg::Expression))
 }
 
 impl TryFrom<TokenType> for PrintArg {
@@ -97,21 +98,23 @@ impl Parser for PrintArgLookingBack {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         if self.prev_print_arg_was_expression {
             // only comma or semicolon is allowed
-            semicolon_or_comma_as_print_arg_p()
-                .preceded_by_opt_ws()
+            OptAndPC::new(whitespace(), semicolon_or_comma_as_print_arg_p())
+                .keep_right()
                 .parse(reader)
         } else {
             // everything is allowed
-            any_print_arg_p().preceded_by_opt_ws().parse(reader)
+            OptAndPC::new(whitespace(), any_print_arg_p())
+                .keep_right()
+                .parse(reader)
         }
     }
 }
 
 fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
     seq2(
-        file_handle_p().preceded_by_req_ws(),
+        whitespace().and(file_handle_p()),
         comma(),
-        |l, _| l,
+        |(_, file_handle), _| file_handle,
     )
 }
 

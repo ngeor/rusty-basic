@@ -72,8 +72,8 @@ pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
     single_expression_node_p()
         .and_opt_factory(|first_expr| {
             operator_p(first_expr.is_parenthesis()).and_demand(
-                lazy_expression_node_p()
-                    .preceded_by_opt_ws()
+                OptAndPC::new(whitespace(), lazy_expression_node_p())
+                    .keep_right()
                     .or_syntax_error("Expected: right side expression"),
             )
         })
@@ -142,16 +142,16 @@ pub mod file_handle {
     //! Used by PRINT and built-ins
 
     use crate::common::*;
-    use crate::parser::{Expression, ExpressionNode};
     use crate::parser::expression::{expression_node_p, guarded_expression_node_p};
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
+    use crate::parser::{Expression, ExpressionNode};
 
     pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
         FileHandleParser
     }
 
-// TODO support simple functions without `&self` for cases like FileHandleParser
+    // TODO support simple functions without `&self` for cases like FileHandleParser
 
     struct FileHandleParser;
 
@@ -193,9 +193,13 @@ pub mod file_handle {
     }
 
     pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
-        file_handle_as_expression_node_p()
-            .preceded_by_req_ws()
-            .or(guarded_expression_node_p())
+        ws_file_handle().or(guarded_expression_node_p())
+    }
+
+    fn ws_file_handle() -> impl Parser<Output = ExpressionNode> {
+        whitespace()
+            .and(file_handle_as_expression_node_p())
+            .keep_right()
     }
 }
 
@@ -825,8 +829,8 @@ pub mod word {
 
 fn operator_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
     Alt5::new(
-        relational_operator_p().preceded_by_opt_ws(),
-        arithmetic_op_p().with_pos().preceded_by_opt_ws(),
+        OptAndPC::new(whitespace(), relational_operator_p()).keep_right(),
+        OptAndPC::new(whitespace(), arithmetic_op_p().with_pos()).keep_right(),
         modulo_op_p(had_parenthesis_before),
         and_or_p(had_parenthesis_before, Keyword::And, Operator::And),
         and_or_p(had_parenthesis_before, Keyword::Or, Operator::Or),
@@ -838,10 +842,9 @@ fn and_or_p(
     k: Keyword,
     operator: Operator,
 ) -> impl Parser<Output = Locatable<Operator>> {
-    keyword(k)
-        .with_pos()
-        .preceded_by_ws(!had_parenthesis_before)
-        .map(move |Locatable { pos, .. }| operator.at(pos))
+    whitespace_boundary(had_parenthesis_before)
+        .and(keyword(k).with_pos())
+        .map(move |(_, Locatable { pos, .. })| operator.at(pos))
 }
 
 struct ArithmeticMap;
@@ -864,10 +867,9 @@ fn arithmetic_op_p() -> impl Parser<Output = Operator> {
 }
 
 fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
-    keyword(Keyword::Mod)
-        .preceded_by_ws(!had_parenthesis_before)
-        .map(|_| Operator::Modulo)
-        .with_pos()
+    whitespace_boundary(had_parenthesis_before)
+        .and(keyword(Keyword::Mod).with_pos())
+        .map(|(_, Locatable { pos, .. })| Operator::Modulo.at(pos))
 }
 
 struct RelationalMap;

@@ -1,19 +1,16 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
+    use crate::parser::expression::expression_node_p;
+    use crate::parser::expression::file_handle::file_handle_comma_p;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
-    use crate::parser::expression::expression_node_p;
-    use crate::parser::expression::file_handle::file_handle_comma_p;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         Seq2::new(keyword_pair(Keyword::Line, Keyword::Input), whitespace())
             .and_opt(file_handle_comma_p())
-            .and_demand(
-                expression_node_p()
-                    .or_syntax_error("Expected: #file-number or variable"),
-            )
+            .and_demand(expression_node_p().or_syntax_error("Expected: #file-number or variable"))
             .map(|((_, opt_loc_file_handle), variable)| {
                 let mut args: Vec<ExpressionNode> = vec![];
                 // add dummy arguments to encode the file number

@@ -6,12 +6,19 @@ use crate::parser::statement_separator::Separator;
 use crate::parser::types::*;
 
 pub fn single_line_non_comment_statements_p() -> impl Parser<Output = StatementNodes> {
-    delimited_by_colon(statement::single_line_non_comment_statement_p().with_pos())
-        .preceded_by_req_ws()
+    whitespace()
+        .and(delimited_by_colon(
+            statement::single_line_non_comment_statement_p().with_pos(),
+        ))
+        .keep_right()
 }
 
 pub fn single_line_statements_p() -> impl Parser<Output = StatementNodes> {
-    delimited_by_colon(statement::single_line_statement_p().with_pos()).preceded_by_req_ws()
+    whitespace()
+        .and(delimited_by_colon(
+            statement::single_line_statement_p().with_pos(),
+        ))
+        .keep_right()
 }
 
 fn delimited_by_colon<P: Parser>(parser: P) -> impl Parser<Output = Vec<P::Output>> {

@@ -68,8 +68,8 @@ fn case_blocks() -> impl Parser<Output = Vec<CaseBlockNode>> {
 fn case_block() -> impl Parser<Output = CaseBlockNode> {
     // CASE
     CaseButNotElse.then_use(
-        continue_after_case()
-            .preceded_by_opt_ws()
+        OptAndPC::new(whitespace(), continue_after_case())
+            .keep_right()
             .or_syntax_error("Expected case expression after CASE"),
     )
 }
@@ -147,11 +147,11 @@ impl CaseExpressionParser {
     fn case_is() -> impl Parser<Output = CaseExpression> {
         seq3(
             keyword(Keyword::Is),
-            expression::relational_operator_p()
-                .preceded_by_opt_ws()
+            OptAndPC::new(whitespace(), expression::relational_operator_p())
+                .keep_right()
                 .or_syntax_error("Expected: Operator after IS"),
-            expression::expression_node_p()
-                .preceded_by_opt_ws()
+            OptAndPC::new(whitespace(), expression::expression_node_p())
+                .keep_right()
                 .or_syntax_error("Expected: expression after IS operator"),
             |_, op, r| CaseExpression::Is(op.strip_location(), r),
         )
@@ -165,8 +165,8 @@ impl Parser for SimpleOrRangeParser {
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let expr = expression::expression_node_p().parse(reader)?;
         let parenthesis = expr.is_parenthesis();
-        let to_keyword = keyword(Keyword::To)
-            .preceded_by_ws(!parenthesis)
+        let to_keyword = whitespace_boundary(parenthesis)
+            .and(keyword(Keyword::To))
             .parse_opt(reader)?;
         match to_keyword {
             Some(_) => {

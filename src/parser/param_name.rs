@@ -92,9 +92,12 @@ fn final_param_type(param_type: ParamType, is_array: bool) -> ParamType {
 
 fn type_definition_extended_p() -> impl Parser<Output = ParamType> {
     // <ws+> AS <ws+> identifier
-    keyword_followed_by_whitespace_p(Keyword::As)
-        .preceded_by_req_ws()
-        .then_use(extended_type_p().or_syntax_error("Expected: type after AS"))
+    seq3(
+        whitespace().and(keyword(Keyword::As)),
+        whitespace(),
+        extended_type_p().or_syntax_error("Expected: type after AS"),
+        |_, _, param_type| param_type,
+    )
 }
 
 fn extended_type_p() -> impl Parser<Output = ParamType> {

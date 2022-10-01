@@ -3,6 +3,7 @@ use crate::parser::pc::{Parser, Token, Tokenizer, Undo};
 use crate::parser::pc_specific::TokenType;
 use crate::parser::ExpressionNode;
 
+// TODO #[deprecated]
 pub struct WhitespaceBoundary(Option<Token>);
 
 impl Undo for WhitespaceBoundary {

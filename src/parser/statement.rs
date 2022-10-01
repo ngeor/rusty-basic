@@ -165,8 +165,7 @@ mod system {
     pub fn parse_system_p() -> impl Parser<Output = Statement> {
         keyword(Keyword::System)
             .then_use(
-                peek_eof_or_statement_separator()
-                    .preceded_by_opt_ws()
+                OptAndPC::new(whitespace(), peek_eof_or_statement_separator())
                     .or_syntax_error("Expected: end-of-statement"),
             )
             .map(|_| Statement::System)

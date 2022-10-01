@@ -255,11 +255,8 @@ struct KeywordParser {
     keyword: Keyword,
 }
 
-impl ParserBase for KeywordParser {
-    type Output = Token;
-}
-
 impl Parser for KeywordParser {
+    type Output = Token;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) => {
@@ -369,17 +366,11 @@ pub fn item_p(ch: char) -> TokenPredicateParser<TokenKindParser> {
 
 pub struct MapErrParser<P>(P, QError);
 
-impl<P> ParserBase for MapErrParser<P>
-where
-    P: ParserBase,
-{
-    type Output = P::Output;
-}
-
 impl<P> Parser for MapErrParser<P>
 where
     P: Parser,
 {
+    type Output = P::Output;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         self.0.parse(tokenizer).map_err(|_| self.1.clone())
     }
@@ -404,17 +395,11 @@ impl<S> MapErrTrait for S {
 
 pub struct OrError<P>(P, QError);
 
-impl<P> ParserBase for OrError<P>
-where
-    P: ParserBase,
-{
-    type Output = P::Output;
-}
-
 impl<P> Parser for OrError<P>
 where
     P: Parser,
 {
+    type Output = P::Output;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match self.0.parse_opt(tokenizer)? {
             Some(value) => Ok(value),
@@ -429,17 +414,11 @@ where
 
 pub struct OrSyntaxError<'a, P>(P, &'a str);
 
-impl<'a, P> ParserBase for OrSyntaxError<'a, P>
-where
-    P: ParserBase,
-{
-    type Output = P::Output;
-}
-
 impl<'a, P> Parser for OrSyntaxError<'a, P>
 where
     P: Parser,
 {
+    type Output = P::Output;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match self.0.parse_opt(tokenizer)? {
             Some(value) => Ok(value),

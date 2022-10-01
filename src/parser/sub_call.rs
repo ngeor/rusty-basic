@@ -15,11 +15,8 @@ pub fn sub_call_or_assignment_p() -> impl Parser<Output = Statement> {
 
 struct SubCallOrAssignment;
 
-impl ParserBase for SubCallOrAssignment {
-    type Output = Statement;
-}
-
 impl Parser for SubCallOrAssignment {
+    type Output = Statement;
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let (name_expr, opt_equal_sign) = Self::name_and_opt_eq_sign().parse(reader)?;
         match opt_equal_sign {

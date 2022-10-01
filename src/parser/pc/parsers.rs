@@ -8,8 +8,10 @@ use crate::parser::pc::{
     Undo, ValidateParser,
 };
 
-pub trait ParserBase {
+pub trait Parser {
     type Output;
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
 
     // TODO #[deprecated]
     fn and_demand<R>(self, right: R) -> Seq2<Self, R>
@@ -53,29 +55,29 @@ pub trait ParserBase {
 
     fn keep_left<L, R>(self) -> KeepLeftMapper<Self>
     where
-        Self: Sized + ParserBase<Output = (L, R)>,
+        Self: Sized + Parser<Output = (L, R)>,
     {
         KeepLeftMapper::new(self)
     }
 
     fn keep_middle<L, M, R>(self) -> KeepMiddleMapper<Self>
     where
-        Self: Sized + ParserBase<Output = ((L, M), R)>,
+        Self: Sized + Parser<Output = ((L, M), R)>,
     {
         KeepMiddleMapper::new(self)
     }
 
     fn keep_right<L, R>(self) -> KeepRightMapper<Self>
     where
-        Self: Sized + ParserBase<Output = (L, R)>,
+        Self: Sized + Parser<Output = (L, R)>,
     {
         KeepRightMapper::new(self)
     }
 
     fn or<O, R>(self, right: R) -> Alt2<O, Self, R>
     where
-        Self: Sized + ParserBase<Output = O>,
-        R: ParserBase<Output = O>,
+        Self: Sized + Parser<Output = O>,
+        R: Parser<Output = O>,
     {
         Alt2::new(self, right)
     }
@@ -87,11 +89,7 @@ pub trait ParserBase {
     {
         LoggingPC::new(self, tag.to_owned())
     }
-}
 
-/// A parser that either succeeds or returns an error.
-pub trait Parser: ParserBase {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
 
     // TODO #[deprecated]
     fn parse_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {

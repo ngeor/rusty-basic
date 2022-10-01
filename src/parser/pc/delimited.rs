@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::pc::{Parser, ParserBase, ZipValue};
+use crate::parser::pc::{Parser, ZipValue};
 
 /// Represents a value that has is followed by optional delimiter.
 pub trait Delimited<T> {

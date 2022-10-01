@@ -8,10 +8,6 @@ pub struct KeywordChoice<'a> {
     keywords: &'a [Keyword],
 }
 
-impl<'a> ParserBase for KeywordChoice<'a> {
-    type Output = (Keyword, Token);
-}
-
 impl Undo for (Keyword, Token) {
     fn undo(self, tokenizer: &mut impl Tokenizer) {
         self.1.undo(tokenizer)
@@ -19,6 +15,7 @@ impl Undo for (Keyword, Token) {
 }
 
 impl<'a> Parser for KeywordChoice<'a> {
+    type Output = (Keyword, Token);
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) => match self.find_keyword(&token) {

@@ -9,7 +9,7 @@ pub fn whitespace() -> TokenPredicateParser<TokenKindParser> {
 
 pub struct LeadingWhitespace<P>
 where
-    P: ParserBase,
+    P: Parser,
 {
     parser: P,
     needs_whitespace: bool,
@@ -17,7 +17,7 @@ where
 
 impl<P> LeadingWhitespace<P>
 where
-    P: ParserBase,
+    P: Parser,
 {
     pub fn new(parser: P, needs_whitespace: bool) -> Self {
         Self {
@@ -25,13 +25,6 @@ where
             needs_whitespace,
         }
     }
-}
-
-impl<P> ParserBase for LeadingWhitespace<P>
-where
-    P: ParserBase,
-{
-    type Output = P::Output;
 }
 
 fn parse_opt_space(
@@ -57,6 +50,7 @@ impl<P> Parser for LeadingWhitespace<P>
 where
     P: Parser,
 {
+    type Output = P::Output;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let opt_space = parse_opt_space(tokenizer, self.needs_whitespace)?;
         match self.parser.parse(tokenizer) {
@@ -74,19 +68,13 @@ where
 // TODO refactor so that LeadingWhitespace becomes a smaller type that depends on this one
 parser_declaration!(struct LeadingWhitespacePreserving);
 
-impl<P> ParserBase for LeadingWhitespacePreserving<P>
-where
-    P: ParserBase,
-{
-    type Output = (Option<Token>, P::Output);
-}
-
 // TODO this is like OptAnd and LeadingWhitespace is identical to this only it drops the whitespace from the output
 
 impl<P> Parser for LeadingWhitespacePreserving<P>
 where
     P: Parser,
 {
+    type Output = (Option<Token>, P::Output);
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let opt_space = parse_opt_space(tokenizer, false)?;
         match self.parser.parse(tokenizer) {
@@ -103,22 +91,16 @@ where
 
 pub struct SurroundedByWhitespacePreserving<P>
 where
-    P: ParserBase,
+    P: Parser,
 {
     leading_parser: LeadingWhitespacePreserving<P>,
-}
-
-impl<P> ParserBase for SurroundedByWhitespacePreserving<P>
-where
-    P: ParserBase,
-{
-    type Output = (Option<Token>, P::Output, Option<Token>);
 }
 
 impl<P> Parser for SurroundedByWhitespacePreserving<P>
 where
     P: Parser,
 {
+    type Output = (Option<Token>, P::Output, Option<Token>);
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let (opt_leading, value) = self.leading_parser.parse(tokenizer)?;
         let opt_trailing = parse_opt_space(tokenizer, false)?;
@@ -128,22 +110,16 @@ where
 
 pub struct SurroundedByWhitespace<P>
 where
-    P: ParserBase,
+    P: Parser,
 {
     parser: SurroundedByWhitespacePreserving<P>,
-}
-
-impl<P> ParserBase for SurroundedByWhitespace<P>
-where
-    P: ParserBase,
-{
-    type Output = P::Output;
 }
 
 impl<P> Parser for SurroundedByWhitespace<P>
 where
     P: Parser,
 {
+    type Output = P::Output;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         self.parser.parse(tokenizer).map(|(_, m, _)| m)
     }
@@ -152,7 +128,7 @@ where
 // TODO delete the `preceded_by_req_ws and preceded_by_opt_ws` traits
 pub trait WhitespaceTrait
 where
-    Self: Sized + ParserBase,
+    Self: Sized + Parser,
 {
     fn preceded_by_ws(self, mandatory: bool) -> LeadingWhitespace<Self>;
 
@@ -174,7 +150,7 @@ where
 
 impl<P> WhitespaceTrait for P
 where
-    P: Sized + ParserBase,
+    P: Sized + Parser,
 {
     fn preceded_by_ws(self, mandatory: bool) -> LeadingWhitespace<Self> {
         LeadingWhitespace {

@@ -44,25 +44,3 @@ macro_rules! binary_parser_declaration {
         }
     };
 }
-
-//
-// unary no-arg parser macro
-//
-
-#[macro_export]
-macro_rules! parser_decorator {
-    (struct $name: ident $(<$($generic_var_name: tt: $generic_type:tt),*>)?$({
-        $($field_name: tt: $field_type: tt),*$(,)?
-    })?) => {
-        crate::parser_declaration!(struct $name$(<$($generic_var_name: $generic_type),*>)?$({
-            $($field_name: $field_type),*
-        })?);
-
-        impl<P$(, $($generic_type),*)?> ParserBase for $name<P$(, $($generic_type),*)?>
-        where
-            P: ParserBase,
-        {
-            type Output = P::Output;
-        }
-    };
-}

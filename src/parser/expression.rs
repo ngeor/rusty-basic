@@ -21,11 +21,9 @@ pub fn lazy_expression_node_p() -> LazyExpressionParser {
 
 pub struct LazyExpressionParser;
 
-impl ParserBase for LazyExpressionParser {
-    type Output = ExpressionNode;
-}
-
 impl Parser for LazyExpressionParser {
+    type Output = ExpressionNode;
+
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let parser = expression_node_p();
         parser.parse(reader)
@@ -142,11 +140,8 @@ pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
 
 struct FileHandleParser;
 
-impl ParserBase for FileHandleParser {
-    type Output = Locatable<FileHandle>;
-}
-
 impl Parser for FileHandleParser {
+    type Output = Locatable<FileHandle>;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let pos = tokenizer.position();
         match tokenizer.read()? {
@@ -497,11 +492,8 @@ pub mod word {
 
     struct Properties;
 
-    impl ParserBase for Properties {
-        type Output = Vec<String>;
-    }
-
     impl Parser for Properties {
+        type Output = Vec<String>;
         fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
             let mut result: Vec<String> = vec![];
             while let Some(token) = tokenizer.read()? {
@@ -527,11 +519,8 @@ pub mod word {
 
     struct EnsureEndOfNameParser;
 
-    impl ParserBase for EnsureEndOfNameParser {
-        type Output = ();
-    }
-
     impl Parser for EnsureEndOfNameParser {
+        type Output = ();
         fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
             match tokenizer.read()? {
                 Some(token) => {
@@ -852,11 +841,8 @@ fn and_or_p(
 
 struct ArithmeticMap;
 
-impl ParserBase for ArithmeticMap {
-    type Output = Operator;
-}
-
 impl TokenTypeMap for ArithmeticMap {
+    type Output = Operator;
     fn try_map(&self, token_type: TokenType) -> Option<Self::Output> {
         match token_type {
             TokenType::Plus => Some(Operator::Plus),
@@ -881,11 +867,8 @@ fn modulo_op_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<O
 
 struct RelationalMap;
 
-impl ParserBase for RelationalMap {
-    type Output = Operator;
-}
-
 impl TokenTypeMap for RelationalMap {
+    type Output = Operator;
     fn try_map(&self, token_type: TokenType) -> Option<Self::Output> {
         match token_type {
             TokenType::LessEquals => Some(Operator::LessOrEqual),

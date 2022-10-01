@@ -17,11 +17,8 @@ impl TopLevelTokensParser {
     }
 }
 
-impl ParserBase for TopLevelTokensParser {
-    type Output = ProgramNode;
-}
-
 impl Parser for TopLevelTokensParser {
+    type Output = ProgramNode;
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut read_separator = true; // we are at the beginning of the file
         let mut top_level_tokens: ProgramNode = vec![];

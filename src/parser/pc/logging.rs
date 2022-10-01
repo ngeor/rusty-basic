@@ -1,9 +1,9 @@
 use crate::common::QError;
-use crate::parser::pc::parsers::{Parser, ParserBase};
+use crate::parser::pc::parsers::{Parser};
 use crate::parser::pc::tokenizers::Tokenizer;
-use crate::parser_decorator;
+use crate::parser_declaration;
 
-parser_decorator!(
+parser_declaration!(
     struct LoggingPC {
         tag: String,
     }
@@ -25,6 +25,7 @@ impl<P> Parser for LoggingPC<P>
 where
     P: Parser,
 {
+    type Output = P::Output;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         println!(
             "{}{} Parsing non-opt current position {:?} peek token {}",

@@ -24,11 +24,8 @@ pub fn comma_surrounded_by_opt_ws() -> CommaSurroundedByOptWhitespace {
 
 pub struct CommaSurroundedByOptWhitespace;
 
-impl ParserBase for CommaSurroundedByOptWhitespace {
-    type Output = (Option<Token>, Token, Option<Token>);
-}
-
 impl Parser for CommaSurroundedByOptWhitespace {
+    type Output = (Option<Token>, Token, Option<Token>);
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut opt_leading_space: Option<Token> = None;
         let mut comma_token: Option<Token> = None;

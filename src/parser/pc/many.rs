@@ -3,7 +3,7 @@
 //
 
 use crate::common::QError;
-use crate::parser::pc::{Parser, ParserBase, Tokenizer};
+use crate::parser::pc::{Parser, Tokenizer};
 
 pub struct ManyParser<P> {
     parser: P,
@@ -19,17 +19,11 @@ impl<P> ManyParser<P> {
     }
 }
 
-impl<P> ParserBase for ManyParser<P>
-where
-    P: ParserBase,
-{
-    type Output = Vec<P::Output>;
-}
-
 impl<P> Parser for ManyParser<P>
 where
     P: Parser,
 {
+    type Output = Vec<P::Output>;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut result: Vec<P::Output> = Vec::new();
         loop {

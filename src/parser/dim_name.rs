@@ -96,11 +96,8 @@ fn extended_type_p() -> impl Parser<Output = DimType> {
 
 struct ExtendedTypeParser;
 
-impl ParserBase for ExtendedTypeParser {
-    type Output = DimType;
-}
-
 impl Parser for ExtendedTypeParser {
+    type Output = DimType;
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         // TODO rewrite this
         // TODO only try to parse keyword if the token kind matches

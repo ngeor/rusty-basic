@@ -10,11 +10,8 @@ pub fn comment_p() -> impl Parser<Output = Statement> {
 
 pub struct CommentAsString;
 
-impl ParserBase for CommentAsString {
-    type Output = String;
-}
-
 impl Parser for CommentAsString {
+    type Output = String;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) if token.kind == TokenType::SingleQuote as i32 => {

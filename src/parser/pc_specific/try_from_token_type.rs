@@ -12,14 +12,11 @@ impl<O> TryFromParser<O> {
     }
 }
 
-impl<O> ParserBase for TryFromParser<O> {
-    type Output = O;
-}
-
 impl<O> Parser for TryFromParser<O>
 where
     O: TryFrom<TokenType, Error = QError>,
 {
+    type Output = O;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) => match TokenType::try_from(token.kind).and_then(O::try_from) {

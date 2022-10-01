@@ -23,12 +23,9 @@ macro_rules! alt_pc {
             }
         }
 
-        impl <OUT, $($generics),+> ParserBase for $name <OUT, $($generics),+> {
-            type Output = OUT;
-        }
-
         // TODO modify macro to have a last_type, so that the last return statement is just invoking the last parser
         impl <OUT, $($generics : Parser<Output=OUT>),+> Parser for $name <OUT, $($generics),+> {
+            type Output = OUT;
             fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<OUT, QError> {
                 $(
                     if let Some(value) = self.$generics.parse_opt(tokenizer)? {

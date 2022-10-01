@@ -101,11 +101,8 @@ mod end {
     /// Otherwise, it demands that we find an end-of-statement terminator.
     struct AfterEndSeparator;
 
-    impl ParserBase for AfterEndSeparator {
-        type Output = ();
-    }
-
     impl Parser for AfterEndSeparator {
+        type Output = ();
         fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
             let opt_ws = whitespace().parse_opt(tokenizer)?;
             if opt_ws.is_some() {

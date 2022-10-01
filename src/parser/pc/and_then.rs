@@ -6,19 +6,12 @@ use crate::parser_declaration;
 
 parser_declaration!(struct AndThen<mapper: F>);
 
-impl<P, F, U> ParserBase for AndThen<P, F>
-where
-    P: ParserBase,
-    F: Fn(P::Output) -> Result<U, QError>,
-{
-    type Output = U;
-}
-
 impl<P, F, U> Parser for AndThen<P, F>
 where
     P: Parser,
     F: Fn(P::Output) -> Result<U, QError>,
 {
+    type Output = U;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         self.parser.parse(tokenizer).and_then(&self.mapper)
     }

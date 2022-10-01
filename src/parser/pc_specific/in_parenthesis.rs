@@ -3,7 +3,7 @@
 use crate::common::QError;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::TokenType;
-use crate::parser_decorator;
+use crate::parser_declaration;
 
 /// In parser mode, returns Some if the opening parenthesis is present
 /// AND the decorated parser has a value.
@@ -11,12 +11,13 @@ pub fn in_parenthesis<P>(parser: P) -> InParenthesisParser<P> {
     InParenthesisParser::new(parser)
 }
 
-parser_decorator!(struct InParenthesisParser);
+parser_declaration!(struct InParenthesisParser);
 
 impl<P> Parser for InParenthesisParser<P>
 where
     P: Parser,
 {
+    type Output = P::Output;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         if let Some(_) = left_paren(tokenizer)? {
             let value = self.parser.parse(tokenizer)?;

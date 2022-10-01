@@ -76,11 +76,8 @@ fn case_block() -> impl Parser<Output = CaseBlockNode> {
 
 struct CaseButNotElse;
 
-impl ParserBase for CaseButNotElse {
-    type Output = ();
-}
-
 impl Parser for CaseButNotElse {
+    type Output = ();
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(case_token) if Keyword::Case == case_token => match tokenizer.read()? {
@@ -135,11 +132,8 @@ fn case_expression_list() -> impl Parser<Output = Vec<CaseExpression>> {
 
 struct CaseExpressionParser;
 
-impl ParserBase for CaseExpressionParser {
-    type Output = CaseExpression;
-}
-
 impl Parser for CaseExpressionParser {
+    type Output = CaseExpression;
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         Self::case_is().or(SimpleOrRangeParser::new()).parse(reader)
     }
@@ -166,11 +160,8 @@ impl CaseExpressionParser {
 
 struct SimpleOrRangeParser;
 
-impl ParserBase for SimpleOrRangeParser {
-    type Output = CaseExpression;
-}
-
 impl Parser for SimpleOrRangeParser {
+    type Output = CaseExpression;
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let expr = expression::expression_node_p().parse(reader)?;
         let parenthesis = expr.is_parenthesis();

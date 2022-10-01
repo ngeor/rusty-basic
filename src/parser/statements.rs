@@ -35,15 +35,12 @@ impl<S> ZeroOrMoreStatements<S> {
     }
 }
 
-impl<S> ParserBase for ZeroOrMoreStatements<S> {
-    type Output = StatementNodes;
-}
-
 impl<S> Parser for ZeroOrMoreStatements<S>
 where
     S: Parser,
     S::Output: Undo,
 {
+    type Output = StatementNodes;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         // must start with a separator (e.g. after a WHILE condition)
         Separator::NonComment
@@ -91,15 +88,12 @@ where
 
 struct NegateParser<P>(P);
 
-impl<P> ParserBase for NegateParser<P> {
-    type Output = ();
-}
-
 impl<P> Parser for NegateParser<P>
 where
     P: Parser,
     P::Output: Undo,
 {
+    type Output = ();
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match self.0.parse_opt(tokenizer)? {
             Some(value) => {

@@ -2,7 +2,7 @@
 
 use crate::binary_parser_declaration;
 use crate::common::QError;
-use crate::parser::pc::{Parser, ParserBase, Tokenizer};
+use crate::parser::pc::{Parser, Tokenizer};
 
 pub enum ZipValue<L, R> {
     Left(L),
@@ -39,19 +39,12 @@ pub fn opt_zip<L, R>(left: L, right: R) -> OptZip<L, R> {
     OptZip(left, right)
 }
 
-impl<L, R> ParserBase for OptZip<L, R>
-where
-    L: ParserBase,
-    R: ParserBase,
-{
-    type Output = ZipValue<L::Output, R::Output>;
-}
-
 impl<L, R> Parser for OptZip<L, R>
 where
     L: Parser,
     R: Parser,
 {
+    type Output = ZipValue<L::Output, R::Output>;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let opt_left = self.0.parse_opt(tokenizer)?;
         let opt_right = self.1.parse_opt(tokenizer)?;

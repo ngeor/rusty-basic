@@ -15,11 +15,8 @@ pub enum Separator {
     NonComment,
 }
 
-impl ParserBase for Separator {
-    type Output = ();
-}
-
 impl Parser for Separator {
+    type Output = ();
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match self {
             Self::Comment => CommentSeparator.parse(tokenizer),
@@ -30,11 +27,8 @@ impl Parser for Separator {
 
 struct CommentSeparator;
 
-impl ParserBase for CommentSeparator {
-    type Output = ();
-}
-
 impl Parser for CommentSeparator {
+    type Output = ();
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut tokens: TokenList = vec![];
         let mut found_eol = false;
@@ -62,11 +56,8 @@ impl Parser for CommentSeparator {
 
 struct CommonSeparator;
 
-impl ParserBase for CommonSeparator {
-    type Output = ();
-}
-
 impl Parser for CommonSeparator {
+    type Output = ();
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut sep = TokenType::Unknown;
         while let Some(token) = tokenizer.read()? {
@@ -110,14 +101,11 @@ pub fn peek_eof_or_statement_separator() -> impl Parser<Output = ()> {
 
 struct PeekStatementSeparatorOrEof<P>(P);
 
-impl<P> ParserBase for PeekStatementSeparatorOrEof<P> {
-    type Output = ();
-}
-
 impl<P> Parser for PeekStatementSeparatorOrEof<P>
 where
     P: TokenPredicate,
 {
+    type Output = ();
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<(), QError> {
         match tokenizer.read()? {
             Some(token) => {
@@ -151,11 +139,8 @@ pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>
 
 struct CommentsAndWhitespace;
 
-impl ParserBase for CommentsAndWhitespace {
-    type Output = Vec<Locatable<String>>;
-}
-
 impl Parser for CommentsAndWhitespace {
+    type Output = Vec<Locatable<String>>;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut result: Vec<Locatable<String>> = vec![];
         let sep = Separator::Comment;

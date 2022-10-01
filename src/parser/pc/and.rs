@@ -1,6 +1,6 @@
 use crate::binary_parser_declaration;
 use crate::common::QError;
-use crate::parser::pc::{Parser, ParserBase, Tokenizer, Undo};
+use crate::parser::pc::{Parser, Tokenizer, Undo};
 
 //
 // And (with undo if the left parser supports it)
@@ -11,20 +11,13 @@ use crate::parser::pc::{Parser, ParserBase, Tokenizer, Undo};
 
 binary_parser_declaration!(struct AndPC);
 
-impl<A, B> ParserBase for AndPC<A, B>
-where
-    A: ParserBase,
-    B: ParserBase,
-{
-    type Output = (A::Output, B::Output);
-}
-
 impl<A, B> Parser for AndPC<A, B>
 where
     A: Parser,
     A::Output: Undo,
     B: Parser,
 {
+    type Output = (A::Output, B::Output);
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let left = self.0.parse(tokenizer)?;
         if let Some(right) = self.1.parse_opt(tokenizer)? {

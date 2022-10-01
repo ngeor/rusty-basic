@@ -52,11 +52,8 @@ struct FirstPrintArg {
     needs_leading_whitespace_for_expression: bool,
 }
 
-impl ParserBase for FirstPrintArg {
-    type Output = PrintArg;
-}
-
 impl Parser for FirstPrintArg {
+    type Output = PrintArg;
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         if self.needs_leading_whitespace_for_expression {
             semicolon_or_comma_as_print_arg_p()
@@ -94,11 +91,8 @@ struct PrintArgLookingBack {
     prev_print_arg_was_expression: bool,
 }
 
-impl ParserBase for PrintArgLookingBack {
-    type Output = PrintArg;
-}
-
 impl Parser for PrintArgLookingBack {
+    type Output = PrintArg;
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         if self.prev_print_arg_was_expression {
             // only comma or semicolon is allowed
@@ -134,11 +128,8 @@ impl PrintArgsParser {
     }
 }
 
-impl ParserBase for PrintArgsParser {
-    type Output = Vec<PrintArg>;
-}
-
 impl Parser for PrintArgsParser {
+    type Output = Vec<PrintArg>;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let first_arg = self.seed_parser.parse(tokenizer)?;
         let mut args = vec![first_arg];

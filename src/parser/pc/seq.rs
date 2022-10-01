@@ -27,19 +27,13 @@ macro_rules! seq_pc {
             }
         }
 
-        impl <$first_type, $($generic_type),+> ParserBase for $name <$first_type, $($generic_type),+>
-        where
-            $first_type: ParserBase,
-            $($generic_type : ParserBase),+
-        {
-            type Output = ($first_type::Output, $($generic_type::Output),+ );
-        }
-
         impl <$first_type, $($generic_type),+> Parser for $name <$first_type, $($generic_type),+>
         where
             $first_type: Parser,
             $($generic_type: Parser),+
         {
+            type Output = ($first_type::Output, $($generic_type::Output),+ );
+
             #[allow(non_snake_case)]
             fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
                 // the first is allowed to return incomplete

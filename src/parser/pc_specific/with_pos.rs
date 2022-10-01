@@ -3,17 +3,11 @@ use crate::parser::pc::*;
 
 pub struct WithPosMapper<P>(P);
 
-impl<P> ParserBase for WithPosMapper<P>
-where
-    P: ParserBase,
-{
-    type Output = Locatable<P::Output>;
-}
-
 impl<P> Parser for WithPosMapper<P>
 where
     P: Parser,
 {
+    type Output = Locatable<P::Output>;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let pos = tokenizer.position();
         self.0.parse(tokenizer).map(|x| x.at(pos))
@@ -29,7 +23,7 @@ pub trait WithPosTrait {
 
 impl<S> WithPosTrait for S
 where
-    S: ParserBase,
+    S: Parser,
 {
     fn with_pos(self) -> WithPosMapper<Self> {
         WithPosMapper(self)

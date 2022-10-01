@@ -51,13 +51,6 @@ pub fn bare_name_p() -> impl Parser<Output = BareName> {
 
 struct UnlessFollowedBy<L, R>(L, R);
 
-impl<L, R> ParserBase for UnlessFollowedBy<L, R>
-where
-    L: ParserBase,
-{
-    type Output = L::Output;
-}
-
 impl<L, R> Parser for UnlessFollowedBy<L, R>
 where
     L: Parser,
@@ -65,6 +58,7 @@ where
     R: Parser,
     R::Output: Undo,
 {
+    type Output = L::Output;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let value = self.0.parse(tokenizer)?;
         match self.1.parse_opt(tokenizer)? {

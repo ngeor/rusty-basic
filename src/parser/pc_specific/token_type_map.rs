@@ -3,7 +3,8 @@ use crate::parser::pc::*;
 use crate::parser::pc_specific::TokenType;
 use std::convert::TryFrom;
 
-pub trait TokenTypeMap: ParserBase {
+pub trait TokenTypeMap {
+    type Output;
     fn try_map(&self, token_type: TokenType) -> Option<Self::Output>;
 
     fn parser(self) -> TokenTypeMapParser<Self>
@@ -16,17 +17,11 @@ pub trait TokenTypeMap: ParserBase {
 
 pub struct TokenTypeMapParser<P>(P);
 
-impl<P> ParserBase for TokenTypeMapParser<P>
-where
-    P: ParserBase,
-{
-    type Output = P::Output;
-}
-
 impl<P> Parser for TokenTypeMapParser<P>
 where
     P: TokenTypeMap,
 {
+    type Output = P::Output;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) => {

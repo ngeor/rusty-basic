@@ -6,13 +6,16 @@ use crate::parser::pc_specific::*;
 use crate::parser::{Expression, Keyword, OnErrorOption, Statement};
 
 pub fn statement_on_error_go_to_p() -> impl Parser<Output = Statement> {
-    Seq2::new(keyword_pair(Keyword::On, Keyword::Error), whitespace())
-        .then_demand(
-            next()
-                .or(goto())
-                .or_syntax_error("Expected: GOTO or RESUME"),
-        )
-        .map(Statement::OnError)
+    Seq2::new(
+        keyword_pair(Keyword::On, Keyword::Error),
+        whitespace().no_incomplete(),
+    )
+    .then_demand(
+        next()
+            .or(goto())
+            .or_syntax_error("Expected: GOTO or RESUME"),
+    )
+    .map(Statement::OnError)
 }
 
 fn next() -> impl Parser<Output = OnErrorOption> {

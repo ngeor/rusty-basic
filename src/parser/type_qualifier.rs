@@ -16,5 +16,5 @@ pub fn type_qualifier_as_token() -> impl Parser<Output = Token> {
                 .and_then(TypeQualifier::try_from)
                 .is_ok()
         })
-        .map_incomplete_err(|| QError::expected("Expected: type qualifier"))
+        .map_incomplete_err(QError::expected("Expected: type qualifier"))
 }

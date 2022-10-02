@@ -6,9 +6,9 @@ use crate::parser::{dim_name, DimList, Keyword, Statement};
 pub fn dim_p() -> impl Parser<Output = Statement> {
     seq4(
         keyword(Keyword::Dim),
-        whitespace(),
+        whitespace().no_incomplete(),
         keyword(Keyword::Shared)
-            .and_demand(whitespace())
+            .and_demand(whitespace().no_incomplete())
             .allow_none(),
         csv(dim_name::dim_name_node_p(), false).or_syntax_error("Expected: name after DIM"),
         |_, _, opt_shared, variables| {
@@ -24,9 +24,9 @@ pub fn dim_p() -> impl Parser<Output = Statement> {
 pub fn redim_p() -> impl Parser<Output = Statement> {
     seq4(
         keyword(Keyword::Redim),
-        whitespace(),
+        whitespace().no_incomplete(),
         keyword(Keyword::Shared)
-            .and_demand(whitespace())
+            .and_demand(whitespace().no_incomplete())
             .allow_none(),
         csv(dim_name::redim_name_node_p(), false).or_syntax_error("Expected: name after REDIM"),
         |_, _, opt_shared, variables| {

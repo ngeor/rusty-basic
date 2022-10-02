@@ -11,7 +11,7 @@ pub mod parser {
     pub fn parse() -> impl Parser<Output = Statement> {
         seq4(
             keyword_pair(Keyword::Line, Keyword::Input),
-            whitespace(),
+            whitespace().no_incomplete(),
             opt_file_handle_comma_p(),
             expression_node_p().or_syntax_error("Expected: #file-number or variable"),
             |_, _, opt_loc_file_handle, variable| {

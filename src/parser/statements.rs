@@ -93,6 +93,13 @@ where
     }
 }
 
+impl<S> NonOptParser for ZeroOrMoreStatements<S>
+where
+    S: Parser,
+    S::Output: Undo,
+{
+}
+
 struct NegateParser<P>(P);
 
 impl<P> Parser for NegateParser<P>

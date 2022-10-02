@@ -16,9 +16,9 @@ pub mod parser {
     ) -> impl Parser<Output = Statement> {
         seq5(
             keyword(k),
-            whitespace(),
+            whitespace().no_incomplete(),
             file_handle_p().or_syntax_error("Expected: file-number"),
-            comma(),
+            comma().no_incomplete(),
             expression_node_p().or_syntax_error("Expected: record-number"),
             move |_, _, file_number_node, _, record_number_expr_node| {
                 Statement::BuiltInSubCall(

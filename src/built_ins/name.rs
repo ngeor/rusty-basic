@@ -9,7 +9,7 @@ pub mod parser {
         seq4(
             keyword(Keyword::Name),
             back_guarded_expression_node_p().or_syntax_error("Expected: old file name"),
-            keyword(Keyword::As),
+            keyword(Keyword::As).no_incomplete(),
             guarded_expression_node_p().or_syntax_error("Expected: new file name"),
             |_, l, _, r| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]),
         )

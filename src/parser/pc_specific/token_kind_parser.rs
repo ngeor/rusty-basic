@@ -84,7 +84,7 @@ pub fn whitespace() -> impl Parser<Output = Token> {
 pub fn any_token_of(token_type: TokenType) -> impl Parser<Output = Token> {
     any_token()
         .filter(move |token| token.kind == token_type as i32)
-        .map_incomplete_err(move || QError::from(token_type))
+        .map_incomplete_err(QError::from(token_type))
 }
 
 fn any_token_of_ws(token_type: TokenType) -> impl Parser<Output = Token> {

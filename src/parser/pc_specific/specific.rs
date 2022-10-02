@@ -1,4 +1,4 @@
-use crate::common::{ParserErrorTrait, QError};
+use crate::common::QError;
 use crate::parser::char_reader::file_char_reader;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
@@ -150,71 +150,37 @@ pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
 }
 
 //
-// OrError
-//
-
-pub struct OrError<P>(P, QError);
-
-impl<P> Parser for OrError<P>
-where
-    P: Parser,
-{
-    type Output = P::Output;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match self.0.parse_opt(tokenizer)? {
-            Some(value) => Ok(value),
-            _ => Err(self.1.clone()),
-        }
-    }
-}
-
-//
 // Or Syntax Error
 //
 
-pub struct OrSyntaxError<'a, P>(P, &'a str);
-
-impl<'a, P> Parser for OrSyntaxError<'a, P>
-where
-    P: Parser,
-{
-    type Output = P::Output;
-
-    // TODO there is duplication with the map_incomplete_err fn
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match self.0.parse(tokenizer) {
-            Ok(value) => Ok(value),
-            Err(err) if err.is_incomplete() => Err(QError::syntax_error(self.1)),
-            Err(err) => Err(err),
-        }
-    }
-}
-
 pub trait OrErrorTrait
 where
-    Self: Sized,
+    Self: Sized + Parser,
 {
-    fn or_error(self, err: QError) -> OrError<Self>;
-
-    fn or_syntax_error(self, msg: &str) -> OrSyntaxError<Self>;
+    fn or_syntax_error(self, msg: &str) -> OrFailParser<Self>;
 }
 
-impl<S> OrErrorTrait for S {
-    fn or_error(self, err: QError) -> OrError<Self> {
-        OrError(self, err)
-    }
-
-    fn or_syntax_error(self, msg: &str) -> OrSyntaxError<Self> {
-        OrSyntaxError(self, msg)
+impl<S> OrErrorTrait for S
+where
+    S: Parser,
+{
+    fn or_syntax_error(self, msg: &str) -> OrFailParser<Self> {
+        self.or_fail(QError::syntax_error(msg))
     }
 }
+
+//
+// identifier or keyword
+//
 
 pub fn identifier_or_keyword() -> impl Parser<Output = Token> {
     any_token()
         .filter(|token| {
             token.kind == TokenType::Keyword as i32 || token.kind == TokenType::Identifier as i32
         })
-        .map_incomplete_err(|| QError::Expected("Expected: identifier or keyword".to_owned()))
+        .map_incomplete_err(QError::Expected(
+            "Expected: identifier or keyword".to_owned(),
+        ))
 }
 
 pub fn identifier_or_keyword_without_dot() -> impl Parser<Output = Token> {
@@ -223,7 +189,9 @@ pub fn identifier_or_keyword_without_dot() -> impl Parser<Output = Token> {
             (token.kind == TokenType::Keyword as i32 || token.kind == TokenType::Identifier as i32)
                 && !token.text.contains('.')
         })
-        .map_incomplete_err(|| QError::Expected("Expected: identifier or keyword".to_owned()))
+        .map_incomplete_err(QError::Expected(
+            "Expected: identifier or keyword".to_owned(),
+        ))
 }
 
 #[cfg(test)]

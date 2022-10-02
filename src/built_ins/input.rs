@@ -11,7 +11,7 @@ pub mod parser {
     pub fn parse() -> impl Parser<Output = Statement> {
         seq4(
             keyword(Keyword::Input),
-            whitespace(),
+            whitespace().no_incomplete(),
             opt_file_handle_comma_p(),
             csv(expression_node_p(), false).or_syntax_error("Expected: #file-number or variable"),
             |_, _, opt_loc_file_number, variables| {

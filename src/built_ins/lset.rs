@@ -9,11 +9,11 @@ pub mod parser {
     pub fn parse() -> impl Parser<Output = Statement> {
         seq5(
             keyword(Keyword::LSet),
-            whitespace(),
+            whitespace().no_incomplete(),
             name::name_with_dot_p()
                 .with_pos()
                 .or_syntax_error("Expected: variable after LSET"),
-            equal_sign(),
+            equal_sign().no_incomplete(),
             expression_node_p().or_syntax_error("Expected: expression"),
             |_, _, name_node, _, value_expr_node| {
                 Statement::BuiltInSubCall(BuiltInSub::LSet, build_args(name_node, value_expr_node))

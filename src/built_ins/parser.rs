@@ -43,7 +43,7 @@ pub fn parse_built_in_sub_with_opt_args(
 ) -> impl Parser<Output = Statement> {
     seq3(
         keyword(k),
-        whitespace(),
+        whitespace().no_incomplete(),
         csv_allow_missing(),
         move |_, _, opt_args| {
             Statement::BuiltInSubCall(built_in_sub, map_opt_args_to_flags(opt_args))
@@ -69,17 +69,19 @@ fn map_opt_args_to_flags(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {
 }
 
 /// Comma separated list of items, allowing items to be missing between commas.
-pub fn csv_allow_missing() -> impl Parser<Output = Vec<Option<ExpressionNode>>> {
+pub fn csv_allow_missing() -> impl Parser<Output = Vec<Option<ExpressionNode>>> + NonOptParser {
     parse_delimited_to_items(
         opt_zip(expression_node_p(), comma()),
         true,
         trailing_comma_error(),
     )
+    .allow_default()
 }
 
 /// Used in `INPUT` and `LINE INPUT`, parsing an optional file number.
-pub fn opt_file_handle_comma_p() -> impl Parser<Output = Option<Locatable<FileHandle>>> {
-    seq2(file_handle_p(), comma(), |l, _| l).allow_none()
+pub fn opt_file_handle_comma_p(
+) -> impl Parser<Output = Option<Locatable<FileHandle>>> + NonOptParser {
+    seq2(file_handle_p(), comma().no_incomplete(), |l, _| l).allow_none()
 }
 
 /// Used in `INPUT` and `LINE INPUT`, converts an optional file-number into arguments.

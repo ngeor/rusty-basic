@@ -1,7 +1,7 @@
 //! Contains parser combinators where given an initial optional parser,
 //! the rest must succeed.
 
-use crate::common::{ParserErrorTrait, QError};
+use crate::common::QError;
 use crate::parser::pc::*;
 
 // When in opt-parser: if the first succeeds, all the rest must succeed.
@@ -30,7 +30,7 @@ macro_rules! seq_pc {
         impl <$first_type, $($generic_type),+> Parser for $name <$first_type, $($generic_type),+>
         where
             $first_type: Parser,
-            $($generic_type: Parser),+
+            $($generic_type: Parser + NonOptParser),+
         {
             type Output = ($first_type::Output, $($generic_type::Output),+ );
 
@@ -40,7 +40,7 @@ macro_rules! seq_pc {
                 let $first_type = self.$first_type.parse(tokenizer)?;
                 $(
                     // but the rest are not, hence `.no_incomplete()`
-                    let $generic_type = self.$generic_type.parse(tokenizer).no_incomplete()?;
+                    let $generic_type = self.$generic_type.parse(tokenizer)?;
                 )+
                 Ok(
                     (
@@ -57,7 +57,7 @@ macro_rules! seq_pc {
         ) -> impl Parser<Output = _O>
         where
             $first_type: Parser,
-            $($generic_type: Parser),+,
+            $($generic_type: Parser + NonOptParser),+,
             _F: Fn($first_type::Output, $($generic_type::Output),+) -> _O
         {
             $name::new(

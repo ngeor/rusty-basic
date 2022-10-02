@@ -11,9 +11,9 @@ pub mod parser {
     pub fn parse() -> impl Parser<Output = Statement> {
         seq5(
             keyword(Keyword::Field),
-            whitespace(),
+            whitespace().no_incomplete(),
             file_handle_p().or_syntax_error("Expected: file-number"),
-            comma(),
+            comma().no_incomplete(),
             csv(field_item_p(), false).or_syntax_error("Expected: field width"),
             |_, _, file_number, _, fields| {
                 Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
@@ -24,8 +24,8 @@ pub mod parser {
     fn field_item_p() -> impl Parser<Output = (ExpressionNode, NameNode)> {
         seq4(
             expression_node_followed_by_ws(),
-            keyword(Keyword::As),
-            whitespace(),
+            keyword(Keyword::As).no_incomplete(),
+            whitespace().no_incomplete(),
             name::name_with_dot_p()
                 .with_pos()
                 .or_syntax_error("Expected: variable name"),

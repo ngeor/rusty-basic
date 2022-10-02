@@ -15,7 +15,7 @@ fn function_implementation_p() -> impl Parser<Output = TopLevelToken> {
     seq3(
         static_declaration_p(declaration::function_declaration_p()),
         ZeroOrMoreStatements::new(keyword(Keyword::End)),
-        keyword_pair(Keyword::End, Keyword::Function),
+        keyword_pair(Keyword::End, Keyword::Function).no_incomplete(),
         |((name, params), is_static), body, _| {
             TopLevelToken::FunctionImplementation(FunctionImplementation {
                 name,
@@ -31,7 +31,7 @@ fn sub_implementation_p() -> impl Parser<Output = TopLevelToken> {
     seq3(
         static_declaration_p(declaration::sub_declaration_p()),
         ZeroOrMoreStatements::new(keyword(Keyword::End)),
-        keyword_pair(Keyword::End, Keyword::Sub),
+        keyword_pair(Keyword::End, Keyword::Sub).no_incomplete(),
         |((name, params), is_static), body, _| {
             TopLevelToken::SubImplementation(SubImplementation {
                 name,

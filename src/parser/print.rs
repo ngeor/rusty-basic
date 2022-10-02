@@ -44,7 +44,7 @@ fn using_p(is_leading_whitespace_optional: bool) -> impl Parser<Output = Express
     seq3(
         whitespace_boundary(is_leading_whitespace_optional).and(keyword(Keyword::Using)),
         guarded_expression_node_p().or_syntax_error("Expected: expression after USING"),
-        semicolon(),
+        semicolon().no_incomplete(),
         |_, using_expr, _| using_expr,
     )
 }
@@ -113,7 +113,7 @@ impl Parser for PrintArgLookingBack {
 fn ws_file_handle_comma_p() -> impl Parser<Output = Locatable<FileHandle>> {
     seq2(
         whitespace().and(file_handle_p()),
-        comma(),
+        comma().no_incomplete(),
         |(_, file_handle), _| file_handle,
     )
 }

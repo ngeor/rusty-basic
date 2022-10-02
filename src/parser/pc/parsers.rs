@@ -1,11 +1,12 @@
 use crate::common::QError;
 use crate::parser::pc::and_opt::AndOptPC;
 use crate::parser::pc::and_opt_factory::AndOptFactoryPC;
-use crate::parser::pc::many::ManyParser;
+use crate::parser::pc::many::{OneOrMoreParser, ZeroOrMoreParser};
 use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
     AllowDefaultParser, AllowNoneParser, Alt2, AndDemandLookingBack, AndPC, AndThen, FilterParser,
-    GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, Seq2, Tokenizer, Undo, ValidateParser,
+    GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, NoIncompleteParser, OrFailParser, Seq2,
+    Tokenizer, Undo, ValidateParser,
 };
 
 // TODO V4: the tokenizer is not visible (practically an iterator)
@@ -68,12 +69,25 @@ pub trait Parser {
         FnMapper::new(self, mapper)
     }
 
-    fn map_incomplete_err<F>(self, supplier: F) -> MapIncompleteErrParser<Self, F>
+    fn map_incomplete_err(self, err: QError) -> MapIncompleteErrParser<Self>
     where
         Self: Sized,
-        F: Fn() -> QError,
     {
-        MapIncompleteErrParser::new(self, supplier)
+        MapIncompleteErrParser::new(self, err)
+    }
+
+    fn or_fail(self, err: QError) -> OrFailParser<Self>
+    where
+        Self: Sized,
+    {
+        OrFailParser::new(self, err)
+    }
+
+    fn no_incomplete(self) -> NoIncompleteParser<Self>
+    where
+        Self: Sized,
+    {
+        NoIncompleteParser::new(self)
     }
 
     fn keep_left<L, R>(self) -> KeepLeftMapper<Self>
@@ -177,20 +191,25 @@ pub trait Parser {
         ValidateParser::new(self, f)
     }
 
-    fn zero_or_more(self) -> ManyParser<Self>
+    fn zero_or_more(self) -> ZeroOrMoreParser<Self>
     where
         Self: Sized,
     {
-        ManyParser::new(self, true)
+        ZeroOrMoreParser::new(self)
     }
 
-    fn one_or_more(self) -> ManyParser<Self>
+    fn one_or_more(self) -> OneOrMoreParser<Self>
     where
         Self: Sized,
     {
-        ManyParser::new(self, false)
+        OneOrMoreParser::new(self)
     }
 }
+
+/// A parser that returns a successful result or a fatal error.
+/// This parser will never return an error that is "incomplete".
+/// TODO: review all direct impl NonOptParser outside the core parsers, as implementing a marker trait doesn't guarantee much
+pub trait NonOptParser: Parser {}
 
 // TODO use this new trait ParseLookingBack
 pub trait ParseLookingBack {

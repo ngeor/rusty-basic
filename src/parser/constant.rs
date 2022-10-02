@@ -7,11 +7,11 @@ use crate::parser::types::{Keyword, Statement};
 pub fn constant_p() -> impl Parser<Output = Statement> {
     seq5(
         keyword(Keyword::Const),
-        whitespace(),
+        whitespace().no_incomplete(),
         name::name_with_dot_p()
             .with_pos()
             .or_syntax_error("Expected: const name"),
-        equal_sign(),
+        equal_sign().no_incomplete(),
         expression_node_p().or_syntax_error("Expected: const value"),
         |_, _, const_name, _, const_value_expr| Statement::Const(const_name, const_value_expr),
     )

@@ -13,7 +13,7 @@ pub fn while_wend_p() -> impl Parser<Output = Statement> {
             keyword(Keyword::Wend),
             QError::WhileWithoutWend,
         ),
-        keyword(Keyword::Wend).map_incomplete_err(|| QError::WhileWithoutWend),
+        keyword(Keyword::Wend).or_fail(QError::WhileWithoutWend),
         |_, condition, statements, _| {
             Statement::While(ConditionalBlockNode {
                 condition,

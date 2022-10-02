@@ -61,7 +61,7 @@ pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
             .or_syntax_error("Expected: name after TYPE"),
         comments_and_whitespace_p(),
         element_nodes_p(),
-        keyword_pair(Keyword::End, Keyword::Type),
+        keyword_pair(Keyword::End, Keyword::Type).no_incomplete(),
         |_, name, comments, elements, _| UserDefinedType::new(name, comments, elements),
     )
 }
@@ -81,18 +81,18 @@ fn bare_name_without_dot_p() -> impl Parser<Output = BareName> {
     })
 }
 
-fn element_nodes_p() -> impl Parser<Output = Vec<ElementNode>> {
+fn element_nodes_p() -> impl Parser<Output = Vec<ElementNode>> + NonOptParser {
     element_node_p()
         .one_or_more()
-        .or_error(QError::ElementNotDefined)
+        .or_fail(QError::ElementNotDefined)
 }
 
 fn element_node_p() -> impl Parser<Output = ElementNode> {
     seq6(
         bare_name_without_dot_p(),
-        whitespace(),
-        keyword(Keyword::As),
-        whitespace(),
+        whitespace().no_incomplete(),
+        keyword(Keyword::As).no_incomplete(),
+        whitespace().no_incomplete(),
         element_type_p().or_syntax_error("Expected: element type"),
         comments_and_whitespace_p(),
         |element, _, _, _, element_type, comments| Element::new(element, element_type, comments),
@@ -110,7 +110,7 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
         ]),
         seq3(
             keyword(Keyword::String_),
-            star(),
+            star().no_incomplete(),
             demand_string_length_p(),
             |_, _, e| ElementType::FixedLengthString(e, 0),
         ),
@@ -120,7 +120,7 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
     )
 }
 
-fn demand_string_length_p() -> impl Parser<Output = ExpressionNode> {
+fn demand_string_length_p() -> impl Parser<Output = ExpressionNode> + NonOptParser {
     expression_node_p()
         .and_then(|Locatable { element, pos }| match element {
             Expression::IntegerLiteral(i) => {

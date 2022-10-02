@@ -24,7 +24,7 @@ pub fn select_case_p() -> impl Parser<Output = Statement> {
         comments_and_whitespace_p(),
         case_blocks(),
         case_else().allow_none(),
-        keyword_pair(Keyword::End, Keyword::Select),
+        keyword_pair(Keyword::End, Keyword::Select).no_incomplete(),
         |expr, inline_comments, case_blocks, else_block, _| {
             Statement::SelectCase(SelectCaseNode {
                 expr,
@@ -61,7 +61,7 @@ fn select_case_expr_p() -> impl Parser<Output = ExpressionNode> {
 //
 // For range-expression, no space is needed before TO if the first expression is in parenthesis
 
-fn case_blocks() -> impl Parser<Output = Vec<CaseBlockNode>> {
+fn case_blocks() -> impl Parser<Output = Vec<CaseBlockNode>> + NonOptParser {
     case_block().zero_or_more()
 }
 

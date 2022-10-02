@@ -8,43 +8,43 @@ pub mod parser {
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword(Keyword::Open)
-            .and_demand(
-                back_guarded_expression_node_p().or_syntax_error("Expected: file name after OPEN"),
-            )
-            .and_opt(parse_open_mode_p())
-            .and_opt(parse_open_access_p())
-            .and_demand(parse_file_number_p().or_syntax_error("Expected: AS file-number"))
-            .and_opt(parse_len_p())
-            .map(
-                |(((((_, file_name), opt_file_mode), opt_file_access), file_number), opt_len)| {
-                    Statement::BuiltInSubCall(
-                        BuiltInSub::Open,
-                        vec![
-                            file_name,
-                            map_opt_locatable_enum(opt_file_mode, FileMode::Random),
-                            map_opt_locatable_enum(opt_file_access, FileAccess::Unspecified),
-                            file_number,
-                            map_opt_len(opt_len),
-                        ],
-                    )
-                },
-            )
+        seq6(
+            keyword(Keyword::Open),
+            back_guarded_expression_node_p().or_syntax_error("Expected: file name after OPEN"),
+            parse_open_mode_p().allow_none(),
+            parse_open_access_p().allow_none(),
+            parse_file_number_p().or_syntax_error("Expected: AS file-number"),
+            parse_len_p().allow_none(),
+            |_, file_name, opt_file_mode, opt_file_access, file_number, opt_len| {
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
+                    vec![
+                        file_name,
+                        map_opt_locatable_enum(opt_file_mode, FileMode::Random),
+                        map_opt_locatable_enum(opt_file_access, FileAccess::Unspecified),
+                        file_number,
+                        map_opt_len(opt_len),
+                    ],
+                )
+            },
+        )
     }
 
     // FOR <ws+> INPUT <ws+>
     fn parse_open_mode_p() -> impl Parser<Output = Locatable<FileMode>> {
-        seq3(
-            keyword_followed_by_whitespace_p(Keyword::For),
+        seq4(
+            keyword(Keyword::For),
+            whitespace().no_incomplete(),
             keyword_map(&[
                 (Keyword::Append, FileMode::Append),
                 (Keyword::Input, FileMode::Input),
                 (Keyword::Output, FileMode::Output),
                 (Keyword::Random, FileMode::Random),
             ])
-            .with_pos(),
-            whitespace(),
-            |_, file_mode, _| file_mode,
+            .with_pos()
+            .no_incomplete(),
+            whitespace().no_incomplete(),
+            |_, _, file_mode, _| file_mode,
         )
     }
 
@@ -52,9 +52,9 @@ pub mod parser {
     fn parse_open_access_p() -> impl Parser<Output = Locatable<FileAccess>> {
         seq4(
             keyword(Keyword::Access),
-            whitespace(),
-            keyword(Keyword::Read).with_pos(),
-            whitespace(),
+            whitespace().no_incomplete(),
+            keyword(Keyword::Read).with_pos().no_incomplete(),
+            whitespace().no_incomplete(),
             |_, _, Locatable { pos, .. }, _| FileAccess::Read.at(pos),
         )
     }
@@ -70,7 +70,7 @@ pub mod parser {
     fn parse_len_p() -> impl Parser<Output = ExpressionNode> {
         seq3(
             whitespace().and(keyword(Keyword::Len)),
-            equal_sign(),
+            equal_sign().no_incomplete(),
             expression_node_p().or_syntax_error("Expected: expression after LEN ="),
             |_, _, e| e,
         )
@@ -84,7 +84,7 @@ pub mod parser {
         u8: From<T>,
     {
         opt_locatable_enum
-            .map(|Locatable { element, pos }| u8_to_expr(element).at(pos))
+            .map(|locatable| locatable.map(u8_to_expr))
             .unwrap_or_else(|| u8_to_expr(fallback).at(Location::start()))
     }
 
@@ -96,10 +96,7 @@ pub mod parser {
     }
 
     fn map_opt_len(opt_len: Option<ExpressionNode>) -> ExpressionNode {
-        match opt_len {
-            Some(expr) => expr,
-            _ => Expression::IntegerLiteral(0).at(Location::start()),
-        }
+        opt_len.unwrap_or_else(|| Expression::IntegerLiteral(0).at(Location::start()))
     }
 }
 

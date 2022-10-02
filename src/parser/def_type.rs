@@ -10,9 +10,12 @@ use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 // Letter       ::= [a-zA-Z]
 
 pub fn def_type_p() -> impl Parser<Output = DefType> {
-    seq3(def_keyword_p(), whitespace(), letter_ranges(), |l, _, r| {
-        DefType::new(l, r)
-    })
+    seq3(
+        def_keyword_p(),
+        whitespace().no_incomplete(),
+        letter_ranges(),
+        |l, _, r| DefType::new(l, r),
+    )
 }
 
 fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
@@ -25,14 +28,13 @@ fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
     ])
 }
 
-fn letter_ranges() -> impl Parser<Output = Vec<LetterRange>> {
-    csv(letter_range(), false)
+fn letter_ranges() -> impl Parser<Output = Vec<LetterRange>> + NonOptParser {
+    csv(letter_range(), false).or_syntax_error("Expected: letter ranges")
 }
 
 fn letter_range() -> impl Parser<Output = LetterRange> {
-    // TODO prevent duplication of error message with ErrorProvider
     letter()
-        .or_syntax_error("Expected: letter")
+        .no_incomplete()
         .and_opt(minus_sign().and(letter()))
         .and_then(|(l, opt_r)| match opt_r {
             Some((_, r)) => {
@@ -50,7 +52,7 @@ fn letter() -> impl Parser<Output = char> {
     any_token_of(TokenType::Identifier)
         .filter(|token| token.text.chars().count() == 1 && is_letter(token_ref_to_char(token)))
         .map(token_to_char)
-        .map_incomplete_err(|| QError::expected("Expected: letter"))
+        .map_incomplete_err(QError::expected("Expected: letter"))
 }
 
 fn token_ref_to_char(token: &Token) -> char {

@@ -84,7 +84,7 @@ fn type_definition_extended_p() -> impl Parser<Output = DimType> {
     // <ws+> AS <ws+> identifier
     seq3(
         whitespace().and(keyword(Keyword::As)),
-        whitespace(),
+        whitespace().no_incomplete(),
         extended_type_p().or_syntax_error("Expected: type after AS"),
         |_, _, identifier| identifier,
     )

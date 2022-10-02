@@ -27,7 +27,7 @@ pub fn declaration_p() -> impl Parser<Output = TopLevelToken> {
 pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNodes)> {
     seq4(
         keyword(Keyword::Function),
-        whitespace(),
+        whitespace().no_incomplete(),
         name::name_with_dot_p()
             .with_pos()
             .or_syntax_error("Expected: function name"),
@@ -41,7 +41,7 @@ pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNode
 pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes)> {
     seq4(
         keyword(Keyword::Sub),
-        whitespace(),
+        whitespace().no_incomplete(),
         name::bare_name_p()
             .with_pos()
             .or_syntax_error("Expected: sub name"),
@@ -50,12 +50,10 @@ pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes
     )
 }
 
-fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> {
-    OptAndPC::new(
-        whitespace(),
-        in_parenthesis(csv(param_name_node_p(), true)).allow_default(),
-    )
-    .keep_right()
+fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> + NonOptParser {
+    OptAndPC::new(whitespace(), in_parenthesis(csv(param_name_node_p(), true)))
+        .keep_right()
+        .allow_default()
 }
 
 #[cfg(test)]

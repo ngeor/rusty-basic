@@ -9,7 +9,11 @@ use crate::parser::types::*;
 
 pub fn if_block_p() -> impl Parser<Output = Statement> {
     if_expr_then_p()
-        .and_demand(single_line_if_else_p().or(multi_line_if_p()))
+        .and_demand(
+            single_line_if_else_p()
+                .or(multi_line_if_p())
+                .or_syntax_error("Expected: single line or multi line IF"),
+        )
         .map(|(condition, (statements, else_if_blocks, else_block))| {
             Statement::IfBlock(IfBlockNode {
                 if_block: ConditionalBlockNode {
@@ -32,7 +36,7 @@ fn if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
         keyword(Keyword::If),
         expression::back_guarded_expression_node_p()
             .or_syntax_error("Expected: expression after IF"),
-        keyword(Keyword::Then),
+        keyword(Keyword::Then).no_incomplete(),
         |_, m, _| m,
     )
 }
@@ -77,7 +81,7 @@ fn multi_line_if_p() -> impl Parser<
         ])),
         else_if_block_p().zero_or_more(),
         else_block_p().allow_none(),
-        keyword_pair(Keyword::End, Keyword::If),
+        keyword_pair(Keyword::End, Keyword::If).no_incomplete(),
         |if_block, else_if_blocks, opt_else, _| (if_block, else_if_blocks, opt_else),
     )
 }
@@ -87,7 +91,7 @@ fn else_if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
         keyword(Keyword::ElseIf),
         expression::back_guarded_expression_node_p()
             .or_syntax_error("Expected: expression after ELSEIF"),
-        keyword(Keyword::Then),
+        keyword(Keyword::Then).no_incomplete(),
         |_, m, _| m,
     )
 }

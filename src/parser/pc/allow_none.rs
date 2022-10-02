@@ -1,5 +1,5 @@
 use crate::common::{ParserErrorTrait, QError};
-use crate::parser::pc::{Parser, Tokenizer};
+use crate::parser::pc::{NonOptParser, Parser, Tokenizer};
 use crate::parser_declaration;
 parser_declaration!(struct AllowNoneParser);
 
@@ -17,3 +17,4 @@ where
         }
     }
 }
+impl<P> NonOptParser for AllowNoneParser<P> where P: Parser {}

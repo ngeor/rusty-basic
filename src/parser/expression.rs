@@ -6,7 +6,9 @@ use crate::parser::types::*;
 
 /// `( expr [, expr]* )`
 // TODO #[deprecated]
-pub fn expressions_non_opt(err_msg: &str) -> impl Parser<Output = ExpressionNodes> + '_ {
+pub fn expressions_non_opt(
+    err_msg: &str,
+) -> impl Parser<Output = ExpressionNodes> + NonOptParser + '_ {
     in_parenthesis(csv(lazy_expression_node_p(), false).or_syntax_error(err_msg))
         .or_syntax_error("Expected: (")
 }
@@ -208,7 +210,7 @@ mod string_literal {
         seq3(
             string_delimiter(),
             inside_string(),
-            string_delimiter(),
+            string_delimiter().no_incomplete(),
             |_, token_list, _| Expression::StringLiteral(token_list_to_string(&token_list)),
         )
     }
@@ -217,7 +219,7 @@ mod string_literal {
         any_token_of(TokenType::DoubleQuote)
     }
 
-    fn inside_string() -> impl Parser<Output = TokenList> {
+    fn inside_string() -> impl Parser<Output = TokenList> + NonOptParser {
         any_token()
             .filter(|token| {
                 token.kind != TokenType::DoubleQuote as i32 && token.kind != TokenType::Eol as i32
@@ -252,10 +254,8 @@ mod number_literal {
     }
 
     pub fn float_without_leading_zero_p() -> impl Parser<Output = ExpressionNode> {
-        dot()
-            .and_demand(digits())
-            .and_opt(pound())
-            .and_then(|((_, fraction_digits), opt_double)| {
+        Seq3::new(dot(), digits().no_incomplete(), pound().allow_none())
+            .and_then(|(_, fraction_digits, opt_double)| {
                 parse_floating_point_literal_no_pos(
                     "0".to_string(),
                     fraction_digits.text,

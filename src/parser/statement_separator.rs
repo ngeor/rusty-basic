@@ -129,7 +129,7 @@ impl PeekStatementSeparatorOrEof {
 
 // TODO review all parsers that return a collection, implement some `accumulate` method
 /// Reads multiple comments and the surrounding whitespace.
-pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>>> {
+pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>>> + NonOptParser {
     CommentsAndWhitespace
 }
 
@@ -160,3 +160,5 @@ impl Parser for CommentsAndWhitespace {
         Ok(result)
     }
 }
+
+impl NonOptParser for CommentsAndWhitespace {}

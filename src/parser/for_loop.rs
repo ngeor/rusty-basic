@@ -13,7 +13,7 @@ pub fn for_loop_p() -> impl Parser<Output = Statement> {
     seq4(
         parse_for_step_p(),
         ZeroOrMoreStatements::new(keyword(Keyword::Next)),
-        keyword(Keyword::Next).map_incomplete_err(|| QError::ForWithoutNext),
+        keyword(Keyword::Next).or_fail(QError::ForWithoutNext),
         next_counter_p().allow_none(),
         |(variable_name, lower_bound, upper_bound, opt_step), statements, _, opt_next_name_node| {
             Statement::ForLoop(ForLoopNode {
@@ -56,10 +56,10 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
         expression::word::word_p()
             .with_pos()
             .or_syntax_error("Expected: name after FOR"),
-        equal_sign(),
+        equal_sign().no_incomplete(),
         expression::expression_node_followed_by_ws()
             .or_syntax_error("Expected: lower bound of FOR loop"),
-        keyword(Keyword::To),
+        keyword(Keyword::To).no_incomplete(),
         expression::guarded_expression_node_p()
             .or_syntax_error("Expected: upper bound of FOR loop"),
         |_, name, _, lower_bound, _, upper_bound| (name, lower_bound, upper_bound),

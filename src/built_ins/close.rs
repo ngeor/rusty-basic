@@ -20,7 +20,7 @@ pub mod parser {
         )
     }
 
-    fn file_handles() -> impl Parser<Output = ExpressionNodes> {
+    fn file_handles() -> impl Parser<Output = ExpressionNodes> + NonOptParser {
         AccumulateParser::new(
             guarded_file_handle_or_expression_p(),
             comma().then_demand(file_handle_or_expression_p()),

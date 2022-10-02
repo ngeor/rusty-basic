@@ -53,9 +53,13 @@ pub fn keyword(keyword: Keyword) -> impl Parser<Output = Token> {
 
 // TODO #[deprecated]
 pub fn keyword_followed_by_whitespace_p(k: Keyword) -> impl Parser {
-    Seq2::new(keyword(k), whitespace())
+    Seq2::new(keyword(k), whitespace().no_incomplete())
 }
 
 pub fn keyword_pair(first: Keyword, second: Keyword) -> impl Parser {
-    Seq3::new(keyword(first), whitespace(), keyword(second))
+    Seq3::new(
+        keyword(first),
+        whitespace().no_incomplete(),
+        keyword(second).no_incomplete(),
+    )
 }

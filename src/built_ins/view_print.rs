@@ -14,7 +14,7 @@ pub mod parser {
     fn parse_args() -> impl Parser<Output = ExpressionNodes> {
         seq3(
             back_guarded_expression_node_p(),
-            keyword(Keyword::To),
+            keyword(Keyword::To).no_incomplete(),
             guarded_expression_node_p().or_syntax_error("Expected: expression"),
             |l, _, r| vec![l, r],
         )

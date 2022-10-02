@@ -15,7 +15,7 @@ fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
         whitespace().and(keyword_choice(&[Keyword::Until, Keyword::While])),
         guarded_expression_node_p().or_syntax_error("Expected: expression"),
         ZeroOrMoreStatements::new(keyword(Keyword::Loop)),
-        keyword(Keyword::Loop),
+        keyword(Keyword::Loop).no_incomplete(),
         |(_, (k, _)), condition, statements, _| DoLoopNode {
             condition,
             statements,
@@ -32,9 +32,9 @@ fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
 fn do_condition_bottom() -> impl Parser<Output = DoLoopNode> {
     seq5(
         ZeroOrMoreStatements::new(keyword(Keyword::Loop)),
-        keyword(Keyword::Loop),
-        whitespace(),
-        keyword_choice(&[Keyword::Until, Keyword::While]),
+        keyword(Keyword::Loop).no_incomplete(),
+        whitespace().no_incomplete(),
+        keyword_choice(&[Keyword::Until, Keyword::While]).no_incomplete(),
         guarded_expression_node_p().or_syntax_error("Expected: expression"),
         |statements, _, _, (k, _), condition| DoLoopNode {
             condition,

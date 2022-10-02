@@ -19,21 +19,21 @@ use crate::parser::types::*;
 // CASE <expr>
 
 pub fn select_case_p() -> impl Parser<Output = Statement> {
-    select_case_expr_p()
-        .and_demand(comments_and_whitespace_p())
-        .and_demand(case_blocks())
-        .and_opt(case_else())
-        .and_demand(keyword_pair(Keyword::End, Keyword::Select))
-        .map(
-            |((((expr, inline_comments), case_blocks), else_block), _)| {
-                Statement::SelectCase(SelectCaseNode {
-                    expr,
-                    case_blocks,
-                    else_block,
-                    inline_comments,
-                })
-            },
-        )
+    seq5(
+        select_case_expr_p(),
+        comments_and_whitespace_p(),
+        case_blocks(),
+        case_else().allow_none(),
+        keyword_pair(Keyword::End, Keyword::Select),
+        |expr, inline_comments, case_blocks, else_block, _| {
+            Statement::SelectCase(SelectCaseNode {
+                expr,
+                case_blocks,
+                else_block,
+                inline_comments,
+            })
+        },
+    )
 }
 
 /// Parses the `SELECT CASE expression` part

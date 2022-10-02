@@ -25,33 +25,37 @@ pub fn declaration_p() -> impl Parser<Output = TopLevelToken> {
 }
 
 pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNodes)> {
-    keyword_followed_by_whitespace_p(Keyword::Function)
-        .and_demand(
-            name::name_with_dot_p()
-                .with_pos()
-                .or_syntax_error("Expected: function name"),
-        )
-        .and_opt(whitespace())
-        .and_opt(declaration_parameters_p())
-        .map(|(((_, function_name_node), _), opt_p)| {
-            (function_name_node, opt_p.unwrap_or_default())
-        })
+    seq4(
+        keyword(Keyword::Function),
+        whitespace(),
+        name::name_with_dot_p()
+            .with_pos()
+            .or_syntax_error("Expected: function name"),
+        declaration_parameters_p(),
+        |_, _, function_name_node, declaration_parameters| {
+            (function_name_node, declaration_parameters)
+        },
+    )
 }
 
 pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes)> {
-    keyword_followed_by_whitespace_p(Keyword::Sub)
-        .and_demand(
-            name::bare_name_p()
-                .with_pos()
-                .or_syntax_error("Expected: sub name"),
-        )
-        .and_opt(whitespace())
-        .and_opt(declaration_parameters_p())
-        .map(|(((_, sub_name_node), _), opt_p)| (sub_name_node, opt_p.unwrap_or_default()))
+    seq4(
+        keyword(Keyword::Sub),
+        whitespace(),
+        name::bare_name_p()
+            .with_pos()
+            .or_syntax_error("Expected: sub name"),
+        declaration_parameters_p(),
+        |_, _, sub_name_node, declaration_parameters| (sub_name_node, declaration_parameters),
+    )
 }
 
 fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> {
-    in_parenthesis(csv(param_name_node_p(), true))
+    OptAndPC::new(
+        whitespace(),
+        in_parenthesis(csv(param_name_node_p(), true)).allow_default(),
+    )
+    .keep_right()
 }
 
 #[cfg(test)]

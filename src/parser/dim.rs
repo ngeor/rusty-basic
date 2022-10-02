@@ -4,32 +4,38 @@ use crate::parser::{dim_name, DimList, Keyword, Statement};
 
 /// Parses DIM statement
 pub fn dim_p() -> impl Parser<Output = Statement> {
-    keyword_followed_by_whitespace_p(Keyword::Dim)
-        .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
-        .and_demand(
-            csv(dim_name::dim_name_node_p(), false).or_syntax_error("Expected: name after DIM"),
-        )
-        .map(|((_, opt_shared), variables)| {
+    seq4(
+        keyword(Keyword::Dim),
+        whitespace(),
+        keyword(Keyword::Shared)
+            .and_demand(whitespace())
+            .allow_none(),
+        csv(dim_name::dim_name_node_p(), false).or_syntax_error("Expected: name after DIM"),
+        |_, _, opt_shared, variables| {
             Statement::Dim(DimList {
                 shared: opt_shared.is_some(),
                 variables,
             })
-        })
+        },
+    )
 }
 
 /// Parses REDIM statement
 pub fn redim_p() -> impl Parser<Output = Statement> {
-    keyword_followed_by_whitespace_p(Keyword::Redim)
-        .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
-        .and_demand(
-            csv(dim_name::redim_name_node_p(), false).or_syntax_error("Expected: name after REDIM"),
-        )
-        .map(|((_, opt_shared), variables)| {
+    seq4(
+        keyword(Keyword::Redim),
+        whitespace(),
+        keyword(Keyword::Shared)
+            .and_demand(whitespace())
+            .allow_none(),
+        csv(dim_name::redim_name_node_p(), false).or_syntax_error("Expected: name after REDIM"),
+        |_, _, opt_shared, variables| {
             Statement::Redim(DimList {
                 shared: opt_shared.is_some(),
                 variables,
             })
-        })
+        },
+    )
 }
 
 #[cfg(test)]

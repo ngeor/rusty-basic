@@ -8,6 +8,12 @@ use crate::parser::pc::{
     GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, Seq2, Tokenizer, Undo, ValidateParser,
 };
 
+// TODO V4: the tokenizer is not visible (practically an iterator)
+// pub trait ParserV4 {
+//     type Output;
+//     fn parse(&mut self) -> Result<Self::Output, QError>;
+// }
+
 pub trait Parser {
     type Output;
 

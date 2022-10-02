@@ -10,25 +10,22 @@ use crate::parser::types::*;
 // NEXT (I)
 
 pub fn for_loop_p() -> impl Parser<Output = Statement> {
-    parse_for_step_p()
-        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::Next)))
-        .and_demand(keyword(Keyword::Next).map_incomplete_err(|| QError::ForWithoutNext))
-        .and_opt(next_counter_p())
-        .map(
-            |(
-                (((variable_name, lower_bound, upper_bound, opt_step), statements), _),
-                opt_next_name_node,
-            )| {
-                Statement::ForLoop(ForLoopNode {
-                    variable_name,
-                    lower_bound,
-                    upper_bound,
-                    step: opt_step,
-                    statements,
-                    next_counter: opt_next_name_node,
-                })
-            },
-        )
+    seq4(
+        parse_for_step_p(),
+        ZeroOrMoreStatements::new(keyword(Keyword::Next)),
+        keyword(Keyword::Next).map_incomplete_err(|| QError::ForWithoutNext),
+        next_counter_p().allow_none(),
+        |(variable_name, lower_bound, upper_bound, opt_step), statements, _, opt_next_name_node| {
+            Statement::ForLoop(ForLoopNode {
+                variable_name,
+                lower_bound,
+                upper_bound,
+                step: opt_step,
+                statements,
+                next_counter: opt_next_name_node,
+            })
+        },
+    )
 }
 
 /// Parses the "FOR I = 1 TO 2 [STEP X]" part

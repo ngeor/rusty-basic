@@ -69,15 +69,17 @@ fn multi_line_if_p() -> impl Parser<
         Option<StatementNodes>,
     ),
 > {
-    ZeroOrMoreStatements::new(keyword_choice(&[
-        Keyword::End,
-        Keyword::Else,
-        Keyword::ElseIf,
-    ]))
-    .and_demand(else_if_block_p().zero_or_more())
-    .and_opt(else_block_p())
-    .and_demand(keyword_pair(Keyword::End, Keyword::If))
-    .map(|(((if_block, else_if_blocks), opt_else), _)| (if_block, else_if_blocks, opt_else))
+    seq4(
+        ZeroOrMoreStatements::new(keyword_choice(&[
+            Keyword::End,
+            Keyword::Else,
+            Keyword::ElseIf,
+        ])),
+        else_if_block_p().zero_or_more(),
+        else_block_p().allow_none(),
+        keyword_pair(Keyword::End, Keyword::If),
+        |if_block, else_if_blocks, opt_else, _| (if_block, else_if_blocks, opt_else),
+    )
 }
 
 fn else_if_expr_then_p() -> impl Parser<Output = ExpressionNode> {

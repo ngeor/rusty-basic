@@ -7,11 +7,8 @@ pub mod parser {
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair(Keyword::View, Keyword::Print)
-            .and_opt(parse_args())
-            .keep_right()
-            .map(|opt_args| {
-                Statement::BuiltInSubCall(BuiltInSub::ViewPrint, opt_args.unwrap_or_default())
-            })
+            .then_demand(parse_args().allow_default())
+            .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::ViewPrint, opt_args))
     }
 
     fn parse_args() -> impl Parser<Output = ExpressionNodes> {

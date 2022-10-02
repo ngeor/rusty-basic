@@ -72,7 +72,6 @@ fn map_opt_args_to_flags(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {
 pub fn csv_allow_missing() -> impl Parser<Output = Vec<Option<ExpressionNode>>> + NonOptParser {
     parse_delimited_to_items(
         opt_zip(expression_node_p(), comma()),
-        true,
         trailing_comma_error(),
     )
     .allow_default()

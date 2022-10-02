@@ -10,12 +10,12 @@ use crate::parser_declaration;
 pub fn expressions_non_opt(
     err_msg: &str,
 ) -> impl Parser<Output = ExpressionNodes> + NonOptParser + '_ {
-    in_parenthesis(csv(lazy_expression_node_p(), false).or_syntax_error(err_msg))
+    in_parenthesis(csv(lazy_expression_node_p()).or_syntax_error(err_msg))
         .or_syntax_error("Expected: (")
 }
 
 fn parenthesis_with_zero_or_more_expressions_p() -> impl Parser<Output = ExpressionNodes> {
-    in_parenthesis(csv(lazy_expression_node_p(), true))
+    in_parenthesis(csv(lazy_expression_node_p()).allow_default())
 }
 
 pub fn lazy_expression_node_p() -> LazyExpressionParser {

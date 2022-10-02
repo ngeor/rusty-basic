@@ -8,7 +8,7 @@ pub fn dim_p() -> impl Parser<Output = Statement> {
         keyword(Keyword::Dim),
         whitespace().no_incomplete(),
         opt_shared_keyword(),
-        csv(dim_name::dim_name_node_p(), false).or_syntax_error("Expected: name after DIM"),
+        csv(dim_name::dim_name_node_p()).or_syntax_error("Expected: name after DIM"),
         |_, _, opt_shared, variables| {
             Statement::Dim(DimList {
                 shared: opt_shared.is_some(),
@@ -24,7 +24,7 @@ pub fn redim_p() -> impl Parser<Output = Statement> {
         keyword(Keyword::Redim),
         whitespace().no_incomplete(),
         opt_shared_keyword(),
-        csv(dim_name::redim_name_node_p(), false).or_syntax_error("Expected: name after REDIM"),
+        csv(dim_name::redim_name_node_p()).or_syntax_error("Expected: name after REDIM"),
         |_, _, opt_shared, variables| {
             Statement::Redim(DimList {
                 shared: opt_shared.is_some(),

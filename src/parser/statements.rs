@@ -25,7 +25,6 @@ fn delimited_by_colon<P: Parser>(parser: P) -> impl Parser<Output = Vec<P::Outpu
     delimited_by(
         parser,
         colon_ws(),
-        false,
         QError::syntax_error("Error: trailing colon"),
     )
 }

@@ -1,7 +1,7 @@
 use crate::common::QError;
 use crate::parser::pc::and_opt::AndOptPC;
 use crate::parser::pc::and_opt_factory::AndOptFactoryPC;
-use crate::parser::pc::many::{OneOrMoreParser, ZeroOrMoreParser};
+use crate::parser::pc::many::OneOrMoreParser;
 use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
     AllowDefaultParser, AllowNoneParser, Alt2, AndPC, AndThen, FilterParser, GuardPC, LoggingPC,
@@ -46,12 +46,12 @@ pub trait Parser {
         FilterParser::new(self, predicate)
     }
 
-    fn loop_while<F>(self, predicate: F, allow_empty: bool) -> LoopWhile<Self, F>
+    fn loop_while<F>(self, predicate: F) -> LoopWhile<Self, F>
     where
         Self: Sized,
         F: Fn(&Self::Output) -> bool,
     {
-        LoopWhile::new(self, predicate, allow_empty)
+        LoopWhile::new(self, predicate)
     }
 
     fn map<F, U>(self, mapper: F) -> FnMapper<Self, F>
@@ -178,11 +178,11 @@ pub trait Parser {
         ValidateParser::new(self, f)
     }
 
-    fn zero_or_more(self) -> ZeroOrMoreParser<Self>
+    fn zero_or_more(self) -> AllowDefaultParser<OneOrMoreParser<Self>>
     where
         Self: Sized,
     {
-        ZeroOrMoreParser::new(self)
+        self.one_or_more().allow_default()
     }
 
     fn one_or_more(self) -> OneOrMoreParser<Self>
@@ -199,16 +199,4 @@ pub trait Parser {
 pub trait NonOptParser: Parser {}
 
 // TODO try an OptParser trait which has the conversions to NonOptParser methods such as or_syntax_error
-
-// TODO use this new trait ParseLookingBack
-pub trait ParseLookingBack {
-    type Input;
-    type Output;
-
-    fn parse(
-        &self,
-        prev: &Self::Input,
-        tokenizer: &mut impl Tokenizer,
-    ) -> Result<Self::Output, QError>;
-}
 // TODO mimic the std::iter functions to create new parsers from simpler blocks

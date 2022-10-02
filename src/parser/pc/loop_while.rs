@@ -2,12 +2,7 @@ use crate::common::QError;
 use crate::parser::pc::{Parser, Tokenizer};
 use crate::parser_declaration;
 
-parser_declaration!(
-    pub struct LoopWhile<predicate: F> {
-        // TODO remove this
-        allow_empty: bool,
-    }
-);
+parser_declaration!(pub struct LoopWhile<predicate: F>);
 
 impl<P, F> Parser for LoopWhile<P, F>
 where
@@ -30,7 +25,7 @@ where
                 }
             }
         }
-        if result.is_empty() && !self.allow_empty {
+        if result.is_empty() {
             Err(QError::Incomplete)
         } else {
             Ok(result)

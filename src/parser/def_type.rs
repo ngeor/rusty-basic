@@ -29,7 +29,7 @@ fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
 }
 
 fn letter_ranges() -> impl Parser<Output = Vec<LetterRange>> + NonOptParser {
-    csv(letter_range(), false).or_syntax_error("Expected: letter ranges")
+    csv(letter_range()).or_syntax_error("Expected: letter ranges")
 }
 
 fn letter_range() -> impl Parser<Output = LetterRange> {

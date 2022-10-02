@@ -51,9 +51,12 @@ pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes
 }
 
 fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> + NonOptParser {
-    OptAndPC::new(whitespace(), in_parenthesis(csv(param_name_node_p(), true)))
-        .keep_right()
-        .allow_default()
+    OptAndPC::new(
+        whitespace(),
+        in_parenthesis(csv(param_name_node_p()).allow_default()),
+    )
+    .keep_right()
+    .allow_default()
 }
 
 #[cfg(test)]

@@ -33,16 +33,13 @@ impl<L, R> Delimited<L> for (L, Option<R>) {
     }
 }
 
-// TODO : delete all `allow_empty` replace by the new `AllowDefault` parser
 /// Gets a list of items separated by a delimiter.
-/// One or more if parser, zero or more if non-opt-parser.
 pub fn delimited_by<P: Parser, D: Parser>(
     parser: P,
     delimiter: D,
-    allow_empty: bool,
     trailing_error: QError,
 ) -> impl Parser<Output = Vec<P::Output>> {
-    parse_delimited_to_items(parser.and_opt(delimiter), allow_empty, trailing_error)
+    parse_delimited_to_items(parser.and_opt(delimiter), trailing_error)
 }
 
 /// Gets a list of items separated by a delimiter.
@@ -50,7 +47,6 @@ pub fn delimited_by<P: Parser, D: Parser>(
 /// Public because needed by built_ins to implement csv_allow_missing.
 pub fn parse_delimited_to_items<P, L>(
     parser: P,
-    allow_empty: bool,
     trailing_error: QError,
 ) -> impl Parser<Output = Vec<L>>
 where
@@ -58,30 +54,7 @@ where
     P::Output: Delimited<L>,
 {
     parser
-        .loop_while(Delimited::has_delimiter, allow_empty)
-        .and_then(move |items| map_items(items, trailing_error.clone()))
-}
-
-// non opt
-
-pub fn delimited_by_non_opt<P: Parser, D: Parser>(
-    parser: P,
-    delimiter: D,
-    trailing_error: QError,
-) -> impl Parser<Output = Vec<P::Output>> {
-    zero_or_more_delimited_non_opt(parser.and_opt(delimiter), trailing_error)
-}
-
-fn zero_or_more_delimited_non_opt<P, L>(
-    parser: P,
-    trailing_error: QError,
-) -> impl Parser<Output = Vec<L>>
-where
-    P: Parser,
-    P::Output: Delimited<L>,
-{
-    parser
-        .loop_while(Delimited::has_delimiter, true)
+        .loop_while(Delimited::has_delimiter)
         .and_then(move |items| map_items(items, trailing_error.clone()))
 }
 

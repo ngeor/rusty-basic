@@ -13,7 +13,7 @@ pub mod parser {
             keyword(Keyword::Input),
             whitespace().no_incomplete(),
             opt_file_handle_comma_p(),
-            csv(expression_node_p(), false).or_syntax_error("Expected: #file-number or variable"),
+            csv(expression_node_p()).or_syntax_error("Expected: #file-number or variable"),
             |_, _, opt_loc_file_number, variables| {
                 let mut args: Vec<ExpressionNode> = encode_opt_file_handle_arg(opt_loc_file_number);
                 args.extend(variables);

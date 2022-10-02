@@ -40,6 +40,9 @@ macro_rules! alt_pc {
     }
 }
 
+// if the last parser is NonOpt, the Alt2 parser is also NonOpt
+impl<OUT, L: Parser<Output = OUT>, R: NonOptParser<Output = OUT>> NonOptParser for Alt2<OUT, L, R> {}
+
 alt_pc!(
     Alt2 ; A, B
 );

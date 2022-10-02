@@ -29,8 +29,8 @@ fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
     )
 }
 
-fn do_condition_bottom() -> impl Parser<Output = DoLoopNode> {
-    seq5(
+fn do_condition_bottom() -> impl Parser<Output = DoLoopNode> + NonOptParser {
+    seq5_non_opt(
         ZeroOrMoreStatements::new(keyword(Keyword::Loop)),
         keyword(Keyword::Loop).no_incomplete(),
         whitespace().no_incomplete(),

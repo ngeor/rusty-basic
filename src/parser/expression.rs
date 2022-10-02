@@ -160,7 +160,7 @@ pub mod file_handle {
     //! Used by PRINT and built-ins
 
     use crate::common::*;
-    use crate::parser::expression::{expression_node_p, guarded_expression_node_p};
+    use crate::parser::expression::guarded_expression_node_p;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::{Expression, ExpressionNode};
@@ -199,10 +199,6 @@ pub mod file_handle {
     /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
     pub fn file_handle_as_expression_node_p() -> impl Parser<Output = ExpressionNode> {
         file_handle_p().map(|file_handle_node| file_handle_node.map(Expression::from))
-    }
-
-    pub fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
-        file_handle_as_expression_node_p().or(expression_node_p())
     }
 
     pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
@@ -260,7 +256,7 @@ mod number_literal {
     pub fn number_literal_p() -> impl Parser<Output = ExpressionNode> {
         // TODO support more qualifiers besides '#'
         digits()
-            .and_opt(dot().then_demand(digits()))
+            .and_opt(dot().then_demand(digits().or_syntax_error("Expected: digits")))
             .and_opt(pound())
             .and_then(
                 |((int_digits, opt_fraction_digits), opt_double)| match opt_fraction_digits {
@@ -413,12 +409,10 @@ pub mod word {
     use std::convert::TryFrom;
 
     pub fn word_p() -> impl Parser<Output = Expression> {
+        // TODO use Seq4
         name_with_dot_p()
             .and_opt(parenthesis_with_zero_or_more_expressions_p())
-            .and_opt(
-                // TODO rewrite this
-                dot_property_name().and_opt(type_qualifier_p()),
-            )
+            .and_opt(dot_property_name())
             .and_opt(EnsureEndOfNameParser)
             .keep_left()
             .and_then(|((name, opt_args), opt_properties)| {
@@ -505,36 +499,31 @@ pub mod word {
         (parts, opt_q)
     }
 
-    // TODO rewrite this
-    fn dot_property_name() -> impl Parser<Output = Vec<String>> {
-        dot().then_demand(Properties)
+    fn dot_property_name() -> impl Parser<Output = (Vec<String>, Option<TypeQualifier>)> {
+        seq3(
+            dot(),
+            properties().or_syntax_error("Expected: property name(s) after dot"),
+            type_qualifier_p().allow_none(),
+            |_, properties, opt_q| (properties, opt_q),
+        )
     }
 
-    struct Properties;
+    fn properties() -> impl Parser<Output = Vec<String>> {
+        identifier_or_keyword_no_blanks_between_dots()
+            .one_or_more()
+            .map(|list_of_list| list_of_list.into_iter().flat_map(|list| list).collect())
+    }
 
-    impl Parser for Properties {
-        type Output = Vec<String>;
-        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-            let mut result: Vec<String> = vec![];
-            while let Some(token) = tokenizer.read()? {
-                if token.kind == TokenType::Keyword as i32 {
-                    result.push(token.text);
-                } else if token.kind == TokenType::Identifier as i32 {
-                    for item in token.text.split('.') {
-                        if item.is_empty() {
-                            return Err(QError::syntax_error(
-                                "Expected: property name after period",
-                            ));
-                        }
-                        result.push(item.to_owned());
-                    }
-                } else {
-                    tokenizer.unread(token);
-                    break;
-                }
+    fn identifier_or_keyword_no_blanks_between_dots() -> impl Parser<Output = Vec<String>> {
+        identifier_or_keyword().and_then(|token| {
+            let result: Vec<String> = token.text.split('.').map(ToOwned::to_owned).collect();
+            debug_assert!(!result.is_empty());
+            if result.iter().any(String::is_empty) {
+                Err(QError::syntax_error("Expected: property name after period"))
+            } else {
+                Ok(result)
             }
-            Ok(result)
-        }
+        })
     }
 
     struct EnsureEndOfNameParser;
@@ -765,8 +754,20 @@ pub mod word {
                 }
 
                 #[test]
-                fn test_dot_after_qualifier_is_error() {
+                fn test_dot_without_properties_is_error() {
                     let input = "abc$.";
+                    let mut eol_reader = create_string_tokenizer(input);
+                    let parser = word_p();
+                    let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
+                    assert_eq!(
+                        err,
+                        QError::syntax_error("Expected: property name(s) after dot")
+                    );
+                }
+
+                #[test]
+                fn test_dot_after_qualifier_is_error() {
+                    let input = "abc$.hello";
                     let mut eol_reader = create_string_tokenizer(input);
                     let parser = word_p();
                     let err = parser.parse(&mut eol_reader).expect_err("Should not parse");

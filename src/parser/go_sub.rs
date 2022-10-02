@@ -10,10 +10,11 @@ pub fn statement_go_sub_p() -> impl Parser<Output = Statement> {
 }
 
 pub fn statement_return_p() -> impl Parser<Output = Statement> {
-    keyword(Keyword::Return)
-        .and_opt(whitespace().then_demand(bare_name_p()))
-        .keep_right()
-        .map(Statement::Return)
+    seq2(
+        keyword(Keyword::Return),
+        whitespace().and(bare_name_p()).keep_right().allow_none(),
+        |_, name| Statement::Return(name),
+    )
 }
 
 #[cfg(test)]

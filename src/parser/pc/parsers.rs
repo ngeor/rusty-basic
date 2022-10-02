@@ -5,8 +5,8 @@ use crate::parser::pc::many::OneOrMoreParser;
 use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
     AllowDefaultParser, AllowNoneParser, Alt2, AndPC, AndThen, FilterParser, GuardPC, LoggingPC,
-    LoopWhile, MapIncompleteErrParser, NoIncompleteParser, OrFailParser, Tokenizer, Undo,
-    ValidateParser,
+    LoopWhile, MapIncompleteErrParser, NoIncompleteParser, OrFailParser, PeekParser, Tokenizer,
+    Undo, ValidateParser,
 };
 
 // TODO V4: the tokenizer is not visible (practically an iterator)
@@ -164,7 +164,7 @@ pub trait Parser {
     fn then_demand<R>(self, other: R) -> GuardPC<Self, R>
     where
         Self: Sized,
-        R: Parser,
+        R: Parser + NonOptParser,
     {
         GuardPC::new(self, other)
     }
@@ -190,6 +190,13 @@ pub trait Parser {
         Self: Sized,
     {
         OneOrMoreParser::new(self)
+    }
+
+    fn peek(self) -> PeekParser<Self>
+    where
+        Self: Sized,
+    {
+        PeekParser::new(self)
     }
 }
 

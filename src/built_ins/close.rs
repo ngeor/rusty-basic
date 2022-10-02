@@ -1,7 +1,8 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
+    use crate::parser::expression::expression_node_p;
     use crate::parser::expression::file_handle::{
-        file_handle_or_expression_p, guarded_file_handle_or_expression_p,
+        file_handle_as_expression_node_p, guarded_file_handle_or_expression_p,
     };
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
@@ -26,6 +27,12 @@ pub mod parser {
             comma().then_demand(file_handle_or_expression_p()),
         )
         .allow_default()
+    }
+
+    fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> + NonOptParser {
+        file_handle_as_expression_node_p()
+            .or(expression_node_p())
+            .or_syntax_error("Expected: file handle")
     }
 }
 

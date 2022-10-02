@@ -31,6 +31,20 @@ impl<L, R> ZipValue<L, R> {
             _ => None,
         }
     }
+
+    pub fn right(self) -> Option<R> {
+        match self {
+            Self::Right(right) | Self::Both(_, right) => Some(right),
+            _ => None,
+        }
+    }
+
+    pub fn collect_right(items: Vec<Self>) -> Vec<R> {
+        items
+            .into_iter()
+            .flat_map(|zip_value| zip_value.right().into_iter())
+            .collect()
+    }
 }
 
 binary_parser_declaration!(pub struct OptZip);

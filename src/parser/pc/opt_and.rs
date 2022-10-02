@@ -1,6 +1,6 @@
 use crate::binary_parser_declaration;
 use crate::common::{ParserErrorTrait, QError};
-use crate::parser::pc::{Parser, Token, Tokenizer, Undo};
+use crate::parser::pc::{NonOptParser, Parser, Token, Tokenizer, Undo};
 
 // The left side is optional, the right is not.
 // If the right is missing, the left is reverted.
@@ -25,4 +25,11 @@ where
             }
         }
     }
+}
+
+impl<L, R> NonOptParser for OptAndPC<L, R>
+where
+    L: Parser<Output = Token>,
+    R: NonOptParser,
+{
 }

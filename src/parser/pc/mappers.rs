@@ -3,10 +3,12 @@
 //
 
 use crate::common::QError;
-use crate::parser::pc::{Parser, Tokenizer};
+use crate::parser::pc::{NonOptParser, Parser, Tokenizer};
 use crate::parser_declaration;
 
 parser_declaration!(pub struct FnMapper<mapper: F>);
+
+// TODO: question, can a macro reduce the repetition of the impl traits
 
 impl<P, F, U> Parser for FnMapper<P, F>
 where
@@ -17,6 +19,13 @@ where
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         self.parser.parse(tokenizer).map(&self.mapper)
     }
+}
+
+impl<P, F, U> NonOptParser for FnMapper<P, F>
+where
+    P: NonOptParser,
+    F: Fn(P::Output) -> U,
+{
 }
 
 //
@@ -35,6 +44,8 @@ where
     }
 }
 
+impl<P, L, R> NonOptParser for KeepLeftMapper<P> where P: NonOptParser<Output = (L, R)> {}
+
 //
 // Keep Middle
 //
@@ -51,6 +62,8 @@ where
     }
 }
 
+impl<P, L, M, R> NonOptParser for KeepMiddleMapper<P> where P: NonOptParser<Output = ((L, M), R)> {}
+
 //
 // Keep Right
 //
@@ -66,3 +79,5 @@ where
         self.parser.parse(tokenizer).map(|(_, r)| r)
     }
 }
+
+impl<P, L, R> NonOptParser for KeepRightMapper<P> where P: NonOptParser<Output = (L, R)> {}

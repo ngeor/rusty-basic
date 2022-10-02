@@ -84,7 +84,6 @@ fn illegal_starting_keywords() -> impl Parser<Output = Statement> + 'static {
 }
 
 mod end {
-    use crate::common::QError;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::statement_separator::peek_eof_or_statement_separator;
@@ -92,40 +91,29 @@ mod end {
 
     pub fn parse_end_p() -> impl Parser<Output = Statement> {
         keyword(Keyword::End)
-            .then_demand(AfterEndSeparator)
+            .then_demand(after_end_separator())
             .map(|_| Statement::End)
     }
 
     /// Parses the next token after END. If it is one of the valid keywords that
     /// can follow END, it is undone so that the entire parsing will be undone.
     /// Otherwise, it demands that we find an end-of-statement terminator.
-    struct AfterEndSeparator;
+    fn after_end_separator() -> impl Parser<Output = ()> + NonOptParser {
+        Alt2::new(
+            whitespace_and_allowed_keyword_after_end(),
+            opt_ws_and_eof_or_statement_separator(),
+        )
+        .peek()
+        .or_syntax_error(
+            "Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement",
+        )
+    }
 
-    impl Parser for AfterEndSeparator {
-        type Output = ();
-        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-            let opt_ws = whitespace().parse_opt(tokenizer)?;
-            if opt_ws.is_some() {
-                // maybe it is followed by a legit keyword after END
-                let opt_k = allowed_keywords_after_end().parse_opt(tokenizer)?;
-                if opt_k.is_some() {
-                    // got it
-                    tokenizer.unread(opt_k.unwrap().1);
-                    tokenizer.unread(opt_ws.unwrap());
-                    return Ok(());
-                }
-            }
-
-            // is the next token eof or end of statement?
-            let opt_sep = peek_eof_or_statement_separator().parse_opt(tokenizer)?;
-
-            // put back the ws if we read it
-            opt_ws.undo(tokenizer);
-
-            opt_sep.ok_or(QError::syntax_error(
-                "Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement",
-            ))
-        }
+    // Vec to be able to undo
+    fn whitespace_and_allowed_keyword_after_end() -> impl Parser<Output = Vec<Token>> {
+        whitespace()
+            .and(allowed_keywords_after_end())
+            .map(|(l, (_, r))| vec![l, r])
     }
 
     fn allowed_keywords_after_end() -> impl Parser<Output = (Keyword, Token)> {
@@ -138,11 +126,17 @@ mod end {
         ])
     }
 
+    fn opt_ws_and_eof_or_statement_separator() -> impl Parser<Output = Vec<Token>> {
+        whitespace()
+            .allow_none()
+            .and(peek_eof_or_statement_separator())
+            .map(|(opt_ws, _)| opt_ws.into_iter().collect())
+    }
+
     #[cfg(test)]
     mod tests {
         use crate::assert_parser_err;
-
-        use super::*;
+        use crate::common::QError;
 
         #[test]
         fn test_sub_call_end_no_args_allowed() {

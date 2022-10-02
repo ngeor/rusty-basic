@@ -35,7 +35,6 @@ pub fn redim_p() -> impl Parser<Output = Statement> {
 }
 
 fn opt_shared_keyword() -> impl Parser<Output = Option<(Token, Token)>> + NonOptParser {
-    // TODO tokenlist parser -> Vec<Token>
     Seq2::new(keyword(Keyword::Shared), whitespace().no_incomplete()).allow_none()
 }
 

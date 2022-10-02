@@ -4,6 +4,7 @@ use std::fmt::Display;
 use crate::common::{CanCastTo, QError};
 use crate::parser::pc::Token;
 use crate::parser::pc_specific::TokenType;
+use crate::parser::Keyword;
 
 use super::Operator;
 
@@ -170,6 +171,23 @@ impl TryFrom<TokenType> for TypeQualifier {
             TokenType::Ampersand => Ok(TypeQualifier::AmpersandLong),
             TokenType::DollarSign => Ok(TypeQualifier::DollarString),
             _ => Err(QError::syntax_error("Expected: %, &, !, # or $")),
+        }
+    }
+}
+
+impl TryFrom<Keyword> for TypeQualifier {
+    type Error = QError;
+
+    fn try_from(keyword: Keyword) -> Result<TypeQualifier, QError> {
+        match keyword {
+            Keyword::Single => Ok(TypeQualifier::BangSingle),
+            Keyword::Double => Ok(TypeQualifier::HashDouble),
+            Keyword::Integer => Ok(TypeQualifier::PercentInteger),
+            Keyword::Long => Ok(TypeQualifier::AmpersandLong),
+            Keyword::String_ => Ok(TypeQualifier::DollarString),
+            _ => Err(QError::syntax_error(
+                "Expected: SINGLE, DOUBLE, INTEGER, LONG, or STRING",
+            )),
         }
     }
 }

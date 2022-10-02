@@ -11,7 +11,7 @@ pub fn in_parenthesis<P>(parser: P) -> InParenthesisParser<P> {
     InParenthesisParser::new(parser)
 }
 
-parser_declaration!(struct InParenthesisParser);
+parser_declaration!(pub struct InParenthesisParser);
 
 impl<P> Parser for InParenthesisParser<P>
 where

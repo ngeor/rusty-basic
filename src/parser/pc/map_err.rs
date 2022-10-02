@@ -82,7 +82,7 @@ where
 
 impl<P> NonOptParser for OrFailParser<P> where P: Parser {}
 
-parser_declaration!(struct NoIncompleteParser);
+parser_declaration!(pub struct NoIncompleteParser);
 
 impl<P> Parser for NoIncompleteParser<P>
 where

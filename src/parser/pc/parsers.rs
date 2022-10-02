@@ -15,6 +15,8 @@ use crate::parser::pc::{
 //     fn parse(&mut self) -> Result<Self::Output, QError>;
 // }
 
+// TODO make QError generic param too after figuring out <T> vs associated type
+
 pub trait Parser {
     type Output;
 

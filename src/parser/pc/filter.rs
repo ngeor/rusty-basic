@@ -2,7 +2,7 @@ use crate::common::QError;
 use crate::parser::pc::{Parser, Tokenizer, Undo};
 use crate::parser_declaration;
 
-parser_declaration!(struct FilterParser<predicate: F>);
+parser_declaration!(pub struct FilterParser<predicate: F>);
 
 impl<P, F> Parser for FilterParser<P, F>
 where

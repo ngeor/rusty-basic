@@ -33,10 +33,10 @@ impl<L, R> ZipValue<L, R> {
     }
 }
 
-binary_parser_declaration!(struct OptZip);
+binary_parser_declaration!(pub struct OptZip);
 
 pub fn opt_zip<L, R>(left: L, right: R) -> OptZip<L, R> {
-    OptZip(left, right)
+    OptZip::new(left, right)
 }
 
 impl<L, R> Parser for OptZip<L, R>
@@ -46,8 +46,8 @@ where
 {
     type Output = ZipValue<L::Output, R::Output>;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let opt_left = self.0.parse_opt(tokenizer)?;
-        let opt_right = self.1.parse_opt(tokenizer)?;
+        let opt_left = self.left.parse_opt(tokenizer)?;
+        let opt_right = self.right.parse_opt(tokenizer)?;
         match opt_left {
             Some(left) => match opt_right {
                 Some(right) => Ok(ZipValue::Both(left, right)),

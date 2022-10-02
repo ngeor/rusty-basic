@@ -23,7 +23,9 @@ macro_rules! alt_pc {
             }
         }
 
-        // TODO modify macro to have a last_type, so that the last return statement is just invoking the last parser
+        // It would be nice to have a last_type, so that the last return statement is just invoking the last parser,
+        // but then Rust gives an error:
+        // local ambiguity when calling macro `alt_pc`: multiple parsing options: built-in NTs tt ('last_type') or tt ('generics')
         impl <OUT, $($generics : Parser<Output=OUT>),+> Parser for $name <OUT, $($generics),+> {
             type Output = OUT;
             fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<OUT, QError> {

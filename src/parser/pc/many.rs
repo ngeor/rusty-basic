@@ -6,7 +6,7 @@ use crate::common::QError;
 use crate::parser::pc::{NonOptParser, Parser, Tokenizer};
 use crate::parser_declaration;
 
-parser_declaration!(struct OneOrMoreParser);
+parser_declaration!(pub struct OneOrMoreParser);
 
 impl<P> Parser for OneOrMoreParser<P>
 where
@@ -33,7 +33,7 @@ where
     }
 }
 
-parser_declaration!(struct ZeroOrMoreParser);
+parser_declaration!(pub struct ZeroOrMoreParser);
 
 impl<P> Parser for ZeroOrMoreParser<P>
 where

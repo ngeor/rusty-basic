@@ -4,7 +4,7 @@ use crate::common::QError;
 use crate::parser::pc::*;
 use crate::parser_declaration;
 
-parser_declaration!(struct AndThen<mapper: F>);
+parser_declaration!(pub struct AndThen<mapper: F>);
 
 impl<P, F, U> Parser for AndThen<P, F>
 where

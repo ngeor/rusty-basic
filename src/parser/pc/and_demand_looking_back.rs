@@ -2,7 +2,7 @@ use crate::common::{ParserErrorTrait, QError};
 use crate::parser::pc::{Parser, Tokenizer};
 use crate::parser_declaration;
 
-parser_declaration!(struct AndDemandLookingBack<right_factory: RF>);
+parser_declaration!(pub struct AndDemandLookingBack<right_factory: RF>);
 
 impl<L, F, R> Parser for AndDemandLookingBack<L, F>
 where

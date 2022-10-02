@@ -3,7 +3,7 @@ use crate::parser::pc::{Parser, Tokenizer};
 use crate::parser_declaration;
 
 parser_declaration!(
-    struct LoopWhile<predicate: F> {
+    pub struct LoopWhile<predicate: F> {
         // TODO remove this
         allow_empty: bool,
     }

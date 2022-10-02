@@ -4,7 +4,7 @@ use crate::parser::pc::tokenizers::Tokenizer;
 use crate::parser_declaration;
 
 parser_declaration!(
-    struct LoggingPC {
+    pub struct LoggingPC {
         tag: String,
     }
 );

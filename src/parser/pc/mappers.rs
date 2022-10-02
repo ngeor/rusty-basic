@@ -2,13 +2,11 @@
 // Map
 //
 
-// TODO make QError generic param too after figuring out <T> vs associated type
-
 use crate::common::QError;
 use crate::parser::pc::{Parser, Tokenizer};
 use crate::parser_declaration;
 
-parser_declaration!(struct FnMapper<mapper: F>);
+parser_declaration!(pub struct FnMapper<mapper: F>);
 
 impl<P, F, U> Parser for FnMapper<P, F>
 where
@@ -25,7 +23,7 @@ where
 // Keep Left
 //
 
-parser_declaration!(struct KeepLeftMapper);
+parser_declaration!(pub struct KeepLeftMapper);
 
 impl<P, L, R> Parser for KeepLeftMapper<P>
 where
@@ -41,7 +39,7 @@ where
 // Keep Middle
 //
 
-parser_declaration!(struct KeepMiddleMapper);
+parser_declaration!(pub struct KeepMiddleMapper);
 
 impl<P, L, M, R> Parser for KeepMiddleMapper<P>
 where
@@ -57,7 +55,7 @@ where
 // Keep Right
 //
 
-parser_declaration!(struct KeepRightMapper);
+parser_declaration!(pub struct KeepRightMapper);
 
 impl<P, L, R> Parser for KeepRightMapper<P>
 where

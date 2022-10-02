@@ -2,7 +2,7 @@ use crate::common::QError;
 use crate::parser::pc::*;
 use crate::parser_declaration;
 
-parser_declaration!(struct ValidateParser<validator: F>);
+parser_declaration!(pub struct ValidateParser<validator: F>);
 
 impl<P, F> Parser for ValidateParser<P, F>
 where

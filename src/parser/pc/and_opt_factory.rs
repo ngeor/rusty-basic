@@ -6,7 +6,7 @@ use crate::common::QError;
 use crate::parser::pc::{Parser, Tokenizer};
 use crate::parser_declaration;
 
-parser_declaration!(struct AndOptFactoryPC<right_factory: RF>);
+parser_declaration!(pub struct AndOptFactoryPC<right_factory: RF>);
 
 impl<L, RF, R> Parser for AndOptFactoryPC<L, RF>
 where

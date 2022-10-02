@@ -3,6 +3,7 @@ use crate::common::*;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
+use crate::parser_declaration;
 
 /// `( expr [, expr]* )`
 // TODO #[deprecated]
@@ -56,17 +57,37 @@ pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
 pub fn back_guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr ) ws*
     // ws+ expr ws+
-    guarded_expression_node_p()
-        .and_demand_looking_back(whitespace_boundary_after_expr)
-        .keep_left()
+    ExprNodeFollowedByWhitespace::new(guarded_expression_node_p())
 }
 
 pub fn expression_node_followed_by_ws() -> impl Parser<Output = ExpressionNode> {
     // ( expr ) ws*
     // expr ws+
-    expression_node_p()
-        .and_demand_looking_back(whitespace_boundary_after_expr)
-        .keep_left()
+    ExprNodeFollowedByWhitespace::new(expression_node_p())
+}
+
+parser_declaration!(struct ExprNodeFollowedByWhitespace);
+
+impl<P> Parser for ExprNodeFollowedByWhitespace<P>
+where
+    P: Parser<Output = ExpressionNode>,
+{
+    type Output = ExpressionNode;
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let expr_node = self.parser.parse(tokenizer)?;
+        if expr_node.as_ref().is_parenthesis() {
+            whitespace()
+                .allow_none()
+                .parse(tokenizer)
+                .map(|_| expr_node)
+        } else {
+            whitespace()
+                .no_incomplete()
+                .parse(tokenizer)
+                .map(|_| expr_node)
+        }
+    }
 }
 
 /// Parses an expression

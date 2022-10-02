@@ -4,10 +4,10 @@
 
 #[macro_export]
 macro_rules! parser_declaration {
-    (pub struct $name: ident $(<$($generic_var_name: tt: $generic_type:tt),*>)?$({
+    ($vis:vis struct $name: ident $(<$($generic_var_name: tt: $generic_type:tt),*>)?$({
         $($field_name: tt: $field_type: tt),*$(,)?
     })?) => {
-        pub struct $name<P$(, $($generic_type),*)?> {
+        $vis struct $name<P$(, $($generic_type),*)?> {
             parser: P$(,
             $($generic_var_name: $generic_type),*)?$(,
             $($field_name: $field_type),*)?
@@ -32,8 +32,8 @@ macro_rules! parser_declaration {
 
 #[macro_export]
 macro_rules! binary_parser_declaration {
-    (pub struct $name: ident) => {
-        pub struct $name<L, R> {
+    ($vis:vis struct $name: ident) => {
+        $vis struct $name<L, R> {
             left: L,
             right: R,
         }

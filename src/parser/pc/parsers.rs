@@ -4,9 +4,9 @@ use crate::parser::pc::and_opt_factory::AndOptFactoryPC;
 use crate::parser::pc::many::{OneOrMoreParser, ZeroOrMoreParser};
 use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
-    AllowDefaultParser, AllowNoneParser, Alt2, AndDemandLookingBack, AndPC, AndThen, FilterParser,
-    GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, NoIncompleteParser, OrFailParser,
-    Tokenizer, Undo, ValidateParser,
+    AllowDefaultParser, AllowNoneParser, Alt2, AndPC, AndThen, FilterParser, GuardPC, LoggingPC,
+    LoopWhile, MapIncompleteErrParser, NoIncompleteParser, OrFailParser, Tokenizer, Undo,
+    ValidateParser,
 };
 
 // TODO V4: the tokenizer is not visible (practically an iterator)
@@ -149,14 +149,6 @@ pub trait Parser {
         Self: Sized,
     {
         AndPC::new(self, right)
-    }
-
-    // TODO deprecate, too difficult
-    fn and_demand_looking_back<F>(self, factory: F) -> AndDemandLookingBack<Self, F>
-    where
-        Self: Sized,
-    {
-        AndDemandLookingBack::new(self, factory)
     }
 
     // TODO deprecate, too difficult

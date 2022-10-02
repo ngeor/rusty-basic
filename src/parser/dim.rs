@@ -7,9 +7,7 @@ pub fn dim_p() -> impl Parser<Output = Statement> {
     seq4(
         keyword(Keyword::Dim),
         whitespace().no_incomplete(),
-        keyword(Keyword::Shared)
-            .and_demand(whitespace().no_incomplete())
-            .allow_none(),
+        opt_shared_keyword(),
         csv(dim_name::dim_name_node_p(), false).or_syntax_error("Expected: name after DIM"),
         |_, _, opt_shared, variables| {
             Statement::Dim(DimList {
@@ -25,9 +23,7 @@ pub fn redim_p() -> impl Parser<Output = Statement> {
     seq4(
         keyword(Keyword::Redim),
         whitespace().no_incomplete(),
-        keyword(Keyword::Shared)
-            .and_demand(whitespace().no_incomplete())
-            .allow_none(),
+        opt_shared_keyword(),
         csv(dim_name::redim_name_node_p(), false).or_syntax_error("Expected: name after REDIM"),
         |_, _, opt_shared, variables| {
             Statement::Redim(DimList {
@@ -36,6 +32,11 @@ pub fn redim_p() -> impl Parser<Output = Statement> {
             })
         },
     )
+}
+
+fn opt_shared_keyword() -> impl Parser<Output = Option<(Token, Token)>> + NonOptParser {
+    // TODO tokenlist parser -> Vec<Token>
+    Seq2::new(keyword(Keyword::Shared), whitespace().no_incomplete()).allow_none()
 }
 
 #[cfg(test)]

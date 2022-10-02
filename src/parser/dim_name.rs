@@ -20,35 +20,37 @@ use crate::parser::types::*;
 // A(1 TO 5) AS INTEGER
 
 pub fn dim_name_node_p() -> impl Parser<Output = DimNameNode> {
-    name_with_dot_p()
-        .with_pos()
-        .and_opt(array_dimensions_p())
-        .and_opt(type_definition_extended_p())
-        .and_then(
-            |((name_node, opt_array_dimensions), opt_extended_type_definition)| {
-                map_name_opt_extended_type_definition(
-                    name_node,
-                    opt_array_dimensions,
-                    opt_extended_type_definition,
-                )
-            },
-        )
+    Seq3::new(
+        name_with_dot_p().with_pos(),
+        array_dimensions_p().allow_default(),
+        type_definition_extended_p().allow_none(),
+    )
+    .and_then(
+        |(name_node, array_dimensions, opt_extended_type_definition)| {
+            map_name_opt_extended_type_definition(
+                name_node,
+                array_dimensions,
+                opt_extended_type_definition,
+            )
+        },
+    )
 }
 
 pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
-    name_with_dot_p()
-        .with_pos()
-        .and_demand(array_dimensions_p().or_syntax_error("Expected: array dimensions"))
-        .and_opt(type_definition_extended_p())
-        .and_then(
-            |((name_node, array_dimensions), opt_extended_type_definition)| {
-                map_name_opt_extended_type_definition(
-                    name_node,
-                    Some(array_dimensions),
-                    opt_extended_type_definition,
-                )
-            },
-        )
+    Seq3::new(
+        name_with_dot_p().with_pos(),
+        array_dimensions_p().or_syntax_error("Expected: array dimensions"),
+        type_definition_extended_p().allow_none(),
+    )
+    .and_then(
+        |(name_node, array_dimensions, opt_extended_type_definition)| {
+            map_name_opt_extended_type_definition(
+                name_node,
+                array_dimensions,
+                opt_extended_type_definition,
+            )
+        },
+    )
 }
 
 fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
@@ -144,7 +146,7 @@ impl ExtendedTypeParser {
 
 fn map_name_opt_extended_type_definition(
     name_node: NameNode,
-    opt_array_dimensions: Option<ArrayDimensions>,
+    array_dimensions: ArrayDimensions,
     opt_type_definition: Option<DimType>,
 ) -> Result<DimNameNode, QError> {
     let Locatable { element: name, pos } = name_node;
@@ -156,9 +158,10 @@ fn map_name_opt_extended_type_definition(
             map_qualified_name_opt_extended_type_definition(qualified_name, opt_type_definition)?
         }
     };
-    let final_dim_type = match opt_array_dimensions {
-        Some(array_dimensions) => DimType::Array(array_dimensions, Box::new(dim_type)),
-        _ => dim_type,
+    let final_dim_type = if array_dimensions.is_empty() {
+        dim_type
+    } else {
+        DimType::Array(array_dimensions, Box::new(dim_type))
     };
     let bare_name: BareName = name.into();
     let dim_name = DimName::new(bare_name, final_dim_type);

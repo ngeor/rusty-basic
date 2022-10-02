@@ -5,7 +5,7 @@ use crate::parser::pc::many::{OneOrMoreParser, ZeroOrMoreParser};
 use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
     AllowDefaultParser, AllowNoneParser, Alt2, AndDemandLookingBack, AndPC, AndThen, FilterParser,
-    GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, NoIncompleteParser, OrFailParser, Seq2,
+    GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, NoIncompleteParser, OrFailParser,
     Tokenizer, Undo, ValidateParser,
 };
 
@@ -21,15 +21,6 @@ pub trait Parser {
     type Output;
 
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
-
-    // TODO #[deprecated]
-    fn and_demand<R>(self, right: R) -> Seq2<Self, R>
-    where
-        Self: Sized,
-        R: Parser,
-    {
-        Seq2::new(self, right)
-    }
 
     fn and_opt<R>(self, right: R) -> AndOptPC<Self, R>
     where
@@ -160,6 +151,7 @@ pub trait Parser {
         AndPC::new(self, right)
     }
 
+    // TODO deprecate, too difficult
     fn and_demand_looking_back<F>(self, factory: F) -> AndDemandLookingBack<Self, F>
     where
         Self: Sized,
@@ -167,6 +159,7 @@ pub trait Parser {
         AndDemandLookingBack::new(self, factory)
     }
 
+    // TODO deprecate, too difficult
     fn and_opt_factory<F, R>(self, f: F) -> AndOptFactoryPC<Self, F>
     where
         Self: Sized,
@@ -212,6 +205,8 @@ pub trait Parser {
 /// This parser will never return an error that is "incomplete".
 /// TODO: review all direct impl NonOptParser outside the core parsers, as implementing a marker trait doesn't guarantee much
 pub trait NonOptParser: Parser {}
+
+// TODO try an OptParser trait which has the conversions to NonOptParser methods such as or_syntax_error
 
 // TODO use this new trait ParseLookingBack
 pub trait ParseLookingBack {

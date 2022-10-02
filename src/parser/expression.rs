@@ -73,7 +73,8 @@ pub fn expression_node_followed_by_ws() -> impl Parser<Output = ExpressionNode> 
 pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
     single_expression_node_p()
         .and_opt_factory(|first_expr_node| {
-            operator_p(first_expr_node.as_ref().is_parenthesis()).and_demand(
+            Seq2::new(
+                operator_p(first_expr_node.as_ref().is_parenthesis()),
                 OptAndPC::new(whitespace(), lazy_expression_node_p())
                     .keep_right()
                     .or_syntax_error("Expected: right side expression"),

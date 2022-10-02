@@ -8,13 +8,12 @@ use crate::parser::statements::{
 use crate::parser::types::*;
 
 pub fn if_block_p() -> impl Parser<Output = Statement> {
-    if_expr_then_p()
-        .and_demand(
-            single_line_if_else_p()
-                .or(multi_line_if_p())
-                .or_syntax_error("Expected: single line or multi line IF"),
-        )
-        .map(|(condition, (statements, else_if_blocks, else_block))| {
+    seq2(
+        if_expr_then_p(),
+        single_line_if_else_p()
+            .or(multi_line_if_p())
+            .or_syntax_error("Expected: single line or multi line IF"),
+        |condition, (statements, else_if_blocks, else_block)| {
             Statement::IfBlock(IfBlockNode {
                 if_block: ConditionalBlockNode {
                     condition,
@@ -23,7 +22,8 @@ pub fn if_block_p() -> impl Parser<Output = Statement> {
                 else_if_blocks,
                 else_block,
             })
-        })
+        },
+    )
 }
 
 // IF expr THEN ( single line if | multi line if)

@@ -1,4 +1,3 @@
-use crate::built_ins;
 use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, FileHandle, Locatable, Location};
 use crate::parser::expression::expression_node_p;
@@ -6,28 +5,27 @@ use crate::parser::expression::file_handle::file_handle_p;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::{comma, keyword, trailing_comma_error, whitespace};
 use crate::parser::{Expression, ExpressionNode, ExpressionNodes, Keyword, Statement};
+use crate::{built_ins, lazy_parser};
 
-/// Parses built-in subs which have a special syntax.
-pub fn parse() -> impl Parser<Output = Statement> {
-    Alt16::new(
-        built_ins::close::parser::parse(),
-        built_ins::color::parser::parse(),
-        built_ins::data::parser::parse(),
-        built_ins::def_seg::parser::parse(),
-        built_ins::field::parser::parse(),
-        built_ins::get::parser::parse(),
-        built_ins::input::parser::parse(),
-        built_ins::line_input::parser::parse(),
-        built_ins::locate::parser::parse(),
-        built_ins::lset::parser::parse(),
-        built_ins::name::parser::parse(),
-        built_ins::open::parser::parse(),
-        built_ins::put::parser::parse(),
-        built_ins::read::parser::parse(),
-        built_ins::view_print::parser::parse(),
-        built_ins::width::parser::parse(),
-    )
-}
+// Parses built-in subs which have a special syntax.
+lazy_parser!(pub fn parse<Output=Statement> ; struct LazyParser ; Alt16::new(
+    built_ins::close::parser::parse(),
+    built_ins::color::parser::parse(),
+    built_ins::data::parser::parse(),
+    built_ins::def_seg::parser::parse(),
+    built_ins::field::parser::parse(),
+    built_ins::get::parser::parse(),
+    built_ins::input::parser::parse(),
+    built_ins::line_input::parser::parse(),
+    built_ins::locate::parser::parse(),
+    built_ins::lset::parser::parse(),
+    built_ins::name::parser::parse(),
+    built_ins::open::parser::parse(),
+    built_ins::put::parser::parse(),
+    built_ins::read::parser::parse(),
+    built_ins::view_print::parser::parse(),
+    built_ins::width::parser::parse(),
+));
 
 // needed for built-in functions that are also keywords (e.g. LEN), so they
 // cannot be parsed by the `word` module.

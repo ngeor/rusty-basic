@@ -3,42 +3,32 @@ use crate::common::*;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
-use crate::parser_declaration;
+use crate::{lazy_parser, parser_declaration};
 
 /// `( expr [, expr]* )`
 // TODO #[deprecated]
 pub fn expressions_non_opt(
     err_msg: &str,
 ) -> impl Parser<Output = ExpressionNodes> + NonOptParser + '_ {
-    in_parenthesis(csv(lazy_expression_node_p()).or_syntax_error(err_msg))
-        .or_syntax_error("Expected: (")
+    in_parenthesis(csv(expression_node_p()).or_syntax_error(err_msg)).or_syntax_error("Expected: (")
 }
 
 fn parenthesis_with_zero_or_more_expressions_p() -> impl Parser<Output = ExpressionNodes> {
-    in_parenthesis(csv(lazy_expression_node_p()).allow_default())
+    in_parenthesis(csv(expression_node_p()).allow_default())
 }
 
-pub fn lazy_expression_node_p() -> LazyExpressionParser {
-    LazyExpressionParser
-}
-
-pub struct LazyExpressionParser;
-
-impl Parser for LazyExpressionParser {
-    type Output = ExpressionNode;
-
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let parser = expression_node_p();
-        parser.parse(reader)
-    }
-}
+lazy_parser!(
+    pub fn expression_node_p<Output = ExpressionNode> ;
+    struct LazyExprParser ;
+    eager_expression_node()
+);
 
 // TODO check if all usages are "demand"
 // TODO rename to expression_preceded_by_ws
 pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr
-    OptAndPC::new(whitespace(), lazy_expression_node_p()).and_then(
+    OptAndPC::new(whitespace(), expression_node_p()).and_then(
         |(opt_leading_whitespace, expr_node)| {
             let needs_leading_whitespace = !expr_node.as_ref().is_parenthesis();
             let has_leading_whitespace = opt_leading_whitespace.is_some();
@@ -91,12 +81,12 @@ where
 }
 
 /// Parses an expression
-pub fn expression_node_p() -> impl Parser<Output = ExpressionNode> {
+fn eager_expression_node() -> impl Parser<Output = ExpressionNode> {
     single_expression_node_p()
         .and_opt_factory(|first_expr_node| {
             Seq2::new(
                 operator_p(first_expr_node.as_ref().is_parenthesis()),
-                OptAndPC::new(whitespace(), lazy_expression_node_p())
+                OptAndPC::new(whitespace(), expression_node_p())
                     .keep_right()
                     .or_syntax_error("Expected: right side expression"),
             )
@@ -143,7 +133,7 @@ fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
 fn unary_minus_p() -> impl Parser<Output = ExpressionNode> {
     seq2(
         minus_sign().with_pos(),
-        lazy_expression_node_p().or_syntax_error("Expected: expression after unary minus"),
+        expression_node_p().or_syntax_error("Expected: expression after unary minus"),
         |l, r| r.apply_unary_priority_order(UnaryOperator::Minus, l.pos),
     )
 }
@@ -213,10 +203,8 @@ pub mod file_handle {
 }
 
 pub fn parenthesis_p() -> impl Parser<Output = Expression> {
-    in_parenthesis(
-        lazy_expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
-    )
-    .map(|child| Expression::Parenthesis(Box::new(child)))
+    in_parenthesis(expression_node_p().or_syntax_error("Expected: expression inside parenthesis"))
+        .map(|child| Expression::Parenthesis(Box::new(child)))
 }
 
 mod string_literal {

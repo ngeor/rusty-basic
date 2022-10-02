@@ -45,3 +45,31 @@ macro_rules! binary_parser_declaration {
         }
     };
 }
+
+// lazy parser
+// TODO store the instance one it is created, don't call factory multiple times (needs inner mutability)
+#[macro_export]
+macro_rules! lazy_parser {
+    ($fn_vis:vis fn $fn_name:ident<Output=$output_type:tt> ; $struct_vis:vis struct $struct_name:ident ; $body:expr) => {
+        $fn_vis fn $fn_name()  -> impl Parser<Output=$output_type> {
+            $struct_name
+        }
+
+        struct $struct_name;
+
+        impl $struct_name {
+            fn create_parser() -> impl Parser<Output=$output_type> {
+                $body
+            }
+        }
+
+        impl Parser for $struct_name {
+            type Output = $output_type;
+
+            fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<$output_type, crate::common::QError> {
+                let parser = Self::create_parser();
+                parser.parse(tokenizer)
+            }
+        }
+    };
+}

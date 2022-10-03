@@ -55,7 +55,10 @@ mod array_dimensions {
     use crate::parser::*;
 
     pub fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
-        in_parenthesis(csv(array_dimension_p()).or_syntax_error("Expected: array dimension"))
+        in_parenthesis(csv_non_opt(
+            array_dimension_p(),
+            "Expected: array dimension",
+        ))
     }
 
     // expr (e.g. 10)

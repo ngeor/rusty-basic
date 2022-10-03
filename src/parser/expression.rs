@@ -10,7 +10,11 @@ use crate::{lazy_parser, parser_declaration};
 pub fn expressions_non_opt(
     err_msg: &str,
 ) -> impl Parser<Output = ExpressionNodes> + NonOptParser + '_ {
-    in_parenthesis(csv(expression_node_p()).or_syntax_error(err_msg)).no_incomplete()
+    in_parenthesis(csv_expressions_non_opt(err_msg)).no_incomplete()
+}
+
+pub fn csv_expressions_non_opt(msg: &str) -> impl Parser<Output = ExpressionNodes> + NonOptParser {
+    csv_non_opt(expression_node_p(), msg)
 }
 
 fn parenthesis_with_zero_or_more_expressions_p() -> impl Parser<Output = ExpressionNodes> {

@@ -1,7 +1,7 @@
 pub mod parser {
     use crate::built_ins::parser::{encode_opt_file_handle_arg, opt_file_handle_comma_p};
     use crate::built_ins::BuiltInSub;
-    use crate::parser::expression::expression_node_p;
+    use crate::parser::expression::csv_expressions_non_opt;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
@@ -13,7 +13,7 @@ pub mod parser {
             keyword(Keyword::Input),
             whitespace().no_incomplete(),
             opt_file_handle_comma_p(),
-            csv(expression_node_p()).or_syntax_error("Expected: #file-number or variable"),
+            csv_expressions_non_opt("Expected: #file-number or variable"),
             |_, _, opt_loc_file_number, variables| {
                 let mut args: ExpressionNodes = encode_opt_file_handle_arg(opt_loc_file_number);
                 args.extend(variables);

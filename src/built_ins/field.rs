@@ -14,7 +14,7 @@ pub mod parser {
             whitespace().no_incomplete(),
             file_handle_p().or_syntax_error("Expected: file-number"),
             comma().no_incomplete(),
-            csv(field_item_p()).or_syntax_error("Expected: field width"),
+            csv_non_opt(field_item_p(), "Expected: field width"),
             |_, _, file_number, _, fields| {
                 Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
             },

@@ -1,13 +1,13 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::expression::expression_nodes_p;
+    use crate::parser::expression::csv_expressions_first_guarded;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword(Keyword::Read)
-            .then_demand(expression_nodes_p().or_syntax_error("Expected: variable"))
+            .then_demand(csv_expressions_first_guarded().or_syntax_error("Expected: variable"))
             .map(|args| Statement::BuiltInSubCall(BuiltInSub::Read, args))
     }
 }

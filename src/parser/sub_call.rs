@@ -29,7 +29,7 @@ impl Parser for SubCallOrAssignment {
             _ => match expr_to_bare_name_args(name_expr) {
                 Ok((bare_name, Some(args))) => Ok(Statement::SubCall(bare_name, args)),
                 Ok((bare_name, None)) => {
-                    let args = expression::expression_nodes_p().parse_opt(reader)?;
+                    let args = expression::csv_expressions_first_guarded().parse_opt(reader)?;
                     Ok(Statement::SubCall(bare_name, args.unwrap_or_default()))
                 }
                 Err(err) => Err(err),

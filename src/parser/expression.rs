@@ -6,19 +6,29 @@ use crate::parser::types::*;
 use crate::{lazy_parser, parser_declaration};
 
 /// `( expr [, expr]* )`
-// TODO #[deprecated]
-pub fn expressions_non_opt(
+pub fn in_parenthesis_csv_expressions_non_opt(
     err_msg: &str,
 ) -> impl Parser<Output = ExpressionNodes> + NonOptParser + '_ {
     in_parenthesis(csv_expressions_non_opt(err_msg)).no_incomplete()
 }
 
+/// Parses one or more expressions separated by comma.
+/// FIXME Unlike csv_expressions, the first expression does not need a separator!
+/// FIXME the biggest problem is expression vs guarded expression
 pub fn csv_expressions_non_opt(msg: &str) -> impl Parser<Output = ExpressionNodes> + NonOptParser {
     csv_non_opt(expression_node_p(), msg)
 }
 
-fn parenthesis_with_zero_or_more_expressions_p() -> impl Parser<Output = ExpressionNodes> {
-    in_parenthesis(csv(expression_node_p()).allow_default())
+/// Parses one or more expressions separated by comma.
+/// Trailing commas are not allowed.
+/// Missing expressions are not allowed.
+/// The first expression needs to be preceded by space or surrounded in parenthesis.
+pub fn csv_expressions_first_guarded() -> impl Parser<Output = ExpressionNodes> {
+    AccumulateParser::new(
+        guarded_expression_node_p(),
+        comma()
+            .then_demand(expression_node_p().or_syntax_error("Expected: expression after comma")),
+    )
 }
 
 lazy_parser!(
@@ -105,18 +115,6 @@ fn eager_expression_node() -> impl Parser<Output = ExpressionNode> {
             })
             .simplify_unary_minus_literals()
         })
-}
-
-/// Parses one or more expressions separated by comma.
-/// Trailing commas are not allowed.
-/// Missing expressions are not allowed.
-/// The first expression needs to be preceded by space or surrounded in parenthesis.
-pub fn expression_nodes_p() -> impl Parser<Output = ExpressionNodes> {
-    AccumulateParser::new(
-        guarded_expression_node_p(),
-        comma()
-            .then_demand(expression_node_p().or_syntax_error("Expected: expression after comma")),
-    )
 }
 
 fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
@@ -392,7 +390,7 @@ mod number_literal {
 
 pub mod word {
     use crate::common::*;
-    use crate::parser::expression::parenthesis_with_zero_or_more_expressions_p;
+    use crate::parser::expression::expression_node_p;
     use crate::parser::name::name_with_dot_p;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
@@ -403,7 +401,7 @@ pub mod word {
     pub fn word_p() -> impl Parser<Output = Expression> {
         // TODO use Seq4
         name_with_dot_p()
-            .and_opt(parenthesis_with_zero_or_more_expressions_p())
+            .and_opt(in_parenthesis(csv(expression_node_p()).allow_default()))
             .and_opt(dot_property_name())
             .and_opt(EnsureEndOfNameParser)
             .keep_left()

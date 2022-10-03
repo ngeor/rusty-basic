@@ -7,10 +7,7 @@ pub struct UserDefinedFunctionLinter<'a> {
     pub functions: &'a FunctionMap,
 }
 
-pub fn lint_call_args(
-    args: &Vec<ExpressionNode>,
-    param_types: &ParamTypes,
-) -> Result<(), QErrorNode> {
+pub fn lint_call_args(args: &ExpressionNodes, param_types: &ParamTypes) -> Result<(), QErrorNode> {
     if args.len() != param_types.len() {
         return err_no_pos(QError::ArgumentCountMismatch);
     }
@@ -118,7 +115,7 @@ where
 
 fn arg_node_to_expr_type_and_opt_args(
     arg_node: &ExpressionNode,
-) -> Option<(&ExpressionType, Option<&Vec<ExpressionNode>>)> {
+) -> Option<(&ExpressionType, Option<&ExpressionNodes>)> {
     match arg_node.as_ref() {
         Expression::Variable(
             _,
@@ -138,7 +135,7 @@ fn arg_node_to_expr_type_and_opt_args(
     }
 }
 
-fn has_at_least_one_arg(opt_args: Option<&Vec<ExpressionNode>>) -> bool {
+fn has_at_least_one_arg(opt_args: Option<&ExpressionNodes>) -> bool {
     match opt_args {
         Some(args) => !args.is_empty(),
         _ => true, // not an array expression
@@ -146,7 +143,7 @@ fn has_at_least_one_arg(opt_args: Option<&Vec<ExpressionNode>>) -> bool {
 }
 
 impl<'a> UserDefinedFunctionLinter<'a> {
-    fn visit_function(&self, name: &Name, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    fn visit_function(&self, name: &Name, args: &ExpressionNodes) -> Result<(), QErrorNode> {
         if let Name::Qualified(qualified_name) = name {
             let QualifiedName {
                 bare_name,
@@ -170,7 +167,7 @@ impl<'a> UserDefinedFunctionLinter<'a> {
         }
     }
 
-    fn handle_undefined_function(&self, args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    fn handle_undefined_function(&self, args: &ExpressionNodes) -> Result<(), QErrorNode> {
         for i in 0..args.len() {
             let arg_node = args.get(i).unwrap();
             match arg_node.as_ref().expression_type() {

@@ -15,7 +15,7 @@ pub mod parser {
             opt_file_handle_comma_p(),
             expression_node_p().or_syntax_error("Expected: #file-number or variable"),
             |_, _, opt_loc_file_handle, variable| {
-                let mut args: Vec<ExpressionNode> = encode_opt_file_handle_arg(opt_loc_file_handle);
+                let mut args: ExpressionNodes = encode_opt_file_handle_arg(opt_loc_file_handle);
                 // add the LINE INPUT variable
                 args.push(variable);
                 Statement::BuiltInSubCall(BuiltInSub::LineInput, args)
@@ -27,9 +27,9 @@ pub mod parser {
 pub mod linter {
     use crate::common::*;
     use crate::linter::arg_validation::ArgValidation;
-    use crate::parser::{Expression, ExpressionNode};
+    use crate::parser::{Expression, ExpressionNodes};
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         // the first one or two arguments stand for the file number
         // if the first argument is 0, no file handle
         // if the first argument is 1, the second is the file handle

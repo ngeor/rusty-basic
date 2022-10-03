@@ -144,16 +144,16 @@ pub trait ExpressionReducer {
     fn visit_sub_call(
         &mut self,
         name: CaseInsensitiveString,
-        args: Vec<ExpressionNode>,
-    ) -> Result<(CaseInsensitiveString, Vec<ExpressionNode>), QErrorNode> {
+        args: ExpressionNodes,
+    ) -> Result<(CaseInsensitiveString, ExpressionNodes), QErrorNode> {
         Ok((name, self.visit_expression_nodes(args)?))
     }
 
     fn visit_built_in_sub_call(
         &mut self,
         name: BuiltInSub,
-        args: Vec<ExpressionNode>,
-    ) -> Result<(BuiltInSub, Vec<ExpressionNode>), QErrorNode> {
+        args: ExpressionNodes,
+    ) -> Result<(BuiltInSub, ExpressionNodes), QErrorNode> {
         Ok((name, self.visit_expression_nodes(args)?))
     }
 
@@ -284,11 +284,11 @@ pub trait ExpressionReducer {
 
     fn visit_expression_nodes(
         &mut self,
-        args: Vec<ExpressionNode>,
-    ) -> Result<Vec<ExpressionNode>, QErrorNode> {
+        args: ExpressionNodes,
+    ) -> Result<ExpressionNodes, QErrorNode> {
         args.into_iter()
             .map(|a| self.visit_expression_node(a))
-            .collect::<Result<Vec<ExpressionNode>, QErrorNode>>()
+            .collect::<Result<ExpressionNodes, QErrorNode>>()
     }
 
     fn visit_print_node(&mut self, print_node: PrintNode) -> Result<PrintNode, QErrorNode> {

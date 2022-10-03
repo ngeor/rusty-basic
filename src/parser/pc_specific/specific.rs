@@ -173,6 +173,8 @@ where
 // identifier or keyword
 //
 
+// TODO review name-like parsers
+
 pub fn identifier_or_keyword() -> impl Parser<Output = Token> {
     any_token()
         .filter(|token| {

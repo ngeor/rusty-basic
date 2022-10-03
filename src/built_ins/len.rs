@@ -15,10 +15,10 @@ pub mod parser {
 pub mod linter {
     use crate::common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
     use crate::parser::{
-        Expression, ExpressionNode, ExpressionType, HasExpressionType, TypeQualifier,
+        Expression, ExpressionNodes, ExpressionType, HasExpressionType, TypeQualifier,
     };
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         if args.len() != 1 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {

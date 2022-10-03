@@ -18,9 +18,9 @@ pub mod parser {
 pub mod linter {
     use crate::common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
     use crate::linter::arg_validation::ArgValidation;
-    use crate::parser::{ExpressionNode, TypeQualifier};
+    use crate::parser::{ExpressionNodes, TypeQualifier};
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         if args.len() != 2 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {

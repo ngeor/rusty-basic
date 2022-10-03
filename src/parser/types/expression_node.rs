@@ -16,11 +16,11 @@ pub enum Expression {
         // the name of the array (unqualified only for user defined types)
         Name,
         // the array indices
-        Vec<ExpressionNode>,
+        ExpressionNodes,
         // the type of the elements (shared refers to the array itself)
         VariableInfo,
     ),
-    BuiltInFunctionCall(BuiltInFunction, Vec<ExpressionNode>),
+    BuiltInFunctionCall(BuiltInFunction, ExpressionNodes),
     BinaryExpression(
         Operator,
         Box<ExpressionNode>,

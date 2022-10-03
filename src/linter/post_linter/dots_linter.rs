@@ -1,10 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::common::*;
-use crate::parser::{
-    BareName, BareNameNode, DimList, DimName, DimNameNode, Expression, ExpressionNode, ForLoopNode,
-    FunctionImplementation, Name, NameNode, ParamName, QualifiedName, QualifiedNameNode,
-    SubImplementation,
-};
+use crate::parser::*;
+
 use std::collections::HashSet;
 
 pub struct DotsLinter<'a> {
@@ -117,8 +114,8 @@ impl<'a> NoDotNamesCheck<BareName, QError> for DotsLinter<'a> {
     }
 }
 
-impl<'a> NoDotNamesCheck<Vec<ExpressionNode>, QErrorNode> for DotsLinter<'a> {
-    fn ensure_no_dots(&self, x: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+impl<'a> NoDotNamesCheck<ExpressionNodes, QErrorNode> for DotsLinter<'a> {
+    fn ensure_no_dots(&self, x: &ExpressionNodes) -> Result<(), QErrorNode> {
         x.into_iter().map(|x| self.ensure_no_dots(x)).collect()
     }
 }

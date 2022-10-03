@@ -8,7 +8,7 @@ impl InstructionGenerator {
     pub fn generate_built_in_function_call_instructions(
         &mut self,
         function_name: BuiltInFunction,
-        args: Vec<ExpressionNode>,
+        args: ExpressionNodes,
         pos: Location,
     ) {
         self.generate_push_unnamed_args_instructions(&args, pos);
@@ -24,7 +24,7 @@ impl InstructionGenerator {
     pub fn generate_built_in_sub_call_instructions(
         &mut self,
         name: BuiltInSub,
-        args: Vec<ExpressionNode>,
+        args: ExpressionNodes,
         pos: Location,
     ) {
         self.generate_push_unnamed_args_instructions(&args, pos);
@@ -38,7 +38,7 @@ impl InstructionGenerator {
     pub fn generate_function_call_instructions(
         &mut self,
         function_name: NameNode,
-        args: Vec<ExpressionNode>,
+        args: ExpressionNodes,
     ) {
         let Locatable { element: name, pos } = function_name;
         let qualified_name = name.demand_qualified();
@@ -70,7 +70,7 @@ impl InstructionGenerator {
     pub fn generate_sub_call_instructions(
         &mut self,
         name_node: BareNameNode,
-        args: Vec<ExpressionNode>,
+        args: ExpressionNodes,
     ) {
         let Locatable { element: name, pos } = name_node;
         let subprogram_name = SubprogramName::Sub(name.clone());
@@ -93,7 +93,7 @@ impl InstructionGenerator {
     fn generate_push_named_args_instructions(
         &mut self,
         param_names: &Vec<ParamName>,
-        args: &Vec<ExpressionNode>,
+        args: &ExpressionNodes,
         pos: Location,
     ) {
         self.push(Instruction::BeginCollectArguments, pos);
@@ -106,11 +106,7 @@ impl InstructionGenerator {
         }
     }
 
-    fn generate_push_unnamed_args_instructions(
-        &mut self,
-        args: &Vec<ExpressionNode>,
-        pos: Location,
-    ) {
+    fn generate_push_unnamed_args_instructions(&mut self, args: &ExpressionNodes, pos: Location) {
         self.push(Instruction::BeginCollectArguments, pos);
         for Locatable { element: arg, pos } in args {
             if arg.is_by_ref() {
@@ -130,7 +126,7 @@ impl InstructionGenerator {
         }
     }
 
-    fn generate_stash_by_ref_args(&mut self, args: &Vec<ExpressionNode>) {
+    fn generate_stash_by_ref_args(&mut self, args: &ExpressionNodes) {
         let mut idx: usize = 0;
         for Locatable { element: arg, pos } in args {
             if arg.is_by_ref() {
@@ -141,7 +137,7 @@ impl InstructionGenerator {
         }
     }
 
-    fn generate_un_stash_by_ref_args(&mut self, args: &Vec<ExpressionNode>) {
+    fn generate_un_stash_by_ref_args(&mut self, args: &ExpressionNodes) {
         for Locatable { element: arg, pos } in args {
             if arg.is_by_ref() {
                 self.push(Instruction::DequeueFromReturnStack, *pos);

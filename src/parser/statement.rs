@@ -106,7 +106,7 @@ mod end {
     }
 
     // Vec to be able to undo
-    fn whitespace_and_allowed_keyword_after_end() -> impl Parser<Output = Vec<Token>> {
+    fn whitespace_and_allowed_keyword_after_end() -> impl Parser<Output = TokenList> {
         whitespace()
             .and(allowed_keywords_after_end())
             .map(|(l, (_, r))| vec![l, r])
@@ -122,7 +122,7 @@ mod end {
         ])
     }
 
-    fn opt_ws_and_eof_or_statement_separator() -> impl Parser<Output = Vec<Token>> {
+    fn opt_ws_and_eof_or_statement_separator() -> impl Parser<Output = TokenList> {
         whitespace()
             .allow_none()
             .and(peek_eof_or_statement_separator())

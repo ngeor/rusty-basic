@@ -29,7 +29,7 @@ where
     }
 }
 
-impl Undo for Vec<Token> {
+impl Undo for TokenList {
     fn undo(self, tokenizer: &mut impl Tokenizer) {
         let mut x = self;
         loop {

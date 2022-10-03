@@ -50,6 +50,7 @@ pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes
     )
 }
 
+// result ::= "" | "(" ")" | "(" param_node (,param_node)* ")"
 fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> + NonOptParser {
     OptAndPC::new(
         whitespace(),
@@ -158,13 +159,13 @@ mod tests {
     #[test]
     fn test_string_fixed_length_function_param_not_allowed() {
         let input = "DECLARE FUNCTION Echo(X AS STRING * 5)";
-        assert_parser_err!(input, QError::syntax_error("Expected: closing parenthesis"));
+        assert_parser_err!(input, QError::syntax_error("Expected: )"));
     }
 
     #[test]
     fn test_string_fixed_length_sub_param_not_allowed() {
         let input = "DECLARE SUB Echo(X AS STRING * 5)";
-        assert_parser_err!(input, QError::syntax_error("Expected: closing parenthesis"));
+        assert_parser_err!(input, QError::syntax_error("Expected: )"));
     }
 
     #[test]

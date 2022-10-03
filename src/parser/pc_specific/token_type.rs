@@ -97,6 +97,8 @@ impl TryFrom<TokenType> for char {
             TokenType::Equals => Ok('='),
             TokenType::Colon => Ok(':'),
             TokenType::Star => Ok('*'),
+            TokenType::LParen => Ok('('),
+            TokenType::RParen => Ok(')'),
             _ => Err(QError::InternalError(format!(
                 "not implemented {:?}",
                 value

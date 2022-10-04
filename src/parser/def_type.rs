@@ -66,24 +66,10 @@ fn token_to_char(token: Token) -> char {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::types::{Statement, TopLevelToken};
-
-    /// Asserts that the given input program contains a def type top level token.
-    macro_rules! assert_def_type {
-        ($input:expr, $expected_qualifier:expr, $expected_ranges:expr) => {
-            match parse($input).demand_single().element() {
-                TopLevelToken::DefType(def_type) => {
-                    let def_type_qualifier: &crate::parser::TypeQualifier = def_type.as_ref();
-                    assert_eq!(*def_type_qualifier, $expected_qualifier);
-                    assert_eq!(def_type.ranges(), &$expected_ranges);
-                }
-                _ => panic!("{:?}", $input),
-            }
-        };
-    }
+    use crate::{assert_def_type, assert_parser_err};
 
     #[test]
     fn test_parse_def_int_a_z() {

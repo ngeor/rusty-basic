@@ -1,7 +1,6 @@
 use crate::common::QError;
 use crate::parser::char_reader::file_char_reader;
 use crate::parser::pc::*;
-use crate::parser::pc_specific::*;
 use crate::parser::SORTED_KEYWORDS_STR;
 use std::fs::File;
 use std::str::Chars;
@@ -167,33 +166,6 @@ where
     fn or_syntax_error(self, msg: &str) -> OrFailParser<Self> {
         self.or_fail(QError::syntax_error(msg))
     }
-}
-
-//
-// identifier or keyword
-//
-
-// TODO review name-like parsers
-
-pub fn identifier_or_keyword() -> impl Parser<Output = Token> {
-    any_token()
-        .filter(|token| {
-            token.kind == TokenType::Keyword as i32 || token.kind == TokenType::Identifier as i32
-        })
-        .map_incomplete_err(QError::Expected(
-            "Expected: identifier or keyword".to_owned(),
-        ))
-}
-
-pub fn identifier_or_keyword_without_dot() -> impl Parser<Output = Token> {
-    any_token()
-        .filter(|token| {
-            (token.kind == TokenType::Keyword as i32 || token.kind == TokenType::Identifier as i32)
-                && !token.text.contains('.')
-        })
-        .map_incomplete_err(QError::Expected(
-            "Expected: identifier or keyword".to_owned(),
-        ))
 }
 
 #[cfg(test)]

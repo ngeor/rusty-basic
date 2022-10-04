@@ -194,9 +194,9 @@ fn case_else() -> impl Parser<Output = StatementNodes> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::types::*;
+    use crate::{assert_parser_err, bin_exp, int_lit, paren_exp};
 
     #[test]
     fn test_select_case_inline_comment() {
@@ -292,42 +292,6 @@ mod tests {
                 .at_rc(2, 9)
             ]
         );
-    }
-
-    // TODO move macros up and use them more
-
-    macro_rules! int_lit {
-        ($value: literal) => {
-            Expression::IntegerLiteral($value)
-        };
-
-        ($value: literal at $row: literal:$col: literal) => {
-            Locatable::new(int_lit!($value), Location::new($row, $col))
-        };
-    }
-
-    macro_rules! bin_exp {
-        ($left: expr ; plus $right: expr) => {
-            Expression::BinaryExpression(
-                Operator::Plus,
-                Box::new($left),
-                Box::new($right),
-                ExpressionType::Unresolved,
-            )
-        };
-
-        ($left: expr ; plus $right: expr ; at $row: literal:$col: literal) => {
-            Locatable::new(bin_exp!($left ; plus $right), Location::new($row, $col))
-        };
-    }
-
-    macro_rules! paren_exp {
-        ($child: expr ; at $row: literal:$col: literal) => {
-            Locatable::new(
-                Expression::Parenthesis(Box::new($child)),
-                Location::new($row, $col),
-            )
-        };
     }
 
     #[test]

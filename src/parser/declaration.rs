@@ -62,42 +62,13 @@ fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> + NonOptPa
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::{
         BuiltInStyle, FunctionImplementation, Name, ParamName, ParamType, Statement, TopLevelToken,
         TypeQualifier,
     };
-
-    macro_rules! assert_function_declaration {
-        ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
-            match parse($input).demand_single().element() {
-                TopLevelToken::FunctionDeclaration(name, parameters) => {
-                    assert_eq!(
-                        name.element(),
-                        $expected_function_name,
-                        "Function name mismatch"
-                    );
-                    assert_eq!(
-                        parameters.len(),
-                        $expected_params.len(),
-                        "Parameter count mismatch"
-                    );
-                    let parameters_without_location: Vec<ParamName> =
-                        Locatable::strip_location(parameters);
-                    for i in 0..parameters_without_location.len() {
-                        assert_eq!(
-                            parameters_without_location[i], $expected_params[i],
-                            "Parameter {}",
-                            i
-                        );
-                    }
-                }
-                _ => panic!("{:?}", $input),
-            }
-        };
-    }
+    use crate::{assert_function_declaration, assert_parser_err};
 
     #[test]
     fn test_fn() {

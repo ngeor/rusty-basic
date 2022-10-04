@@ -1,10 +1,8 @@
-use std::str::FromStr;
-
 use crate::common::QError;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::type_qualifier::type_qualifier_as_token;
-use crate::parser::{BareName, Keyword, Name, TypeQualifier};
+use crate::parser::{BareName, Name, TypeQualifier};
 
 /// Parses a name. The name must start with a letter and can include
 /// letters, digits or dots. The name can optionally be qualified by a type
@@ -14,7 +12,6 @@ use crate::parser::{BareName, Keyword, Name, TypeQualifier};
 /// is not a keyword (with the exception of strings, e.g. `end$`).
 pub fn name_with_dot_p() -> impl Parser<Output = Name> {
     identifier_or_keyword()
-        .and_then(ensure_token_list_length)
         .and_opt(type_qualifier_as_token())
         .validate(|(n, opt_q)| {
             // TODO preserve the string and type qualifier for the fn_map step
@@ -38,59 +35,11 @@ pub fn name_with_dot_p() -> impl Parser<Output = Name> {
 // bare name node
 
 pub fn bare_name_as_token() -> impl Parser<Output = Token> {
-    UnlessFollowedBy(
-        any_token_of(TokenType::Identifier),
-        type_qualifier_as_token(),
-    )
-    .validate(ensure_length_and_not_keyword)
+    identifier().unless_followed_by(type_qualifier_as_token())
 }
 
 pub fn bare_name_p() -> impl Parser<Output = BareName> {
     bare_name_as_token().map(|x| x.text.into()) // TODO make a parser for simpler .into() cases
-}
-
-struct UnlessFollowedBy<L, R>(L, R);
-
-impl<L, R> Parser for UnlessFollowedBy<L, R>
-where
-    L: Parser,
-    L::Output: Undo,
-    R: Parser,
-    R::Output: Undo,
-{
-    type Output = L::Output;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let value = self.0.parse(tokenizer)?;
-        match self.1.parse_opt(tokenizer)? {
-            Some(needle) => {
-                needle.undo(tokenizer);
-                value.undo(tokenizer);
-                Err(QError::Incomplete)
-            }
-            None => Ok(value),
-        }
-    }
-}
-
-pub const MAX_LENGTH: usize = 40;
-
-fn ensure_length_and_not_keyword(token: &Token) -> Result<bool, QError> {
-    if token.text.chars().count() > MAX_LENGTH {
-        Err(QError::IdentifierTooLong)
-    } else {
-        match Keyword::from_str(&token.text) {
-            Ok(_) => Ok(false),
-            Err(_) => Ok(true),
-        }
-    }
-}
-
-fn ensure_token_list_length(token: Token) -> Result<Token, QError> {
-    if token.text.chars().count() > MAX_LENGTH {
-        Err(QError::IdentifierTooLong)
-    } else {
-        Ok(token)
-    }
 }
 
 #[cfg(test)]

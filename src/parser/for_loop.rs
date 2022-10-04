@@ -53,9 +53,7 @@ fn parse_for_step_p() -> impl Parser<
 fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, ExpressionNode)> {
     seq6(
         keyword_followed_by_whitespace_p(Keyword::For),
-        expression::word::word_p()
-            .with_pos()
-            .or_syntax_error("Expected: name after FOR"),
+        expression::property::parser().or_syntax_error("Expected: name after FOR"),
         equal_sign().no_incomplete(),
         expression::expression_node_followed_by_ws()
             .or_syntax_error("Expected: lower bound of FOR loop"),
@@ -68,7 +66,7 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
 
 fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
     whitespace()
-        .and(expression::word::word_p().with_pos())
+        .and(expression::property::parser())
         .keep_right()
 }
 

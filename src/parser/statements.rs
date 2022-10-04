@@ -29,15 +29,19 @@ fn delimited_by_colon<P: Parser>(parser: P) -> impl Parser<Output = Vec<P::Outpu
     )
 }
 
-pub struct ZeroOrMoreStatements<S>(NegateParser<S>, Option<QError>);
+pub struct ZeroOrMoreStatements<S>(NegateParser<PeekParser<S>>, Option<QError>);
 
-impl<S> ZeroOrMoreStatements<S> {
+impl<S> ZeroOrMoreStatements<S>
+where
+    S: Parser,
+    S::Output: Undo,
+{
     pub fn new(exit_source: S) -> Self {
-        Self(NegateParser(exit_source), None)
+        Self(exit_source.peek().negate(), None)
     }
 
     pub fn new_with_custom_error(exit_source: S, err: QError) -> Self {
-        Self(NegateParser(exit_source), Some(err))
+        Self(exit_source.peek().negate(), Some(err))
     }
 }
 
@@ -98,23 +102,4 @@ where
     S: Parser,
     S::Output: Undo,
 {
-}
-
-struct NegateParser<P>(P);
-
-impl<P> Parser for NegateParser<P>
-where
-    P: Parser,
-    P::Output: Undo,
-{
-    type Output = ();
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match self.0.parse_opt(tokenizer)? {
-            Some(value) => {
-                value.undo(tokenizer);
-                Err(QError::Incomplete)
-            }
-            None => Ok(()),
-        }
-    }
 }

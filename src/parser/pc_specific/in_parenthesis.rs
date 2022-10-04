@@ -5,7 +5,7 @@ use crate::parser::pc_specific::{any_token_of, TokenType};
 
 /// In parser mode, returns Some if the opening parenthesis is present
 /// AND the decorated parser has a value.
-pub fn in_parenthesis<P>(parser: P) -> impl Parser<Output = P::Output>
+pub fn in_parenthesis<P>(parser: P) -> impl Parser<Output = <P as Parser>::Output>
 where
     P: Parser + NonOptParser,
 {

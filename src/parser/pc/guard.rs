@@ -9,7 +9,7 @@ where
     L: Parser,
     R: Parser + NonOptParser,
 {
-    type Output = R::Output;
+    type Output = <R as Parser>::Output;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         self.left.parse(tokenizer)?;
         self.right.parse(tokenizer)

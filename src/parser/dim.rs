@@ -40,31 +40,10 @@ fn opt_shared_keyword() -> impl Parser<Output = Option<(Token, Token)>> + NonOpt
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::types::*;
-
-    macro_rules! assert_parse_dim_extended_built_in {
-        ($name: literal, $keyword: literal, $qualifier: ident) => {
-            let input = format!("DIM {} AS {}", $name, $keyword);
-            let p = parse(input).demand_single_statement();
-            assert_eq!(
-                p,
-                crate::parser::Statement::Dim(crate::parser::DimList {
-                    shared: false,
-                    variables: vec![crate::parser::DimNameBuilder::new()
-                        .bare_name($name)
-                        .dim_type(crate::parser::DimType::BuiltIn(
-                            TypeQualifier::$qualifier,
-                            crate::parser::BuiltInStyle::Extended
-                        ))
-                        .build()
-                        .at_rc(1, 5)]
-                })
-            );
-        };
-    }
+    use crate::{assert_parse_dim_compact, assert_parse_dim_extended_built_in, assert_parser_err};
 
     #[test]
     fn test_parse_dim_extended_built_in() {
@@ -142,33 +121,6 @@ mod tests {
     fn test_parse_dim_user_defined_cannot_include_period() {
         let input = "DIM A.B AS Card";
         assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
-    }
-
-    macro_rules! assert_parse_dim_compact {
-        ($name: literal) => {
-            let input = format!("DIM {}", $name);
-            let p = parse(input).demand_single_statement();
-            assert_eq!(
-                p,
-                Statement::Dim(
-                    DimNameBuilder::new()
-                        .bare_name($name)
-                        .dim_type(DimType::Bare)
-                        .build_list_rc(1, 5)
-                )
-            );
-        };
-
-        ($name: literal, $keyword: literal, $qualifier: ident) => {
-            let input = format!("DIM {}{}", $name, $keyword);
-            let p = parse(input).demand_single_statement();
-            assert_eq!(
-                p,
-                Statement::Dim(
-                    DimName::new_compact_local($name, TypeQualifier::$qualifier).into_list_rc(1, 5)
-                )
-            );
-        };
     }
 
     #[test]

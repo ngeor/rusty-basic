@@ -1,4 +1,3 @@
-use crate::built_ins::parser::built_in_function_call_p;
 use crate::common::*;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
@@ -118,14 +117,13 @@ fn eager_expression_node() -> impl Parser<Output = ExpressionNode> {
 }
 
 fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
-    Alt10::new(
-        string_literal::string_literal_p().with_pos(),
-        built_in_function_call_p().with_pos(),
-        word::word_p().with_pos(),
-        number_literal::number_literal_p(),
-        number_literal::float_without_leading_zero_p(),
-        number_literal::hexadecimal_literal_p().with_pos(),
-        number_literal::octal_literal_p().with_pos(),
+    Alt8::new(
+        single_or_double_literal::parser(),
+        string_literal::parser(),
+        integer_or_long_literal::parser(),
+        // property internally uses variable and function_call_or_array_element so they can be skipped
+        property::parser(),
+        built_in_function_call::parser(),
         parenthesis_p().with_pos(),
         unary_not_p(),
         unary_minus_p(),
@@ -148,685 +146,9 @@ pub fn unary_not_p() -> impl Parser<Output = ExpressionNode> {
     )
 }
 
-pub mod file_handle {
-    //! Used by PRINT and built-ins
-
-    use crate::common::*;
-    use crate::parser::expression::guarded_expression_node_p;
-    use crate::parser::pc::*;
-    use crate::parser::pc_specific::*;
-    use crate::parser::{Expression, ExpressionNode};
-
-    pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
-        FileHandleParser
-    }
-
-    // TODO support simple functions without `&self` for cases like FileHandleParser
-
-    struct FileHandleParser;
-
-    impl Parser for FileHandleParser {
-        type Output = Locatable<FileHandle>;
-        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-            let pos = tokenizer.position();
-            match tokenizer.read()? {
-                Some(token) if token.kind == TokenType::Pound as i32 => match tokenizer.read()? {
-                    Some(token) if token.kind == TokenType::Digits as i32 => {
-                        match token.text.parse::<u8>() {
-                            Ok(d) if d > 0 => Ok(FileHandle::from(d).at(pos)),
-                            _ => Err(QError::BadFileNameOrNumber),
-                        }
-                    }
-                    _ => Err(QError::syntax_error("Expected: digits after #")),
-                },
-                Some(token) => {
-                    tokenizer.unread(token);
-                    Err(QError::Incomplete)
-                }
-                _ => Err(QError::Incomplete),
-            }
-        }
-    }
-
-    /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
-    pub fn file_handle_as_expression_node_p() -> impl Parser<Output = ExpressionNode> {
-        file_handle_p().map(|file_handle_node| file_handle_node.map(Expression::from))
-    }
-
-    pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
-        ws_file_handle().or(guarded_expression_node_p())
-    }
-
-    fn ws_file_handle() -> impl Parser<Output = ExpressionNode> {
-        whitespace()
-            .and(file_handle_as_expression_node_p())
-            .keep_right()
-    }
-}
-
 pub fn parenthesis_p() -> impl Parser<Output = Expression> {
     in_parenthesis(expression_node_p().or_syntax_error("Expected: expression inside parenthesis"))
         .map(|child| Expression::Parenthesis(Box::new(child)))
-}
-
-mod string_literal {
-    use crate::parser::pc::*;
-    use crate::parser::pc_specific::*;
-    use crate::parser::Expression;
-
-    pub fn string_literal_p() -> impl Parser<Output = Expression> {
-        seq3(
-            string_delimiter(),
-            inside_string(),
-            string_delimiter().no_incomplete(),
-            |_, token_list, _| Expression::StringLiteral(token_list_to_string(&token_list)),
-        )
-    }
-
-    fn string_delimiter() -> impl Parser<Output = Token> {
-        any_token_of(TokenType::DoubleQuote)
-    }
-
-    fn inside_string() -> impl Parser<Output = TokenList> + NonOptParser {
-        any_token()
-            .filter(|token| {
-                token.kind != TokenType::DoubleQuote as i32 && token.kind != TokenType::Eol as i32
-            })
-            .zero_or_more()
-    }
-}
-
-mod number_literal {
-    use crate::common::*;
-    use crate::parser::pc::*;
-    use crate::parser::pc_specific::*;
-    use crate::parser::types::*;
-    use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
-
-    pub fn number_literal_p() -> impl Parser<Output = ExpressionNode> {
-        // TODO support more qualifiers besides '#'
-        digits()
-            .and_opt(dot().then_demand(digits().or_syntax_error("Expected: digits")))
-            .and_opt(pound())
-            .and_then(
-                |((int_digits, opt_fraction_digits), opt_double)| match opt_fraction_digits {
-                    Some(fraction_digits) => parse_floating_point_literal_no_pos(
-                        int_digits.text,
-                        fraction_digits.text,
-                        opt_double.is_some(),
-                    ),
-                    _ => integer_literal_to_expression_node_no_pos(int_digits.text),
-                },
-            )
-            .with_pos()
-    }
-
-    pub fn float_without_leading_zero_p() -> impl Parser<Output = ExpressionNode> {
-        Seq3::new(dot(), digits().no_incomplete(), pound().allow_none())
-            .and_then(|(_, fraction_digits, opt_double)| {
-                parse_floating_point_literal_no_pos(
-                    "0".to_string(),
-                    fraction_digits.text,
-                    opt_double.is_some(),
-                )
-            })
-            .with_pos()
-    }
-
-    fn integer_literal_to_expression_node_no_pos(s: String) -> Result<Expression, QError> {
-        match s.parse::<u32>() {
-            Ok(u) => {
-                if u <= MAX_INTEGER as u32 {
-                    Ok(Expression::IntegerLiteral(u as i32))
-                } else if u <= MAX_LONG as u32 {
-                    Ok(Expression::LongLiteral(u as i64))
-                } else {
-                    Ok(Expression::DoubleLiteral(u as f64))
-                }
-            }
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    fn parse_floating_point_literal_no_pos(
-        integer_digits: String,
-        fraction_digits: String,
-        is_double: bool,
-    ) -> Result<Expression, QError> {
-        if is_double {
-            match format!("{}.{}", integer_digits, fraction_digits).parse::<f64>() {
-                Ok(f) => Ok(Expression::DoubleLiteral(f)),
-                Err(err) => Err(err.into()),
-            }
-        } else {
-            match format!("{}.{}", integer_digits, fraction_digits).parse::<f32>() {
-                Ok(f) => Ok(Expression::SingleLiteral(f)),
-                Err(err) => Err(err.into()),
-            }
-        }
-    }
-
-    fn convert_hex_digits(digits: String) -> Result<Expression, QError> {
-        let mut result: BitVec = BitVec::new();
-        for digit in digits.chars().skip_while(|ch| *ch == '0') {
-            let hex = convert_hex_digit(digit);
-            result.push_hex(hex);
-        }
-        create_expression_from_bit_vec(result)
-    }
-
-    fn convert_hex_digit(ch: char) -> u8 {
-        if is_digit(ch) {
-            (ch as u8) - ('0' as u8)
-        } else if ch >= 'a' && ch <= 'f' {
-            (ch as u8) - ('a' as u8) + 10
-        } else if ch >= 'A' && ch <= 'F' {
-            (ch as u8) - ('A' as u8) + 10
-        } else {
-            panic!("Unexpected hex digit: {}", ch)
-        }
-    }
-
-    fn convert_oct_digits(digits: String) -> Result<Expression, QError> {
-        let mut result: BitVec = BitVec::new();
-        for digit in digits.chars().skip_while(|ch| *ch == '0') {
-            let oct = convert_oct_digit(digit);
-            result.push_oct(oct);
-        }
-        create_expression_from_bit_vec(result)
-    }
-
-    fn convert_oct_digit(ch: char) -> u8 {
-        if ch >= '0' && ch <= '7' {
-            (ch as u8) - ('0' as u8)
-        } else {
-            panic!("Unexpected oct digit: {}", ch)
-        }
-    }
-
-    fn create_expression_from_bit_vec(bit_vec: BitVec) -> Result<Expression, QError> {
-        match bit_vec.convert_to_integer_variant()? {
-            Variant::VInteger(i) => Ok(Expression::IntegerLiteral(i)),
-            Variant::VLong(l) => Ok(Expression::LongLiteral(l)),
-            _ => Err(QError::Overflow),
-        }
-    }
-
-    pub fn hexadecimal_literal_p() -> impl Parser<Output = Expression> {
-        any_token_of(TokenType::HexDigits).and_then(|token| {
-            // token text is &HFFFF or &H-FFFF
-            let mut s: String = token.text;
-            // remove &
-            s.remove(0);
-            // remove H
-            s.remove(0);
-            if s.starts_with('-') {
-                Err(QError::Overflow)
-            } else {
-                convert_hex_digits(s)
-            }
-        })
-    }
-
-    pub fn octal_literal_p() -> impl Parser<Output = Expression> {
-        any_token_of(TokenType::OctDigits).and_then(|token| {
-            let mut s: String = token.text;
-            // remove &
-            s.remove(0);
-            // remove O
-            s.remove(0);
-            if s.starts_with('-') {
-                Err(QError::Overflow)
-            } else {
-                convert_oct_digits(s)
-            }
-        })
-    }
-
-    pub fn digits() -> impl Parser<Output = Token> {
-        any_token_of(TokenType::Digits)
-    }
-}
-
-pub mod word {
-    use crate::common::*;
-    use crate::parser::expression::expression_node_p;
-    use crate::parser::name::name_with_dot_p;
-    use crate::parser::pc::*;
-    use crate::parser::pc_specific::*;
-    use crate::parser::type_qualifier::type_qualifier_p;
-    use crate::parser::types::*;
-    use std::convert::TryFrom;
-
-    pub fn word_p() -> impl Parser<Output = Expression> {
-        // TODO use Seq4
-        name_with_dot_p()
-            .and_opt(in_parenthesis(csv(expression_node_p()).allow_default()))
-            .and_opt(dot_property_name())
-            .and_opt(EnsureEndOfNameParser)
-            .keep_left()
-            .and_then(|((name, opt_args), opt_properties)| {
-                if opt_args.is_none() && opt_properties.is_none() {
-                    // it only makes sense to try to break down a name into properties
-                    // when there are no parenthesis and additional properties
-                    let (mut name_props, opt_q) = name_to_properties(name.clone());
-                    if name_props.len() == 1 {
-                        return Ok(Expression::Variable(name, VariableInfo::unresolved()));
-                    }
-                    let mut base_expr = Expression::Variable(
-                        Name::Bare(name_props.remove(0).into()),
-                        VariableInfo::unresolved(),
-                    );
-                    while name_props.len() > 1 {
-                        let name_prop = name_props.remove(0);
-                        base_expr = Expression::Property(
-                            Box::new(base_expr),
-                            Name::Bare(name_prop.into()),
-                            ExpressionType::Unresolved,
-                        );
-                    }
-                    base_expr = Expression::Property(
-                        Box::new(base_expr),
-                        Name::new(name_props.remove(0).into(), opt_q),
-                        ExpressionType::Unresolved,
-                    );
-                    return Ok(base_expr);
-                }
-
-                if !name.is_bare() && opt_properties.is_some() {
-                    return Err(QError::syntax_error(
-                        "Qualified name cannot have properties",
-                    ));
-                }
-
-                let mut base_expr = if let Some(args) = opt_args {
-                    Expression::FunctionCall(name, args)
-                } else {
-                    Expression::Variable(name, VariableInfo::unresolved())
-                };
-                if let Some((mut properties, opt_q)) = opt_properties {
-                    // take all but last
-                    while properties.len() > 1 {
-                        base_expr = Expression::Property(
-                            Box::new(base_expr),
-                            Name::Bare(properties.remove(0).into()),
-                            ExpressionType::Unresolved,
-                        );
-                    }
-
-                    // take last (no need to check for bounds, because it was built with `one_or_more`)
-                    base_expr = Expression::Property(
-                        Box::new(base_expr),
-                        Name::new(properties.remove(0).into(), opt_q),
-                        ExpressionType::Unresolved,
-                    );
-
-                    Ok(base_expr)
-                } else {
-                    Ok(base_expr)
-                }
-            })
-    }
-
-    /// Breakdown a name with dots into properties.
-    /// If the name has continuous or trailing dots, it is returned as-is.
-    fn name_to_properties(name: Name) -> (Vec<String>, Option<TypeQualifier>) {
-        let (bare_name, opt_q) = name.into_inner();
-        let raw_name: String = bare_name.into();
-        let raw_name_copy = raw_name.clone();
-        let split = raw_name_copy.split('.');
-        let mut parts: Vec<String> = vec![];
-        for part in split {
-            if part.is_empty() {
-                // abort
-                parts.clear();
-                parts.push(raw_name);
-                break;
-            } else {
-                parts.push(part.to_owned());
-            }
-        }
-        (parts, opt_q)
-    }
-
-    fn dot_property_name() -> impl Parser<Output = (Vec<String>, Option<TypeQualifier>)> {
-        seq3(
-            dot(),
-            properties().or_syntax_error("Expected: property name(s) after dot"),
-            type_qualifier_p().allow_none(),
-            |_, properties, opt_q| (properties, opt_q),
-        )
-    }
-
-    fn properties() -> impl Parser<Output = Vec<String>> {
-        identifier_or_keyword_no_blanks_between_dots()
-            .one_or_more()
-            .map(|list_of_list| list_of_list.into_iter().flat_map(|list| list).collect())
-    }
-
-    fn identifier_or_keyword_no_blanks_between_dots() -> impl Parser<Output = Vec<String>> {
-        identifier_or_keyword().and_then(|token| {
-            let result: Vec<String> = token.text.split('.').map(ToOwned::to_owned).collect();
-            debug_assert!(!result.is_empty());
-            if result.iter().any(String::is_empty) {
-                Err(QError::syntax_error("Expected: property name after period"))
-            } else {
-                Ok(result)
-            }
-        })
-    }
-
-    struct EnsureEndOfNameParser;
-
-    impl Parser for EnsureEndOfNameParser {
-        type Output = ();
-        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-            match tokenizer.read()? {
-                Some(token) => {
-                    let token_type = TokenType::try_from(token.kind)?;
-                    tokenizer.unread(token);
-                    match token_type {
-                        TokenType::Dot
-                        | TokenType::ExclamationMark
-                        | TokenType::Pound
-                        | TokenType::Percent
-                        | TokenType::Ampersand
-                        | TokenType::DollarSign => {
-                            Err(QError::syntax_error("Expected: end of name expr"))
-                        }
-                        _ => Ok(()),
-                    }
-                }
-                None => Ok(()),
-            }
-        }
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use crate::parser::pc_specific::test_helper::create_string_tokenizer;
-        use crate::parser::test_utils::ExpressionNodeLiteralFactory;
-
-        use super::*;
-
-        mod unqualified {
-            use super::*;
-
-            mod no_dots {
-                use super::*;
-
-                #[test]
-                fn test_any_word_without_dot() {
-                    let input = "abc";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Expression::var_unresolved(input));
-                }
-
-                #[test]
-                fn test_array_or_function_no_dot_no_qualifier() {
-                    let input = "A(1)";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(
-                        result,
-                        Expression::func("A".into(), vec![1.as_lit_expr(1, 3)])
-                    );
-                }
-            }
-
-            mod dots {
-                use super::*;
-
-                #[test]
-                fn test_trailing_dot() {
-                    let input = "abc.";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Expression::var_unresolved(input));
-                }
-
-                #[test]
-                fn test_two_consecutive_trailing_dots() {
-                    let input = "abc..";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Expression::var_unresolved(input));
-                }
-
-                #[test]
-                fn test_possible_property() {
-                    let input = "a.b.c";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(
-                        result,
-                        Expression::Property(
-                            Box::new(Expression::Property(
-                                Box::new(Expression::var_unresolved("a")),
-                                "b".into(),
-                                ExpressionType::Unresolved
-                            )),
-                            "c".into(),
-                            ExpressionType::Unresolved
-                        )
-                    );
-                }
-
-                #[test]
-                fn test_possible_variable() {
-                    let input = "a.b.c.";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Expression::var_unresolved("a.b.c."));
-                }
-
-                #[test]
-                fn test_bare_array_cannot_have_consecutive_dots_in_properties() {
-                    let input = "A(1).O..ops";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
-                    assert_eq!(
-                        err,
-                        QError::syntax_error("Expected: property name after period")
-                    );
-                }
-
-                #[test]
-                fn test_bare_array_bare_property() {
-                    let input = "A(1).Suit";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(
-                        result,
-                        Expression::Property(
-                            Box::new(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)])),
-                            Name::Bare("Suit".into()),
-                            ExpressionType::Unresolved
-                        )
-                    );
-                }
-            }
-        }
-
-        mod qualified {
-            use super::*;
-
-            mod no_dots {
-                use super::*;
-
-                #[test]
-                fn test_qualified_var_without_dot() {
-                    let input = "abc$";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Expression::var_unresolved(input));
-                }
-
-                #[test]
-                fn test_duplicate_qualifier_is_error() {
-                    let input = "abc$%";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
-                    assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
-                }
-
-                #[test]
-                fn test_array_or_function_no_dot_qualified() {
-                    let input = "A$(1)";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(
-                        result,
-                        Expression::func("A$".into(), vec![1.as_lit_expr(1, 4)])
-                    );
-                }
-            }
-
-            mod dots {
-                use super::*;
-
-                #[test]
-                fn test_possible_qualified_property() {
-                    let input = "a.b$";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(
-                        result,
-                        Expression::Property(
-                            Box::new(Expression::var_unresolved("a".into())),
-                            "b$".into(),
-                            ExpressionType::Unresolved
-                        )
-                    );
-                }
-
-                #[test]
-                fn test_possible_qualified_property_reverts_to_array() {
-                    let input = "a.b$(1)";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(
-                        result,
-                        Expression::func("a.b$".into(), vec![1.as_lit_expr(1, 6)])
-                    );
-                }
-
-                #[test]
-                fn test_qualified_var_with_dot() {
-                    let input = "abc.$";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Expression::var_unresolved(input));
-                }
-
-                #[test]
-                fn test_qualified_var_with_two_dots() {
-                    let input = "abc..$";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(result, Expression::var_unresolved(input));
-                }
-
-                #[test]
-                fn test_dot_without_properties_is_error() {
-                    let input = "abc$.";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
-                    assert_eq!(
-                        err,
-                        QError::syntax_error("Expected: property name(s) after dot")
-                    );
-                }
-
-                #[test]
-                fn test_dot_after_qualifier_is_error() {
-                    let input = "abc$.hello";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
-                    assert_eq!(
-                        err,
-                        QError::syntax_error("Qualified name cannot have properties")
-                    );
-                }
-
-                #[test]
-                fn test_array_or_function_dotted_qualified() {
-                    let input = "A.B$(1)";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(
-                        result,
-                        Expression::func("A.B$".into(), vec![1.as_lit_expr(1, 6)])
-                    );
-                }
-
-                #[test]
-                fn test_qualified_array_cannot_have_properties() {
-                    let input = "A$(1).Oops";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
-                    assert_eq!(
-                        err,
-                        QError::syntax_error("Qualified name cannot have properties")
-                    );
-                }
-
-                #[test]
-                fn test_bare_array_qualified_property() {
-                    let input = "A(1).Suit$";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let result = parser.parse(&mut eol_reader).expect("Should parse");
-                    assert_eq!(
-                        result,
-                        Expression::Property(
-                            Box::new(Expression::func("A".into(), vec![1.as_lit_expr(1, 3)])),
-                            "Suit$".into(),
-                            ExpressionType::Unresolved
-                        )
-                    );
-                }
-
-                #[test]
-                fn test_bare_array_qualified_property_trailing_dot_is_not_allowed() {
-                    let input = "A(1).Suit$.";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
-                    assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
-                }
-
-                #[test]
-                fn test_bare_array_qualified_property_extra_qualifier_is_error() {
-                    let input = "A(1).Suit$%";
-                    let mut eol_reader = create_string_tokenizer(input);
-                    let parser = word_p();
-                    let err = parser.parse(&mut eol_reader).expect_err("Should not parse");
-                    assert_eq!(err, QError::syntax_error("Expected: end of name expr"));
-                }
-            }
-        }
-    }
 }
 
 fn operator_p(had_parenthesis_before: bool) -> impl Parser<Output = Locatable<Operator>> {
@@ -895,14 +217,479 @@ pub fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
     RelationalMap.parser().with_pos()
 }
 
-// TODO there are more test modules earlier, merge them and/or split expression to more modules
+mod single_or_double_literal {
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::{digits, dot, pound, WithPosTrait};
+    use crate::parser::*;
+
+    // single ::= <digits> . <digits>
+    // single ::= . <digits> (without leading zero)
+    // double ::= <digits> . <digits> "#"
+    // double ::= . <digits> "#"
+
+    // TODO support more qualifiers besides '#'
+
+    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+        OptAndPC::new(digits(), dot().then_demand(digits().no_incomplete()))
+            .and_opt(pound())
+            .and_then(|((opt_integer_digits, frac_digits), opt_pound)| {
+                let left = opt_integer_digits
+                    .map(|token| token.text)
+                    .unwrap_or("0".to_owned());
+                let s = format!("{}.{}", left, frac_digits.text);
+                if opt_pound.is_some() {
+                    match s.parse::<f64>() {
+                        Ok(f) => Ok(Expression::DoubleLiteral(f)),
+                        Err(err) => Err(err.into()),
+                    }
+                } else {
+                    match s.parse::<f32>() {
+                        Ok(f) => Ok(Expression::SingleLiteral(f)),
+                        Err(err) => Err(err.into()),
+                    }
+                }
+            })
+            .with_pos()
+    }
+}
+
+mod string_literal {
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
+    use crate::parser::{Expression, ExpressionNode};
+
+    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+        seq3(
+            string_delimiter(),
+            inside_string(),
+            string_delimiter().no_incomplete(),
+            |_, token_list, _| Expression::StringLiteral(token_list_to_string(&token_list)),
+        )
+        .with_pos()
+    }
+
+    fn string_delimiter() -> impl Parser<Output = Token> {
+        any_token_of(TokenType::DoubleQuote)
+    }
+
+    fn inside_string() -> impl Parser<Output = TokenList> + NonOptParser {
+        any_token()
+            .filter(|token| {
+                token.kind != TokenType::DoubleQuote as i32 && token.kind != TokenType::Eol as i32
+            })
+            .zero_or_more()
+    }
+}
+
+mod integer_or_long_literal {
+    use crate::common::QError;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::{TokenType, WithPosTrait};
+    use crate::parser::*;
+    use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
+
+    // result ::= <digits> | <hex-digits> | <oct-digits>
+    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+        any_token()
+            .filter(is_allowed_token)
+            .and_then(process_token)
+            .with_pos()
+    }
+
+    fn is_allowed_token(token: &Token) -> bool {
+        token.kind == TokenType::Digits as i32
+            || token.kind == TokenType::HexDigits as i32
+            || token.kind == TokenType::OctDigits as i32
+    }
+
+    fn process_token(token: Token) -> Result<Expression, QError> {
+        if token.kind == TokenType::Digits as i32 {
+            process_dec(token)
+        } else if token.kind == TokenType::HexDigits as i32 {
+            process_hex(token)
+        } else if token.kind == TokenType::OctDigits as i32 {
+            process_oct(token)
+        } else {
+            panic!("Should not have processed {}", token.text)
+        }
+    }
+
+    fn process_dec(token: Token) -> Result<Expression, QError> {
+        match token.text.parse::<u32>() {
+            Ok(u) => {
+                if u <= MAX_INTEGER as u32 {
+                    Ok(Expression::IntegerLiteral(u as i32))
+                } else if u <= MAX_LONG as u32 {
+                    Ok(Expression::LongLiteral(u as i64))
+                } else {
+                    Ok(Expression::DoubleLiteral(u as f64))
+                }
+            }
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    fn process_hex(token: Token) -> Result<Expression, QError> {
+        // token text is &HFFFF or &H-FFFF
+        let mut s: String = token.text;
+        // remove &
+        s.remove(0);
+        // remove H
+        s.remove(0);
+        if s.starts_with('-') {
+            Err(QError::Overflow)
+        } else {
+            let mut result: BitVec = BitVec::new();
+            for digit in s.chars().skip_while(|ch| *ch == '0') {
+                let hex = convert_hex_digit(digit);
+                result.push_hex(hex);
+            }
+            create_expression_from_bit_vec(result)
+        }
+    }
+
+    fn convert_hex_digit(ch: char) -> u8 {
+        if is_digit(ch) {
+            (ch as u8) - ('0' as u8)
+        } else if ch >= 'a' && ch <= 'f' {
+            (ch as u8) - ('a' as u8) + 10
+        } else if ch >= 'A' && ch <= 'F' {
+            (ch as u8) - ('A' as u8) + 10
+        } else {
+            panic!("Unexpected hex digit: {}", ch)
+        }
+    }
+
+    fn process_oct(token: Token) -> Result<Expression, QError> {
+        let mut s: String = token.text;
+        // remove &
+        s.remove(0);
+        // remove O
+        s.remove(0);
+        if s.starts_with('-') {
+            Err(QError::Overflow)
+        } else {
+            let mut result: BitVec = BitVec::new();
+            for digit in s.chars().skip_while(|ch| *ch == '0') {
+                let oct = convert_oct_digit(digit);
+                result.push_oct(oct);
+            }
+            create_expression_from_bit_vec(result)
+        }
+    }
+
+    fn convert_oct_digit(ch: char) -> u8 {
+        if ch >= '0' && ch <= '7' {
+            (ch as u8) - ('0' as u8)
+        } else {
+            panic!("Unexpected oct digit: {}", ch)
+        }
+    }
+
+    fn create_expression_from_bit_vec(bit_vec: BitVec) -> Result<Expression, QError> {
+        match bit_vec.convert_to_integer_variant()? {
+            Variant::VInteger(i) => Ok(Expression::IntegerLiteral(i)),
+            Variant::VLong(l) => Ok(Expression::LongLiteral(l)),
+            _ => Err(QError::Overflow),
+        }
+    }
+}
+
+// TODO review variable/function_call/property modules for refactoring options
+// TODO consider nesting variable/function_call modules inside property as they are only used there
+mod variable {
+    use crate::parser::expression::name_common::opt_type_qualifier;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::{
+        any_token_of, dollar_sign, identifier, TokenType, WithPosTrait,
+    };
+    use crate::parser::type_qualifier::token_to_type_qualifier;
+    use crate::parser::*;
+    use std::collections::VecDeque;
+
+    // variable ::= <identifier>
+    //           |  <identifier> <type-qualifier>
+    //           |  <keyword> "$"
+    //
+    // must not be followed by parenthesis
+    //
+    // if <identifier> contains dots, it might be converted to a property expression
+    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+        variable_name()
+            .unless_followed_by(any_token_of(TokenType::LParen))
+            .map(map_to_expr)
+            .with_pos()
+    }
+
+    // shared with function module
+    pub fn variable_name() -> impl Parser<Output = TokenList> {
+        Alt2::new(identifier_and_opt_q(), keyword_dollar_sign())
+    }
+
+    fn identifier_and_opt_q() -> impl Parser<Output = TokenList> {
+        identifier()
+            .and(opt_type_qualifier())
+            .map(|(l, opt_q)| match opt_q {
+                Some(q) => vec![l, q],
+                _ => vec![l],
+            })
+    }
+
+    fn keyword_dollar_sign() -> impl Parser<Output = TokenList> {
+        any_token_of(TokenType::Keyword)
+            .and(dollar_sign())
+            .map(|(l, r)| vec![l, r])
+    }
+
+    fn map_to_expr(mut token_list: TokenList) -> Expression {
+        let name_token = token_list.remove(0);
+        let opt_q_token = token_list.pop();
+        let opt_q = opt_q_token.map(|token| token_to_type_qualifier(token).unwrap());
+
+        if let Some(property_expr) = map_to_property(&name_token, opt_q) {
+            return property_expr;
+        }
+
+        let bare_name = BareName::new(name_token.text);
+        let name = Name::new(bare_name, opt_q);
+        Expression::Variable(name, VariableInfo::unresolved())
+    }
+
+    fn map_to_property(name_token: &Token, mut opt_q: Option<TypeQualifier>) -> Option<Expression> {
+        if name_token.kind != TokenType::Identifier as i32 {
+            return None; // keywords don't have dots
+        }
+        let mut parts: VecDeque<String> =
+            name_token.text.split('.').map(ToOwned::to_owned).collect();
+        if parts.len() == 1 || parts.iter().any(|s| s.is_empty()) {
+            // either no dots or gaps between dots or trailing dot
+            return None;
+        }
+        let mut result = Expression::Variable(
+            Name::new(BareName::new(parts.pop_front().unwrap()), None),
+            VariableInfo::unresolved(),
+        );
+        while let Some(part) = parts.pop_front() {
+            let is_last = parts.is_empty();
+            let opt_q_next = if is_last { opt_q.take() } else { None };
+            result = Expression::Property(
+                Box::new(result),
+                Name::new(BareName::new(part), opt_q_next),
+                ExpressionType::Unresolved,
+            );
+        }
+        Some(result)
+    }
+}
+
+mod function_call_or_array_element {
+    use crate::parser::expression::expression_node_p;
+    use crate::parser::expression::variable::variable_name;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::{csv, in_parenthesis, WithPosTrait};
+    use crate::parser::type_qualifier::token_to_type_qualifier;
+    use crate::parser::*;
+
+    // function_call ::= <function-name> "(" <expr>* ")"
+    // function-name ::= <identifier>
+    //                |  <identifier> <type-qualifier>
+    //                |  <keyword> "$"
+    //
+    // Cannot invoke function with empty parenthesis, even if they don't have arguments.
+    // However, it is allowed for arrays, so we parse it.
+    //
+    // A function can be qualified.
+
+    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+        variable_name()
+            .and(in_parenthesis(csv(expression_node_p()).allow_default()))
+            .map(|(mut name_tokens, arguments)| {
+                // TODO some duplication with variable module
+                let name_token = name_tokens.remove(0);
+                let opt_q_token = name_tokens.pop();
+                let opt_q = opt_q_token.map(|token| token_to_type_qualifier(token).unwrap());
+                let bare_name = BareName::new(name_token.text);
+                let name = Name::new(bare_name, opt_q);
+                Expression::FunctionCall(name, arguments)
+            })
+            .with_pos()
+    }
+}
+
+pub mod property {
+    use crate::common::QError;
+    use crate::parser::expression::name_common::opt_type_qualifier;
+    use crate::parser::expression::{function_call_or_array_element, variable};
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::{dot, identifier, OrErrorTrait};
+    use crate::parser::type_qualifier::token_to_type_qualifier;
+    use crate::parser::*;
+    use std::collections::VecDeque;
+
+    // property ::= <expr> "." <property-name>
+    // property-name ::= <identifier-without-dot>
+    //                 | <identifier-without-dot> <type-qualifier>
+
+    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+        Seq2::new(
+            base_expr_node(),
+            dot().then_demand(property_names()).allow_default(),
+        )
+        .and_then(|(expr_node, properties)| {
+            if !properties.is_empty() && is_qualified(expr_node.as_ref()) {
+                return Err(QError::syntax_error(
+                    "Qualified name cannot have properties",
+                ));
+            }
+            let mut result = expr_node;
+            for property_name in properties {
+                result = result.map(|expr| {
+                    Expression::Property(Box::new(expr), property_name, ExpressionType::Unresolved)
+                });
+            }
+            Ok(result)
+        })
+    }
+
+    // can't use expression_node_p because it will stack overflow
+    fn base_expr_node() -> impl Parser<Output = ExpressionNode> {
+        Alt2::new(variable::parser(), function_call_or_array_element::parser())
+    }
+
+    fn property_names() -> impl Parser<Output = Vec<Name>> + NonOptParser {
+        // TODO perhaps max length of 40 characters applies only to parts not the full string
+        Seq2::new(identifier(), opt_type_qualifier())
+            .and_then(|(name_token, opt_q_token)| {
+                let mut parts: VecDeque<String> =
+                    name_token.text.split('.').map(ToOwned::to_owned).collect();
+                if parts.iter().any(|s| s.is_empty()) {
+                    return Err(QError::syntax_error("Expected: property name after period"));
+                }
+                let mut result: Vec<Name> = vec![];
+                for _ in 0..parts.len() - 1 {
+                    result.push(Name::new(BareName::new(parts.pop_front().unwrap()), None));
+                }
+
+                let opt_q = opt_q_token.map(|token| token_to_type_qualifier(token).unwrap());
+
+                result.push(Name::new(BareName::new(parts.pop_front().unwrap()), opt_q));
+                Ok(result)
+            })
+            .or_syntax_error("Expected: property name after dot")
+    }
+
+    fn is_qualified(expr: &Expression) -> bool {
+        match expr {
+            Expression::Variable(name, _) | Expression::FunctionCall(name, _) => !name.is_bare(),
+            _ => {
+                panic!("Unexpected property type")
+            }
+        }
+    }
+}
+
+mod name_common {
+    use crate::parser::pc::{any_token, NonOptParser, Parser, Token};
+    use crate::parser::pc_specific::{OrErrorTrait, TokenType};
+    use crate::parser::type_qualifier::{is_type_qualifier_token, type_qualifier_as_token};
+
+    pub fn opt_type_qualifier() -> impl Parser<Output = Option<Token>> + NonOptParser {
+        type_qualifier_as_token()
+            .and(ensure_end_of_name())
+            .keep_left()
+            .allow_none()
+    }
+
+    // Peeks and ensures the name is not followed by a dot or a type qualifier.
+    // EOF is ok.
+    fn ensure_end_of_name() -> impl Parser<Output = ()> + NonOptParser {
+        any_token()
+            .filter(|token| token.kind == TokenType::Dot as i32 || is_type_qualifier_token(token))
+            .peek()
+            .negate()
+            .or_syntax_error("Expected: end of name expr")
+    }
+}
+
+mod built_in_function_call {
+    use crate::built_ins::parser::built_in_function_call_p;
+    use crate::parser::pc::Parser;
+    use crate::parser::pc_specific::WithPosTrait;
+    use crate::parser::ExpressionNode;
+
+    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+        built_in_function_call_p().with_pos()
+    }
+}
+
+mod binary_expression {}
+
+mod unary_expression {}
+
+mod parenthesis {}
+
+pub mod file_handle {
+    //! Used by PRINT and built-ins
+
+    use crate::common::*;
+    use crate::parser::expression::guarded_expression_node_p;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
+    use crate::parser::{Expression, ExpressionNode};
+
+    pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
+        FileHandleParser
+    }
+
+    // TODO support simple functions without `&self` for cases like FileHandleParser
+
+    struct FileHandleParser;
+
+    impl Parser for FileHandleParser {
+        type Output = Locatable<FileHandle>;
+        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+            let pos = tokenizer.position();
+            match tokenizer.read()? {
+                Some(token) if token.kind == TokenType::Pound as i32 => match tokenizer.read()? {
+                    Some(token) if token.kind == TokenType::Digits as i32 => {
+                        match token.text.parse::<u8>() {
+                            Ok(d) if d > 0 => Ok(FileHandle::from(d).at(pos)),
+                            _ => Err(QError::BadFileNameOrNumber),
+                        }
+                    }
+                    _ => Err(QError::syntax_error("Expected: digits after #")),
+                },
+                Some(token) => {
+                    tokenizer.unread(token);
+                    Err(QError::Incomplete)
+                }
+                _ => Err(QError::Incomplete),
+            }
+        }
+    }
+
+    /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
+    pub fn file_handle_as_expression_node_p() -> impl Parser<Output = ExpressionNode> {
+        file_handle_p().map(|file_handle_node| file_handle_node.map(Expression::from))
+    }
+
+    pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
+        ws_file_handle().or(guarded_expression_node_p())
+    }
+
+    fn ws_file_handle() -> impl Parser<Output = ExpressionNode> {
+        whitespace()
+            .and(file_handle_as_expression_node_p())
+            .keep_right()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use crate::assert_parser_err;
     use crate::common::*;
-    use crate::parser::{Expression, ExpressionType, Operator, Statement, UnaryOperator};
-    use crate::{assert_expression, assert_literal_expression};
+    use crate::parser::*;
+    use crate::{assert_expression, assert_literal_expression, assert_parser_err, expr};
 
     #[test]
     fn test_parse_literals() {
@@ -1562,23 +1349,7 @@ mod tests {
 
     mod file_handle {
         use super::*;
-
-        macro_rules! assert_file_handle {
-            ($input:expr, $expected_file_handle:expr) => {
-                let result: Statement = parse($input).demand_single_statement();
-                match result {
-                    Statement::BuiltInSubCall(_, args) => {
-                        assert_eq!(
-                            args[0].as_ref(),
-                            &Expression::IntegerLiteral($expected_file_handle)
-                        );
-                    }
-                    _ => {
-                        panic!("Expected built-in sub call");
-                    }
-                }
-            };
-        }
+        use crate::assert_file_handle;
 
         #[test]
         fn test_valid_file_handles() {
@@ -1639,6 +1410,99 @@ mod tests {
         fn len_in_assignment_must_be_unqualified() {
             let program = r#"A = LEN!("hello")"#;
             assert_parser_err!(program, QError::syntax_error("Expected: ("), 1, 8);
+        }
+    }
+
+    #[cfg(test)]
+    mod name {
+        use super::*;
+
+        #[test]
+        fn test_var_unresolved() {
+            let inputs = ["abc", "abc.", "abc..", "abc$", "abc.$", "abc..$"];
+            for input in inputs {
+                assert_expression!(var input);
+            }
+        }
+
+        #[test]
+        fn test_func() {
+            let inputs = ["A(1)", "A$(1)", "a.b$(1)"];
+            for input in inputs {
+                assert_expression!(fn input);
+            }
+        }
+
+        #[test]
+        fn test_possible_property() {
+            let input = "a.b.c";
+            assert_expression!(input, expr!(prop("a", "b", "c")));
+        }
+
+        #[test]
+        fn test_bare_array_bare_property() {
+            let input = "A(1).Suit";
+            assert_expression!(
+                input,
+                expr!(prop(expr!(fn "A", 1.as_lit_expr(1,9)), "Suit"))
+            );
+        }
+
+        #[test]
+        fn test_bare_array_qualified_property() {
+            let input = "A(1).Suit$";
+            assert_expression!(
+                input,
+                expr!(prop(expr!(fn "A", 1.as_lit_expr(1,9)), "Suit$"))
+            );
+        }
+
+        #[test]
+        fn test_possible_qualified_property() {
+            let input = "a.b$";
+            assert_expression!(input, expr!(prop("a"."b$")));
+        }
+
+        #[test]
+        fn test_bare_array_cannot_have_consecutive_dots_in_properties() {
+            let input = "A(1).O..ops";
+            assert_parser_err!(input, "Expected: property name after period");
+        }
+
+        #[test]
+        fn test_duplicate_qualifier_is_error() {
+            let input = "abc$%";
+            assert_parser_err!(input, "Expected: end of name expr");
+        }
+
+        #[test]
+        fn test_dot_without_properties_is_error() {
+            let input = "abc$.";
+            assert_parser_err!(input, "Expected: end of name expr");
+        }
+
+        #[test]
+        fn test_dot_after_qualifier_is_error() {
+            let input = "abc$.hello";
+            assert_parser_err!(input, "Expected: end of name expr");
+        }
+
+        #[test]
+        fn test_qualified_array_cannot_have_properties() {
+            let input = "A$(1).Oops";
+            assert_parser_err!(input, "Qualified name cannot have properties");
+        }
+
+        #[test]
+        fn test_bare_array_qualified_property_trailing_dot_is_not_allowed() {
+            let input = "A(1).Suit$.";
+            assert_parser_err!(input, "Expected: end of name expr");
+        }
+
+        #[test]
+        fn test_bare_array_qualified_property_extra_qualifier_is_error() {
+            let input = "A(1).Suit$%";
+            assert_parser_err!(input, "Expected: end of name expr");
         }
     }
 }

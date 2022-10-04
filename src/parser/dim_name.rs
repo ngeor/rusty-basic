@@ -117,11 +117,9 @@ mod type_definition {
     }
 
     fn user_defined_type() -> impl Parser<Output = DimType> {
-        any_token_of(TokenType::Identifier)
+        identifier()
             .and_then(|token| {
-                if token.text.chars().count() > name::MAX_LENGTH {
-                    Err(QError::IdentifierTooLong)
-                } else if token.text.contains('.') {
+                if token.text.contains('.') {
                     Err(QError::IdentifierCannotIncludePeriod)
                 } else {
                     Ok(BareName::from(token.text))

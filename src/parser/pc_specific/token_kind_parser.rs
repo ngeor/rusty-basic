@@ -81,6 +81,10 @@ pub fn whitespace() -> impl Parser<Output = Token> {
     any_token_of(TokenType::Whitespace)
 }
 
+pub fn digits() -> impl Parser<Output = Token> {
+    any_token_of(TokenType::Digits)
+}
+
 pub fn any_token_of(token_type: TokenType) -> impl Parser<Output = Token> {
     any_token()
         .filter(move |token| token.kind == token_type as i32)

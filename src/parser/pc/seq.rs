@@ -32,7 +32,7 @@ macro_rules! seq_pc {
             $first_type: Parser,
             $($generic_type: Parser + NonOptParser),+
         {
-            type Output = ($first_type::Output, $($generic_type::Output),+ );
+            type Output = ($first_type::Output, $(<$generic_type as Parser>::Output),+ );
 
             #[allow(non_snake_case)]
             fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
@@ -67,7 +67,7 @@ macro_rules! seq_pc {
         where
             $first_type: Parser,
             $($generic_type: Parser + NonOptParser),+,
-            _F: Fn($first_type::Output, $($generic_type::Output),+) -> _O
+            _F: Fn($first_type::Output, $(<$generic_type as Parser>::Output),+) -> _O
         {
             $name::new(
                 $first_type,
@@ -84,7 +84,7 @@ macro_rules! seq_pc {
         where
             $first_type: Parser + NonOptParser,
             $($generic_type: Parser + NonOptParser),+,
-            _F: Fn($first_type::Output, $($generic_type::Output),+) -> _O
+            _F: Fn(<$first_type as Parser>::Output, $(<$generic_type as Parser>::Output),+) -> _O
         {
             $name::new(
                 $first_type,

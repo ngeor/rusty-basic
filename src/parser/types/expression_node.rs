@@ -12,6 +12,8 @@ pub enum Expression {
     LongLiteral(i64),
     Variable(Name, VariableInfo),
     FunctionCall(Name, ExpressionNodes),
+    // not a parser type, only at linting can we determine
+    // if it's a FunctionCall or an ArrayElement
     ArrayElement(
         // the name of the array (unqualified only for user defined types)
         Name,

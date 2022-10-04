@@ -5,8 +5,8 @@ use crate::parser::pc::many::OneOrMoreParser;
 use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
     AllowDefaultParser, AllowNoneParser, Alt2, AndPC, AndThen, FilterParser, GuardPC, LoggingPC,
-    LoopWhile, MapIncompleteErrParser, NoIncompleteParser, OrFailParser, PeekParser, Tokenizer,
-    Undo, ValidateParser,
+    LoopWhile, MapIncompleteErrParser, NegateParser, NoIncompleteParser, OrFailParser, PeekParser,
+    Tokenizer, Undo, UnlessFollowedByParser, ValidateParser,
 };
 
 // TODO V4: the tokenizer is not visible (practically an iterator)
@@ -14,9 +14,9 @@ use crate::parser::pc::{
 //     type Output;
 //     fn parse(&mut self) -> Result<Self::Output, QError>;
 // }
+// alternatively, move the Tokenizer impl up as generic parameter
 
 // TODO make QError generic param too after figuring out <T> vs associated type
-
 pub trait Parser {
     type Output;
 
@@ -147,6 +147,8 @@ pub trait Parser {
     fn and<R>(self, right: R) -> AndPC<Self, R>
     where
         Self: Sized,
+        Self::Output: Undo,
+        R: Parser,
     {
         AndPC::new(self, right)
     }
@@ -197,6 +199,20 @@ pub trait Parser {
         Self: Sized,
     {
         PeekParser::new(self)
+    }
+
+    fn unless_followed_by<R>(self, next: R) -> UnlessFollowedByParser<Self, R>
+    where
+        Self: Sized,
+    {
+        UnlessFollowedByParser::new(self, next)
+    }
+
+    fn negate(self) -> NegateParser<Self>
+    where
+        Self: Sized,
+    {
+        NegateParser::new(self)
     }
 }
 

@@ -31,6 +31,7 @@ pub enum TokenType {
     Percent,
     // keyword needs to be before Identifier
     Keyword,
+    /// Starts with letter, continues with letters, digits or dots.
     Identifier,
     OctDigits,
     HexDigits,

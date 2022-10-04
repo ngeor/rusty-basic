@@ -18,7 +18,12 @@ struct SubCallOrAssignment;
 impl Parser for SubCallOrAssignment {
     type Output = Statement;
     fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let (name_expr, opt_equal_sign) = Self::name_and_opt_eq_sign().parse(reader)?;
+        let (
+            Locatable {
+                element: name_expr, ..
+            },
+            opt_equal_sign,
+        ) = Self::name_and_opt_eq_sign().parse(reader)?;
         match opt_equal_sign {
             Some(_) => {
                 let right_side_expr = expression::expression_node_p()
@@ -39,8 +44,8 @@ impl Parser for SubCallOrAssignment {
 }
 
 impl SubCallOrAssignment {
-    fn name_and_opt_eq_sign() -> impl Parser<Output = (Expression, Option<Token>)> {
-        expression::word::word_p().and_opt(equal_sign())
+    fn name_and_opt_eq_sign() -> impl Parser<Output = (ExpressionNode, Option<Token>)> {
+        expression::property::parser().and_opt(equal_sign())
     }
 }
 

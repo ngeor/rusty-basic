@@ -6,7 +6,7 @@ use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, Kee
 use crate::parser::pc::{
     AllowDefaultParser, AllowNoneParser, Alt2, AndPC, AndThen, FilterMapParser, FilterParser,
     GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, NegateParser, NoIncompleteParser,
-    OrFailParser, PeekParser, PipeParser, Tokenizer, Undo, UnlessFollowedByParser, ValidateParser,
+    OrFailParser, PeekParser, PipeParser, Tokenizer, Undo, UnlessFollowedByParser,
 };
 
 // TODO V4: the tokenizer is not visible (practically an iterator)
@@ -178,16 +178,6 @@ pub trait Parser {
         R: Parser + NonOptParser,
     {
         GuardPC::new(self, other)
-    }
-
-    // TODO deprecate only used in one place
-    fn validate<F>(self, f: F) -> ValidateParser<Self, F>
-    where
-        Self: Sized,
-        Self::Output: Undo,
-        F: Fn(&Self::Output) -> Result<bool, QError>,
-    {
-        ValidateParser::new(self, f)
     }
 
     fn zero_or_more(self) -> AllowDefaultParser<OneOrMoreParser<Self>>

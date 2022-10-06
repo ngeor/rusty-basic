@@ -3,7 +3,6 @@ use crate::parser::expression::expression_node_p;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
-use std::str::FromStr;
 
 // Parses a Param name. Possible options:
 // A
@@ -86,42 +85,48 @@ fn type_definition_extended_p() -> impl Parser<Output = ParamType> {
     seq3(
         whitespace().and(keyword(Keyword::As)),
         whitespace().no_incomplete(),
-        extended_type_p().or_syntax_error("Expected: type after AS"),
+        extended_type_p().or_syntax_error(
+            "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
+        ),
         |_, _, param_type| param_type,
     )
 }
 
 fn extended_type_p() -> impl Parser<Output = ParamType> {
-    identifier_or_keyword_without_dot().with_pos().and_then(
-        // TODO rewrite this
-        |Locatable { element: x, pos }| match Keyword::from_str(&x.text) {
-            Ok(Keyword::Single) => Ok(ParamType::BuiltIn(
-                TypeQualifier::BangSingle,
-                BuiltInStyle::Extended,
-            )),
-            Ok(Keyword::Double) => Ok(ParamType::BuiltIn(
-                TypeQualifier::HashDouble,
-                BuiltInStyle::Extended,
-            )),
-            Ok(Keyword::String_) => Ok(ParamType::BuiltIn(
-                TypeQualifier::DollarString,
-                BuiltInStyle::Extended,
-            )),
-            Ok(Keyword::Integer) => Ok(ParamType::BuiltIn(
-                TypeQualifier::PercentInteger,
-                BuiltInStyle::Extended,
-            )),
-            Ok(Keyword::Long) => Ok(ParamType::BuiltIn(
-                TypeQualifier::AmpersandLong,
-                BuiltInStyle::Extended,
-            )),
-            Ok(_) => Err(QError::syntax_error(
-                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-            )),
-            Err(_) => {
-                let type_name: BareName = x.text.into();
-                Ok(ParamType::UserDefined(type_name.at(pos)))
-            }
-        },
+    Alt2::new(
+        identifier_with_dots().with_pos().and_then(
+            |Locatable {
+                 element: token,
+                 pos,
+             }| {
+                if token.text.contains('.') {
+                    Err(QError::IdentifierCannotIncludePeriod)
+                } else {
+                    Ok(ParamType::UserDefined(BareName::new(token.text).at(pos)))
+                }
+            },
+        ),
+        keyword_map(&[
+            (
+                Keyword::Single,
+                ParamType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::Double,
+                ParamType::BuiltIn(TypeQualifier::HashDouble, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::String_,
+                ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::Integer,
+                ParamType::BuiltIn(TypeQualifier::PercentInteger, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::Long,
+                ParamType::BuiltIn(TypeQualifier::AmpersandLong, BuiltInStyle::Extended),
+            ),
+        ]),
     )
 }

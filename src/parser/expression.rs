@@ -295,7 +295,7 @@ mod variable {
     use crate::parser::expression::name_common::opt_type_qualifier;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::{
-        any_token_of, dollar_sign, identifier, TokenType, WithPosTrait,
+        any_token_of, dollar_sign, identifier_with_dots, TokenType, WithPosTrait,
     };
     use crate::parser::type_qualifier::token_to_type_qualifier;
     use crate::parser::*;
@@ -321,7 +321,7 @@ mod variable {
     }
 
     fn identifier_and_opt_q() -> impl Parser<Output = TokenList> {
-        identifier()
+        identifier_with_dots()
             .and(opt_type_qualifier())
             .map(|(l, opt_q)| match opt_q {
                 Some(q) => vec![l, q],
@@ -415,7 +415,7 @@ pub mod property {
     use crate::parser::expression::name_common::opt_type_qualifier;
     use crate::parser::expression::{function_call_or_array_element, variable};
     use crate::parser::pc::*;
-    use crate::parser::pc_specific::{dot, identifier, OrErrorTrait};
+    use crate::parser::pc_specific::{dot, identifier_with_dots, OrErrorTrait};
     use crate::parser::type_qualifier::token_to_type_qualifier;
     use crate::parser::*;
     use std::collections::VecDeque;
@@ -452,7 +452,7 @@ pub mod property {
 
     fn property_names() -> impl Parser<Output = Vec<Name>> + NonOptParser {
         // TODO perhaps max length of 40 characters applies only to parts not the full string
-        Seq2::new(identifier(), opt_type_qualifier())
+        Seq2::new(identifier_with_dots(), opt_type_qualifier())
             .and_then(|(name_token, opt_q_token)| {
                 let mut parts: VecDeque<String> =
                     name_token.text.split('.').map(ToOwned::to_owned).collect();

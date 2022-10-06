@@ -117,7 +117,7 @@ mod type_definition {
     }
 
     fn user_defined_type() -> impl Parser<Output = DimType> {
-        identifier()
+        identifier_with_dots()
             .and_then(|token| {
                 if token.text.contains('.') {
                     Err(QError::IdentifierCannotIncludePeriod)

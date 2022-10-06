@@ -30,7 +30,6 @@ mod seq;
 mod tokenizers;
 mod undo;
 mod unless_followed_by;
-mod validate;
 
 pub use accumulate::*;
 pub use allow_default::*;
@@ -57,4 +56,3 @@ pub use seq::*;
 pub use tokenizers::*;
 pub use undo::*;
 pub use unless_followed_by::*;
-pub use validate::*;

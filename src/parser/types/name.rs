@@ -1,8 +1,8 @@
-use std::convert::TryFrom;
-
 use crate::common::Locatable;
 use crate::parser::types::{BareName, QualifiedName, TypeQualifier};
 use crate::parser::{ExpressionType, HasExpressionType};
+#[cfg(test)]
+use std::convert::TryFrom;
 
 /// Defines a name.
 ///
@@ -127,6 +127,7 @@ impl From<Name> for BareName {
     }
 }
 
+#[cfg(test)]
 impl From<&str> for Name {
     fn from(s: &str) -> Self {
         let mut buf = s.to_string();

@@ -1,38 +1,55 @@
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
-use crate::parser::type_qualifier::type_qualifier_as_token;
+use crate::parser::type_qualifier::{TypeQualifierParser, TypeQualifierPostGuardParser};
 use crate::parser::{BareName, Name, TypeQualifier};
 
-/// Parses a name. The name must start with a letter and can include
-/// letters, digits or dots. The name can optionally be qualified by a type
-/// qualifier.
-///
-/// The parser validates the maximum length of the name and checks that the name
-/// is not a keyword (with the exception of strings, e.g. `end$`).
 pub fn name_with_dot_p() -> impl Parser<Output = Name> {
+    name_as_tokens().map(|(name_token, opt_q_token)| {
+        Name::new(BareName::new(name_token.text), opt_q_token.map(|(_, q)| q))
+    })
+}
+
+/// `result ::= <identifier-with-dots> <type-qualifier> | <keyword> "$"`
+///
+/// not followed by `<type-qualifier> | "."`
+pub fn name_as_tokens() -> impl Parser<Output = (Token, Option<(Token, TypeQualifier)>)> {
     Alt2::new(identifier_and_opt_q(), keyword_and_dollar_string())
 }
 
-fn identifier_and_opt_q() -> impl Parser<Output = Name> {
-    identifier_with_dots()
-        .and_opt(type_qualifier_as_token())
-        .map(|(l, r)| Name::new(BareName::new(l.text), TypeQualifier::from_opt_token(&r)))
+/// `result ::= <identifier-with-dots> <type-qualifier>`
+///
+/// not followed by `<type-qualifier> | "."`
+fn identifier_and_opt_q() -> impl Parser<Output = (Token, Option<(Token, TypeQualifier)>)> {
+    identifier_with_dots().and_opt(TypeQualifierParser)
 }
 
-fn keyword_and_dollar_string() -> impl Parser<Output = Name> {
-    any_token_of(TokenType::Keyword)
-        .and(dollar_sign())
-        .map(|(l, _)| Name::new(BareName::new(l.text), Some(TypeQualifier::DollarString)))
+/// `result ::= <keyword> "$"`
+///
+/// not followed by `<type-qualifier> | "."`
+fn keyword_and_dollar_string() -> impl Parser<Output = (Token, Option<(Token, TypeQualifier)>)> {
+    seq2(
+        any_token_of(TokenType::Keyword).and(dollar_sign()),
+        TypeQualifierPostGuardParser,
+        |(name, type_token), _| (name, Some((type_token, TypeQualifier::DollarString))),
+    )
 }
 
-// bare name node
-
-pub fn bare_name_as_token() -> impl Parser<Output = Token> {
-    identifier_with_dots().unless_followed_by(type_qualifier_as_token())
-}
-
+/// The same as [identifier_with_dots], mapped to a [BareName].
 pub fn bare_name_p() -> impl Parser<Output = BareName> {
-    bare_name_as_token().map(|x| x.text.into()) // TODO make a parser for simpler .into() cases
+    identifier_with_dots().map(|token| token.text.into())
+}
+
+impl Undo for (Token, TypeQualifier) {
+    fn undo(self, tokenizer: &mut impl Tokenizer) {
+        tokenizer.unread(self.0);
+    }
+}
+
+impl Undo for (Token, Option<(Token, TypeQualifier)>) {
+    fn undo(self, tokenizer: &mut impl Tokenizer) {
+        self.1.undo(tokenizer);
+        tokenizer.unread(self.0);
+    }
 }
 
 #[cfg(test)]

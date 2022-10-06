@@ -8,7 +8,7 @@ use crate::parser::exit::statement_exit_p;
 use crate::parser::for_loop;
 use crate::parser::go_sub::{statement_go_sub_p, statement_return_p};
 use crate::parser::if_block;
-use crate::parser::name::{bare_name_as_token, bare_name_p};
+use crate::parser::name::bare_name_p;
 use crate::parser::on_error::statement_on_error_go_to_p;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
@@ -57,7 +57,7 @@ pub fn single_line_statement_p() -> impl Parser<Output = Statement> {
 
 fn statement_label_p() -> impl Parser<Output = Statement> {
     // labels can have dots
-    bare_name_as_token()
+    identifier_with_dots()
         .and(colon())
         .keep_left()
         .map(|l| Statement::Label(l.text.into()))

@@ -1,7 +1,9 @@
-use std::convert::TryFrom;
-
-use crate::common::{Locatable, QError};
+use crate::common::Locatable;
+#[cfg(test)]
+use crate::common::QError;
 use crate::parser::types::{BareName, TypeQualifier};
+#[cfg(test)]
+use std::convert::TryFrom;
 
 /// A qualified name is a bare name followed by a built-in type qualifier.
 /// Example: `name$`, `age%`.
@@ -42,6 +44,7 @@ impl From<QualifiedName> for BareName {
     }
 }
 
+#[cfg(test)]
 impl TryFrom<&str> for QualifiedName {
     type Error = QError;
     fn try_from(s: &str) -> Result<QualifiedName, QError> {

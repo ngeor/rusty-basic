@@ -93,7 +93,6 @@ mod type_definition {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
-    use std::convert::TryFrom;
 
     pub fn type_definition_extended_p() -> impl Parser<Output = Option<DimType>> + NonOptParser {
         // <ws+> AS <ws+> identifier
@@ -130,13 +129,24 @@ mod type_definition {
     }
 
     fn built_in_numeric_type() -> impl Parser<Output = DimType> {
-        keyword_choice(&[
-            Keyword::Single,
-            Keyword::Double,
-            Keyword::Integer,
-            Keyword::Long,
+        keyword_map(&[
+            (
+                Keyword::Single,
+                DimType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::Double,
+                DimType::BuiltIn(TypeQualifier::HashDouble, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::Integer,
+                DimType::BuiltIn(TypeQualifier::PercentInteger, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::Long,
+                DimType::BuiltIn(TypeQualifier::AmpersandLong, BuiltInStyle::Extended),
+            ),
         ])
-        .map(|(k, _)| DimType::BuiltIn(TypeQualifier::try_from(k).unwrap(), BuiltInStyle::Extended))
     }
 
     fn built_in_string() -> impl Parser<Output = DimType> {

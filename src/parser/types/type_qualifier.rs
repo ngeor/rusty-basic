@@ -1,12 +1,10 @@
+use super::Operator;
+use crate::common::CanCastTo;
+#[cfg(test)]
+use crate::common::QError;
+#[cfg(test)]
 use std::convert::TryFrom;
 use std::fmt::Display;
-
-use crate::common::{CanCastTo, QError};
-use crate::parser::pc::Token;
-use crate::parser::pc_specific::TokenType;
-use crate::parser::Keyword;
-
-use super::Operator;
 
 /// The optional character postfix that specifies the type of a name.
 /// Example: A$ denotes a string variable
@@ -109,21 +107,11 @@ impl TypeQualifier {
             }
         }
     }
-
-    /// `Option<Token>` -> `Option<TypeQualifier>`
-    pub fn from_opt_token(opt_token: &Option<Token>) -> Option<Self> {
-        match opt_token {
-            Some(token) => match TokenType::try_from(token.kind) {
-                Ok(token_type) => TryFrom::try_from(token_type).ok(),
-                Err(_) => None,
-            },
-            None => None,
-        }
-    }
 }
 
 // char -> TypeQualifier
 
+#[cfg(test)]
 impl TryFrom<char> for TypeQualifier {
     type Error = QError;
 
@@ -144,7 +132,7 @@ impl TryFrom<char> for TypeQualifier {
     }
 }
 
-// TypeQualifier -> char
+// TypeQualifier -> char (for implementing Display trait)
 
 impl From<TypeQualifier> for char {
     fn from(q: TypeQualifier) -> char {
@@ -158,52 +146,20 @@ impl From<TypeQualifier> for char {
     }
 }
 
-// TokenType -> TypeQualifier
-
-impl TryFrom<TokenType> for TypeQualifier {
-    type Error = QError;
-
-    fn try_from(token_type: TokenType) -> Result<TypeQualifier, QError> {
-        match token_type {
-            TokenType::ExclamationMark => Ok(TypeQualifier::BangSingle),
-            TokenType::Pound => Ok(TypeQualifier::HashDouble),
-            TokenType::Percent => Ok(TypeQualifier::PercentInteger),
-            TokenType::Ampersand => Ok(TypeQualifier::AmpersandLong),
-            TokenType::DollarSign => Ok(TypeQualifier::DollarString),
-            _ => Err(QError::syntax_error("Expected: %, &, !, # or $")),
-        }
-    }
-}
-
-impl TryFrom<Keyword> for TypeQualifier {
-    type Error = QError;
-
-    fn try_from(keyword: Keyword) -> Result<TypeQualifier, QError> {
-        match keyword {
-            Keyword::Single => Ok(TypeQualifier::BangSingle),
-            Keyword::Double => Ok(TypeQualifier::HashDouble),
-            Keyword::Integer => Ok(TypeQualifier::PercentInteger),
-            Keyword::Long => Ok(TypeQualifier::AmpersandLong),
-            Keyword::String_ => Ok(TypeQualifier::DollarString),
-            _ => Err(QError::syntax_error(
-                "Expected: SINGLE, DOUBLE, INTEGER, LONG, or STRING",
-            )),
-        }
-    }
-}
-
 impl Display for TypeQualifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         char::from(*self).fmt(f)
     }
 }
 
+#[cfg(test)]
 impl PartialEq<char> for TypeQualifier {
     fn eq(&self, that: &char) -> bool {
         char::from(*self) == *that
     }
 }
 
+#[cfg(test)]
 impl PartialEq<TypeQualifier> for char {
     fn eq(&self, that: &TypeQualifier) -> bool {
         that.eq(self)

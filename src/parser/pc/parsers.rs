@@ -6,7 +6,7 @@ use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, Kee
 use crate::parser::pc::{
     AllowDefaultParser, AllowNoneParser, Alt2, AndPC, AndThen, FilterMapParser, FilterParser,
     GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, NegateParser, NoIncompleteParser,
-    OrFailParser, PeekParser, PipeParser, Tokenizer, Undo, UnlessFollowedByParser,
+    OrFailParser, PeekParser, PipeParser, Tokenizer, Undo,
 };
 
 // TODO V4: the tokenizer is not visible (practically an iterator)
@@ -199,13 +199,6 @@ pub trait Parser {
         Self: Sized,
     {
         PeekParser::new(self)
-    }
-
-    fn unless_followed_by<R>(self, next: R) -> UnlessFollowedByParser<Self, R>
-    where
-        Self: Sized,
-    {
-        UnlessFollowedByParser::new(self, next)
     }
 
     fn negate(self) -> NegateParser<Self>

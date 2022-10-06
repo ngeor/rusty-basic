@@ -292,12 +292,9 @@ mod integer_or_long_literal {
 // TODO review variable/function_call/property modules for refactoring options
 // TODO consider nesting variable/function_call modules inside property as they are only used there
 mod variable {
-    use crate::parser::expression::name_common::opt_type_qualifier;
+    use crate::parser::name::name_as_tokens;
     use crate::parser::pc::*;
-    use crate::parser::pc_specific::{
-        any_token_of, dollar_sign, identifier_with_dots, TokenType, WithPosTrait,
-    };
-    use crate::parser::type_qualifier::token_to_type_qualifier;
+    use crate::parser::pc_specific::{TokenType, WithPosTrait};
     use crate::parser::*;
     use std::collections::VecDeque;
 
@@ -305,40 +302,16 @@ mod variable {
     //           |  <identifier> <type-qualifier>
     //           |  <keyword> "$"
     //
-    // must not be followed by parenthesis
+    // must not be followed by parenthesis (solved by ordering of parsers)
     //
     // if <identifier> contains dots, it might be converted to a property expression
     pub fn parser() -> impl Parser<Output = ExpressionNode> {
-        variable_name()
-            .unless_followed_by(any_token_of(TokenType::LParen))
-            .map(map_to_expr)
-            .with_pos()
+        name_as_tokens().map(map_to_expr).with_pos()
     }
 
-    // shared with function module
-    pub fn variable_name() -> impl Parser<Output = TokenList> {
-        Alt2::new(identifier_and_opt_q(), keyword_dollar_sign())
-    }
-
-    fn identifier_and_opt_q() -> impl Parser<Output = TokenList> {
-        identifier_with_dots()
-            .and(opt_type_qualifier())
-            .map(|(l, opt_q)| match opt_q {
-                Some(q) => vec![l, q],
-                _ => vec![l],
-            })
-    }
-
-    fn keyword_dollar_sign() -> impl Parser<Output = TokenList> {
-        any_token_of(TokenType::Keyword)
-            .and(dollar_sign())
-            .map(|(l, r)| vec![l, r])
-    }
-
-    fn map_to_expr(mut token_list: TokenList) -> Expression {
-        let name_token = token_list.remove(0);
-        let opt_q_token = token_list.pop();
-        let opt_q = opt_q_token.map(|token| token_to_type_qualifier(token).unwrap());
+    fn map_to_expr(name_as_tokens: (Token, Option<(Token, TypeQualifier)>)) -> Expression {
+        let (name_token, opt_q_token) = name_as_tokens;
+        let opt_q = opt_q_token.map(|(_, q)| q);
 
         if let Some(property_expr) = map_to_property(&name_token, opt_q) {
             return property_expr;
@@ -378,10 +351,9 @@ mod variable {
 
 mod function_call_or_array_element {
     use crate::parser::expression::expression_node_p;
-    use crate::parser::expression::variable::variable_name;
+    use crate::parser::name::name_as_tokens;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::{csv, in_parenthesis, WithPosTrait};
-    use crate::parser::type_qualifier::token_to_type_qualifier;
     use crate::parser::*;
 
     // function_call ::= <function-name> "(" <expr>* ")"
@@ -395,13 +367,11 @@ mod function_call_or_array_element {
     // A function can be qualified.
 
     pub fn parser() -> impl Parser<Output = ExpressionNode> {
-        variable_name()
+        name_as_tokens()
             .and(in_parenthesis(csv(expression_node_p()).allow_default()))
-            .map(|(mut name_tokens, arguments)| {
+            .map(|((name_token, opt_q_token), arguments)| {
                 // TODO some duplication with variable module
-                let name_token = name_tokens.remove(0);
-                let opt_q_token = name_tokens.pop();
-                let opt_q = opt_q_token.map(|token| token_to_type_qualifier(token).unwrap());
+                let opt_q = opt_q_token.map(|(_, q)| q);
                 let bare_name = BareName::new(name_token.text);
                 let name = Name::new(bare_name, opt_q);
                 Expression::FunctionCall(name, arguments)
@@ -412,11 +382,10 @@ mod function_call_or_array_element {
 
 pub mod property {
     use crate::common::QError;
-    use crate::parser::expression::name_common::opt_type_qualifier;
     use crate::parser::expression::{function_call_or_array_element, variable};
+    use crate::parser::name::name_as_tokens;
     use crate::parser::pc::*;
-    use crate::parser::pc_specific::{dot, identifier_with_dots, OrErrorTrait};
-    use crate::parser::type_qualifier::token_to_type_qualifier;
+    use crate::parser::pc_specific::{dot, OrErrorTrait};
     use crate::parser::*;
     use std::collections::VecDeque;
 
@@ -447,12 +416,13 @@ pub mod property {
 
     // can't use expression_node_p because it will stack overflow
     fn base_expr_node() -> impl Parser<Output = ExpressionNode> {
-        Alt2::new(variable::parser(), function_call_or_array_element::parser())
+        // order is important, variable matches anything that function_call_or_array_element matches
+        Alt2::new(function_call_or_array_element::parser(), variable::parser())
     }
 
     fn property_names() -> impl Parser<Output = Vec<Name>> + NonOptParser {
         // TODO perhaps max length of 40 characters applies only to parts not the full string
-        Seq2::new(identifier_with_dots(), opt_type_qualifier())
+        name_as_tokens()
             .and_then(|(name_token, opt_q_token)| {
                 let mut parts: VecDeque<String> =
                     name_token.text.split('.').map(ToOwned::to_owned).collect();
@@ -464,7 +434,7 @@ pub mod property {
                     result.push(Name::new(BareName::new(parts.pop_front().unwrap()), None));
                 }
 
-                let opt_q = opt_q_token.map(|token| token_to_type_qualifier(token).unwrap());
+                let opt_q = opt_q_token.map(|(_, q)| q);
 
                 result.push(Name::new(BareName::new(parts.pop_front().unwrap()), opt_q));
                 Ok(result)
@@ -479,29 +449,6 @@ pub mod property {
                 panic!("Unexpected property type")
             }
         }
-    }
-}
-
-mod name_common {
-    use crate::parser::pc::{any_token, NonOptParser, Parser, Token};
-    use crate::parser::pc_specific::{OrErrorTrait, TokenType};
-    use crate::parser::type_qualifier::{is_type_qualifier_token, type_qualifier_as_token};
-
-    pub fn opt_type_qualifier() -> impl Parser<Output = Option<Token>> + NonOptParser {
-        type_qualifier_as_token()
-            .and(ensure_end_of_name())
-            .keep_left()
-            .allow_none()
-    }
-
-    // Peeks and ensures the name is not followed by a dot or a type qualifier.
-    // EOF is ok.
-    fn ensure_end_of_name() -> impl Parser<Output = ()> + NonOptParser {
-        any_token()
-            .filter(|token| token.kind == TokenType::Dot as i32 || is_type_qualifier_token(token))
-            .peek()
-            .negate()
-            .or_syntax_error("Expected: end of name expr")
     }
 }
 
@@ -1574,19 +1521,19 @@ mod tests {
         #[test]
         fn test_duplicate_qualifier_is_error() {
             let input = "abc$%";
-            assert_parser_err!(input, "Expected: end of name expr");
+            assert_parser_err!(input, "Duplicate type qualifier");
         }
 
         #[test]
         fn test_dot_without_properties_is_error() {
             let input = "abc$.";
-            assert_parser_err!(input, "Expected: end of name expr");
+            assert_parser_err!(input, "Type qualifier cannot be followed by dot");
         }
 
         #[test]
         fn test_dot_after_qualifier_is_error() {
             let input = "abc$.hello";
-            assert_parser_err!(input, "Expected: end of name expr");
+            assert_parser_err!(input, "Type qualifier cannot be followed by dot");
         }
 
         #[test]
@@ -1598,13 +1545,13 @@ mod tests {
         #[test]
         fn test_bare_array_qualified_property_trailing_dot_is_not_allowed() {
             let input = "A(1).Suit$.";
-            assert_parser_err!(input, "Expected: end of name expr");
+            assert_parser_err!(input, "Type qualifier cannot be followed by dot");
         }
 
         #[test]
         fn test_bare_array_qualified_property_extra_qualifier_is_error() {
             let input = "A(1).Suit$%";
-            assert_parser_err!(input, "Expected: end of name expr");
+            assert_parser_err!(input, "Duplicate type qualifier");
         }
     }
 }

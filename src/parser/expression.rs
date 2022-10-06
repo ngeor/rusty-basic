@@ -41,19 +41,7 @@ lazy_parser!(
 pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr
-    OptAndPC::new(whitespace(), expression_node_p()).and_then(
-        |(opt_leading_whitespace, expr_node)| {
-            let needs_leading_whitespace = !expr_node.as_ref().is_parenthesis();
-            let has_leading_whitespace = opt_leading_whitespace.is_some();
-            if has_leading_whitespace || !needs_leading_whitespace {
-                Ok(expr_node)
-            } else {
-                Err(QError::syntax_error(
-                    "Expected: whitespace before expression",
-                ))
-            }
-        },
-    )
+    guard::parser().and(expression_node_p()).keep_right()
 }
 
 // TODO rename to expression_surrounded_by_ws
@@ -592,11 +580,9 @@ mod binary_expression {
 
 mod unary_expression {
     use crate::common::Locatable;
-    use crate::parser::expression::expression_node_p;
+    use crate::parser::expression::{expression_node_p, guard};
     use crate::parser::pc::{any_token, condition, NonOptParser, Parser};
-    use crate::parser::pc_specific::{
-        any_token_of, whitespace, OrErrorTrait, TokenType, WithPosTrait,
-    };
+    use crate::parser::pc_specific::{OrErrorTrait, TokenType, WithPosTrait};
     use crate::parser::{ExpressionNode, Keyword, UnaryOperator};
 
     pub fn parser() -> impl Parser<Output = ExpressionNode> {
@@ -621,15 +607,12 @@ mod unary_expression {
             .with_pos()
     }
 
-    fn op_guard(locatable_op: &Locatable<UnaryOperator>) -> impl Parser<Output = Option<()>> {
+    fn op_guard(
+        locatable_op: &Locatable<UnaryOperator>,
+    ) -> impl Parser<Output = Option<guard::Guard>> {
         let needs_guard = *locatable_op.as_ref() == UnaryOperator::Not;
         condition(needs_guard)
-            .then_demand(
-                whitespace()
-                    .map(|_| ())
-                    .or(any_token_of(TokenType::LParen).peek())
-                    .or_syntax_error("Expected: whitespace or parenthesis"),
-            )
+            .then_demand(guard::parser().no_incomplete())
             .allow_none()
     }
 
@@ -708,6 +691,47 @@ pub mod file_handle {
         whitespace()
             .and(file_handle_as_expression_node_p())
             .keep_right()
+    }
+}
+
+mod guard {
+    use crate::common::QError;
+    use crate::parser::pc::{Parser, Token, Tokenizer, Undo};
+    use crate::parser::pc_specific::{any_token_of, whitespace, TokenType};
+
+    pub enum Guard {
+        Whitespace(Token),
+        LParen,
+    }
+
+    impl Undo for Guard {
+        fn undo(self, tokenizer: &mut impl Tokenizer) {
+            match self {
+                Self::Whitespace(token) => {
+                    tokenizer.unread(token);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// `result ::= " " | "("`
+    ///
+    /// The "(" will be undone.
+    pub fn parser() -> impl Parser<Output = Guard> {
+        whitespace_guard()
+            .or(lparen_guard())
+            .map_incomplete_err(QError::expected("Expected: whitespace or parenthesis"))
+    }
+
+    fn whitespace_guard() -> impl Parser<Output = Guard> {
+        whitespace().map(Guard::Whitespace)
+    }
+
+    fn lparen_guard() -> impl Parser<Output = Guard> {
+        any_token_of(TokenType::LParen)
+            .peek()
+            .map(|_| Guard::LParen)
     }
 }
 

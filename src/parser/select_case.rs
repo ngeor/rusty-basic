@@ -5,6 +5,7 @@ use crate::parser::pc_specific::*;
 use crate::parser::statement_separator::comments_and_whitespace_p;
 use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
+use std::convert::TryFrom;
 
 // SELECT CASE expr ' comment
 // CASE 1
@@ -147,7 +148,7 @@ impl CaseExpressionParser {
     fn case_is() -> impl Parser<Output = CaseExpression> {
         seq3(
             keyword(Keyword::Is),
-            OptAndPC::new(whitespace(), expression::relational_operator_p())
+            OptAndPC::new(whitespace(), relational_operator_p())
                 .keep_right()
                 .or_syntax_error("Expected: Operator after IS"),
             OptAndPC::new(whitespace(), expression::expression_node_p())
@@ -156,6 +157,26 @@ impl CaseExpressionParser {
             |_, Locatable { element, .. }, r| CaseExpression::Is(element, r),
         )
     }
+}
+
+fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
+    any_token()
+        .filter_map(|token| {
+            if let Ok(token_type) = TokenType::try_from(token.kind) {
+                match token_type {
+                    TokenType::LessEquals => Some(Operator::LessOrEqual),
+                    TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
+                    TokenType::NotEquals => Some(Operator::NotEqual),
+                    TokenType::Less => Some(Operator::Less),
+                    TokenType::Greater => Some(Operator::Greater),
+                    TokenType::Equals => Some(Operator::Equal),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
+        .with_pos()
 }
 
 struct SimpleOrRangeParser;

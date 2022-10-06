@@ -4,9 +4,9 @@ use crate::parser::pc::and_opt_factory::AndOptFactoryPC;
 use crate::parser::pc::many::OneOrMoreParser;
 use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
-    AllowDefaultParser, AllowNoneParser, Alt2, AndPC, AndThen, FilterParser, GuardPC, LoggingPC,
-    LoopWhile, MapIncompleteErrParser, NegateParser, NoIncompleteParser, OrFailParser, PeekParser,
-    Tokenizer, Undo, UnlessFollowedByParser, ValidateParser,
+    AllowDefaultParser, AllowNoneParser, Alt2, AndPC, AndThen, FilterMapParser, FilterParser,
+    GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, NegateParser, NoIncompleteParser,
+    OrFailParser, PeekParser, PipeParser, Tokenizer, Undo, UnlessFollowedByParser, ValidateParser,
 };
 
 // TODO V4: the tokenizer is not visible (practically an iterator)
@@ -44,6 +44,15 @@ pub trait Parser {
         Self::Output: Undo,
     {
         FilterParser::new(self, predicate)
+    }
+
+    fn filter_map<F, U>(self, mapper: F) -> FilterMapParser<Self, F>
+    where
+        Self: Sized,
+        F: Fn(&Self::Output) -> Option<U>,
+        Self::Output: Undo,
+    {
+        FilterMapParser::new(self, mapper)
     }
 
     fn loop_while<F>(self, predicate: F) -> LoopWhile<Self, F>
@@ -171,6 +180,7 @@ pub trait Parser {
         GuardPC::new(self, other)
     }
 
+    // TODO deprecate only used in one place
     fn validate<F>(self, f: F) -> ValidateParser<Self, F>
     where
         Self: Sized,
@@ -213,6 +223,15 @@ pub trait Parser {
         Self: Sized,
     {
         NegateParser::new(self)
+    }
+
+    fn pipe<RF, R>(self, right_factory: RF) -> PipeParser<Self, RF>
+    where
+        Self: Sized,
+        RF: Fn(&Self::Output) -> R,
+        R: Parser,
+    {
+        PipeParser::new(self, right_factory)
     }
 }
 

@@ -22,3 +22,25 @@ where
         }
     }
 }
+
+parser_declaration!(pub struct FilterMapParser<mapper: F>);
+
+impl<P, F, U> Parser for FilterMapParser<P, F>
+where
+    P: Parser,
+    P::Output: Undo,
+    F: Fn(&P::Output) -> Option<U>,
+{
+    type Output = U;
+
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let result = self.parser.parse(tokenizer)?;
+        match (self.mapper)(&result) {
+            Some(value) => Ok(value),
+            None => {
+                result.undo(tokenizer);
+                Err(QError::Incomplete)
+            }
+        }
+    }
+}

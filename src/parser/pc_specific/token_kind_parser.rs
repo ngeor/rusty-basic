@@ -71,9 +71,9 @@ pub fn pound() -> impl Parser<Output = Token> {
 
 /// Semicolon.
 ///
-/// `;`
+/// `<ws>? ; <ws>?`
 pub fn semicolon() -> impl Parser<Output = Token> {
-    any_token_of(TokenType::Semicolon)
+    any_token_of_ws(TokenType::Semicolon)
 }
 
 /// Whitespace.

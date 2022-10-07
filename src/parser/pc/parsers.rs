@@ -22,6 +22,7 @@ pub trait Parser {
 
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
 
+    // TODO #[deprecated]
     fn and_opt<R>(self, right: R) -> AndOptPC<Self, R>
     where
         Self: Sized,
@@ -162,7 +163,7 @@ pub trait Parser {
         AndPC::new(self, right)
     }
 
-    // TODO deprecate, too difficult
+    // TODO #[deprecated]
     fn and_opt_factory<F, R>(self, f: F) -> AndOptFactoryPC<Self, F>
     where
         Self: Sized,
@@ -201,6 +202,7 @@ pub trait Parser {
         PeekParser::new(self)
     }
 
+    // TODO #[deprecated]
     fn negate(self) -> NegateParser<Self>
     where
         Self: Sized,
@@ -208,6 +210,7 @@ pub trait Parser {
         NegateParser::new(self)
     }
 
+    // TODO #[deprecated]
     fn pipe<RF, R>(self, right_factory: RF) -> PipeParser<Self, RF>
     where
         Self: Sized,

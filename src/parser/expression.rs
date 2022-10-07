@@ -694,14 +694,22 @@ pub mod file_handle {
     }
 }
 
-mod guard {
+pub mod guard {
     use crate::common::QError;
     use crate::parser::pc::{Parser, Token, Tokenizer, Undo};
     use crate::parser::pc_specific::{any_token_of, whitespace, TokenType};
 
     pub enum Guard {
+        Peeked,
         Whitespace(Token),
-        LParen,
+    }
+
+    // helps when mapping arguments with `unwrap_or_default`, where the guard
+    // is discarded anyway
+    impl Default for Guard {
+        fn default() -> Self {
+            Self::Peeked
+        }
     }
 
     impl Undo for Guard {
@@ -731,7 +739,7 @@ mod guard {
     fn lparen_guard() -> impl Parser<Output = Guard> {
         any_token_of(TokenType::LParen)
             .peek()
-            .map(|_| Guard::LParen)
+            .map(|_| Guard::Peeked)
     }
 }
 

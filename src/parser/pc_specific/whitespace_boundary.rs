@@ -1,7 +1,6 @@
 use crate::common::QError;
 use crate::parser::pc::{Parser, Token, Tokenizer, Undo};
 use crate::parser::pc_specific::TokenType;
-use crate::parser::ExpressionNode;
 
 // TODO #[deprecated]
 pub struct WhitespaceBoundary(Option<Token>);
@@ -10,10 +9,6 @@ impl Undo for WhitespaceBoundary {
     fn undo(self, tokenizer: &mut impl Tokenizer) {
         self.0.undo(tokenizer);
     }
-}
-
-pub fn whitespace_boundary_after_expr(expr: &ExpressionNode) -> WhitespaceBoundaryParser {
-    whitespace_boundary(expr.as_ref().is_parenthesis())
 }
 
 pub fn whitespace_boundary(is_optional: bool) -> WhitespaceBoundaryParser {

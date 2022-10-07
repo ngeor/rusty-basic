@@ -5,7 +5,6 @@ use crate::parser::pc_specific::*;
 use crate::parser::statement_separator::comments_and_whitespace_p;
 use crate::parser::statements::ZeroOrMoreStatements;
 use crate::parser::types::*;
-use std::convert::TryFrom;
 
 // SELECT CASE expr ' comment
 // CASE 1
@@ -128,21 +127,19 @@ fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
 }
 
 fn case_expression_list() -> impl Parser<Output = Vec<CaseExpression>> {
-    csv(CaseExpressionParser::new())
+    csv(case_expression_parser::parser())
 }
 
-struct CaseExpressionParser;
+mod case_expression_parser {
+    use crate::common::Locatable;
+    use crate::parser::expression::expression_node_p;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
+    use crate::parser::{CaseExpression, Keyword, Operator};
+    use std::convert::TryFrom;
 
-impl Parser for CaseExpressionParser {
-    type Output = CaseExpression;
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        Self::case_is().or(SimpleOrRangeParser::new()).parse(reader)
-    }
-}
-
-impl CaseExpressionParser {
-    fn new() -> Self {
-        Self
+    pub fn parser() -> impl Parser<Output = CaseExpression> {
+        case_is().or(simple_or_range())
     }
 
     fn case_is() -> impl Parser<Output = CaseExpression> {
@@ -151,59 +148,40 @@ impl CaseExpressionParser {
             OptAndPC::new(whitespace(), relational_operator_p())
                 .keep_right()
                 .or_syntax_error("Expected: Operator after IS"),
-            OptAndPC::new(whitespace(), expression::expression_node_p())
+            OptAndPC::new(whitespace(), expression_node_p())
                 .keep_right()
                 .or_syntax_error("Expected: expression after IS operator"),
             |_, Locatable { element, .. }, r| CaseExpression::Is(element, r),
         )
     }
-}
 
-fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
-    any_token()
-        .filter_map(|token| {
-            if let Ok(token_type) = TokenType::try_from(token.kind) {
-                match token_type {
-                    TokenType::LessEquals => Some(Operator::LessOrEqual),
-                    TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
-                    TokenType::NotEquals => Some(Operator::NotEqual),
-                    TokenType::Less => Some(Operator::Less),
-                    TokenType::Greater => Some(Operator::Greater),
-                    TokenType::Equals => Some(Operator::Equal),
-                    _ => None,
+    fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
+        any_token()
+            .filter_map(|token| {
+                if let Ok(token_type) = TokenType::try_from(token.kind) {
+                    match token_type {
+                        TokenType::LessEquals => Some(Operator::LessOrEqual),
+                        TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
+                        TokenType::NotEquals => Some(Operator::NotEqual),
+                        TokenType::Less => Some(Operator::Less),
+                        TokenType::Greater => Some(Operator::Greater),
+                        TokenType::Equals => Some(Operator::Equal),
+                        _ => None,
+                    }
+                } else {
+                    None
                 }
-            } else {
-                None
+            })
+            .with_pos()
+    }
+
+    fn simple_or_range() -> impl Parser<Output = CaseExpression> {
+        OptSecondExpressionParser::new(expression_node_p(), Keyword::To).map(|(left, opt_right)| {
+            match opt_right {
+                Some(right) => CaseExpression::Range(left, right),
+                _ => CaseExpression::Simple(left),
             }
         })
-        .with_pos()
-}
-
-struct SimpleOrRangeParser;
-
-impl Parser for SimpleOrRangeParser {
-    type Output = CaseExpression;
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let expr = expression::expression_node_p().parse(reader)?;
-        let parenthesis = expr.as_ref().is_parenthesis();
-        let to_keyword = whitespace_boundary(parenthesis)
-            .and(keyword(Keyword::To))
-            .parse_opt(reader)?;
-        match to_keyword {
-            Some(_) => {
-                let second_expr = expression::guarded_expression_node_p()
-                    .or_syntax_error("Expected: expression after TO")
-                    .parse(reader)?;
-                Ok(CaseExpression::Range(expr, second_expr))
-            }
-            None => Ok(CaseExpression::Simple(expr)),
-        }
-    }
-}
-
-impl SimpleOrRangeParser {
-    fn new() -> Self {
-        Self
     }
 }
 

@@ -22,6 +22,12 @@ impl ExtractExpression for ExpressionNode {
     }
 }
 
+impl<P> OptSecondExpressionParser<P> {
+    fn err(&self) -> QError {
+        QError::SyntaxError(format!("Expected: expression after {}", self.keyword))
+    }
+}
+
 impl<P> Parser for OptSecondExpressionParser<P>
 where
     P: Parser,
@@ -35,12 +41,7 @@ where
         let is_paren = first_expr.as_ref().is_parenthesis();
         let opt_right = whitespace_boundary(is_paren)
             .and(keyword(self.keyword))
-            .then_demand(
-                guarded_expression_node_p().or_fail(QError::SyntaxError(format!(
-                    "Expected: expression after {}",
-                    self.keyword
-                ))),
-            )
+            .then_demand(guarded_expression_node_p().or_fail(self.err()))
             .allow_none()
             .parse(tokenizer)?;
         Ok((first, opt_right))

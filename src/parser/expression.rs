@@ -454,7 +454,7 @@ mod built_in_function_call {
 mod binary_expression {
     use crate::common::{Locatable, QError};
     use crate::parser::expression::{expression_node_p, single_expression_node_p};
-    use crate::parser::pc::{any_token, condition, OptAndPC, Parser, Seq2, Token};
+    use crate::parser::pc::{any_token, condition, NonOptParser, OptAndPC, Parser, Seq2, Token};
     use crate::parser::pc_specific::{whitespace, OrErrorTrait, TokenType, WithPosTrait};
     use crate::parser::{ExpressionNode, Keyword, Operator};
     use std::convert::TryFrom;
@@ -489,7 +489,7 @@ mod binary_expression {
 
     fn operator(
         prev_expr: &ExpressionNode,
-    ) -> impl Parser<Output = Option<(Locatable<Operator>, Option<Token>)>> {
+    ) -> impl Parser<Output = Option<(Locatable<Operator>, Option<Token>)>> + NonOptParser {
         let is_paren = prev_expr.as_ref().is_parenthesis();
         OptAndPC::new(
             whitespace(),
@@ -550,7 +550,7 @@ mod binary_expression {
 
     fn right_side_expr(
         prev: &(ExpressionNode, Option<Locatable<Operator>>, Option<Token>),
-    ) -> impl Parser<Output = Option<ExpressionNode>> {
+    ) -> impl Parser<Output = Option<ExpressionNode>> + NonOptParser {
         let (_, opt_locatable_op, opt_ws) = prev;
         let had_operator = opt_locatable_op.is_some();
         let had_whitespace = opt_ws.is_some();
@@ -609,7 +609,7 @@ mod unary_expression {
 
     fn op_guard(
         locatable_op: &Locatable<UnaryOperator>,
-    ) -> impl Parser<Output = Option<guard::Guard>> {
+    ) -> impl Parser<Output = Option<guard::Guard>> + NonOptParser {
         let needs_guard = *locatable_op.as_ref() == UnaryOperator::Not;
         condition(needs_guard)
             .then_demand(guard::parser().no_incomplete())

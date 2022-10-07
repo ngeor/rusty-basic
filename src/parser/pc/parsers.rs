@@ -1,6 +1,5 @@
 use crate::common::QError;
 use crate::parser::pc::and_opt::AndOptPC;
-use crate::parser::pc::and_opt_factory::AndOptFactoryPC;
 use crate::parser::pc::many::OneOrMoreParser;
 use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
@@ -161,16 +160,6 @@ pub trait Parser {
         R: Parser,
     {
         AndPC::new(self, right)
-    }
-
-    // TODO #[deprecated]
-    fn and_opt_factory<F, R>(self, f: F) -> AndOptFactoryPC<Self, F>
-    where
-        Self: Sized,
-        F: Fn(&Self::Output) -> R,
-        R: Parser,
-    {
-        AndOptFactoryPC::new(self, f)
     }
 
     fn then_demand<R>(self, other: R) -> GuardPC<Self, R>

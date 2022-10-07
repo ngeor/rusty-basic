@@ -5,7 +5,6 @@ mod allow_default;
 mod allow_none;
 mod and;
 mod and_opt;
-mod and_opt_factory;
 mod and_then;
 mod any;
 mod condition;

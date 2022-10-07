@@ -37,16 +37,14 @@ fn parse_for_step_p() -> impl Parser<
         Option<ExpressionNode>,
     ),
 > {
-    parse_for_p()
-        .and_opt_factory(|(_, _, upper)| {
-            whitespace_boundary_after_expr(upper)
-                .and(keyword(Keyword::Step))
-                .then_demand(
-                    expression::guarded_expression_node_p()
-                        .or_syntax_error("Expected: expression after STEP"),
-                )
-        })
+    OptSecondExpressionParser::new(parse_for_p(), Keyword::Step)
         .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
+}
+
+impl ExtractExpression for (ExpressionNode, ExpressionNode, ExpressionNode) {
+    fn to_expression(&self) -> &ExpressionNode {
+        &self.2
+    }
 }
 
 /// Parses the "FOR I = 1 TO 2" part

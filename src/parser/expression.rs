@@ -86,19 +86,6 @@ fn eager_expression_node() -> impl Parser<Output = ExpressionNode> {
     binary_expression::parser()
 }
 
-fn single_expression_node_p() -> impl Parser<Output = ExpressionNode> {
-    Alt7::new(
-        single_or_double_literal::parser(),
-        string_literal::parser(),
-        integer_or_long_literal::parser(),
-        // property internally uses variable and function_call_or_array_element so they can be skipped
-        property::parser(),
-        built_in_function_call::parser(),
-        parenthesis::parser(),
-        unary_expression::parser(),
-    )
-}
-
 mod single_or_double_literal {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::{digits, dot, pound, WithPosTrait};
@@ -452,9 +439,12 @@ mod built_in_function_call {
 }
 
 mod binary_expression {
-    use crate::common::{Locatable, QError};
-    use crate::parser::expression::{expression_node_p, single_expression_node_p};
-    use crate::parser::pc::{any_token, condition, NonOptParser, OptAndPC, Parser, Seq2, Token};
+    use crate::common::{Locatable, ParserErrorTrait, QError};
+    use crate::parser::expression::{
+        built_in_function_call, expression_node_p, guard, integer_or_long_literal, parenthesis,
+        property, single_or_double_literal, string_literal, unary_expression,
+    };
+    use crate::parser::pc::{any_token, Alt7, OptAndPC, Parser, Token, Tokenizer};
     use crate::parser::pc_specific::{whitespace, OrErrorTrait, TokenType, WithPosTrait};
     use crate::parser::{ExpressionNode, Keyword, Operator};
     use std::convert::TryFrom;
@@ -462,164 +452,139 @@ mod binary_expression {
 
     // result ::= <non-bin-expr> <operator> <expr>
     pub fn parser() -> impl Parser<Output = ExpressionNode> {
-        non_bin_expr()
-            .pipe(operator)
-            // drop the first whitespace and flatten the tuple
-            .map(
-                |(l, opt_operator_trailing_ws)| match opt_operator_trailing_ws {
-                    Some((op, opt_ws)) => (l, Some(op), opt_ws),
-                    None => (l, None, None),
-                },
-            )
-            .pipe(right_side_expr)
-            .map(|((left_side, opt_locatable_op, _), right_side)| {
-                (match opt_locatable_op {
-                    Some(Locatable { element: op, pos }) => {
-                        left_side.apply_priority_order(right_side.unwrap(), op, pos)
-                    }
-                    None => left_side,
-                })
-                .simplify_unary_minus_literals()
-            })
+        BinaryExprParser
     }
 
-    fn non_bin_expr() -> impl Parser<Output = ExpressionNode> {
-        single_expression_node_p()
-    }
+    struct BinaryExprParser;
 
-    fn operator(
-        prev_expr: &ExpressionNode,
-    ) -> impl Parser<Output = Option<(Locatable<Operator>, Option<Token>)>> + NonOptParser {
-        let is_paren = prev_expr.as_ref().is_parenthesis();
-        OptAndPC::new(
-            whitespace(),
-            any_token()
-                .filter_map(map_token_to_operator)
-                .with_pos()
-                .and_opt(whitespace()),
-        )
-        .and_then(move |(leading_ws, (loc_op, trailing_ws))| {
-            let had_whitespace = leading_ws.is_some();
-            let needs_whitespace = match loc_op.as_ref() {
-                Operator::Modulo | Operator::And | Operator::Or => true,
-                _ => false,
-            };
-            if had_whitespace || is_paren || !needs_whitespace {
-                Ok((loc_op, trailing_ws))
-            } else {
-                Err(QError::SyntaxError(format!(
-                    "Expected: parenthesis before operator {:?}",
-                    loc_op.element()
-                )))
-            }
-        })
-        .allow_none()
-    }
+    impl Parser for BinaryExprParser {
+        type Output = ExpressionNode;
 
-    fn map_token_to_operator(token: &Token) -> Option<Operator> {
-        if let Ok(token_type) = TokenType::try_from(token.kind) {
-            match token_type {
-                TokenType::Less => Some(Operator::Less),
-                TokenType::LessEquals => Some(Operator::LessOrEqual),
-                TokenType::Equals => Some(Operator::Equal),
-                TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
-                TokenType::Greater => Some(Operator::Greater),
-                TokenType::NotEquals => Some(Operator::NotEqual),
-                TokenType::Plus => Some(Operator::Plus),
-                TokenType::Minus => Some(Operator::Minus),
-                TokenType::Star => Some(Operator::Multiply),
-                TokenType::Slash => Some(Operator::Divide),
-                TokenType::Keyword => {
-                    if let Ok(keyword) = Keyword::from_str(&token.text) {
-                        match keyword {
-                            Keyword::Mod => Some(Operator::Modulo),
-                            Keyword::And => Some(Operator::And),
-                            Keyword::Or => Some(Operator::Or),
-                            _ => None,
-                        }
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
-            }
-        } else {
-            None
+        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+            self.do_parse(tokenizer)
+                .map(ExpressionNode::simplify_unary_minus_literals)
         }
     }
 
-    fn right_side_expr(
-        prev: &(ExpressionNode, Option<Locatable<Operator>>, Option<Token>),
-    ) -> impl Parser<Output = Option<ExpressionNode>> + NonOptParser {
-        let (_, opt_locatable_op, opt_ws) = prev;
-        let had_operator = opt_locatable_op.is_some();
-        let had_whitespace = opt_ws.is_some();
-        let op_needs_whitespace = match opt_locatable_op {
-            Some(Locatable { element, .. }) => match element {
-                Operator::Modulo | Operator::And | Operator::Or => true,
-                _ => false,
-            },
-            _ => false,
-        };
-        Seq2::new(
-            // TODO build something like `pipe_if`
-            condition(had_operator),
-            expression_node_p().or_syntax_error("Expected: expression after operator"),
-        )
-        .and_then(move |(_, right_expr)| {
-            let is_paren = right_expr.as_ref().is_parenthesis();
-            if is_paren || had_whitespace || !op_needs_whitespace {
-                Ok(right_expr)
-            } else {
-                Err(QError::syntax_error("Expected: whitespace after operator"))
+    impl BinaryExprParser {
+        fn do_parse(&self, tokenizer: &mut impl Tokenizer) -> Result<ExpressionNode, QError> {
+            let first = Self::non_bin_expr().parse(tokenizer)?;
+            let is_paren = first.as_ref().is_parenthesis();
+            match Self::operator(is_paren).parse(tokenizer) {
+                Ok(Locatable {
+                    element: op,
+                    pos: op_pos,
+                }) => {
+                    let is_keyword_op =
+                        op == Operator::And || op == Operator::Or || op == Operator::Modulo;
+                    if is_keyword_op {
+                        guard::parser().no_incomplete().parse(tokenizer)?;
+                    } else {
+                        guard::parser().allow_none().parse(tokenizer)?;
+                    }
+                    let right = expression_node_p()
+                        .or_syntax_error("Expected: expression after operator")
+                        .parse(tokenizer)?;
+                    Ok(first.apply_priority_order(right, op, op_pos))
+                }
+                Err(err) if err.is_incomplete() => Ok(first),
+                Err(err) => Err(err),
             }
-        })
-        .allow_none()
+        }
+
+        fn non_bin_expr() -> impl Parser<Output = ExpressionNode> {
+            Alt7::new(
+                single_or_double_literal::parser(),
+                string_literal::parser(),
+                integer_or_long_literal::parser(),
+                // property internally uses variable and function_call_or_array_element so they can be skipped
+                property::parser(),
+                built_in_function_call::parser(),
+                parenthesis::parser(),
+                unary_expression::parser(),
+            )
+        }
+
+        fn operator(is_paren: bool) -> impl Parser<Output = Locatable<Operator>> {
+            OptAndPC::new(
+                whitespace(),
+                any_token()
+                    .filter_map(Self::map_token_to_operator)
+                    .with_pos(),
+            )
+            .and_then(move |(leading_ws, loc_op)| {
+                let had_whitespace = leading_ws.is_some();
+                let needs_whitespace = match loc_op.as_ref() {
+                    Operator::Modulo | Operator::And | Operator::Or => true,
+                    _ => false,
+                };
+                if had_whitespace || is_paren || !needs_whitespace {
+                    Ok(loc_op)
+                } else {
+                    Err(QError::SyntaxError(format!(
+                        "Expected: parenthesis before operator {:?}",
+                        loc_op.element()
+                    )))
+                }
+            })
+        }
+
+        fn map_token_to_operator(token: &Token) -> Option<Operator> {
+            if let Ok(token_type) = TokenType::try_from(token.kind) {
+                match token_type {
+                    TokenType::Less => Some(Operator::Less),
+                    TokenType::LessEquals => Some(Operator::LessOrEqual),
+                    TokenType::Equals => Some(Operator::Equal),
+                    TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
+                    TokenType::Greater => Some(Operator::Greater),
+                    TokenType::NotEquals => Some(Operator::NotEqual),
+                    TokenType::Plus => Some(Operator::Plus),
+                    TokenType::Minus => Some(Operator::Minus),
+                    TokenType::Star => Some(Operator::Multiply),
+                    TokenType::Slash => Some(Operator::Divide),
+                    TokenType::Keyword => {
+                        if let Ok(keyword) = Keyword::from_str(&token.text) {
+                            match keyword {
+                                Keyword::Mod => Some(Operator::Modulo),
+                                Keyword::And => Some(Operator::And),
+                                Keyword::Or => Some(Operator::Or),
+                                _ => None,
+                            }
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
     }
 }
 
 mod unary_expression {
     use crate::common::Locatable;
     use crate::parser::expression::{expression_node_p, guard};
-    use crate::parser::pc::{any_token, condition, NonOptParser, Parser};
-    use crate::parser::pc_specific::{OrErrorTrait, TokenType, WithPosTrait};
+    use crate::parser::pc::{seq2, Parser};
+    use crate::parser::pc_specific::{keyword, minus_sign, OrErrorTrait, WithPosTrait};
     use crate::parser::{ExpressionNode, Keyword, UnaryOperator};
 
     pub fn parser() -> impl Parser<Output = ExpressionNode> {
-        unary_op()
-            .pipe(op_guard)
-            .keep_left()
-            .pipe(expr_node)
-            .map(|(Locatable { element: op, pos }, expr)| expr.apply_unary_priority_order(op, pos))
+        seq2(
+            unary_op(),
+            expression_node_p().or_syntax_error("Expected: expression after unary operator"),
+            |Locatable { element: op, pos }, expr| expr.apply_unary_priority_order(op, pos),
+        )
     }
 
     fn unary_op() -> impl Parser<Output = Locatable<UnaryOperator>> {
-        any_token()
-            .filter_map(|token| {
-                if token.kind == TokenType::Minus as i32 {
-                    Some(UnaryOperator::Minus)
-                } else if &Keyword::Not == token {
-                    Some(UnaryOperator::Not)
-                } else {
-                    None
-                }
-            })
+        minus_sign()
+            .map(|_| UnaryOperator::Minus)
+            .or(keyword(Keyword::Not)
+                .then_demand(guard::parser().no_incomplete())
+                .map(|_| UnaryOperator::Not))
             .with_pos()
-    }
-
-    fn op_guard(
-        locatable_op: &Locatable<UnaryOperator>,
-    ) -> impl Parser<Output = Option<guard::Guard>> + NonOptParser {
-        let needs_guard = *locatable_op.as_ref() == UnaryOperator::Not;
-        condition(needs_guard)
-            .then_demand(guard::parser().no_incomplete())
-            .allow_none()
-    }
-
-    fn expr_node(
-        _op: &Locatable<UnaryOperator>,
-    ) -> impl Parser<Output = ExpressionNode> + NonOptParser {
-        expression_node_p().or_syntax_error("Expected: expression after unary operator")
     }
 }
 

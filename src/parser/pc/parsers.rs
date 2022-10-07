@@ -5,7 +5,7 @@ use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, Kee
 use crate::parser::pc::{
     AllowDefaultParser, AllowNoneParser, Alt2, AndPC, AndThen, FilterMapParser, FilterParser,
     GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, NegateParser, NoIncompleteParser,
-    OrFailParser, PeekParser, PipeParser, Tokenizer, Undo,
+    OrFailParser, PeekParser, Tokenizer, Undo,
 };
 
 // TODO V4: the tokenizer is not visible (practically an iterator)
@@ -197,16 +197,6 @@ pub trait Parser {
         Self: Sized,
     {
         NegateParser::new(self)
-    }
-
-    // TODO #[deprecated]
-    fn pipe<RF, R>(self, right_factory: RF) -> PipeParser<Self, RF>
-    where
-        Self: Sized,
-        RF: Fn(&Self::Output) -> R,
-        R: Parser,
-    {
-        PipeParser::new(self, right_factory)
     }
 }
 

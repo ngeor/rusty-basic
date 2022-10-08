@@ -134,7 +134,7 @@ pub fn create_recognizers() -> RecognizersWithType {
         TokenType::Pound => '#',
         TokenType::DollarSign => '$',
         TokenType::Percent => '%',
-        TokenType::Keyword => keyword_recognizer(&SORTED_KEYWORDS_STR),
+        TokenType::Keyword => keyword_recognizer(SORTED_KEYWORDS_STR),
         TokenType::Identifier => leading_remaining_recognizer(is_letter, |ch| {
             is_letter(ch) || is_digit(ch) || ch == '.'
         }),

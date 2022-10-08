@@ -60,7 +60,7 @@ pub fn keyword_syntax_error<'a>(keywords: impl Iterator<Item = &'a Keyword>) -> 
         if !s.is_empty() {
             s.push_str(" or ");
         }
-        s.push_str(keyword.as_str());
+        s.push_str(&keyword.to_string());
     }
     format!("Expected: {}", s)
 }

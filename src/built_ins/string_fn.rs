@@ -7,7 +7,7 @@ pub mod parser {
 
     pub fn parse() -> impl Parser<Output = Expression> {
         seq3(
-            keyword(Keyword::String_),
+            keyword(Keyword::String),
             dollar_sign().no_incomplete(),
             in_parenthesis_csv_expressions_non_opt("Expected: expression"),
             |_, _, v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v),

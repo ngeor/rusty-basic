@@ -109,7 +109,7 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
             (Keyword::Double, ElementType::Double),
         ]),
         seq3(
-            keyword(Keyword::String_),
+            keyword(Keyword::String),
             star().no_incomplete(),
             demand_string_length_p(),
             |_, _, e| ElementType::FixedLengthString(e, 0),

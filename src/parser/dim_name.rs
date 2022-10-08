@@ -143,7 +143,7 @@ mod type_definition {
     }
 
     fn built_in_string() -> impl Parser<Output = DimType> {
-        keyword(Keyword::String_)
+        keyword(Keyword::String)
             .and_opt(star().then_demand(
                 expression_node_p().or_syntax_error("Expected: string length after *"),
             ))

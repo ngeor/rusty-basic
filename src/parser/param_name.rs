@@ -116,7 +116,7 @@ fn extended_type_p() -> impl Parser<Output = ParamType> {
                 ParamType::BuiltIn(TypeQualifier::HashDouble, BuiltInStyle::Extended),
             ),
             (
-                Keyword::String_,
+                Keyword::String,
                 ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),
             ),
             (

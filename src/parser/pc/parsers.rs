@@ -8,15 +8,20 @@ use crate::parser::pc::{
     NegateParser, NoIncompleteParser, OrFailParser, PeekParser, Tokenizer, Undo,
 };
 
-// TODO V4: the tokenizer is not visible (practically an iterator)
-// pub trait ParserV4 {
-//     type Output;
-//     fn parse(&mut self) -> Result<Self::Output, QError>;
-// }
-// alternatively, move the Tokenizer impl up as generic parameter
+// TODO make QError generic param too
+// TODO specific error types for Tokenizer and Parser libraries
 
-// TODO make QError generic param too after figuring out <T> vs associated type
-
+/// A parser uses a [Tokenizer] in order to produce a result.
+///
+/// There are two different types of failures:
+/// - incomplete: another parser might be able to succeed
+/// - fatal: all parsing should stop
+///
+/// The [Tokenizer] is available through a `mut impl` parameter on the method
+/// [Parser::parse]. This choice has some pros and cons. The `impl Tokenizer`
+/// means that this is in reality a generic method, meaning that the Parser
+/// can't be converted into a `dyn object`. On the positive side, the type
+/// is simpler, with no extra generic parameters polluting the definitions.
 pub trait Parser {
     type Output;
 

@@ -216,8 +216,5 @@ mod tests {
     }
 }
 
-// TODO token type as generic
-// TODO automatic parser implementation for every non-opt-parser -> prerequisite: errors more structured instead of everything being a QError
 // TODO error codes e.g. QB001
 // TODO break down the project to libraries (?) to improve module encapsulation
-// TODO simple functions as parsers

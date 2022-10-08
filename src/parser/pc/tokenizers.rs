@@ -3,20 +3,17 @@ use crate::parser::char_reader::CharReader;
 use crate::parser::pc::{Recognition, Recognizer};
 use std::iter;
 
-// TODO make fields private
-pub struct Position {
-    pub begin: Location,
-    pub end: Location,
-}
-
 pub type TokenKind = u8;
 
 // TODO make fields private
+/// Represents a recognized token.
+///
+/// The [kind] field could have been a generic parameter, but that would require
+/// propagating the type in the [Tokenizer] and eventually also to the parsers.
 pub struct Token {
-    // TODO support enum type
     pub kind: TokenKind,
     pub text: String,
-    pub position: Position,
+    pub pos: Location,
 }
 
 pub type TokenList = Vec<Token>;
@@ -154,10 +151,7 @@ impl<R: CharReader> TokenizerImpl<R> {
             Ok(Some(Token {
                 kind: token_type.unwrap(),
                 text: buffer,
-                position: Position {
-                    begin,
-                    end: self.pos,
-                },
+                pos: begin,
             }))
         } else {
             if buffer.is_empty() {
@@ -195,7 +189,7 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
 
     fn position(&self) -> Location {
         match self.buffer.last() {
-            Some(token) => token.position.begin,
+            Some(token) => token.pos,
             _ => self.tokenizer.pos,
         }
     }
@@ -234,10 +228,10 @@ mod tests {
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "1234");
         assert_eq!(token.kind, 0);
-        assert_eq!(token.position.begin.row(), 1);
-        assert_eq!(token.position.begin.col(), 1);
-        assert_eq!(token.position.end.row(), 1);
-        assert_eq!(token.position.end.col(), 5);
+        assert_eq!(token.pos.row(), 1);
+        assert_eq!(token.pos.col(), 1);
+        assert_eq!(tokenizer.pos.row(), 1);
+        assert_eq!(tokenizer.pos.col(), 5);
     }
 
     #[test]
@@ -254,17 +248,17 @@ mod tests {
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "abc");
         assert_eq!(token.kind, 0);
-        assert_eq!(token.position.begin.row(), 1);
-        assert_eq!(token.position.begin.col(), 1);
-        assert_eq!(token.position.end.row(), 1);
-        assert_eq!(token.position.end.col(), 4);
+        assert_eq!(token.pos.row(), 1);
+        assert_eq!(token.pos.col(), 1);
+        assert_eq!(tokenizer.pos.row(), 1);
+        assert_eq!(tokenizer.pos.col(), 4);
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "1234");
         assert_eq!(token.kind, 1);
-        assert_eq!(token.position.begin.row(), 1);
-        assert_eq!(token.position.begin.col(), 4);
-        assert_eq!(token.position.end.row(), 1);
-        assert_eq!(token.position.end.col(), 8);
+        assert_eq!(token.pos.row(), 1);
+        assert_eq!(token.pos.col(), 4);
+        assert_eq!(tokenizer.pos.row(), 1);
+        assert_eq!(tokenizer.pos.col(), 8);
     }
 
     #[test]

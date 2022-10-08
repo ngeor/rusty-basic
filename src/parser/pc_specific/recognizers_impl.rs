@@ -135,6 +135,7 @@ pub fn create_recognizers() -> RecognizersWithType {
         TokenType::DollarSign => '$',
         TokenType::Percent => '%',
         TokenType::Keyword => keyword_recognizer(SORTED_KEYWORDS_STR),
+        TokenType::KeywordWithDollarString => keyword_with_dollar_string_recognizer,
         TokenType::Identifier => leading_remaining_recognizer(is_letter, |ch| {
             is_letter(ch) || is_digit(ch) || ch == '.'
         }),
@@ -150,6 +151,29 @@ pub fn create_recognizers() -> RecognizersWithType {
 
 pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
     create_tokenizer(file_char_reader(input), create_recognizers())
+}
+
+fn keyword_with_dollar_string_recognizer(buffer: &str) -> Recognition {
+    // TODO use binary search
+    for keyword in SORTED_KEYWORDS_STR {
+        let s = format!("{}$", *keyword);
+        if s.eq_ignore_ascii_case(buffer) {
+            return Recognition::Positive;
+        }
+
+        if keyword.eq_ignore_ascii_case(buffer) {
+            return Recognition::Partial;
+        }
+
+        if keyword
+            .to_uppercase()
+            .starts_with(buffer.to_uppercase().as_str())
+        {
+            return Recognition::Partial;
+        }
+    }
+
+    Recognition::Negative
 }
 
 #[cfg(test)]

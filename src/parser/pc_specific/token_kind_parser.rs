@@ -40,13 +40,6 @@ pub fn colon_ws() -> impl Parser<Output = Token> {
     any_token_of_ws(TokenType::Colon)
 }
 
-/// Dollar sign.
-///
-/// `$`
-pub fn dollar_sign() -> impl Parser<Output = Token> {
-    any_token_of(TokenType::DollarSign)
-}
-
 /// Minus sign.
 ///
 /// `-`

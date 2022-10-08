@@ -4,40 +4,17 @@ use crate::parser::type_qualifier::{TypeQualifierParser, TypeQualifierPostGuardP
 use crate::parser::{BareName, Name, TypeQualifier};
 
 pub fn name_with_dot_p() -> impl Parser<Output = Name> {
-    name_as_tokens().map(|(name_token, opt_q_token)| {
-        Name::new(BareName::new(name_token.text), opt_q_token.map(|(_, q)| q))
-    })
+    name_as_tokens().map(Name::from)
 }
 
 /// `result ::= <identifier-with-dots> <type-qualifier> | <keyword> "$"`
 ///
 /// not followed by `<type-qualifier> | "."`
-pub fn name_as_tokens() -> impl Parser<Output = (Token, Option<(Token, TypeQualifier)>)> {
+pub fn name_as_tokens() -> impl Parser<Output = NameAsTokens> {
     Alt2::new(identifier_and_opt_q(), keyword_and_dollar_string())
 }
 
-/// `result ::= <identifier-with-dots> <type-qualifier>`
-///
-/// not followed by `<type-qualifier> | "."`
-fn identifier_and_opt_q() -> impl Parser<Output = (Token, Option<(Token, TypeQualifier)>)> {
-    identifier_with_dots().and_opt(TypeQualifierParser)
-}
-
-/// `result ::= <keyword> "$"`
-///
-/// not followed by `<type-qualifier> | "."`
-fn keyword_and_dollar_string() -> impl Parser<Output = (Token, Option<(Token, TypeQualifier)>)> {
-    seq2(
-        any_token_of(TokenType::Keyword).and(dollar_sign()),
-        TypeQualifierPostGuardParser,
-        |(name, type_token), _| (name, Some((type_token, TypeQualifier::DollarString))),
-    )
-}
-
-/// The same as [identifier_with_dots], mapped to a [BareName].
-pub fn bare_name_p() -> impl Parser<Output = BareName> {
-    identifier_with_dots().map(|token| token.text.into())
-}
+pub type OptTypeQualifierAsToken = Option<(Token, TypeQualifier)>;
 
 impl Undo for (Token, TypeQualifier) {
     fn undo(self, tokenizer: &mut impl Tokenizer) {
@@ -45,11 +22,66 @@ impl Undo for (Token, TypeQualifier) {
     }
 }
 
-impl Undo for (Token, Option<(Token, TypeQualifier)>) {
-    fn undo(self, tokenizer: &mut impl Tokenizer) {
-        self.1.undo(tokenizer);
-        tokenizer.unread(self.0);
+pub enum NameAsTokens {
+    Identifier {
+        name: Token,
+        opt_q: OptTypeQualifierAsToken,
+    },
+    KeywordDollar(Token),
+}
+
+impl From<NameAsTokens> for Name {
+    fn from(n: NameAsTokens) -> Self {
+        match n {
+            NameAsTokens::Identifier { name, opt_q } => {
+                Name::new(BareName::new(name.text), opt_q.map(|(_, q)| q))
+            }
+            NameAsTokens::KeywordDollar(token) => {
+                let mut text = token.text;
+                text.pop(); // remove trailing dollar sign
+                Name::new(BareName::new(text), Some(TypeQualifier::DollarString))
+            }
+        }
     }
+}
+
+impl Undo for NameAsTokens {
+    fn undo(self, tokenizer: &mut impl Tokenizer) {
+        match self {
+            Self::Identifier { name, opt_q } => {
+                opt_q.undo(tokenizer);
+                tokenizer.unread(name);
+            }
+            Self::KeywordDollar(token) => {
+                tokenizer.unread(token);
+            }
+        }
+    }
+}
+
+/// `result ::= <identifier-with-dots> <type-qualifier>`
+///
+/// not followed by `<type-qualifier> | "."`
+fn identifier_and_opt_q() -> impl Parser<Output = NameAsTokens> {
+    identifier_with_dots()
+        .and_opt(TypeQualifierParser)
+        .map(|(name, opt_q)| NameAsTokens::Identifier { name, opt_q })
+}
+
+/// `result ::= <keyword> "$"`
+///
+/// not followed by `<type-qualifier> | "."`
+fn keyword_and_dollar_string() -> impl Parser<Output = NameAsTokens> {
+    seq2(
+        any_token_of(TokenType::KeywordWithDollarString),
+        TypeQualifierPostGuardParser,
+        |token, _| NameAsTokens::KeywordDollar(token),
+    )
+}
+
+/// The same as [identifier_with_dots], mapped to a [BareName].
+pub fn bare_name_p() -> impl Parser<Output = BareName> {
+    identifier_with_dots().map(|token| token.text.into())
 }
 
 #[cfg(test)]

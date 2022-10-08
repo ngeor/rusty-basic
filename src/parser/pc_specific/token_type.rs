@@ -71,8 +71,10 @@ enum_with_index!(
         Pound,
         DollarSign,
         Percent,
-        // keyword needs to be before Identifier
+        // keyword needs to be before Identifier, because the first one wins
         Keyword,
+        // A keyword followed by a dollar string is an identifier...
+        KeywordWithDollarString,
         // Starts with letter, continues with letters, digits or dots.
         Identifier,
         OctDigits,

@@ -287,9 +287,9 @@ mod integer_or_long_literal {
 // TODO review variable/function_call/property modules for refactoring options
 // TODO consider nesting variable/function_call modules inside property as they are only used there
 mod variable {
-    use crate::parser::name::name_as_tokens;
+    use crate::parser::name::{name_as_tokens, NameAsTokens};
     use crate::parser::pc::*;
-    use crate::parser::pc_specific::{SpecificTrait, TokenType};
+    use crate::parser::pc_specific::SpecificTrait;
     use crate::parser::*;
     use std::collections::VecDeque;
 
@@ -304,43 +304,44 @@ mod variable {
         name_as_tokens().map(map_to_expr).with_pos()
     }
 
-    fn map_to_expr(name_as_tokens: (Token, Option<(Token, TypeQualifier)>)) -> Expression {
-        let (name_token, opt_q_token) = name_as_tokens;
-        let opt_q = opt_q_token.map(|(_, q)| q);
-
-        if let Some(property_expr) = map_to_property(&name_token, opt_q) {
-            return property_expr;
+    fn map_to_expr(name_as_tokens: NameAsTokens) -> Expression {
+        if let Some(property_expr) = map_to_property(&name_as_tokens) {
+            property_expr
+        } else {
+            Expression::Variable(name_as_tokens.into(), VariableInfo::unresolved())
         }
-
-        let bare_name = BareName::new(name_token.text);
-        let name = Name::new(bare_name, opt_q);
-        Expression::Variable(name, VariableInfo::unresolved())
     }
 
-    fn map_to_property(name_token: &Token, mut opt_q: Option<TypeQualifier>) -> Option<Expression> {
-        if !TokenType::Identifier.matches(&name_token) {
-            return None; // keywords don't have dots
+    fn map_to_property(name_as_tokens: &NameAsTokens) -> Option<Expression> {
+        match name_as_tokens {
+            NameAsTokens::KeywordDollar(_) => {
+                // keywords don't have dots
+                None
+            }
+            NameAsTokens::Identifier { name, opt_q } => {
+                let mut parts: VecDeque<String> =
+                    name.text.split('.').map(ToOwned::to_owned).collect();
+                if parts.len() == 1 || parts.iter().any(|s| s.is_empty()) {
+                    // either no dots or gaps between dots or trailing dot
+                    return None;
+                }
+                let mut result = Expression::Variable(
+                    Name::new(BareName::new(parts.pop_front().unwrap()), None),
+                    VariableInfo::unresolved(),
+                );
+                let mut opt_q = opt_q.as_ref().map(|(_, q)| *q);
+                while let Some(part) = parts.pop_front() {
+                    let is_last = parts.is_empty();
+                    let opt_q_next = if is_last { opt_q.take() } else { None };
+                    result = Expression::Property(
+                        Box::new(result),
+                        Name::new(BareName::new(part), opt_q_next),
+                        ExpressionType::Unresolved,
+                    );
+                }
+                Some(result)
+            }
         }
-        let mut parts: VecDeque<String> =
-            name_token.text.split('.').map(ToOwned::to_owned).collect();
-        if parts.len() == 1 || parts.iter().any(|s| s.is_empty()) {
-            // either no dots or gaps between dots or trailing dot
-            return None;
-        }
-        let mut result = Expression::Variable(
-            Name::new(BareName::new(parts.pop_front().unwrap()), None),
-            VariableInfo::unresolved(),
-        );
-        while let Some(part) = parts.pop_front() {
-            let is_last = parts.is_empty();
-            let opt_q_next = if is_last { opt_q.take() } else { None };
-            result = Expression::Property(
-                Box::new(result),
-                Name::new(BareName::new(part), opt_q_next),
-                ExpressionType::Unresolved,
-            );
-        }
-        Some(result)
     }
 }
 
@@ -364,12 +365,8 @@ mod function_call_or_array_element {
     pub fn parser() -> impl Parser<Output = ExpressionNode> {
         name_as_tokens()
             .and(in_parenthesis(csv(expression_node_p()).allow_default()))
-            .map(|((name_token, opt_q_token), arguments)| {
-                // TODO some duplication with variable module
-                let opt_q = opt_q_token.map(|(_, q)| q);
-                let bare_name = BareName::new(name_token.text);
-                let name = Name::new(bare_name, opt_q);
-                Expression::FunctionCall(name, arguments)
+            .map(|(name_as_tokens, arguments)| {
+                Expression::FunctionCall(name_as_tokens.into(), arguments)
             })
             .with_pos()
     }
@@ -418,9 +415,10 @@ pub mod property {
     fn property_names() -> impl Parser<Output = Vec<Name>> + NonOptParser {
         // TODO perhaps max length of 40 characters applies only to parts not the full string
         name_as_tokens()
-            .and_then(|(name_token, opt_q_token)| {
-                let mut parts: VecDeque<String> =
-                    name_token.text.split('.').map(ToOwned::to_owned).collect();
+            .and_then(|name_as_tokens| {
+                let (name, opt_q) = Name::from(name_as_tokens).into_inner();
+                let name = String::from(name);
+                let mut parts: VecDeque<String> = name.split('.').map(ToOwned::to_owned).collect();
                 if parts.iter().any(|s| s.is_empty()) {
                     return Err(QError::syntax_error("Expected: property name after period"));
                 }
@@ -428,8 +426,6 @@ pub mod property {
                 for _ in 0..parts.len() - 1 {
                     result.push(Name::new(BareName::new(parts.pop_front().unwrap()), None));
                 }
-
-                let opt_q = opt_q_token.map(|(_, q)| q);
 
                 result.push(Name::new(BareName::new(parts.pop_front().unwrap()), opt_q));
                 Ok(result)

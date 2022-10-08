@@ -1,14 +1,14 @@
 use crate::common::QError;
 use crate::parser::pc::{Parser, Seq2, Seq3, Token};
-use crate::parser::pc_specific::{any_token_of, dollar_sign, whitespace, TokenType};
+use crate::parser::pc_specific::{any_token_of, whitespace, TokenType};
 use crate::parser::Keyword;
 
-/// Matches any keyword. Ensures that it is not followed by
+/// Matches any keyword.
+///
+/// The recognizers ensure that it is not followed by
 /// the dollar sign, in which case it is a valid identifier.
 pub fn any_keyword() -> impl Parser<Output = Token> {
     any_token_of(TokenType::Keyword)
-        .and(dollar_sign().peek().negate())
-        .keep_left()
 }
 
 pub fn keyword(k: Keyword) -> impl Parser<Output = Token> {
@@ -28,4 +28,10 @@ pub fn keyword_pair(first: Keyword, second: Keyword) -> impl Parser {
         whitespace().no_incomplete(),
         keyword(second).no_incomplete(),
     )
+}
+
+pub fn keyword_dollar_string(k: Keyword) -> impl Parser<Output = Token> {
+    let needle = format!("{}$", k);
+    any_token_of(TokenType::KeywordWithDollarString)
+        .filter(move |token| token.text.eq_ignore_ascii_case(&needle))
 }

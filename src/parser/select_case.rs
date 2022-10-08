@@ -38,9 +38,8 @@ pub fn select_case_p() -> impl Parser<Output = Statement> {
 
 /// Parses the `SELECT CASE expression` part
 fn select_case_expr_p() -> impl Parser<Output = ExpressionNode> {
-    keyword_pair(Keyword::Select, Keyword::Case).then_demand(
-        expression::guarded_expression_node_p().or_syntax_error("Expected: expression after CASE"),
-    )
+    keyword_pair(Keyword::Select, Keyword::Case)
+        .then_demand(expression::ws_expr_node().or_syntax_error("Expected: expression after CASE"))
 }
 
 // SELECT CASE expr
@@ -176,12 +175,12 @@ mod case_expression_parser {
     }
 
     fn simple_or_range() -> impl Parser<Output = CaseExpression> {
-        opt_second_expression_parser(expression_node_p(), Keyword::To).map(|(left, opt_right)| {
-            match opt_right {
+        opt_second_expression_after_keyword(expression_node_p(), Keyword::To).map(
+            |(left, opt_right)| match opt_right {
                 Some(right) => CaseExpression::Range(left, right),
                 _ => CaseExpression::Simple(left),
-            }
-        })
+            },
+        )
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::parser::expression::file_handle::file_handle_p;
 use crate::parser::expression::guard::Guard;
-use crate::parser::expression::{expression_node_p, guarded_expression_node_p};
+use crate::parser::expression::{expression_node_p, ws_expr_node};
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
@@ -44,7 +44,7 @@ pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
 fn opt_using() -> impl Parser<Output = Option<ExpressionNode>> + NonOptParser {
     seq3(
         keyword(Keyword::Using),
-        guarded_expression_node_p().or_syntax_error("Expected: expression after USING"),
+        ws_expr_node().or_syntax_error("Expected: expression after USING"),
         semicolon().no_incomplete(),
         |_, using_expr, _| using_expr,
     )

@@ -34,8 +34,7 @@ pub fn if_block_p() -> impl Parser<Output = Statement> {
 fn if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
     seq3(
         keyword(Keyword::If),
-        expression::back_guarded_expression_node_p()
-            .or_syntax_error("Expected: expression after IF"),
+        expression::ws_expr_node_ws().or_syntax_error("Expected: expression after IF"),
         keyword(Keyword::Then).no_incomplete(),
         |_, m, _| m,
     )
@@ -89,8 +88,7 @@ fn multi_line_if_p() -> impl Parser<
 fn else_if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
     seq3(
         keyword(Keyword::ElseIf),
-        expression::back_guarded_expression_node_p()
-            .or_syntax_error("Expected: expression after ELSEIF"),
+        expression::ws_expr_node_ws().or_syntax_error("Expected: expression after ELSEIF"),
         keyword(Keyword::Then).no_incomplete(),
         |_, m, _| m,
     )

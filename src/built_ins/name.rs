@@ -1,6 +1,6 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::expression::{back_guarded_expression_node_p, guarded_expression_node_p};
+    use crate::parser::expression::{ws_expr_node, ws_expr_node_ws};
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
@@ -8,9 +8,9 @@ pub mod parser {
     pub fn parse() -> impl Parser<Output = Statement> {
         seq4(
             keyword(Keyword::Name),
-            back_guarded_expression_node_p().or_syntax_error("Expected: old file name"),
+            ws_expr_node_ws().or_syntax_error("Expected: old file name"),
             keyword(Keyword::As).no_incomplete(),
-            guarded_expression_node_p().or_syntax_error("Expected: new file name"),
+            ws_expr_node().or_syntax_error("Expected: new file name"),
             |_, l, _, r| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]),
         )
     }

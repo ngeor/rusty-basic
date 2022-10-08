@@ -2,7 +2,7 @@ pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::expression::file_handle::guarded_file_handle_or_expression_p;
-    use crate::parser::expression::{back_guarded_expression_node_p, expression_node_p};
+    use crate::parser::expression::{expression_node_p, ws_expr_node_ws};
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
@@ -10,7 +10,7 @@ pub mod parser {
     pub fn parse() -> impl Parser<Output = Statement> {
         seq6(
             keyword(Keyword::Open),
-            back_guarded_expression_node_p().or_syntax_error("Expected: file name after OPEN"),
+            ws_expr_node_ws().or_syntax_error("Expected: file name after OPEN"),
             parse_open_mode_p().allow_none(),
             parse_open_access_p().allow_none(),
             parse_file_number_p().or_syntax_error("Expected: AS file-number"),

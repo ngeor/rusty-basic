@@ -1,4 +1,4 @@
-use crate::parser::expression::guarded_expression_node_p;
+use crate::parser::expression::ws_expr_node;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::statements::*;
@@ -13,7 +13,7 @@ pub fn do_loop_p() -> impl Parser<Output = Statement> {
 fn do_condition_top() -> impl Parser<Output = DoLoopNode> {
     seq4(
         whitespace().and(keyword_choice(&[Keyword::Until, Keyword::While])),
-        guarded_expression_node_p().or_syntax_error("Expected: expression"),
+        ws_expr_node().or_syntax_error("Expected: expression"),
         ZeroOrMoreStatements::new(keyword(Keyword::Loop)),
         keyword(Keyword::Loop).no_incomplete(),
         |(_, (k, _)), condition, statements, _| DoLoopNode {
@@ -35,7 +35,7 @@ fn do_condition_bottom() -> impl Parser<Output = DoLoopNode> + NonOptParser {
         keyword(Keyword::Loop).no_incomplete(),
         whitespace().no_incomplete(),
         keyword_choice(&[Keyword::Until, Keyword::While]).no_incomplete(),
-        guarded_expression_node_p().or_syntax_error("Expected: expression"),
+        ws_expr_node().or_syntax_error("Expected: expression"),
         |statements, _, _, (k, _), condition| DoLoopNode {
             condition,
             statements,

@@ -37,7 +37,7 @@ fn parse_for_step_p() -> impl Parser<
         Option<ExpressionNode>,
     ),
 > {
-    opt_second_expression_parser(parse_for_p(), Keyword::Step)
+    opt_second_expression_after_keyword(parse_for_p(), Keyword::Step)
         .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
 }
 
@@ -53,11 +53,9 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, Expres
         keyword_followed_by_whitespace_p(Keyword::For),
         expression::property::parser().or_syntax_error("Expected: name after FOR"),
         equal_sign().no_incomplete(),
-        expression::expression_node_followed_by_ws()
-            .or_syntax_error("Expected: lower bound of FOR loop"),
+        expression::expr_node_ws().or_syntax_error("Expected: lower bound of FOR loop"),
         keyword(Keyword::To).no_incomplete(),
-        expression::guarded_expression_node_p()
-            .or_syntax_error("Expected: upper bound of FOR loop"),
+        expression::ws_expr_node().or_syntax_error("Expected: upper bound of FOR loop"),
         |_, name, _, lower_bound, _, upper_bound| (name, lower_bound, upper_bound),
     )
 }

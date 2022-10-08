@@ -1,6 +1,6 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
-    use crate::parser::expression::{back_guarded_expression_node_p, guarded_expression_node_p};
+    use crate::parser::expression::{ws_expr_node, ws_expr_node_ws};
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
@@ -13,9 +13,9 @@ pub mod parser {
 
     fn parse_args() -> impl Parser<Output = ExpressionNodes> {
         seq3(
-            back_guarded_expression_node_p(),
+            ws_expr_node_ws(),
             keyword(Keyword::To).no_incomplete(),
-            guarded_expression_node_p().or_syntax_error("Expected: expression"),
+            ws_expr_node().or_syntax_error("Expected: expression"),
             |l, _, r| vec![l, r],
         )
     }

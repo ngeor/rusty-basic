@@ -1,8 +1,7 @@
-use crate::common::*;
+use crate::lazy_parser;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
-use crate::{lazy_parser, parser_declaration};
 
 /// `( expr [, expr]* )`
 pub fn in_parenthesis_csv_expressions_non_opt(
@@ -13,7 +12,6 @@ pub fn in_parenthesis_csv_expressions_non_opt(
 
 /// Parses one or more expressions separated by comma.
 /// FIXME Unlike csv_expressions, the first expression does not need a separator!
-/// FIXME the biggest problem is expression vs guarded expression
 pub fn csv_expressions_non_opt(msg: &str) -> impl Parser<Output = ExpressionNodes> + NonOptParser {
     csv_non_opt(expression_node_p(), msg)
 }
@@ -24,7 +22,7 @@ pub fn csv_expressions_non_opt(msg: &str) -> impl Parser<Output = ExpressionNode
 /// The first expression needs to be preceded by space or surrounded in parenthesis.
 pub fn csv_expressions_first_guarded() -> impl Parser<Output = ExpressionNodes> {
     AccumulateParser::new(
-        guarded_expression_node_p(),
+        ws_expr_node(),
         comma()
             .then_demand(expression_node_p().or_syntax_error("Expected: expression after comma")),
     )
@@ -36,49 +34,66 @@ lazy_parser!(
     eager_expression_node()
 );
 
-// TODO check if all usages are "demand"
-// TODO rename to expression_preceded_by_ws
-pub fn guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
+/// Parses an expression that is either preceded by whitespace
+/// or is a parenthesis expression.
+///
+/// ```text
+/// <ws> <expr-not-in-parenthesis> |
+/// <ws> <expr-in-parenthesis> |
+/// <expr-in-parenthesis>
+/// ```
+pub fn ws_expr_node() -> impl Parser<Output = ExpressionNode> {
     // ws* ( expr )
     // ws+ expr
-    guard::parser().and(expression_node_p()).keep_right()
+    preceded_by_ws(expression_node_p())
 }
 
-// TODO rename to expression_surrounded_by_ws
-pub fn back_guarded_expression_node_p() -> impl Parser<Output = ExpressionNode> {
-    // ws* ( expr ) ws*
-    // ws+ expr ws+
-    ExprNodeFollowedByWhitespace::new(guarded_expression_node_p())
+/// Parses an expression that is either followed by whitespace
+/// or is a parenthesis expression.
+///
+/// The whitespace is mandatory after a non-parenthesis
+/// expression.
+///
+/// ```text
+/// <expr-not-in-parenthesis> <ws> |
+/// <expr-in-parenthesis> <ws> |
+/// <expr-in-parenthesis>
+/// ```
+pub fn expr_node_ws() -> impl Parser<Output = ExpressionNode> {
+    followed_by_ws(expression_node_p())
 }
 
-pub fn expression_node_followed_by_ws() -> impl Parser<Output = ExpressionNode> {
-    // ( expr ) ws*
-    // expr ws+
-    ExprNodeFollowedByWhitespace::new(expression_node_p())
+/// Parses an expression that is either surrounded by whitespace
+/// or is a parenthesis expression.
+///
+/// The whitespace is mandatory after a non-parenthesis
+/// expression.
+///
+/// ```text
+/// <ws> <expr-not-in-parenthesis> <ws> |
+/// <ws> <expr-in-parenthesis> <ws> |
+/// <expr-in-parenthesis>
+/// ```
+pub fn ws_expr_node_ws() -> impl Parser<Output = ExpressionNode> {
+    followed_by_ws(ws_expr_node())
 }
 
-parser_declaration!(struct ExprNodeFollowedByWhitespace);
+fn preceded_by_ws(
+    parser: impl Parser<Output = ExpressionNode>,
+) -> impl Parser<Output = ExpressionNode> {
+    guard::parser().and(parser).keep_right()
+}
 
-impl<P> Parser for ExprNodeFollowedByWhitespace<P>
-where
-    P: Parser<Output = ExpressionNode>,
-{
-    type Output = ExpressionNode;
-
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let expr_node = self.parser.parse(tokenizer)?;
-        if expr_node.as_ref().is_parenthesis() {
-            whitespace()
-                .allow_none()
-                .parse(tokenizer)
-                .map(|_| expr_node)
-        } else {
-            whitespace()
-                .no_incomplete()
-                .parse(tokenizer)
-                .map(|_| expr_node)
-        }
-    }
+fn followed_by_ws(
+    parser: impl Parser<Output = ExpressionNode>,
+) -> impl Parser<Output = ExpressionNode> {
+    parser.chain(|expr| {
+        let is_paren = expr.as_ref().is_parenthesis();
+        whitespace()
+            .allow_none_if(is_paren)
+            .no_incomplete()
+            .map_once(|_| expr)
+    })
 }
 
 /// Parses an expression
@@ -607,7 +622,7 @@ pub mod file_handle {
     //! Used by PRINT and built-ins
 
     use crate::common::*;
-    use crate::parser::expression::guarded_expression_node_p;
+    use crate::parser::expression::ws_expr_node;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::{Expression, ExpressionNode};
@@ -649,7 +664,7 @@ pub mod file_handle {
     }
 
     pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
-        ws_file_handle().or(guarded_expression_node_p())
+        ws_file_handle().or(ws_expr_node())
     }
 
     fn ws_file_handle() -> impl Parser<Output = ExpressionNode> {

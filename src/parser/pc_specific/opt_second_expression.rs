@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::expression::guarded_expression_node_p;
+use crate::parser::expression::ws_expr_node;
 use crate::parser::pc::Parser;
 use crate::parser::pc_specific::{keyword, whitespace};
 use crate::parser::types::Keyword;
@@ -17,7 +17,7 @@ impl ExtractExpression for ExpressionNode {
     }
 }
 
-pub fn opt_second_expression_parser<P>(
+pub fn opt_second_expression_after_keyword<P>(
     parser: P,
     keyword: Keyword,
 ) -> impl Parser<Output = (P::Output, Option<ExpressionNode>)>
@@ -36,7 +36,7 @@ fn parse_second(k: Keyword, is_paren: bool) -> impl Parser<Output = Option<Expre
     whitespace()
         .allow_none_if(is_paren)
         .and(keyword(k))
-        .then_demand(guarded_expression_node_p().or_fail(err(k)))
+        .then_demand(ws_expr_node().or_fail(err(k)))
         .allow_none()
 }
 

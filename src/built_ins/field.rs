@@ -1,7 +1,7 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
-    use crate::parser::expression::expression_node_followed_by_ws;
+    use crate::parser::expression::expr_node_ws;
     use crate::parser::expression::file_handle::file_handle_p;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
@@ -23,7 +23,7 @@ pub mod parser {
 
     fn field_item_p() -> impl Parser<Output = (ExpressionNode, NameNode)> {
         seq4(
-            expression_node_followed_by_ws(),
+            expr_node_ws(),
             keyword(Keyword::As).no_incomplete(),
             whitespace().no_incomplete(),
             name::name_with_dot_p()

@@ -159,9 +159,18 @@ mod string_literal {
     fn inside_string() -> impl Parser<Output = TokenList> + NonOptParser {
         any_token()
             .filter(|token| {
-                token.kind != TokenType::DoubleQuote as i32 && token.kind != TokenType::Eol as i32
+                token.kind != TokenType::DoubleQuote as TokenKind
+                    && token.kind != TokenType::Eol as TokenKind
             })
             .zero_or_more()
+    }
+
+    fn token_list_to_string(list: &[Token]) -> String {
+        let mut result = String::new();
+        for token in list {
+            result.push_str(&token.text);
+        }
+        result
     }
 }
 
@@ -181,17 +190,17 @@ mod integer_or_long_literal {
     }
 
     fn is_allowed_token(token: &Token) -> bool {
-        token.kind == TokenType::Digits as i32
-            || token.kind == TokenType::HexDigits as i32
-            || token.kind == TokenType::OctDigits as i32
+        token.kind == TokenType::Digits as TokenKind
+            || token.kind == TokenType::HexDigits as TokenKind
+            || token.kind == TokenType::OctDigits as TokenKind
     }
 
     fn process_token(token: Token) -> Result<Expression, QError> {
-        if token.kind == TokenType::Digits as i32 {
+        if token.kind == TokenType::Digits as TokenKind {
             process_dec(token)
-        } else if token.kind == TokenType::HexDigits as i32 {
+        } else if token.kind == TokenType::HexDigits as TokenKind {
             process_hex(token)
-        } else if token.kind == TokenType::OctDigits as i32 {
+        } else if token.kind == TokenType::OctDigits as TokenKind {
             process_oct(token)
         } else {
             panic!("Should not have processed {}", token.text)
@@ -313,7 +322,7 @@ mod variable {
     }
 
     fn map_to_property(name_token: &Token, mut opt_q: Option<TypeQualifier>) -> Option<Expression> {
-        if name_token.kind != TokenType::Identifier as i32 {
+        if name_token.kind != TokenType::Identifier as TokenKind {
             return None; // keywords don't have dots
         }
         let mut parts: VecDeque<String> =
@@ -640,15 +649,17 @@ pub mod file_handle {
         fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
             let pos = tokenizer.position();
             match tokenizer.read()? {
-                Some(token) if token.kind == TokenType::Pound as i32 => match tokenizer.read()? {
-                    Some(token) if token.kind == TokenType::Digits as i32 => {
-                        match token.text.parse::<u8>() {
-                            Ok(d) if d > 0 => Ok(FileHandle::from(d).at(pos)),
-                            _ => Err(QError::BadFileNameOrNumber),
+                Some(token) if token.kind == TokenType::Pound as TokenKind => {
+                    match tokenizer.read()? {
+                        Some(token) if token.kind == TokenType::Digits as TokenKind => {
+                            match token.text.parse::<u8>() {
+                                Ok(d) if d > 0 => Ok(FileHandle::from(d).at(pos)),
+                                _ => Err(QError::BadFileNameOrNumber),
+                            }
                         }
+                        _ => Err(QError::syntax_error("Expected: digits after #")),
                     }
-                    _ => Err(QError::syntax_error("Expected: digits after #")),
-                },
+                }
                 Some(token) => {
                     tokenizer.unread(token);
                     Err(QError::Incomplete)

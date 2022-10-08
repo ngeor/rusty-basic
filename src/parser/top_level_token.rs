@@ -7,7 +7,6 @@ use crate::parser::pc_specific::*;
 use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;
-use std::convert::TryFrom;
 
 pub struct TopLevelTokensParser;
 
@@ -27,7 +26,7 @@ impl Parser for TopLevelTokensParser {
             let opt_item = tokenizer.read()?;
             match opt_item {
                 Some(ch) => {
-                    let token_type = TokenType::try_from(ch.kind)?;
+                    let token_type = TokenType::from(ch.kind);
                     if token_type == TokenType::Whitespace {
                         // skip whitespace
                     } else if token_type == TokenType::Eol || token_type == TokenType::Colon {

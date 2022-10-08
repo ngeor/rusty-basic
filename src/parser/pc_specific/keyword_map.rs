@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::pc::{Parser, Tokenizer};
+use crate::parser::pc::{Parser, TokenKind, Tokenizer};
 use crate::parser::pc_specific::{keyword_syntax_error, TokenType};
 use crate::parser::Keyword;
 
@@ -23,7 +23,7 @@ where
     type Output = T;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
-            Some(keyword_token) if keyword_token.kind == TokenType::Keyword as i32 => {
+            Some(keyword_token) if keyword_token.kind == TokenType::Keyword as TokenKind => {
                 for (keyword, mapped_value) in &self.mappings {
                     if keyword == &keyword_token {
                         return Ok(mapped_value.clone());

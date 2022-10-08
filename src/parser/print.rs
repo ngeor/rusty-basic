@@ -113,9 +113,9 @@ impl NonOptParser for PrintArgsParser {}
 fn print_boundary() -> impl Parser<Output = Guard> {
     whitespace().map(Guard::Whitespace).or(any_token()
         .filter(|token| {
-            token.kind == TokenType::Comma as i32
-                || token.kind == TokenType::Semicolon as i32
-                || token.kind == TokenType::LParen as i32
+            token.kind == TokenType::Comma as TokenKind
+                || token.kind == TokenType::Semicolon as TokenKind
+                || token.kind == TokenType::LParen as TokenKind
         })
         .peek()
         .map(|_| Guard::Peeked))

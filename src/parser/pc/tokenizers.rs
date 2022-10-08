@@ -3,27 +3,23 @@ use crate::parser::char_reader::CharReader;
 use crate::parser::pc::{Recognition, Recognizer};
 use std::iter;
 
+// TODO make fields private
 pub struct Position {
     pub begin: Location,
     pub end: Location,
 }
 
+pub type TokenKind = u8;
+
+// TODO make fields private
 pub struct Token {
     // TODO support enum type
-    pub kind: i32,
+    pub kind: TokenKind,
     pub text: String,
     pub position: Position,
 }
 
 pub type TokenList = Vec<Token>;
-
-pub fn token_list_to_string(list: &[Token]) -> String {
-    let mut result = String::new();
-    for token in list {
-        result.push_str(&token.text);
-    }
-    result
-}
 
 pub trait Tokenizer {
     // TODO this can also be Result<Token, ?> where ? is Fatal/NotFound, or an Iterator
@@ -32,16 +28,19 @@ pub trait Tokenizer {
     fn position(&self) -> Location;
 }
 
+pub type RecognizerWithTypePair = (TokenKind, Box<dyn Recognizer>);
+pub type RecognizersWithType = Vec<RecognizerWithTypePair>;
+
 pub fn create_tokenizer<R: CharReader>(
     reader: R,
-    recognizers: Vec<Box<dyn Recognizer>>,
+    recognizers: RecognizersWithType,
 ) -> impl Tokenizer {
     UndoTokenizerImpl::new(TokenizerImpl::new(reader, recognizers))
 }
 
 struct TokenizerImpl<R: CharReader> {
     reader: R,
-    recognizers: Vec<Box<dyn Recognizer>>,
+    recognizers: RecognizersWithType,
     pos: Location,
 }
 
@@ -74,7 +73,7 @@ impl RecognizerResponses {
 }
 
 impl<R: CharReader> TokenizerImpl<R> {
-    pub fn new(reader: R, recognizers: Vec<Box<dyn Recognizer>>) -> Self {
+    pub fn new(reader: R, recognizers: RecognizersWithType) -> Self {
         Self {
             reader,
             recognizers,
@@ -92,7 +91,7 @@ impl<R: CharReader> TokenizerImpl<R> {
                 Some(ch) => {
                     buffer.push(ch);
                     let mut i: usize = 0;
-                    for recognizer in &self.recognizers {
+                    for (_, recognizer) in &self.recognizers {
                         let last_response = recognizer_responses.get_last_response(i);
                         if last_response != Recognition::Negative {
                             let recognition = recognizer.recognize(&buffer);
@@ -121,11 +120,11 @@ impl<R: CharReader> TokenizerImpl<R> {
 
         // find the longest win
         let mut max_positive_size: usize = 0;
-        let mut max_positive_index: i32 = -1;
+        let mut token_type: Option<TokenKind> = None;
         for i in 0..self.recognizers.len() {
             if sizes[i] > max_positive_size {
                 max_positive_size = sizes[i];
-                max_positive_index = i as i32;
+                token_type = Some(self.recognizers[i].0);
             }
         }
 
@@ -135,7 +134,7 @@ impl<R: CharReader> TokenizerImpl<R> {
             self.reader.unread(last_char);
         }
 
-        if max_positive_index >= 0 {
+        if token_type.is_some() {
             let begin: Location = self.pos;
             let mut previous_char: char = ' ';
             for ch in buffer.chars() {
@@ -153,7 +152,7 @@ impl<R: CharReader> TokenizerImpl<R> {
                 previous_char = ch;
             }
             Ok(Some(Token {
-                kind: max_positive_index,
+                kind: token_type.unwrap(),
                 text: buffer,
                 position: Position {
                     begin,
@@ -202,6 +201,21 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
     }
 }
 
+#[macro_export]
+macro_rules! recognizers {
+    [$($token_type:expr => $recognizer:expr),+$(,)?] => {
+        vec![
+            $(
+            (
+                // TODO remove "as" if Token becomes a generic type
+                $token_type as TokenKind,
+                Box::new($recognizer)
+            )
+            ),+
+        ]
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parser::char_reader::test_helper::string_char_reader;
@@ -212,7 +226,12 @@ mod tests {
     fn test_digits() {
         let input = "1234";
         let reader = string_char_reader(input);
-        let mut tokenizer = TokenizerImpl::new(reader, vec![Box::new(many_digits_recognizer())]);
+        let mut tokenizer = TokenizerImpl::new(
+            reader,
+            recognizers![
+                0 => many_digits_recognizer()
+            ],
+        );
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "1234");
         assert_eq!(token.kind, 0);
@@ -228,9 +247,9 @@ mod tests {
         let reader = string_char_reader(input);
         let mut tokenizer = TokenizerImpl::new(
             reader,
-            vec![
-                Box::new(many_letters_recognizer()),
-                Box::new(many_digits_recognizer()),
+            recognizers![
+                0 => many_letters_recognizer(),
+                1 => many_digits_recognizer()
             ],
         );
         let token = tokenizer.read().unwrap().unwrap();
@@ -255,9 +274,9 @@ mod tests {
         let reader = string_char_reader(input);
         let mut tokenizer = UndoTokenizerImpl::new(TokenizerImpl::new(
             reader,
-            vec![
-                Box::new(many_letters_recognizer()),
-                Box::new(many_digits_recognizer()),
+            recognizers![
+                0 => many_letters_recognizer(),
+                1 => many_digits_recognizer(),
             ],
         ));
 

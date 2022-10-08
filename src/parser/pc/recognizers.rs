@@ -9,27 +9,33 @@ pub trait Recognizer {
     fn recognize(&self, buffer: &str) -> Recognition;
 }
 
-struct AnySingleCharRecognizer {}
-
-impl Recognizer for AnySingleCharRecognizer {
+// blanket implementation for functions, so that any `fn(&str) -> Recognition`
+// automatically implements the [Recognizer] trait
+impl<F> Recognizer for F
+where
+    F: Fn(&str) -> Recognition,
+{
     fn recognize(&self, buffer: &str) -> Recognition {
-        if buffer.chars().count() == 1 {
-            Recognition::Positive
-        } else {
-            Recognition::Negative
-        }
+        (self)(buffer)
     }
 }
 
-struct SingleNewLineRecognizer {}
+/// A recognizer that matches a single character. It can be used as a fallback
+/// mechanism when nothing else matches.
+pub fn any_single_char_recognizer(buffer: &str) -> Recognition {
+    if buffer.chars().count() == 1 {
+        Recognition::Positive
+    } else {
+        Recognition::Negative
+    }
+}
 
-impl Recognizer for SingleNewLineRecognizer {
-    fn recognize(&self, buffer: &str) -> Recognition {
-        if buffer == "\r" || buffer == "\n" || buffer == "\r\n" {
-            Recognition::Positive
-        } else {
-            Recognition::Negative
-        }
+/// A recognizer that matches a single new line.
+pub fn single_new_line_recognizer(buffer: &str) -> Recognition {
+    if buffer == "\r" || buffer == "\n" || buffer == "\r\n" {
+        Recognition::Positive
+    } else {
+        Recognition::Negative
     }
 }
 
@@ -76,13 +82,9 @@ impl<T: Fn(char) -> bool, U: Fn(char) -> bool> Recognizer
     }
 }
 
-struct SingleCharRecognizer {
-    needle: char,
-}
-
-impl Recognizer for SingleCharRecognizer {
+impl Recognizer for char {
     fn recognize(&self, buffer: &str) -> Recognition {
-        if buffer.len() == 1 && buffer.chars().all(|c| c == self.needle) {
+        if buffer.len() == 1 && buffer.chars().all(|c| c == *self) {
             Recognition::Positive
         } else {
             Recognition::Negative
@@ -90,19 +92,9 @@ impl Recognizer for SingleCharRecognizer {
     }
 }
 
-struct StrRecognizer<'a> {
-    needle: &'a str,
-}
-
-impl<'a> StrRecognizer<'a> {
-    pub fn new(needle: &'a str) -> Self {
-        Self { needle }
-    }
-}
-
-impl<'a> Recognizer for StrRecognizer<'a> {
+impl<'a> Recognizer for &'a str {
     fn recognize(&self, buffer: &str) -> Recognition {
-        let mut needle_iter = self.needle.chars();
+        let mut needle_iter = self.chars();
         let mut buffer_iter = buffer.chars();
         loop {
             let needle_next = needle_iter.next();
@@ -171,14 +163,6 @@ impl<'a> Recognizer for KeywordRecognizer<'a> {
     }
 }
 
-pub fn any_single_char_recognizer() -> impl Recognizer {
-    AnySingleCharRecognizer {}
-}
-
-pub fn single_new_line_recognizer() -> impl Recognizer {
-    SingleNewLineRecognizer {}
-}
-
 pub fn many_digits_recognizer() -> impl Recognizer {
     ManyPredicateRecognizer {
         predicate: is_digit,
@@ -213,14 +197,6 @@ pub fn leading_remaining_recognizer<T: Fn(char) -> bool, U: Fn(char) -> bool>(
         leading_predicate,
         remaining_predicate,
     }
-}
-
-pub fn single_char_recognizer(needle: char) -> impl Recognizer {
-    SingleCharRecognizer { needle }
-}
-
-pub fn str_recognizer(needle: &str) -> impl Recognizer + '_ {
-    StrRecognizer::new(needle)
 }
 
 pub fn keyword_recognizer<'a>(keywords: &'a [&'a str]) -> impl Recognizer + 'a {

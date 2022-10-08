@@ -9,7 +9,6 @@ mod recognizers_impl;
 mod specific_trait;
 mod token_kind_parser;
 mod token_type;
-mod try_from_token_type;
 mod with_pos;
 
 pub use csv::*;
@@ -23,5 +22,4 @@ pub use recognizers_impl::*;
 pub use specific_trait::*;
 pub use token_kind_parser::*;
 pub use token_type::*;
-pub use try_from_token_type::*;
 pub use with_pos::*;

@@ -80,7 +80,7 @@ impl Parser for CaseButNotElse {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(case_token) if Keyword::Case == case_token => match tokenizer.read()? {
-                Some(space_token) if space_token.kind == TokenType::Whitespace as i32 => {
+                Some(space_token) if space_token.kind == TokenType::Whitespace as TokenKind => {
                     match tokenizer.read()? {
                         Some(else_token) if Keyword::Else == else_token => {
                             tokenizer.unread(else_token);
@@ -97,7 +97,7 @@ impl Parser for CaseButNotElse {
                         )),
                     }
                 }
-                Some(paren_token) if paren_token.kind == TokenType::LParen as i32 => {
+                Some(paren_token) if paren_token.kind == TokenType::LParen as TokenKind => {
                     tokenizer.unread(paren_token);
                     Ok(())
                 }

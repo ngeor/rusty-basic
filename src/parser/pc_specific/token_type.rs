@@ -1,4 +1,5 @@
 use crate::common::QError;
+use crate::parser::pc::TokenKind;
 use std::convert::TryFrom;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -40,10 +41,8 @@ pub enum TokenType {
     Unknown,
 }
 
-impl TryFrom<i32> for TokenType {
-    type Error = QError;
-
-    fn try_from(value: i32) -> Result<Self, Self::Error> {
+impl From<TokenKind> for TokenType {
+    fn from(value: TokenKind) -> Self {
         let all_tokens = [
             TokenType::Eol,
             TokenType::Whitespace,
@@ -77,14 +76,7 @@ impl TryFrom<i32> for TokenType {
             TokenType::HexDigits,
             TokenType::Unknown,
         ];
-        if value >= 0 && value < all_tokens.len() as i32 {
-            Ok(all_tokens[value as usize])
-        } else {
-            Err(QError::InternalError(format!(
-                "Token index {} out of bounds",
-                value
-            )))
-        }
+        all_tokens[value as usize]
     }
 }
 

@@ -1,6 +1,8 @@
 use crate::parser::char_reader::file_char_reader;
 use crate::parser::pc::*;
+use crate::parser::pc_specific::TokenType;
 use crate::parser::SORTED_KEYWORDS_STR;
+use crate::recognizers;
 use std::fs::File;
 use std::str::Chars;
 
@@ -104,45 +106,48 @@ impl OctHexDigitsRecognizer {
     }
 }
 
-pub fn create_recognizers() -> Vec<Box<dyn Recognizer>> {
-    vec![
-        Box::new(single_new_line_recognizer()),
-        Box::new(many_white_space_recognizer()),
-        Box::new(many_digits_recognizer()),
-        Box::new(single_char_recognizer('(')),
-        Box::new(single_char_recognizer(')')),
-        Box::new(single_char_recognizer(':')),
-        Box::new(single_char_recognizer(';')),
-        Box::new(single_char_recognizer(',')),
-        Box::new(single_char_recognizer('\'')),
-        Box::new(single_char_recognizer('"')),
-        Box::new(single_char_recognizer('.')),
-        Box::new(single_char_recognizer('=')),
-        Box::new(single_char_recognizer('>')),
-        Box::new(single_char_recognizer('<')),
-        Box::new(str_recognizer(">=")),
-        Box::new(str_recognizer("<=")),
-        Box::new(str_recognizer("<>")),
-        Box::new(single_char_recognizer('+')),
-        Box::new(single_char_recognizer('-')),
-        Box::new(single_char_recognizer('*')),
-        Box::new(single_char_recognizer('/')),
-        Box::new(single_char_recognizer('&')),
-        Box::new(single_char_recognizer('!')),
-        Box::new(single_char_recognizer('#')),
-        Box::new(single_char_recognizer('$')),
-        Box::new(single_char_recognizer('%')),
-        Box::new(keyword_recognizer(&SORTED_KEYWORDS_STR)),
-        Box::new(leading_remaining_recognizer(is_letter, |ch| {
+pub fn create_recognizers() -> RecognizersWithType {
+    recognizers![
+        TokenType::Eol => single_new_line_recognizer,
+        TokenType::Whitespace => many_white_space_recognizer(),
+        TokenType::Digits => many_digits_recognizer(),
+        TokenType::LParen => '(',
+        TokenType::RParen => ')',
+        TokenType::Colon => ':',
+        TokenType::Semicolon => ';',
+        TokenType::Comma => ',',
+        TokenType::SingleQuote => '\'',
+        TokenType::DoubleQuote => '"',
+        TokenType::Dot => '.',
+        TokenType::Equals => '=',
+        TokenType::Greater => '>',
+        TokenType::Less => '<',
+        TokenType::GreaterEquals => ">=",
+        TokenType::LessEquals => "<=",
+        TokenType::NotEquals => "<>",
+        TokenType::Plus => '+',
+        TokenType::Minus => '-',
+        TokenType::Star => '*',
+        TokenType::Slash => '/',
+        TokenType::Ampersand => '&',
+        TokenType::ExclamationMark => '!',
+        TokenType::Pound => '#',
+        TokenType::DollarSign => '$',
+        TokenType::Percent => '%',
+        TokenType::Keyword => keyword_recognizer(&SORTED_KEYWORDS_STR),
+        TokenType::Identifier => leading_remaining_recognizer(is_letter, |ch| {
             is_letter(ch) || is_digit(ch) || ch == '.'
-        })),
-        Box::new(OctHexDigitsRecognizer {
+        }),
+
+        TokenType::OctDigits => OctHexDigitsRecognizer {
             mode: OctOrHex::Oct,
-        }),
-        Box::new(OctHexDigitsRecognizer {
+        },
+
+        TokenType::HexDigits => OctHexDigitsRecognizer {
             mode: OctOrHex::Hex,
-        }),
-        Box::new(any_single_char_recognizer()),
+        },
+
+        TokenType::Unknown => any_single_char_recognizer,
     ]
 }
 

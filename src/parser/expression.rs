@@ -159,8 +159,7 @@ mod string_literal {
     fn inside_string() -> impl Parser<Output = TokenList> + NonOptParser {
         any_token()
             .filter(|token| {
-                token.kind != TokenType::DoubleQuote as TokenKind
-                    && token.kind != TokenType::Eol as TokenKind
+                !TokenType::DoubleQuote.matches(&token) && !TokenType::Eol.matches(&token)
             })
             .zero_or_more()
     }
@@ -190,20 +189,17 @@ mod integer_or_long_literal {
     }
 
     fn is_allowed_token(token: &Token) -> bool {
-        token.kind == TokenType::Digits as TokenKind
-            || token.kind == TokenType::HexDigits as TokenKind
-            || token.kind == TokenType::OctDigits as TokenKind
+        TokenType::Digits.matches(&token)
+            || TokenType::HexDigits.matches(&token)
+            || TokenType::OctDigits.matches(&token)
     }
 
     fn process_token(token: Token) -> Result<Expression, QError> {
-        if token.kind == TokenType::Digits as TokenKind {
-            process_dec(token)
-        } else if token.kind == TokenType::HexDigits as TokenKind {
-            process_hex(token)
-        } else if token.kind == TokenType::OctDigits as TokenKind {
-            process_oct(token)
-        } else {
-            panic!("Should not have processed {}", token.text)
+        match TokenType::from_token(&token) {
+            TokenType::Digits => process_dec(token),
+            TokenType::HexDigits => process_hex(token),
+            TokenType::OctDigits => process_oct(token),
+            _ => panic!("Should not have processed {}", token.text),
         }
     }
 
@@ -322,7 +318,7 @@ mod variable {
     }
 
     fn map_to_property(name_token: &Token, mut opt_q: Option<TypeQualifier>) -> Option<Expression> {
-        if name_token.kind != TokenType::Identifier as TokenKind {
+        if !TokenType::Identifier.matches(&name_token) {
             return None; // keywords don't have dots
         }
         let mut parts: VecDeque<String> =
@@ -471,7 +467,6 @@ mod binary_expression {
     use crate::parser::pc::{any_token, Alt7, OptAndPC, Parser, Token, Tokenizer};
     use crate::parser::pc_specific::{whitespace, SpecificTrait, TokenType};
     use crate::parser::{ExpressionNode, Keyword, Operator};
-    use std::convert::TryFrom;
     use std::str::FromStr;
 
     // result ::= <non-bin-expr> <operator> <expr>
@@ -554,34 +549,30 @@ mod binary_expression {
         }
 
         fn map_token_to_operator(token: &Token) -> Option<Operator> {
-            if let Ok(token_type) = TokenType::try_from(token.kind) {
-                match token_type {
-                    TokenType::Less => Some(Operator::Less),
-                    TokenType::LessEquals => Some(Operator::LessOrEqual),
-                    TokenType::Equals => Some(Operator::Equal),
-                    TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
-                    TokenType::Greater => Some(Operator::Greater),
-                    TokenType::NotEquals => Some(Operator::NotEqual),
-                    TokenType::Plus => Some(Operator::Plus),
-                    TokenType::Minus => Some(Operator::Minus),
-                    TokenType::Star => Some(Operator::Multiply),
-                    TokenType::Slash => Some(Operator::Divide),
-                    TokenType::Keyword => {
-                        if let Ok(keyword) = Keyword::from_str(&token.text) {
-                            match keyword {
-                                Keyword::Mod => Some(Operator::Modulo),
-                                Keyword::And => Some(Operator::And),
-                                Keyword::Or => Some(Operator::Or),
-                                _ => None,
-                            }
-                        } else {
-                            None
+            match TokenType::from_token(&token) {
+                TokenType::Less => Some(Operator::Less),
+                TokenType::LessEquals => Some(Operator::LessOrEqual),
+                TokenType::Equals => Some(Operator::Equal),
+                TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
+                TokenType::Greater => Some(Operator::Greater),
+                TokenType::NotEquals => Some(Operator::NotEqual),
+                TokenType::Plus => Some(Operator::Plus),
+                TokenType::Minus => Some(Operator::Minus),
+                TokenType::Star => Some(Operator::Multiply),
+                TokenType::Slash => Some(Operator::Divide),
+                TokenType::Keyword => {
+                    if let Ok(keyword) = Keyword::from_str(&token.text) {
+                        match keyword {
+                            Keyword::Mod => Some(Operator::Modulo),
+                            Keyword::And => Some(Operator::And),
+                            Keyword::Or => Some(Operator::Or),
+                            _ => None,
                         }
+                    } else {
+                        None
                     }
-                    _ => None,
                 }
-            } else {
-                None
+                _ => None,
             }
         }
     }
@@ -649,17 +640,15 @@ pub mod file_handle {
         fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
             let pos = tokenizer.position();
             match tokenizer.read()? {
-                Some(token) if token.kind == TokenType::Pound as TokenKind => {
-                    match tokenizer.read()? {
-                        Some(token) if token.kind == TokenType::Digits as TokenKind => {
-                            match token.text.parse::<u8>() {
-                                Ok(d) if d > 0 => Ok(FileHandle::from(d).at(pos)),
-                                _ => Err(QError::BadFileNameOrNumber),
-                            }
+                Some(token) if TokenType::Pound.matches(&token) => match tokenizer.read()? {
+                    Some(token) if TokenType::Digits.matches(&token) => {
+                        match token.text.parse::<u8>() {
+                            Ok(d) if d > 0 => Ok(FileHandle::from(d).at(pos)),
+                            _ => Err(QError::BadFileNameOrNumber),
                         }
-                        _ => Err(QError::syntax_error("Expected: digits after #")),
                     }
-                }
+                    _ => Err(QError::syntax_error("Expected: digits after #")),
+                },
                 Some(token) => {
                     tokenizer.unread(token);
                     Err(QError::Incomplete)

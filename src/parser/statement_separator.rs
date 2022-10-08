@@ -33,11 +33,11 @@ impl Parser for CommentSeparator {
         let mut tokens: TokenList = vec![];
         let mut found_eol = false;
         while let Some(token) = tokenizer.read()? {
-            if token.kind == TokenType::Whitespace as TokenKind {
+            if TokenType::Whitespace.matches(&token) {
                 if !found_eol {
                     tokens.push(token);
                 }
-            } else if token.kind == TokenType::Eol as TokenKind {
+            } else if TokenType::Eol.matches(&token) {
                 found_eol = true;
                 tokens.clear();
             } else {
@@ -61,12 +61,12 @@ impl Parser for CommonSeparator {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut sep = TokenType::Unknown;
         while let Some(token) = tokenizer.read()? {
-            if token.kind == TokenType::Whitespace as TokenKind {
+            if TokenType::Whitespace.matches(&token) {
                 // skip whitespace
-            } else if token.kind == TokenType::SingleQuote as TokenKind {
+            } else if TokenType::SingleQuote.matches(&token) {
                 tokenizer.unread(token);
                 return Ok(());
-            } else if token.kind == TokenType::Colon as TokenKind {
+            } else if TokenType::Colon.matches(&token) {
                 if sep == TokenType::Unknown {
                     // same line separator
                     sep = TokenType::Colon;
@@ -74,7 +74,7 @@ impl Parser for CommonSeparator {
                     tokenizer.unread(token);
                     break;
                 }
-            } else if token.kind == TokenType::Eol as TokenKind {
+            } else if TokenType::Eol.matches(&token) {
                 if sep == TokenType::Unknown || sep == TokenType::Eol {
                     // multiline separator
                     sep = TokenType::Eol;
@@ -101,9 +101,9 @@ pub fn peek_eof_or_statement_separator() -> impl Parser<Output = ()> {
         .allow_none()
         .filter(|opt_token| match opt_token {
             Some(token) => {
-                token.kind == TokenType::Colon as TokenKind
-                    || token.kind == TokenType::SingleQuote as TokenKind
-                    || token.kind == TokenType::Eol as TokenKind
+                TokenType::Colon.matches(&token)
+                    || TokenType::SingleQuote.matches(&token)
+                    || TokenType::Eol.matches(&token)
             }
             None => true,
         })

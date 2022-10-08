@@ -207,8 +207,7 @@ macro_rules! recognizers {
         vec![
             $(
             (
-                // TODO remove "as" if Token becomes a generic type
-                $token_type as TokenKind,
+                $token_type.into(),
                 Box::new($recognizer)
             )
             ),+

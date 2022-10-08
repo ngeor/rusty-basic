@@ -80,7 +80,7 @@ impl Parser for CaseButNotElse {
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(case_token) if Keyword::Case == case_token => match tokenizer.read()? {
-                Some(space_token) if space_token.kind == TokenType::Whitespace as TokenKind => {
+                Some(space_token) if TokenType::Whitespace.matches(&space_token) => {
                     match tokenizer.read()? {
                         Some(else_token) if Keyword::Else == else_token => {
                             tokenizer.unread(else_token);
@@ -97,7 +97,7 @@ impl Parser for CaseButNotElse {
                         )),
                     }
                 }
-                Some(paren_token) if paren_token.kind == TokenType::LParen as TokenKind => {
+                Some(paren_token) if TokenType::LParen.matches(&paren_token) => {
                     tokenizer.unread(paren_token);
                     Ok(())
                 }
@@ -135,7 +135,6 @@ mod case_expression_parser {
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::{CaseExpression, Keyword, Operator};
-    use std::convert::TryFrom;
 
     pub fn parser() -> impl Parser<Output = CaseExpression> {
         case_is().or(simple_or_range())
@@ -156,20 +155,14 @@ mod case_expression_parser {
 
     fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
         any_token()
-            .filter_map(|token| {
-                if let Ok(token_type) = TokenType::try_from(token.kind) {
-                    match token_type {
-                        TokenType::LessEquals => Some(Operator::LessOrEqual),
-                        TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
-                        TokenType::NotEquals => Some(Operator::NotEqual),
-                        TokenType::Less => Some(Operator::Less),
-                        TokenType::Greater => Some(Operator::Greater),
-                        TokenType::Equals => Some(Operator::Equal),
-                        _ => None,
-                    }
-                } else {
-                    None
-                }
+            .filter_map(|token| match TokenType::from_token(&token) {
+                TokenType::LessEquals => Some(Operator::LessOrEqual),
+                TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
+                TokenType::NotEquals => Some(Operator::NotEqual),
+                TokenType::Less => Some(Operator::Less),
+                TokenType::Greater => Some(Operator::Greater),
+                TokenType::Equals => Some(Operator::Equal),
+                _ => None,
             })
             .with_pos()
     }

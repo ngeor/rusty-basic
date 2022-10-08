@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use crate::common::CmpIgnoreAsciiCase;
-use crate::parser::pc::{Token, TokenKind};
+use crate::parser::pc::Token;
 use crate::parser::pc_specific::TokenType;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -158,8 +158,7 @@ pub enum Keyword {
 
 impl PartialEq<Token> for Keyword {
     fn eq(&self, other: &Token) -> bool {
-        other.kind == TokenType::Keyword as TokenKind
-            && other.text.eq_ignore_ascii_case(self.as_str())
+        TokenType::Keyword.matches(&other) && other.text.eq_ignore_ascii_case(self.as_str())
     }
 }
 

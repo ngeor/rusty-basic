@@ -26,7 +26,7 @@ impl Parser for TopLevelTokensParser {
             let opt_item = tokenizer.read()?;
             match opt_item {
                 Some(ch) => {
-                    let token_type = TokenType::from(ch.kind);
+                    let token_type = TokenType::from_token(&ch);
                     if token_type == TokenType::Whitespace {
                         // skip whitespace
                     } else if token_type == TokenType::Eol || token_type == TokenType::Colon {

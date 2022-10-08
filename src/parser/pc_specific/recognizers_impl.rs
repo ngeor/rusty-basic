@@ -138,15 +138,12 @@ pub fn create_recognizers() -> RecognizersWithType {
         TokenType::Identifier => leading_remaining_recognizer(is_letter, |ch| {
             is_letter(ch) || is_digit(ch) || ch == '.'
         }),
-
         TokenType::OctDigits => OctHexDigitsRecognizer {
             mode: OctOrHex::Oct,
         },
-
         TokenType::HexDigits => OctHexDigitsRecognizer {
             mode: OctOrHex::Hex,
         },
-
         TokenType::Unknown => any_single_char_recognizer,
     ]
 }

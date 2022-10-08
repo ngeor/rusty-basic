@@ -1,5 +1,5 @@
 use crate::common::QError;
-use crate::parser::pc::{NonOptParser, Parser, Token, TokenKind, Tokenizer};
+use crate::parser::pc::{NonOptParser, Parser, Token, Tokenizer};
 use crate::parser::pc_specific::TokenType;
 use crate::parser::TypeQualifier;
 
@@ -25,15 +25,15 @@ impl Parser for TypeQualifierParser {
 
 impl TypeQualifierParser {
     pub fn map(token: &Token) -> Option<TypeQualifier> {
-        if token.kind == TokenType::ExclamationMark as TokenKind {
+        if TokenType::ExclamationMark.matches(&token) {
             Some(TypeQualifier::BangSingle)
-        } else if token.kind == TokenType::Pound as TokenKind {
+        } else if TokenType::Pound.matches(&token) {
             Some(TypeQualifier::HashDouble)
-        } else if token.kind == TokenType::DollarSign as TokenKind {
+        } else if TokenType::DollarSign.matches(&token) {
             Some(TypeQualifier::DollarString)
-        } else if token.kind == TokenType::Percent as TokenKind {
+        } else if TokenType::Percent.matches(&token) {
             Some(TypeQualifier::PercentInteger)
-        } else if token.kind == TokenType::Ampersand as TokenKind {
+        } else if TokenType::Ampersand.matches(&token) {
             Some(TypeQualifier::AmpersandLong)
         } else {
             None
@@ -48,7 +48,7 @@ impl Parser for TypeQualifierPostGuardParser {
 
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         if let Some(token) = tokenizer.read()? {
-            if token.kind == TokenType::Dot as TokenKind {
+            if TokenType::Dot.matches(&token) {
                 Err(QError::syntax_error(
                     "Type qualifier cannot be followed by dot",
                 ))

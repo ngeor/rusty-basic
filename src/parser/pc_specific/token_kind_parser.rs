@@ -2,8 +2,7 @@
 // TokenKindParser
 //
 
-use crate::common::QError;
-use crate::parser::pc::{any_token, OptAndPC, Parser, Token, TokenKind};
+use crate::parser::pc::{any_token, OptAndPC, Parser, Token};
 use crate::parser::pc_specific::TokenType;
 
 /// Equal sign, surrounded by optional whitespace.
@@ -87,8 +86,8 @@ pub fn digits() -> impl Parser<Output = Token> {
 
 pub fn any_token_of(token_type: TokenType) -> impl Parser<Output = Token> {
     any_token()
-        .filter(move |token| token.kind == token_type as TokenKind)
-        .map_incomplete_err(QError::from(token_type))
+        .filter(move |token| token_type.matches(token))
+        .map_incomplete_err(token_type.to_error())
 }
 
 fn any_token_of_ws(token_type: TokenType) -> impl Parser<Output = Token> {

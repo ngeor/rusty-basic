@@ -14,10 +14,10 @@ impl Parser for CommentAsString {
     type Output = String;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
-            Some(token) if token.kind == TokenType::SingleQuote as TokenKind => {
+            Some(token) if TokenType::SingleQuote.matches(&token) => {
                 let mut result = String::new();
                 while let Some(token) = tokenizer.read()? {
-                    if token.kind == TokenType::Eol as TokenKind {
+                    if TokenType::Eol.matches(&token) {
                         tokenizer.unread(token);
                         break;
                     } else {

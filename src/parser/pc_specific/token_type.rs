@@ -1,116 +1,106 @@
 use crate::common::QError;
-use crate::parser::pc::TokenKind;
-use std::convert::TryFrom;
+use crate::parser::pc::Token;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum TokenType {
-    Eol,
-    Whitespace,
-    Digits,
-    LParen,
-    RParen,
-    Colon,
-    Semicolon,
-    Comma,
-    SingleQuote,
-    DoubleQuote,
-    Dot,
-    Equals,
-    Greater,
-    Less,
-    GreaterEquals,
-    LessEquals,
-    NotEquals,
-    Plus,
-    Minus,
-    Star,
-    Slash,
-    Ampersand,
-    ExclamationMark,
-    Pound,
-    DollarSign,
-    Percent,
-    // keyword needs to be before Identifier
-    Keyword,
-    /// Starts with letter, continues with letters, digits or dots.
-    Identifier,
-    OctDigits,
-    HexDigits,
-
-    // unknown must be last
-    Unknown,
-}
-
-impl From<TokenKind> for TokenType {
-    fn from(value: TokenKind) -> Self {
-        let all_tokens = [
-            TokenType::Eol,
-            TokenType::Whitespace,
-            TokenType::Digits,
-            TokenType::LParen,
-            TokenType::RParen,
-            TokenType::Colon,
-            TokenType::Semicolon,
-            TokenType::Comma,
-            TokenType::SingleQuote,
-            TokenType::DoubleQuote,
-            TokenType::Dot,
-            TokenType::Equals,
-            TokenType::Greater,
-            TokenType::Less,
-            TokenType::GreaterEquals,
-            TokenType::LessEquals,
-            TokenType::NotEquals,
-            TokenType::Plus,
-            TokenType::Minus,
-            TokenType::Star,
-            TokenType::Slash,
-            TokenType::Ampersand,
-            TokenType::ExclamationMark,
-            TokenType::Pound,
-            TokenType::DollarSign,
-            TokenType::Percent,
-            TokenType::Keyword,
-            TokenType::Identifier,
-            TokenType::OctDigits,
-            TokenType::HexDigits,
-            TokenType::Unknown,
-        ];
-        all_tokens[value as usize]
-    }
-}
-
-impl TryFrom<TokenType> for char {
-    type Error = QError;
-
-    fn try_from(value: TokenType) -> Result<Self, Self::Error> {
-        match value {
-            TokenType::Semicolon => Ok(';'),
-            TokenType::Comma => Ok(','),
-            TokenType::Equals => Ok('='),
-            TokenType::Colon => Ok(':'),
-            TokenType::Star => Ok('*'),
-            TokenType::LParen => Ok('('),
-            TokenType::RParen => Ok(')'),
-            _ => Err(QError::InternalError(format!(
-                "not implemented {:?}",
-                value
-            ))),
+macro_rules! enum_with_index {
+    ($vis:vis enum $name:tt $all_members:tt { $($member:tt $(: $friendly:literal)?),+$(,)? }) => {
+        #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+        $vis enum $name {
+            $($member),+
         }
+
+        const $all_members : &[$name] = &[
+            $($name::$member),+
+        ];
+
+        impl $name {
+            #[allow(unused_assignments)]
+            fn to_index(&self) -> usize {
+                let mut result : usize = 0;
+                $(
+                    if let Self::$member = self {
+                        return result;
+                    }
+                    result += 1;
+                )+
+                panic!("should not happen")
+            }
+
+            fn from_index(needle: usize) -> Self {
+                $all_members[needle]
+            }
+
+            fn to_str(&self) -> String {
+                $(
+                    $(
+                        if let Self::$member = self {
+                            return format!("{}", $friendly);
+                        }
+                    )?
+                )+
+                format!("Token of type {:?}", self)
+            }
+        }
+    };
+}
+
+enum_with_index!(
+    pub enum TokenType ALL_TOKEN_TYPES {
+        Eol,
+        Whitespace: "whitespace",
+        Digits,
+        LParen: '(',
+        RParen: ')',
+        Colon,
+        Semicolon: ';',
+        Comma: ',',
+        SingleQuote,
+        DoubleQuote,
+        Dot,
+        Equals,
+        Greater,
+        Less,
+        GreaterEquals,
+        LessEquals,
+        NotEquals,
+        Plus,
+        Minus,
+        Star,
+        Slash,
+        Ampersand,
+        ExclamationMark,
+        Pound,
+        DollarSign,
+        Percent,
+        // keyword needs to be before Identifier
+        Keyword,
+        // Starts with letter, continues with letters, digits or dots.
+        Identifier,
+        OctDigits,
+        HexDigits,
+
+        // unknown must be last
+        Unknown,
+    }
+);
+
+impl TokenType {
+    pub fn matches(&self, token: &Token) -> bool {
+        self.to_index() == token.kind as usize
+    }
+
+    pub fn from_token(token: &Token) -> Self {
+        Self::from_index(token.kind as usize)
+    }
+
+    pub fn to_error(&self) -> QError {
+        QError::Expected(format!("Expected: {}", self.to_str()))
     }
 }
 
-impl From<TokenType> for QError {
+impl From<TokenType> for u8 {
     fn from(token_type: TokenType) -> Self {
-        QError::Expected(match char::try_from(token_type) {
-            Ok(ch) => {
-                format!("Expected: {}", ch)
-            }
-            _ => match token_type {
-                TokenType::Whitespace => "Expected: whitespace".to_owned(),
-                // TODO : implement and use Display
-                _ => format!("Expected: token of type {:?}", token_type),
-            },
-        })
+        let idx = token_type.to_index();
+        debug_assert!(idx < u8::MAX.into());
+        idx as u8
     }
 }

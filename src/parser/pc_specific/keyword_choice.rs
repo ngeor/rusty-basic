@@ -32,7 +32,7 @@ impl<'a> Parser for KeywordChoice<'a> {
 
 impl<'a> KeywordChoice<'a> {
     fn find_keyword(&self, token: &Token) -> Option<Keyword> {
-        if token.kind == TokenType::Keyword as TokenKind {
+        if TokenType::Keyword.matches(&token) {
             // if it panics, it means the recognizer somehow has a bug
             let needle = Keyword::from_str(&token.text).unwrap();
             if self.keywords.contains(&needle) {

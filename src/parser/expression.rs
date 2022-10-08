@@ -103,7 +103,7 @@ fn eager_expression_node() -> impl Parser<Output = ExpressionNode> {
 
 mod single_or_double_literal {
     use crate::parser::pc::*;
-    use crate::parser::pc_specific::{digits, dot, pound, WithPosTrait};
+    use crate::parser::pc_specific::{digits, dot, pound, SpecificTrait};
     use crate::parser::*;
 
     // single ::= <digits> . <digits>
@@ -168,7 +168,7 @@ mod string_literal {
 mod integer_or_long_literal {
     use crate::common::QError;
     use crate::parser::pc::*;
-    use crate::parser::pc_specific::{TokenType, WithPosTrait};
+    use crate::parser::pc_specific::{SpecificTrait, TokenType};
     use crate::parser::*;
     use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
 
@@ -284,7 +284,7 @@ mod integer_or_long_literal {
 mod variable {
     use crate::parser::name::name_as_tokens;
     use crate::parser::pc::*;
-    use crate::parser::pc_specific::{TokenType, WithPosTrait};
+    use crate::parser::pc_specific::{SpecificTrait, TokenType};
     use crate::parser::*;
     use std::collections::VecDeque;
 
@@ -343,7 +343,7 @@ mod function_call_or_array_element {
     use crate::parser::expression::expression_node_p;
     use crate::parser::name::name_as_tokens;
     use crate::parser::pc::*;
-    use crate::parser::pc_specific::{csv, in_parenthesis, WithPosTrait};
+    use crate::parser::pc_specific::{csv, in_parenthesis, SpecificTrait};
     use crate::parser::*;
 
     // function_call ::= <function-name> "(" <expr>* ")"
@@ -375,7 +375,7 @@ pub mod property {
     use crate::parser::expression::{function_call_or_array_element, variable};
     use crate::parser::name::name_as_tokens;
     use crate::parser::pc::*;
-    use crate::parser::pc_specific::{dot, OrErrorTrait};
+    use crate::parser::pc_specific::{dot, SpecificTrait};
     use crate::parser::*;
     use std::collections::VecDeque;
 
@@ -445,7 +445,7 @@ pub mod property {
 mod built_in_function_call {
     use crate::built_ins::parser::built_in_function_call_p;
     use crate::parser::pc::Parser;
-    use crate::parser::pc_specific::WithPosTrait;
+    use crate::parser::pc_specific::SpecificTrait;
     use crate::parser::ExpressionNode;
 
     pub fn parser() -> impl Parser<Output = ExpressionNode> {
@@ -460,7 +460,7 @@ mod binary_expression {
         property, single_or_double_literal, string_literal, unary_expression,
     };
     use crate::parser::pc::{any_token, Alt7, OptAndPC, Parser, Token, Tokenizer};
-    use crate::parser::pc_specific::{whitespace, OrErrorTrait, TokenType, WithPosTrait};
+    use crate::parser::pc_specific::{whitespace, SpecificTrait, TokenType};
     use crate::parser::{ExpressionNode, Keyword, Operator};
     use std::convert::TryFrom;
     use std::str::FromStr;
@@ -582,7 +582,7 @@ mod unary_expression {
     use crate::common::Locatable;
     use crate::parser::expression::{expression_node_p, guard};
     use crate::parser::pc::{seq2, Parser};
-    use crate::parser::pc_specific::{keyword, minus_sign, OrErrorTrait, WithPosTrait};
+    use crate::parser::pc_specific::{keyword, minus_sign, SpecificTrait};
     use crate::parser::{ExpressionNode, Keyword, UnaryOperator};
 
     pub fn parser() -> impl Parser<Output = ExpressionNode> {
@@ -606,7 +606,7 @@ mod unary_expression {
 mod parenthesis {
     use crate::parser::expression::expression_node_p;
     use crate::parser::pc::Parser;
-    use crate::parser::pc_specific::{in_parenthesis, OrErrorTrait, WithPosTrait};
+    use crate::parser::pc_specific::{in_parenthesis, SpecificTrait};
     use crate::parser::{Expression, ExpressionNode};
 
     pub fn parser() -> impl Parser<Output = ExpressionNode> {

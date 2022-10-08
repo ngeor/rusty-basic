@@ -239,3 +239,5 @@ pub trait ParserOnce {
 
     fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
 }
+
+// TODO remove all "impl Parser" outside the main framework

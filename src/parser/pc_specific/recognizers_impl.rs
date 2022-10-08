@@ -1,9 +1,11 @@
-use crate::common::QError;
 use crate::parser::char_reader::file_char_reader;
 use crate::parser::pc::*;
 use crate::parser::SORTED_KEYWORDS_STR;
 use std::fs::File;
 use std::str::Chars;
+
+// TODO keyword --> ensure not followed by dollar sign
+// TODO make identifier recognizer without dot
 
 #[derive(Clone, Copy)]
 enum OctOrHex {
@@ -146,26 +148,6 @@ pub fn create_recognizers() -> Vec<Box<dyn Recognizer>> {
 
 pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
     create_tokenizer(file_char_reader(input), create_recognizers())
-}
-
-//
-// Or Syntax Error
-//
-
-pub trait OrErrorTrait
-where
-    Self: Sized + Parser,
-{
-    fn or_syntax_error(self, msg: &str) -> OrFailParser<Self>;
-}
-
-impl<S> OrErrorTrait for S
-where
-    S: Parser,
-{
-    fn or_syntax_error(self, msg: &str) -> OrFailParser<Self> {
-        self.or_fail(QError::syntax_error(msg))
-    }
 }
 
 #[cfg(test)]

@@ -3,7 +3,6 @@
 //
 
 // TODO review name-like parsers
-// TODO make identifier recognizer without dot
 
 use crate::common::QError;
 use crate::parser::pc::{Parser, Token};

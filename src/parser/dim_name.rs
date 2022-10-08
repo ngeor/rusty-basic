@@ -65,7 +65,7 @@ mod array_dimensions {
     // expr ws+ TO ws+ expr (e.g. 1 TO 10)
     // paren_expr ws* TO ws* paren_expr
     fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
-        OptSecondExpressionParser::new(expression::expression_node_p(), Keyword::To).map(
+        opt_second_expression_parser(expression::expression_node_p(), Keyword::To).map(
             |(l, opt_r)| match opt_r {
                 Some(r) => ArrayDimension {
                     lbound: Some(l),

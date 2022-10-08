@@ -28,14 +28,14 @@ impl StaticErrorMapper {
 
 pub struct MapIncompleteErrParser<P> {
     parser: P,
-    err: StaticErrorMapper,
+    static_error_mapper: StaticErrorMapper,
 }
 
 impl<P> MapIncompleteErrParser<P> {
     pub fn new(parser: P, err: QError) -> Self {
         Self {
             parser,
-            err: StaticErrorMapper::ensure_incomplete(err),
+            static_error_mapper: StaticErrorMapper::ensure_incomplete(err),
         }
     }
 }
@@ -49,20 +49,20 @@ where
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         self.parser
             .parse(tokenizer)
-            .map_err(|err| self.err.map_err(err))
+            .map_err(|err| self.static_error_mapper.map_err(err))
     }
 }
 
 pub struct OrFailParser<P> {
     parser: P,
-    err: StaticErrorMapper,
+    static_error_mapper: StaticErrorMapper,
 }
 
 impl<P> OrFailParser<P> {
     pub fn new(parser: P, err: QError) -> Self {
         Self {
             parser,
-            err: StaticErrorMapper::ensure_complete(err),
+            static_error_mapper: StaticErrorMapper::ensure_complete(err),
         }
     }
 }
@@ -76,7 +76,7 @@ where
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         self.parser
             .parse(tokenizer)
-            .map_err(|err| self.err.map_err(err))
+            .map_err(|err| self.static_error_mapper.map_err(err))
     }
 }
 

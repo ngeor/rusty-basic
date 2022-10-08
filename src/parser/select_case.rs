@@ -176,7 +176,7 @@ mod case_expression_parser {
     }
 
     fn simple_or_range() -> impl Parser<Output = CaseExpression> {
-        OptSecondExpressionParser::new(expression_node_p(), Keyword::To).map(|(left, opt_right)| {
+        opt_second_expression_parser(expression_node_p(), Keyword::To).map(|(left, opt_right)| {
             match opt_right {
                 Some(right) => CaseExpression::Range(left, right),
                 _ => CaseExpression::Simple(left),

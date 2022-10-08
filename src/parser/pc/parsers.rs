@@ -3,9 +3,9 @@ use crate::parser::pc::and_opt::AndOptPC;
 use crate::parser::pc::many::OneOrMoreParser;
 use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
-    AllowDefaultParser, AllowNoneParser, Alt2, AndPC, AndThen, FilterMapParser, FilterParser,
-    GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, NegateParser, NoIncompleteParser,
-    OrFailParser, PeekParser, Tokenizer, Undo,
+    AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, Alt2, AndPC, AndThen, ChainParser,
+    FilterMapParser, FilterParser, GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, MapOnce,
+    NegateParser, NoIncompleteParser, OrFailParser, PeekParser, Tokenizer, Undo,
 };
 
 // TODO V4: the tokenizer is not visible (practically an iterator)
@@ -16,6 +16,7 @@ use crate::parser::pc::{
 // alternatively, move the Tokenizer impl up as generic parameter
 
 // TODO make QError generic param too after figuring out <T> vs associated type
+
 pub trait Parser {
     type Output;
 
@@ -69,6 +70,14 @@ pub trait Parser {
         F: Fn(Self::Output) -> U,
     {
         FnMapper::new(self, mapper)
+    }
+
+    fn map_once<F, U>(self, mapper: F) -> MapOnce<Self, F>
+    where
+        Self: Sized,
+        F: FnOnce(Self::Output) -> U,
+    {
+        MapOnce::new(self, mapper)
     }
 
     fn map_incomplete_err(self, err: QError) -> MapIncompleteErrParser<Self>
@@ -145,6 +154,13 @@ pub trait Parser {
         AllowNoneParser::new(self)
     }
 
+    fn allow_none_if(self, condition: bool) -> AllowNoneIfParser<Self>
+    where
+        Self: Sized,
+    {
+        AllowNoneIfParser::new(self, condition)
+    }
+
     fn allow_default(self) -> AllowDefaultParser<Self>
     where
         Self: Sized,
@@ -198,6 +214,15 @@ pub trait Parser {
     {
         NegateParser::new(self)
     }
+
+    fn chain<RF, R>(self, right_factory: RF) -> ChainParser<Self, RF>
+    where
+        Self: Sized,
+        RF: Fn(Self::Output) -> R,
+        R: ParserOnce,
+    {
+        ChainParser::new(self, right_factory)
+    }
 }
 
 /// A parser that returns a successful result or a fatal error.
@@ -207,3 +232,10 @@ pub trait NonOptParser: Parser {}
 
 // TODO try an OptParser trait which has the conversions to NonOptParser methods such as or_syntax_error
 // TODO mimic the std::iter functions to create new parsers from simpler blocks
+
+/// A parser that can only be used once. Similar to `FnOnce`.
+pub trait ParserOnce {
+    type Output;
+
+    fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
+}

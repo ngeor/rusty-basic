@@ -11,6 +11,7 @@ struct KeywordParser {
     keyword: Keyword,
 }
 
+// TODO remove all "impl Parser" outside the main framework
 impl Parser for KeywordParser {
     type Output = Token;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {

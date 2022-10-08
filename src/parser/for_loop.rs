@@ -37,7 +37,7 @@ fn parse_for_step_p() -> impl Parser<
         Option<ExpressionNode>,
     ),
 > {
-    OptSecondExpressionParser::new(parse_for_p(), Keyword::Step)
+    opt_second_expression_parser(parse_for_p(), Keyword::Step)
         .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
 }
 

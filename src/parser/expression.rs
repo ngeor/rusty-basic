@@ -147,7 +147,7 @@ mod string_literal {
             string_delimiter(),
             inside_string(),
             string_delimiter().no_incomplete(),
-            |_, token_list, _| Expression::StringLiteral(token_list_to_string(&token_list)),
+            |_, token_list, _| Expression::StringLiteral(token_list_to_string(token_list)),
         )
         .with_pos()
     }
@@ -162,14 +162,6 @@ mod string_literal {
                 !TokenType::DoubleQuote.matches(&token) && !TokenType::Eol.matches(&token)
             })
             .zero_or_more()
-    }
-
-    fn token_list_to_string(list: &[Token]) -> String {
-        let mut result = String::new();
-        for token in list {
-            result.push_str(&token.text);
-        }
-        result
     }
 }
 
@@ -284,77 +276,95 @@ mod integer_or_long_literal {
     }
 }
 
-// TODO review variable/function_call/property modules for refactoring options
 // TODO consider nesting variable/function_call modules inside property as they are only used there
 mod variable {
-    use crate::parser::name::{name_as_tokens, NameAsTokens};
+    use crate::parser::name::{name_with_dots_as_tokens, token_to_type_qualifier, NameAsTokens};
     use crate::parser::pc::*;
-    use crate::parser::pc_specific::SpecificTrait;
+    use crate::parser::pc_specific::{SpecificTrait, TokenType};
     use crate::parser::*;
     use std::collections::VecDeque;
 
-    // variable ::= <identifier>
-    //           |  <identifier> <type-qualifier>
+    // variable ::= <identifier-with-dots>
+    //           |  <identifier-with-dots> <type-qualifier>
     //           |  <keyword> "$"
     //
     // must not be followed by parenthesis (solved by ordering of parsers)
     //
-    // if <identifier> contains dots, it might be converted to a property expression
+    // if <identifier-with-dots> contains dots, it might be converted to a property expression
     pub fn parser() -> impl Parser<Output = ExpressionNode> {
-        name_as_tokens().map(map_to_expr).with_pos()
+        name_with_dots_as_tokens().map(map_to_expr).with_pos()
     }
 
     fn map_to_expr(name_as_tokens: NameAsTokens) -> Expression {
-        if let Some(property_expr) = map_to_property(&name_as_tokens) {
-            property_expr
+        if is_property_expr(&name_as_tokens) {
+            map_to_property(name_as_tokens)
         } else {
             Expression::Variable(name_as_tokens.into(), VariableInfo::unresolved())
         }
     }
 
-    fn map_to_property(name_as_tokens: &NameAsTokens) -> Option<Expression> {
-        match name_as_tokens {
-            NameAsTokens::KeywordDollar(_) => {
-                // keywords don't have dots
-                None
-            }
-            NameAsTokens::Identifier { name, opt_q } => {
-                let mut parts: VecDeque<String> =
-                    name.text.split('.').map(ToOwned::to_owned).collect();
-                if parts.len() == 1 || parts.iter().any(|s| s.is_empty()) {
-                    // either no dots or gaps between dots or trailing dot
-                    return None;
+    fn is_property_expr(name_as_tokens: &NameAsTokens) -> bool {
+        let (names, _) = name_as_tokens;
+        let mut name_count = 0;
+        let mut last_was_dot = false;
+        for name in names {
+            if TokenType::Dot.matches(name) {
+                if name_count == 0 {
+                    panic!("Leading dot cannot happen");
                 }
-                let mut result = Expression::Variable(
-                    Name::new(BareName::new(parts.pop_front().unwrap()), None),
-                    VariableInfo::unresolved(),
-                );
-                let mut opt_q = opt_q.as_ref().map(|(_, q)| *q);
-                while let Some(part) = parts.pop_front() {
-                    let is_last = parts.is_empty();
-                    let opt_q_next = if is_last { opt_q.take() } else { None };
-                    result = Expression::Property(
-                        Box::new(result),
-                        Name::new(BareName::new(part), opt_q_next),
-                        ExpressionType::Unresolved,
-                    );
+                if last_was_dot {
+                    // two dots in a row
+                    return false;
+                } else {
+                    last_was_dot = true;
                 }
-                Some(result)
+            } else {
+                name_count += 1;
+                last_was_dot = false;
             }
         }
+        // at least two names and no trailing dot
+        name_count > 1 && !last_was_dot
+    }
+
+    fn map_to_property(name_as_tokens: NameAsTokens) -> Expression {
+        let (names, opt_q_token) = name_as_tokens;
+        let mut property_names: VecDeque<String> = names
+            .into_iter()
+            .filter(|token| !TokenType::Dot.matches(token))
+            .map(|token| token.text)
+            .collect();
+        let mut result = Expression::Variable(
+            Name::new(BareName::new(property_names.pop_front().unwrap()), None),
+            VariableInfo::unresolved(),
+        );
+        while let Some(property_name) = property_names.pop_front() {
+            let is_last = property_names.is_empty();
+            let opt_q_next = if is_last {
+                opt_q_token.as_ref().map(token_to_type_qualifier)
+            } else {
+                None
+            };
+            result = Expression::Property(
+                Box::new(result),
+                Name::new(BareName::new(property_name), opt_q_next),
+                ExpressionType::Unresolved,
+            );
+        }
+        result
     }
 }
 
 mod function_call_or_array_element {
     use crate::parser::expression::expression_node_p;
-    use crate::parser::name::name_as_tokens;
+    use crate::parser::name::name_with_dots_as_tokens;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::{csv, in_parenthesis, SpecificTrait};
     use crate::parser::*;
 
     // function_call ::= <function-name> "(" <expr>* ")"
-    // function-name ::= <identifier>
-    //                |  <identifier> <type-qualifier>
+    // function-name ::= <identifier-with-dots>
+    //                |  <identifier-with-dots> <type-qualifier>
     //                |  <keyword> "$"
     //
     // Cannot invoke function with empty parenthesis, even if they don't have arguments.
@@ -363,7 +373,7 @@ mod function_call_or_array_element {
     // A function can be qualified.
 
     pub fn parser() -> impl Parser<Output = ExpressionNode> {
-        name_as_tokens()
+        name_with_dots_as_tokens()
             .and(in_parenthesis(csv(expression_node_p()).allow_default()))
             .map(|(name_as_tokens, arguments)| {
                 Expression::FunctionCall(name_as_tokens.into(), arguments)
@@ -375,62 +385,62 @@ mod function_call_or_array_element {
 pub mod property {
     use crate::common::QError;
     use crate::parser::expression::{function_call_or_array_element, variable};
-    use crate::parser::name::name_as_tokens;
+    use crate::parser::name::{identifier, token_to_type_qualifier, type_qualifier};
     use crate::parser::pc::*;
     use crate::parser::pc_specific::{dot, SpecificTrait};
     use crate::parser::*;
-    use std::collections::VecDeque;
 
     // property ::= <expr> "." <property-name>
     // property-name ::= <identifier-without-dot>
     //                 | <identifier-without-dot> <type-qualifier>
+    //
+    // expr must not be qualified
 
     pub fn parser() -> impl Parser<Output = ExpressionNode> {
-        Seq2::new(
-            base_expr_node(),
-            dot().then_demand(property_names()).allow_default(),
-        )
-        .and_then(|(expr_node, properties)| {
-            if !properties.is_empty() && is_qualified(expr_node.as_ref()) {
+        Seq2::new(base_expr_node(), dot_properties()).and_then(|(first_expr_node, properties)| {
+            if !properties.is_empty() && is_qualified(first_expr_node.as_ref()) {
+                // TODO do this check before parsing the properties
                 return Err(QError::syntax_error(
                     "Qualified name cannot have properties",
                 ));
             }
-            let mut result = expr_node;
-            for property_name in properties {
-                result = result.map(|expr| {
-                    Expression::Property(Box::new(expr), property_name, ExpressionType::Unresolved)
-                });
-            }
+            let result = properties.into_iter().fold(
+                first_expr_node,
+                |prev_expr_node, (name_token, opt_q_token)| {
+                    let property_name = Name::new(
+                        BareName::from(name_token),
+                        opt_q_token.as_ref().map(token_to_type_qualifier),
+                    );
+                    prev_expr_node.map(|prev_expr| {
+                        Expression::Property(
+                            Box::new(prev_expr),
+                            property_name,
+                            ExpressionType::Unresolved,
+                        )
+                    })
+                },
+            );
             Ok(result)
         })
+    }
+
+    fn dot_properties() -> impl Parser<Output = Vec<(Token, Option<Token>)>> + NonOptParser {
+        dot_property().zero_or_more()
+    }
+
+    fn dot_property() -> impl Parser<Output = (Token, Option<Token>)> {
+        dot().then_demand(property().or_syntax_error("Expected: property name after dot"))
+    }
+
+    // cannot be followed by dot or type qualifier if qualified
+    fn property() -> impl Parser<Output = (Token, Option<Token>)> {
+        identifier().and_opt(type_qualifier())
     }
 
     // can't use expression_node_p because it will stack overflow
     fn base_expr_node() -> impl Parser<Output = ExpressionNode> {
         // order is important, variable matches anything that function_call_or_array_element matches
         Alt2::new(function_call_or_array_element::parser(), variable::parser())
-    }
-
-    fn property_names() -> impl Parser<Output = Vec<Name>> + NonOptParser {
-        // TODO perhaps max length of 40 characters applies only to parts not the full string
-        name_as_tokens()
-            .and_then(|name_as_tokens| {
-                let (name, opt_q) = Name::from(name_as_tokens).into_inner();
-                let name = String::from(name);
-                let mut parts: VecDeque<String> = name.split('.').map(ToOwned::to_owned).collect();
-                if parts.iter().any(|s| s.is_empty()) {
-                    return Err(QError::syntax_error("Expected: property name after period"));
-                }
-                let mut result: Vec<Name> = vec![];
-                for _ in 0..parts.len() - 1 {
-                    result.push(Name::new(BareName::new(parts.pop_front().unwrap()), None));
-                }
-
-                result.push(Name::new(BareName::new(parts.pop_front().unwrap()), opt_q));
-                Ok(result)
-            })
-            .or_syntax_error("Expected: property name after dot")
     }
 
     fn is_qualified(expr: &Expression) -> bool {
@@ -1523,25 +1533,25 @@ mod tests {
         #[test]
         fn test_bare_array_cannot_have_consecutive_dots_in_properties() {
             let input = "A(1).O..ops";
-            assert_parser_err!(input, "Expected: property name after period");
+            assert_parser_err!(input, "Expected: property name after dot");
         }
 
         #[test]
         fn test_duplicate_qualifier_is_error() {
             let input = "abc$%";
-            assert_parser_err!(input, "Duplicate type qualifier");
+            assert_parser_err!(input, "Identifier cannot end with %, &, !, #, or $");
         }
 
         #[test]
         fn test_dot_without_properties_is_error() {
             let input = "abc$.";
-            assert_parser_err!(input, "Type qualifier cannot be followed by dot");
+            assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
         }
 
         #[test]
         fn test_dot_after_qualifier_is_error() {
             let input = "abc$.hello";
-            assert_parser_err!(input, "Type qualifier cannot be followed by dot");
+            assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
         }
 
         #[test]
@@ -1553,13 +1563,13 @@ mod tests {
         #[test]
         fn test_bare_array_qualified_property_trailing_dot_is_not_allowed() {
             let input = "A(1).Suit$.";
-            assert_parser_err!(input, "Type qualifier cannot be followed by dot");
+            assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
         }
 
         #[test]
         fn test_bare_array_qualified_property_extra_qualifier_is_error() {
             let input = "A(1).Suit$%";
-            assert_parser_err!(input, "Duplicate type qualifier");
+            assert_parser_err!(input, "Identifier cannot end with %, &, !, #, or $");
         }
     }
 }

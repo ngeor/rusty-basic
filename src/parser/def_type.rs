@@ -50,13 +50,9 @@ fn letter_range() -> impl Parser<Output = LetterRange> {
 
 fn letter() -> impl Parser<Output = char> {
     any_token_of(TokenType::Identifier)
-        .filter(|token| token.text.chars().count() == 1 && is_letter(token_ref_to_char(token)))
+        .filter(|token| token.text.chars().count() == 1)
         .map(token_to_char)
         .map_incomplete_err(QError::expected("Expected: letter"))
-}
-
-fn token_ref_to_char(token: &Token) -> char {
-    token.text.chars().next().unwrap()
 }
 
 fn token_to_char(token: Token) -> char {

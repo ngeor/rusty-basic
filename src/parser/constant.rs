@@ -8,7 +8,7 @@ pub fn constant_p() -> impl Parser<Output = Statement> {
     seq5(
         keyword(Keyword::Const),
         whitespace().no_incomplete(),
-        name::name_with_dot_p()
+        name::name_with_dots()
             .with_pos()
             .or_syntax_error("Expected: const name"),
         equal_sign().no_incomplete(),

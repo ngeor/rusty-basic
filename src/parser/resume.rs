@@ -1,4 +1,4 @@
-use crate::parser::name::bare_name_p;
+use crate::parser::name::bare_name_with_dots;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::statement_separator::peek_eof_or_statement_separator;
@@ -32,7 +32,7 @@ fn resume_next() -> impl Parser<Output = ResumeOption> {
 
 fn resume_label() -> impl Parser<Output = ResumeOption> {
     whitespace()
-        .and(bare_name_p())
+        .and(bare_name_with_dots())
         .keep_right()
         .map(ResumeOption::Label)
 }

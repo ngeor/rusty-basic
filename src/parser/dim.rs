@@ -124,6 +124,12 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_dim_user_defined_type_cannot_include_period() {
+        let input = "DIM Card AS A.B";
+        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+    }
+
+    #[test]
     fn test_parse_dim_compact() {
         assert_parse_dim_compact!("A");
         assert_parse_dim_compact!("A.");

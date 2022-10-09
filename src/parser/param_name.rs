@@ -1,5 +1,6 @@
 use crate::common::*;
 use crate::parser::expression::expression_node_p;
+use crate::parser::name::bare_name_without_dots;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
@@ -94,18 +95,9 @@ fn type_definition_extended_p() -> impl Parser<Output = ParamType> {
 
 fn extended_type_p() -> impl Parser<Output = ParamType> {
     Alt2::new(
-        identifier_with_dots().with_pos().and_then(
-            |Locatable {
-                 element: token,
-                 pos,
-             }| {
-                if token.text.contains('.') {
-                    Err(QError::IdentifierCannotIncludePeriod)
-                } else {
-                    Ok(ParamType::UserDefined(BareName::new(token.text).at(pos)))
-                }
-            },
-        ),
+        bare_name_without_dots()
+            .with_pos()
+            .map(ParamType::UserDefined),
         keyword_map(&[
             (
                 Keyword::Single,

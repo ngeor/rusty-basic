@@ -10,6 +10,7 @@ pub type TokenKind = u8;
 ///
 /// The [kind] field could have been a generic parameter, but that would require
 /// propagating the type in the [Tokenizer] and eventually also to the parsers.
+#[derive(Debug)]
 pub struct Token {
     pub kind: TokenKind,
     pub text: String,
@@ -17,6 +18,10 @@ pub struct Token {
 }
 
 pub type TokenList = Vec<Token>;
+
+pub fn token_list_to_string(tokens: TokenList) -> String {
+    tokens.into_iter().map(|token| token.text).collect()
+}
 
 pub trait Tokenizer {
     // TODO this can also be Result<Token, ?> where ? is Fatal/NotFound, or an Iterator

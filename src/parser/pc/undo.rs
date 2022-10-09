@@ -10,6 +10,17 @@ impl Undo for Token {
     }
 }
 
+impl<A, B> Undo for (A, B)
+where
+    A: Undo,
+    B: Undo,
+{
+    fn undo(self, tokenizer: &mut impl Tokenizer) {
+        self.1.undo(tokenizer);
+        self.0.undo(tokenizer);
+    }
+}
+
 impl<T> Undo for Option<T>
 where
     T: Undo,

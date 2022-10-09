@@ -8,7 +8,7 @@ use crate::parser::exit::statement_exit_p;
 use crate::parser::for_loop;
 use crate::parser::go_sub::{statement_go_sub_p, statement_return_p};
 use crate::parser::if_block;
-use crate::parser::name::bare_name_p;
+use crate::parser::name::{bare_name_with_dots, identifier_with_dots};
 use crate::parser::on_error::statement_on_error_go_to_p;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
@@ -60,12 +60,12 @@ fn statement_label_p() -> impl Parser<Output = Statement> {
     identifier_with_dots()
         .and(colon())
         .keep_left()
-        .map(|l| Statement::Label(l.text.into()))
+        .map(|tokens| Statement::Label(BareName::from(tokens)))
 }
 
 fn statement_go_to_p() -> impl Parser<Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
-        .then_demand(bare_name_p().or_syntax_error("Expected: label"))
+        .then_demand(bare_name_with_dots().or_syntax_error("Expected: label"))
         .map(Statement::GoTo)
 }
 

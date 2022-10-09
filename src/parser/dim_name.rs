@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::name::name_with_dot_p;
+use crate::parser::name::name_with_dots;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
@@ -17,7 +17,7 @@ use crate::parser::types::*;
 
 pub fn dim_name_node_p() -> impl Parser<Output = DimNameNode> {
     Seq3::new(
-        name_with_dot_p().with_pos(),
+        name_with_dots().with_pos(),
         array_dimensions::array_dimensions_p().allow_default(),
         type_definition::type_definition_extended_p(),
     )
@@ -34,7 +34,7 @@ pub fn dim_name_node_p() -> impl Parser<Output = DimNameNode> {
 
 pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
     Seq3::new(
-        name_with_dot_p().with_pos(),
+        name_with_dots().with_pos(),
         array_dimensions::array_dimensions_p().or_syntax_error("Expected: array dimensions"),
         type_definition::type_definition_extended_p(),
     )
@@ -81,8 +81,8 @@ mod array_dimensions {
 }
 
 mod type_definition {
-    use crate::common::*;
     use crate::parser::expression::expression_node_p;
+    use crate::parser::name::bare_name_without_dots;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
@@ -109,14 +109,7 @@ mod type_definition {
     }
 
     fn user_defined_type() -> impl Parser<Output = DimType> {
-        identifier_with_dots()
-            .and_then(|token| {
-                if token.text.contains('.') {
-                    Err(QError::IdentifierCannotIncludePeriod)
-                } else {
-                    Ok(BareName::from(token.text))
-                }
-            })
+        bare_name_without_dots()
             .with_pos()
             .map(DimType::UserDefined)
     }
@@ -202,6 +195,7 @@ fn map_qualified_name_opt_extended_type_definition(
     opt_type_definition: Option<DimType>,
 ) -> Result<DimType, QError> {
     if opt_type_definition.is_some() {
+        // TODO find all usages of this error and try to solve it before parsing
         Err(QError::syntax_error(
             "Identifier cannot end with %, &, !, #, or $",
         ))

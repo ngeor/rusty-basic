@@ -61,6 +61,13 @@ pub fn pound() -> impl Parser<Output = Token> {
     any_token_of(TokenType::Pound)
 }
 
+/// Dollar sign.
+///
+/// `$`
+pub fn dollar_sign() -> impl Parser<Output = Token> {
+    any_token_of(TokenType::DollarSign)
+}
+
 /// Semicolon.
 ///
 /// `<ws>? ; <ws>?`

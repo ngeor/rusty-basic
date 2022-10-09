@@ -1,9 +1,28 @@
 use std::fs::File;
 
 use crate::common::*;
+use crate::parser::pc::{Parser, Tokenizer};
 use crate::parser::pc_specific::test_helper::create_string_tokenizer;
 use crate::parser::types::*;
 use crate::parser::{parse_main_file, program_parser};
+
+pub fn parse_something<P>(input: &str, parser: impl Parser<Output = P>) -> Result<P, QError> {
+    let mut tokenizer = create_string_tokenizer(input);
+    parser.parse(&mut tokenizer)
+}
+
+pub fn parse_something_completely<P>(input: &str, parser: impl Parser<Output = P>) -> P {
+    let mut tokenizer = create_string_tokenizer(input);
+    let result = parser
+        .parse(&mut tokenizer)
+        .expect(&format!("Should have succeeded for {}", input));
+    assert!(
+        tokenizer.read().expect("Should read EOF token").is_none(),
+        "Should have parsed {} completely",
+        input
+    );
+    result
+}
 
 fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
     let mut reader = create_string_tokenizer(s);
@@ -474,5 +493,22 @@ macro_rules! expr {
 
     (fn $name:expr, $arg:expr) => {
         Expression::FunctionCall(Name::from($name), vec![$arg])
+    };
+}
+
+#[macro_export]
+macro_rules! parametric_test {
+    (
+        $handler:ident,
+        [
+            $($test_name:ident, $value:literal),+$(,)?
+        ]
+    ) => {
+        $(
+            #[test]
+            fn $test_name() {
+                $handler($value);
+            }
+        )+
     };
 }

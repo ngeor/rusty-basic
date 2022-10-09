@@ -1,6 +1,6 @@
 use crate::common::{Locatable, QError};
 use crate::parser::expression::expression_node_p;
-use crate::parser::name::bare_name_p;
+use crate::parser::name::bare_name_with_dots;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::{Expression, Keyword, OnErrorOption, Statement};
@@ -32,7 +32,7 @@ fn goto() -> impl Parser<Output = OnErrorOption> {
 }
 
 fn goto_label() -> impl Parser<Output = OnErrorOption> {
-    bare_name_p().map(OnErrorOption::Label)
+    bare_name_with_dots().map(OnErrorOption::Label)
 }
 
 fn goto_zero() -> impl Parser<Output = OnErrorOption> {

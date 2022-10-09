@@ -44,19 +44,18 @@
 
 use crate::common::{Locatable, QError};
 use crate::parser::expression::expression_node_p;
-use crate::parser::name;
+use crate::parser::name::bare_name_without_dots;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::statement_separator::comments_and_whitespace_p;
 use crate::parser::types::{
-    BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, Name,
-    UserDefinedType,
+    Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, UserDefinedType,
 };
 
 pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
     seq5(
         keyword_followed_by_whitespace_p(Keyword::Type),
-        bare_name_without_dot_p()
+        bare_name_without_dots()
             .with_pos()
             .or_syntax_error("Expected: name after TYPE"),
         comments_and_whitespace_p(),
@@ -64,21 +63,6 @@ pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
         keyword_pair(Keyword::End, Keyword::Type).no_incomplete(),
         |_, name, comments, elements, _| UserDefinedType::new(name, comments, elements),
     )
-}
-
-fn bare_name_without_dot_p() -> impl Parser<Output = BareName> {
-    name::name_with_dot_p().and_then(|n| match n {
-        Name::Bare(b) => {
-            if b.contains('.') {
-                Err(QError::IdentifierCannotIncludePeriod)
-            } else {
-                Ok(b)
-            }
-        }
-        Name::Qualified { .. } => Err(QError::syntax_error(
-            "Identifier cannot end with %, &, !, #, or $",
-        )),
-    })
 }
 
 fn element_nodes_p() -> impl Parser<Output = Vec<ElementNode>> + NonOptParser {
@@ -89,7 +73,7 @@ fn element_nodes_p() -> impl Parser<Output = Vec<ElementNode>> + NonOptParser {
 
 fn element_node_p() -> impl Parser<Output = ElementNode> {
     seq6(
-        bare_name_without_dot_p(),
+        bare_name_without_dots(),
         whitespace().no_incomplete(),
         keyword(Keyword::As).no_incomplete(),
         whitespace().no_incomplete(),
@@ -114,7 +98,7 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
             demand_string_length_p(),
             |_, _, e| ElementType::FixedLengthString(e, 0),
         ),
-        bare_name_without_dot_p()
+        bare_name_without_dots()
             .with_pos()
             .map(ElementType::UserDefined),
     )
@@ -141,12 +125,11 @@ fn demand_string_length_p() -> impl Parser<Output = ExpressionNode> + NonOptPars
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_parser_err;
     use crate::common::AtRowCol;
     use crate::parser::test_utils::*;
-    use crate::parser::types::TopLevelToken;
-
-    use super::*;
+    use crate::parser::types::*;
 
     #[test]
     fn parse_type() {

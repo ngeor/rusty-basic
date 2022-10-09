@@ -26,7 +26,7 @@ pub mod parser {
             expr_node_ws(),
             keyword(Keyword::As).no_incomplete(),
             whitespace().no_incomplete(),
-            name::name_with_dot_p()
+            name::name_with_dots()
                 .with_pos()
                 .or_syntax_error("Expected: variable name"),
             |width, _, _, name| (width, name),

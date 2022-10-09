@@ -28,7 +28,7 @@ pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNode
     seq4(
         keyword(Keyword::Function),
         whitespace().no_incomplete(),
-        name::name_with_dot_p()
+        name::name_with_dots()
             .with_pos()
             .or_syntax_error("Expected: function name"),
         declaration_parameters_p(),
@@ -42,7 +42,7 @@ pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes
     seq4(
         keyword(Keyword::Sub),
         whitespace().no_incomplete(),
-        name::bare_name_p()
+        name::bare_name_with_dots()
             .with_pos()
             .or_syntax_error("Expected: sub name"),
         declaration_parameters_p(),
@@ -140,15 +140,16 @@ mod tests {
     }
 
     #[test]
-    fn test_user_defined_function_param_cannot_include_period() {
-        let input = "DECLARE FUNCTION Echo(X.Y AS Card)";
-        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
-    }
-
-    #[test]
-    fn test_user_defined_sub_param_cannot_include_period() {
-        let input = "DECLARE SUB Echo(X.Y AS Card)";
-        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+    fn test_user_defined_param_cannot_include_period() {
+        let inputs = [
+            "DECLARE FUNCTION Echo(X.Y AS Card)",
+            "DECLARE FUNCTION Echo(XY AS Ca.rd)",
+            "DECLARE SUB Echo(X.Y AS Card)",
+            "DECLARE SUB Echo(XY AS Ca.rd)",
+        ];
+        for input in inputs {
+            assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+        }
     }
 
     #[test]

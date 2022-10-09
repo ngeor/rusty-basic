@@ -27,7 +27,6 @@ mod statement_separator;
 mod statements;
 mod sub_call;
 mod top_level_token;
-mod type_qualifier;
 mod types;
 mod user_defined_type;
 mod while_wend;

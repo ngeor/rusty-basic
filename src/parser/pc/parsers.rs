@@ -1,601 +1,248 @@
 use crate::common::QError;
+use crate::parser::pc::and_opt::AndOptPC;
+use crate::parser::pc::many::OneOrMoreParser;
+use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
-    AndDemandLookingBack, AndPC, GuardPC, LoopWhileNonOpt, NonOptSeq2, Token, Tokenizer, Undo,
-    ValidateParser,
+    AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, Alt2, AndPC, AndThen, ChainParser,
+    FilterMapParser, FilterParser, GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, MapOnce,
+    NegateParser, NoIncompleteParser, OrFailParser, PeekParser, Tokenizer, Undo,
 };
 
-pub trait HasOutput {
+// TODO make QError generic param too
+// TODO specific error types for Tokenizer and Parser libraries
+
+/// A parser uses a [Tokenizer] in order to produce a result.
+///
+/// There are two different types of failures:
+/// - incomplete: another parser might be able to succeed
+/// - fatal: all parsing should stop
+///
+/// The [Tokenizer] is available through a `mut impl` parameter on the method
+/// [Parser::parse]. This choice has some pros and cons. The `impl Tokenizer`
+/// means that this is in reality a generic method, meaning that the Parser
+/// can't be converted into a `dyn object`. On the positive side, the type
+/// is simpler, with no extra generic parameters polluting the definitions.
+pub trait Parser {
     type Output;
-}
 
-/// A parser that either succeeds or returns an error.
-pub trait NonOptParser: HasOutput {
-    // TODO it is possible to have a default implementation for `parse` based on `parse_non_opt` if we have a QError that means "no match"
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
 
-    fn and_demand<R>(self, right: R) -> NonOptSeq2<Self, R>
-    where
-        Self: Sized,
-        R: NonOptParser,
-    {
-        NonOptSeq2::new(self, right)
-    }
-
-    fn loop_while_non_opt<F>(self, f: F) -> LoopWhileNonOpt<Self, F>
+    // TODO #[deprecated]
+    fn and_opt<R>(self, right: R) -> AndOptPC<Self, R>
     where
         Self: Sized,
     {
-        LoopWhileNonOpt::new(self, f)
+        AndOptPC::new(self, right)
     }
-}
 
-// TODO rename to OptParser
-/// A parser that either succeeds, or returns nothing, or returns an error.
-pub trait Parser: HasOutput {
-    // note that because of the mut impl parameter, Rust can't convert this trait into
-    // an object
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError>;
+    fn and_then<F, U>(self, mapper: F) -> AndThen<Self, F>
+    where
+        Self: Sized,
+        F: Fn(Self::Output) -> Result<U, QError>,
+    {
+        AndThen::new(self, mapper)
+    }
+
+    fn filter<F>(self, predicate: F) -> FilterParser<Self, F>
+    where
+        Self: Sized,
+        F: Fn(&Self::Output) -> bool,
+        Self::Output: Undo,
+    {
+        FilterParser::new(self, predicate)
+    }
+
+    fn filter_map<F, U>(self, mapper: F) -> FilterMapParser<Self, F>
+    where
+        Self: Sized,
+        F: Fn(&Self::Output) -> Option<U>,
+        Self::Output: Undo,
+    {
+        FilterMapParser::new(self, mapper)
+    }
+
+    fn loop_while<F>(self, predicate: F) -> LoopWhile<Self, F>
+    where
+        Self: Sized,
+        F: Fn(&Self::Output) -> bool,
+    {
+        LoopWhile::new(self, predicate)
+    }
+
+    fn map<F, U>(self, mapper: F) -> FnMapper<Self, F>
+    where
+        Self: Sized,
+        F: Fn(Self::Output) -> U,
+    {
+        FnMapper::new(self, mapper)
+    }
+
+    fn map_once<F, U>(self, mapper: F) -> MapOnce<Self, F>
+    where
+        Self: Sized,
+        F: FnOnce(Self::Output) -> U,
+    {
+        MapOnce::new(self, mapper)
+    }
+
+    fn map_incomplete_err(self, err: QError) -> MapIncompleteErrParser<Self>
+    where
+        Self: Sized,
+    {
+        MapIncompleteErrParser::new(self, err)
+    }
+
+    fn or_fail(self, err: QError) -> OrFailParser<Self>
+    where
+        Self: Sized,
+    {
+        OrFailParser::new(self, err)
+    }
+
+    fn no_incomplete(self) -> NoIncompleteParser<Self>
+    where
+        Self: Sized,
+    {
+        NoIncompleteParser::new(self)
+    }
+
+    fn keep_left<L, R>(self) -> KeepLeftMapper<Self>
+    where
+        Self: Sized + Parser<Output = (L, R)>,
+    {
+        KeepLeftMapper::new(self)
+    }
+
+    fn keep_middle<L, M, R>(self) -> KeepMiddleMapper<Self>
+    where
+        Self: Sized + Parser<Output = ((L, M), R)>,
+    {
+        KeepMiddleMapper::new(self)
+    }
+
+    fn keep_right<L, R>(self) -> KeepRightMapper<Self>
+    where
+        Self: Sized + Parser<Output = (L, R)>,
+    {
+        KeepRightMapper::new(self)
+    }
+
+    fn or<O, R>(self, right: R) -> Alt2<O, Self, R>
+    where
+        Self: Sized + Parser<Output = O>,
+        R: Parser<Output = O>,
+    {
+        Alt2::new(self, right)
+    }
+
+    #[cfg(debug_assertions)]
+    fn logging(self, tag: &str) -> LoggingPC<Self>
+    where
+        Self: Sized,
+    {
+        LoggingPC::new(self, tag.to_owned())
+    }
+
+    // TODO #[deprecated]
+    fn parse_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+        match self.parse(tokenizer) {
+            Ok(value) => Ok(Some(value)),
+            Err(QError::Incomplete) | Err(QError::Expected(_)) => Ok(None),
+            Err(err) => Err(err),
+        }
+    }
+
+    fn allow_none(self) -> AllowNoneParser<Self>
+    where
+        Self: Sized,
+    {
+        AllowNoneParser::new(self)
+    }
+
+    fn allow_none_if(self, condition: bool) -> AllowNoneIfParser<Self>
+    where
+        Self: Sized,
+    {
+        AllowNoneIfParser::new(self, condition)
+    }
+
+    fn allow_default(self) -> AllowDefaultParser<Self>
+    where
+        Self: Sized,
+        Self::Output: Default,
+    {
+        AllowDefaultParser::new(self)
+    }
 
     fn and<R>(self, right: R) -> AndPC<Self, R>
     where
         Self: Sized,
+        Self::Output: Undo,
+        R: Parser,
     {
         AndPC::new(self, right)
     }
 
-    fn and_demand<R>(self, right: R) -> NonOptSeq2<Self, R>
+    fn then_demand<R>(self, other: R) -> GuardPC<Self, R>
     where
         Self: Sized,
-        R: NonOptParser,
-    {
-        NonOptSeq2::new(self, right)
-    }
-
-    fn and_demand_looking_back<F>(self, factory: F) -> AndDemandLookingBack<Self, F>
-    where
-        Self: Sized,
-    {
-        AndDemandLookingBack::new(self, factory)
-    }
-
-    fn then_use<R>(self, other: R) -> GuardPC<Self, R>
-    where
-        Self: Sized,
-        R: NonOptParser,
+        R: Parser + NonOptParser,
     {
         GuardPC::new(self, other)
     }
 
-    fn validate<F>(self, f: F) -> ValidateParser<Self, F>
+    fn zero_or_more(self) -> AllowDefaultParser<OneOrMoreParser<Self>>
     where
         Self: Sized,
-        Self::Output: Undo,
-        F: Fn(&Self::Output) -> Result<bool, QError>,
     {
-        ValidateParser::new(self, f)
+        self.one_or_more().allow_default()
     }
-}
 
-pub fn to_impl_parser<P: Parser>(parser: P) -> impl Parser<Output = P::Output> {
-    parser
-}
-
-pub fn to_impl_non_opt_parser<P: NonOptParser>(parser: P) -> impl NonOptParser<Output = P::Output> {
-    parser
-}
-
-// TODO change these blanket implementations so that not every single type gets the methods
-
-//
-// TokenPredicate
-//
-
-pub trait TokenPredicate
-where
-    Self: Sized,
-{
-    fn test(&self, token: &Token) -> bool;
-
-    fn parser(self) -> TokenPredicateParser<Self> {
-        TokenPredicateParser(self)
-    }
-}
-
-pub trait ErrorProvider {
-    fn provide_error(&self) -> QError;
-}
-
-pub struct TokenPredicateParser<P>(P);
-
-impl<P> HasOutput for TokenPredicateParser<P> {
-    type Output = Token;
-}
-
-impl<P> Parser for TokenPredicateParser<P>
-where
-    P: TokenPredicate,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match tokenizer.read()? {
-            Some(token) => {
-                if self.0.test(&token) {
-                    Ok(Some(token))
-                } else {
-                    tokenizer.unread(token);
-                    Ok(None)
-                }
-            }
-            _ => Ok(None),
-        }
-    }
-}
-
-impl<P> NonOptParser for TokenPredicateParser<P>
-where
-    P: TokenPredicate + ErrorProvider,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match tokenizer.read()? {
-            Some(token) => {
-                if self.0.test(&token) {
-                    Ok(token)
-                } else {
-                    Err(self.0.provide_error())
-                }
-            }
-            _ => Err(self.0.provide_error()),
-        }
-    }
-}
-
-//
-// The left side can be followed by an optional right.
-//
-
-pub struct AndOptPC<L, R>(L, R);
-
-impl<L, R> HasOutput for AndOptPC<L, R>
-where
-    L: HasOutput,
-    R: HasOutput,
-{
-    type Output = (L::Output, Option<R::Output>);
-}
-
-impl<L, R> Parser for AndOptPC<L, R>
-where
-    L: Parser,
-    R: Parser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.0.parse(tokenizer)? {
-            Some(left) => {
-                let opt_right = self.1.parse(tokenizer)?;
-                Ok(Some((left, opt_right)))
-            }
-            None => Ok(None),
-        }
-    }
-}
-
-impl<L, R> NonOptParser for AndOptPC<L, R>
-where
-    L: NonOptParser,
-    R: Parser,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let left = self.0.parse_non_opt(tokenizer)?;
-        let opt_right = self.1.parse(tokenizer)?;
-        Ok((left, opt_right))
-    }
-}
-
-pub trait AndOptTrait<P> {
-    fn and_opt(self, other: P) -> AndOptPC<Self, P>
+    fn one_or_more(self) -> OneOrMoreParser<Self>
     where
-        Self: Sized;
-}
-
-impl<S, P> AndOptTrait<P> for S {
-    fn and_opt(self, other: P) -> AndOptPC<Self, P> {
-        AndOptPC(self, other)
+        Self: Sized,
+    {
+        OneOrMoreParser::new(self)
     }
-}
 
-/// The left side is optional, the right is not.
-/// If the right is missing, the left is reverted.
-pub struct OptAndPC<L, R>(L, R);
-
-impl<L, R> OptAndPC<L, R> {
-    pub fn new(left: L, right: R) -> Self {
-        Self(left, right)
-    }
-}
-
-impl<L, R> HasOutput for OptAndPC<L, R>
-where
-    L: HasOutput<Output = Token>,
-    R: HasOutput,
-{
-    type Output = (Option<Token>, R::Output);
-}
-
-impl<L, R> Parser for OptAndPC<L, R>
-where
-    L: Parser<Output = Token>,
-    R: Parser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let opt_leading = self.0.parse(tokenizer)?;
-        match self.1.parse(tokenizer)? {
-            Some(value) => Ok(Some((opt_leading, value))),
-            None => {
-                if let Some(token) = opt_leading {
-                    tokenizer.unread(token);
-                }
-                Ok(None)
-            }
-        }
-    }
-}
-
-//
-// unary no-arg parser macro
-//
-
-#[macro_export]
-macro_rules! parser_decorator {
-    (struct $name: ident $(<$($var_name: tt: $generics:tt),*>)?) => {
-        pub struct $name<P$(, $($generics),*)?>(P$(, $($generics),*)?);
-
-        impl<P$(, $($generics),*)?> $name<P$(, $($generics),*)?> {
-            pub fn new(parser: P$(, $($var_name: $generics),*)?) -> Self {
-                Self(parser$(, $($var_name),*)?)
-            }
-        }
-
-        impl<P$(, $($generics),*)?> HasOutput for $name<P$(, $($generics),*)?>
-        where
-            P: HasOutput,
-        {
-            type Output = P::Output;
-        }
-    };
-}
-
-//
-// Keep Left
-//
-
-pub struct KeepLeftMapper<P>(P);
-
-impl<P, L, R> HasOutput for KeepLeftMapper<P>
-where
-    P: HasOutput<Output = (L, R)>,
-{
-    type Output = L;
-}
-
-impl<P, L, R> Parser for KeepLeftMapper<P>
-where
-    P: Parser<Output = (L, R)>,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        self.0
-            .parse(tokenizer)
-            .map(|opt_result| opt_result.map(|(l, _)| l))
-    }
-}
-
-impl<P, L, R> NonOptParser for KeepLeftMapper<P>
-where
-    P: NonOptParser<Output = (L, R)>,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.0.parse_non_opt(tokenizer).map(|(l, _)| l)
-    }
-}
-
-pub trait KeepLeftTrait {
-    fn keep_left(self) -> KeepLeftMapper<Self>
+    fn peek(self) -> PeekParser<Self>
     where
-        Self: Sized;
-}
-
-impl<S, L, R> KeepLeftTrait for S
-where
-    S: HasOutput<Output = (L, R)>,
-{
-    fn keep_left(self) -> KeepLeftMapper<Self> {
-        KeepLeftMapper(self)
+        Self: Sized,
+    {
+        PeekParser::new(self)
     }
-}
 
-//
-// Keep Right
-//
-
-pub struct KeepRightMapper<P>(P);
-
-impl<P, L, R> HasOutput for KeepRightMapper<P>
-where
-    P: HasOutput<Output = (L, R)>,
-{
-    type Output = R;
-}
-
-impl<P, L, R> Parser for KeepRightMapper<P>
-where
-    P: Parser<Output = (L, R)>,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        self.0
-            .parse(tokenizer)
-            .map(|opt_result| opt_result.map(|(_, r)| r))
-    }
-}
-
-impl<P, L, R> NonOptParser for KeepRightMapper<P>
-where
-    P: NonOptParser<Output = (L, R)>,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.0.parse_non_opt(tokenizer).map(|(_, r)| r)
-    }
-}
-
-pub trait KeepRightTrait {
-    fn keep_right(self) -> KeepRightMapper<Self>
+    // TODO #[deprecated]
+    fn negate(self) -> NegateParser<Self>
     where
-        Self: Sized;
-}
-
-impl<S, L, R> KeepRightTrait for S
-where
-    S: HasOutput<Output = (L, R)>,
-{
-    fn keep_right(self) -> KeepRightMapper<Self> {
-        KeepRightMapper(self)
+        Self: Sized,
+    {
+        NegateParser::new(self)
     }
-}
 
-//
-// Keep Middle
-//
-
-pub struct KeepMiddleMapper<P>(P);
-
-impl<P, L, M, R> HasOutput for KeepMiddleMapper<P>
-where
-    P: HasOutput<Output = ((L, M), R)>,
-{
-    type Output = M;
-}
-
-impl<P, L, M, R> Parser for KeepMiddleMapper<P>
-where
-    P: Parser<Output = ((L, M), R)>,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        self.0
-            .parse(tokenizer)
-            .map(|opt_result| opt_result.map(|((_, m), _)| m))
-    }
-}
-
-impl<P, L, M, R> NonOptParser for KeepMiddleMapper<P>
-where
-    P: NonOptParser<Output = ((L, M), R)>,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.0.parse_non_opt(tokenizer).map(|((_, m), _)| m)
-    }
-}
-
-pub trait KeepMiddleTrait {
-    fn keep_middle(self) -> KeepMiddleMapper<Self>
+    fn chain<RF, R>(self, right_factory: RF) -> ChainParser<Self, RF>
     where
-        Self: Sized;
-}
-
-impl<P, L, M, R> KeepMiddleTrait for P
-where
-    P: HasOutput<Output = ((L, M), R)>,
-{
-    fn keep_middle(self) -> KeepMiddleMapper<Self> {
-        KeepMiddleMapper(self)
+        Self: Sized,
+        RF: Fn(Self::Output) -> R,
+        R: ParserOnce,
+    {
+        ChainParser::new(self, right_factory)
     }
 }
 
-//
-// Map
-//
+/// A parser that returns a successful result or a fatal error.
+/// This parser will never return an error that is "incomplete".
+/// TODO: review all direct impl NonOptParser outside the core parsers, as implementing a marker trait doesn't guarantee much
+pub trait NonOptParser: Parser {}
 
-pub struct FnMapper<P, F>(P, F);
+// TODO try an OptParser trait which has the conversions to NonOptParser methods such as or_syntax_error
+// TODO mimic the std::iter functions to create new parsers from simpler blocks
 
-impl<P, F, U> HasOutput for FnMapper<P, F>
-where
-    P: HasOutput,
-    F: Fn(P::Output) -> U,
-{
-    type Output = U;
+/// A parser that can only be used once. Similar to `FnOnce`.
+pub trait ParserOnce {
+    type Output;
+
+    fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
 }
 
-impl<P, F, U> Parser for FnMapper<P, F>
-where
-    P: Parser,
-    F: Fn(P::Output) -> U,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        self.0
-            .parse(tokenizer)
-            .map(|opt_result| opt_result.map(&self.1))
-    }
-}
-
-impl<P, F, U> NonOptParser for FnMapper<P, F>
-where
-    P: NonOptParser,
-    F: Fn(P::Output) -> U,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.0.parse_non_opt(tokenizer).map(&self.1)
-    }
-}
-
-pub trait FnMapTrait<F> {
-    fn map(self, mapper: F) -> FnMapper<Self, F>
-    where
-        Self: Sized;
-}
-
-impl<S, F, U> FnMapTrait<F> for S
-where
-    S: HasOutput,
-    F: Fn(S::Output) -> U,
-{
-    fn map(self, mapper: F) -> FnMapper<Self, F> {
-        FnMapper(self, mapper)
-    }
-}
-
-//
-// AndOptFactory
-//
-
-pub struct AndOptFactoryPC<L, RF>(L, RF);
-
-impl<L, RF, R> HasOutput for AndOptFactoryPC<L, RF>
-where
-    L: Parser,
-    RF: Fn(&L::Output) -> R,
-    R: Parser,
-{
-    type Output = (L::Output, Option<R::Output>);
-}
-
-impl<L, RF, R> Parser for AndOptFactoryPC<L, RF>
-where
-    L: Parser,
-    RF: Fn(&L::Output) -> R,
-    R: Parser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match self.0.parse(tokenizer)? {
-            Some(first) => {
-                let second_parser = (self.1)(&first);
-                let opt_second = second_parser.parse(tokenizer)?;
-                Ok(Some((first, opt_second)))
-            }
-            None => Ok(None),
-        }
-    }
-}
-
-pub trait AndOptFactoryTrait<F> {
-    fn and_opt_factory(self, f: F) -> AndOptFactoryPC<Self, F>
-    where
-        Self: Sized;
-}
-
-impl<S, F, R> AndOptFactoryTrait<F> for S
-where
-    S: Parser,
-    F: Fn(&S::Output) -> R,
-    R: Parser,
-{
-    fn and_opt_factory(self, f: F) -> AndOptFactoryPC<Self, F> {
-        AndOptFactoryPC(self, f)
-    }
-}
-
-//
-// Many
-//
-
-pub struct ManyParser<P> {
-    parser: P,
-    allow_empty: bool,
-}
-
-impl<P> HasOutput for ManyParser<P>
-where
-    P: HasOutput,
-{
-    type Output = Vec<P::Output>;
-}
-
-impl<P> Parser for ManyParser<P>
-where
-    P: Parser,
-{
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let mut result: Vec<P::Output> = Vec::new();
-        loop {
-            match self.parser.parse(tokenizer)? {
-                Some(value) => {
-                    result.push(value);
-                }
-                None => {
-                    break;
-                }
-            }
-        }
-        if result.is_empty() && !self.allow_empty {
-            Ok(None)
-        } else {
-            Ok(Some(result))
-        }
-    }
-}
-
-impl<P> NonOptParser for ManyParser<P>
-where
-    P: Parser,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        let mut result: Vec<P::Output> = Vec::new();
-        loop {
-            match self.parser.parse(tokenizer)? {
-                Some(value) => {
-                    result.push(value);
-                }
-                None => {
-                    break;
-                }
-            }
-        }
-        if result.is_empty() && !self.allow_empty {
-            Err(QError::ArgumentCountMismatch)
-        } else {
-            Ok(result)
-        }
-    }
-}
-
-pub trait ManyTrait {
-    fn zero_or_more(self) -> ManyParser<Self>
-    where
-        Self: Sized;
-    fn one_or_more(self) -> ManyParser<Self>
-    where
-        Self: Sized;
-}
-
-impl<S> ManyTrait for S
-where
-    S: Parser,
-{
-    fn zero_or_more(self) -> ManyParser<Self> {
-        ManyParser {
-            parser: self,
-            allow_empty: true,
-        }
-    }
-    fn one_or_more(self) -> ManyParser<Self> {
-        ManyParser {
-            parser: self,
-            allow_empty: false,
-        }
-    }
-}
+// TODO remove all "impl Parser" outside the main framework

@@ -1,17 +1,20 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
+    use crate::parser::expression::expr_node_ws;
+    use crate::parser::expression::file_handle::file_handle_p;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
+    /// Example: FIELD #1, 10 AS FirstName$, 20 AS LastName$
     pub fn parse() -> impl Parser<Output = Statement> {
         seq5(
             keyword(Keyword::Field),
-            whitespace(),
-            expression::file_handle_p().or_syntax_error("Expected: file-number"),
-            comma_surrounded_by_opt_ws(),
-            csv(field_item_p()).or_syntax_error("Expected: field width"),
+            whitespace().no_incomplete(),
+            file_handle_p().or_syntax_error("Expected: file-number"),
+            comma().no_incomplete(),
+            csv_non_opt(field_item_p(), "Expected: field width"),
             |_, _, file_number, _, fields| {
                 Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
             },
@@ -19,26 +22,23 @@ pub mod parser {
     }
 
     fn field_item_p() -> impl Parser<Output = (ExpressionNode, NameNode)> {
-        // TODO 'AS' does not need leading whitespace if expression has parenthesis
-        // TODO solve this not by peeking the previous but with a new expression:: function
-        seq3(
-            expression::expression_node_p(),
-            keyword(Keyword::As)
-                .surrounded_by_opt_ws()
-                .or_syntax_error("Expected: AS"),
-            name::name_with_dot_p()
+        seq4(
+            expr_node_ws(),
+            keyword(Keyword::As).no_incomplete(),
+            whitespace().no_incomplete(),
+            name::name_with_dots()
                 .with_pos()
                 .or_syntax_error("Expected: variable name"),
-            |width, _, name| (width, name),
+            |width, _, _, name| (width, name),
         )
     }
 
     fn build_args(
-        file_number: Locatable<FileHandle>,
+        file_number_node: Locatable<FileHandle>,
         fields: Vec<(ExpressionNode, NameNode)>,
     ) -> ExpressionNodes {
         let mut args: ExpressionNodes = vec![];
-        args.push(file_number.map(|x| Expression::IntegerLiteral(x.into())));
+        args.push(file_number_node.map(Expression::from));
         for (width, Locatable { element: name, pos }) in fields {
             args.push(width);
             let variable_name: String = name.bare_name().as_ref().to_string();
@@ -53,9 +53,9 @@ pub mod parser {
 pub mod linter {
     use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
     use crate::linter::arg_validation::ArgValidation;
-    use crate::parser::ExpressionNode;
+    use crate::parser::ExpressionNodes;
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         // needs to be 1 + N*3 args, N >= 1
         // first is the file number
         // then the fields: width, variable name, variable

@@ -1,7 +1,5 @@
 use crate::common::QError;
-use crate::parser::pc::{
-    AndOptTrait, AndThenTrait, LoopWhileTrait, NonOptParser, Parser, ZipValue,
-};
+use crate::parser::pc::{Parser, ZipValue};
 
 /// Represents a value that has is followed by optional delimiter.
 pub trait Delimited<T> {
@@ -36,12 +34,11 @@ impl<L, R> Delimited<L> for (L, Option<R>) {
 }
 
 /// Gets a list of items separated by a delimiter.
-/// One or more if parser, zero or more if non-opt-parser.
 pub fn delimited_by<P: Parser, D: Parser>(
     parser: P,
     delimiter: D,
     trailing_error: QError,
-) -> impl Parser<Output = Vec<P::Output>> + NonOptParser<Output = Vec<P::Output>> {
+) -> impl Parser<Output = Vec<P::Output>> {
     parse_delimited_to_items(parser.and_opt(delimiter), trailing_error)
 }
 
@@ -51,36 +48,13 @@ pub fn delimited_by<P: Parser, D: Parser>(
 pub fn parse_delimited_to_items<P, L>(
     parser: P,
     trailing_error: QError,
-) -> impl Parser<Output = Vec<L>> + NonOptParser<Output = Vec<L>>
+) -> impl Parser<Output = Vec<L>>
 where
     P: Parser,
     P::Output: Delimited<L>,
 {
     parser
         .loop_while(Delimited::has_delimiter)
-        .and_then(move |items| map_items(items, trailing_error.clone()))
-}
-
-// non opt
-
-pub fn delimited_by_non_opt<P: NonOptParser, D: Parser>(
-    parser: P,
-    delimiter: D,
-    trailing_error: QError,
-) -> impl NonOptParser<Output = Vec<P::Output>> {
-    zero_or_more_delimited_non_opt(parser.and_opt(delimiter), trailing_error)
-}
-
-fn zero_or_more_delimited_non_opt<P, L>(
-    parser: P,
-    trailing_error: QError,
-) -> impl NonOptParser<Output = Vec<L>>
-where
-    P: NonOptParser,
-    P::Output: Delimited<L>,
-{
-    parser
-        .loop_while_non_opt(Delimited::has_delimiter)
         .and_then(move |items| map_items(items, trailing_error.clone()))
 }
 

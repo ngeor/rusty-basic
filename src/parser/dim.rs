@@ -4,59 +4,46 @@ use crate::parser::{dim_name, DimList, Keyword, Statement};
 
 /// Parses DIM statement
 pub fn dim_p() -> impl Parser<Output = Statement> {
-    keyword_followed_by_whitespace_p(Keyword::Dim)
-        .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
-        .and_demand(csv(dim_name::dim_name_node_p()).or_syntax_error("Expected: name after DIM"))
-        .map(|((_, opt_shared), variables)| {
+    seq4(
+        keyword(Keyword::Dim),
+        whitespace().no_incomplete(),
+        opt_shared_keyword(),
+        csv_non_opt(dim_name::dim_name_node_p(), "Expected: name after DIM"),
+        |_, _, opt_shared, variables| {
             Statement::Dim(DimList {
                 shared: opt_shared.is_some(),
                 variables,
             })
-        })
+        },
+    )
 }
 
 /// Parses REDIM statement
 pub fn redim_p() -> impl Parser<Output = Statement> {
-    keyword_followed_by_whitespace_p(Keyword::Redim)
-        .and_opt(keyword_followed_by_whitespace_p(Keyword::Shared))
-        .and_demand(
-            csv(dim_name::redim_name_node_p()).or_syntax_error("Expected: name after REDIM"),
-        )
-        .map(|((_, opt_shared), variables)| {
+    seq4(
+        keyword(Keyword::Redim),
+        whitespace().no_incomplete(),
+        opt_shared_keyword(),
+        csv_non_opt(dim_name::redim_name_node_p(), "Expected: name after REDIM"),
+        |_, _, opt_shared, variables| {
             Statement::Redim(DimList {
                 shared: opt_shared.is_some(),
                 variables,
             })
-        })
+        },
+    )
+}
+
+fn opt_shared_keyword() -> impl Parser<Output = Option<(Token, Token)>> + NonOptParser {
+    Seq2::new(keyword(Keyword::Shared), whitespace().no_incomplete()).allow_none()
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::types::*;
-
-    macro_rules! assert_parse_dim_extended_built_in {
-        ($name: literal, $keyword: literal, $qualifier: ident) => {
-            let input = format!("DIM {} AS {}", $name, $keyword);
-            let p = parse(input).demand_single_statement();
-            assert_eq!(
-                p,
-                crate::parser::Statement::Dim(crate::parser::DimList {
-                    shared: false,
-                    variables: vec![crate::parser::DimNameBuilder::new()
-                        .bare_name($name)
-                        .dim_type(crate::parser::DimType::BuiltIn(
-                            TypeQualifier::$qualifier,
-                            crate::parser::BuiltInStyle::Extended
-                        ))
-                        .build()
-                        .at_rc(1, 5)]
-                })
-            );
-        };
-    }
+    use crate::{assert_parse_dim_compact, assert_parse_dim_extended_built_in, assert_parser_err};
 
     #[test]
     fn test_parse_dim_extended_built_in() {
@@ -136,31 +123,10 @@ mod tests {
         assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
     }
 
-    macro_rules! assert_parse_dim_compact {
-        ($name: literal) => {
-            let input = format!("DIM {}", $name);
-            let p = parse(input).demand_single_statement();
-            assert_eq!(
-                p,
-                Statement::Dim(
-                    DimNameBuilder::new()
-                        .bare_name($name)
-                        .dim_type(DimType::Bare)
-                        .build_list_rc(1, 5)
-                )
-            );
-        };
-
-        ($name: literal, $keyword: literal, $qualifier: ident) => {
-            let input = format!("DIM {}{}", $name, $keyword);
-            let p = parse(input).demand_single_statement();
-            assert_eq!(
-                p,
-                Statement::Dim(
-                    DimName::new_compact_local($name, TypeQualifier::$qualifier).into_list_rc(1, 5)
-                )
-            );
-        };
+    #[test]
+    fn test_parse_dim_user_defined_type_cannot_include_period() {
+        let input = "DIM Card AS A.B";
+        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
     }
 
     #[test]

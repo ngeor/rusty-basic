@@ -12,33 +12,35 @@ pub fn implementation_p() -> impl Parser<Output = TopLevelToken> {
 }
 
 fn function_implementation_p() -> impl Parser<Output = TopLevelToken> {
-    static_declaration_p(declaration::function_declaration_p())
-        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
-        .and_demand(keyword_pair_non_opt(Keyword::End, Keyword::Function))
-        .keep_left()
-        .map(|(((name, params), is_static), body)| {
+    seq3(
+        static_declaration_p(declaration::function_declaration_p()),
+        ZeroOrMoreStatements::new(keyword(Keyword::End)),
+        keyword_pair(Keyword::End, Keyword::Function).no_incomplete(),
+        |((name, params), is_static), body, _| {
             TopLevelToken::FunctionImplementation(FunctionImplementation {
                 name,
                 params,
                 body,
                 is_static,
             })
-        })
+        },
+    )
 }
 
 fn sub_implementation_p() -> impl Parser<Output = TopLevelToken> {
-    static_declaration_p(declaration::sub_declaration_p())
-        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
-        .and_demand(keyword_pair_non_opt(Keyword::End, Keyword::Sub))
-        .keep_left()
-        .map(|(((name, params), is_static), body)| {
+    seq3(
+        static_declaration_p(declaration::sub_declaration_p()),
+        ZeroOrMoreStatements::new(keyword(Keyword::End)),
+        keyword_pair(Keyword::End, Keyword::Sub).no_incomplete(),
+        |((name, params), is_static), body, _| {
             TopLevelToken::SubImplementation(SubImplementation {
                 name,
                 params,
                 body,
                 is_static,
             })
-        })
+        },
+    )
 }
 
 fn static_declaration_p<P, T>(parser: P) -> impl Parser<Output = (T, bool)>
@@ -46,7 +48,7 @@ where
     P: Parser<Output = T> + 'static,
 {
     parser
-        .and_opt(keyword(Keyword::Static).preceded_by_opt_ws())
+        .and_opt(OptAndPC::new(whitespace(), keyword(Keyword::Static)))
         .map(|(l, r)| (l, r.is_some()))
 }
 
@@ -129,7 +131,7 @@ mod tests {
         let input = "
         FUNCTION Echo(X AS STRING * 5)
         END FUNCTION";
-        assert_parser_err!(input, QError::syntax_error("Expected: closing parenthesis"));
+        assert_parser_err!(input, QError::syntax_error("Expected: )"));
     }
 
     #[test]
@@ -137,7 +139,7 @@ mod tests {
         let input = "
         SUB Echo(X AS STRING * 5)
         END SUB";
-        assert_parser_err!(input, QError::syntax_error("Expected: closing parenthesis"));
+        assert_parser_err!(input, QError::syntax_error("Expected: )"));
     }
 
     #[test]

@@ -2,28 +2,9 @@
 mod tests {
     use super::super::test_utils::*;
     use crate::assert_parser_err;
+    use crate::assert_top_level_assignment;
     use crate::common::{AtRowCol, QError};
     use crate::parser::types::*;
-
-    macro_rules! assert_top_level_assignment {
-        ($input:expr, $name_expr:expr) => {
-            match parse($input).demand_single_statement() {
-                Statement::Assignment(n, _) => {
-                    assert_eq!(n, $name_expr);
-                }
-                _ => panic!("Expected: assignment"),
-            }
-        };
-        ($input:expr, $name:expr, $value:expr) => {
-            match parse($input).demand_single_statement() {
-                Statement::Assignment(n, crate::common::Locatable { element: v, .. }) => {
-                    assert_eq!(n, Expression::var_unresolved($name));
-                    assert_eq!(v, Expression::IntegerLiteral($value));
-                }
-                _ => panic!("Expected: assignment"),
-            }
-        };
-    }
 
     mod unqualified {
         use super::*;

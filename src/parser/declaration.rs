@@ -16,80 +16,59 @@ use crate::parser::types::*;
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
 pub fn declaration_p() -> impl Parser<Output = TopLevelToken> {
-    keyword_followed_by_whitespace_p(Keyword::Declare)
-        .and_demand(
-            function_declaration_p()
-                .map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
-                .or(sub_declaration_p().map(|(n, p)| TopLevelToken::SubDeclaration(n, p)))
-                .or_syntax_error("Expected: FUNCTION or SUB after DECLARE"),
-        )
-        .keep_right()
+    keyword_followed_by_whitespace_p(Keyword::Declare).then_demand(
+        function_declaration_p()
+            .map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
+            .or(sub_declaration_p().map(|(n, p)| TopLevelToken::SubDeclaration(n, p)))
+            .or_syntax_error("Expected: FUNCTION or SUB after DECLARE"),
+    )
 }
 
 pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNodes)> {
-    keyword_followed_by_whitespace_p(Keyword::Function)
-        .and_demand(
-            name::name_with_dot_p()
-                .with_pos()
-                .or_syntax_error("Expected: function name"),
-        )
-        .and_opt(whitespace())
-        .and_opt(declaration_parameters_p())
-        .map(|(((_, function_name_node), _), opt_p)| {
-            (function_name_node, opt_p.unwrap_or_default())
-        })
+    seq4(
+        keyword(Keyword::Function),
+        whitespace().no_incomplete(),
+        name::name_with_dots()
+            .with_pos()
+            .or_syntax_error("Expected: function name"),
+        declaration_parameters_p(),
+        |_, _, function_name_node, declaration_parameters| {
+            (function_name_node, declaration_parameters)
+        },
+    )
 }
 
 pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes)> {
-    keyword_followed_by_whitespace_p(Keyword::Sub)
-        .and_demand(
-            name::bare_name_p()
-                .with_pos()
-                .or_syntax_error("Expected: sub name"),
-        )
-        .and_opt(whitespace())
-        .and_opt(declaration_parameters_p())
-        .map(|(((_, sub_name_node), _), opt_p)| (sub_name_node, opt_p.unwrap_or_default()))
+    seq4(
+        keyword(Keyword::Sub),
+        whitespace().no_incomplete(),
+        name::bare_name_with_dots()
+            .with_pos()
+            .or_syntax_error("Expected: sub name"),
+        declaration_parameters_p(),
+        |_, _, sub_name_node, declaration_parameters| (sub_name_node, declaration_parameters),
+    )
 }
 
-fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> {
-    in_parenthesis_allow_no_elements(csv(param_name_node_p()))
+// result ::= "" | "(" ")" | "(" param_node (,param_node)* ")"
+fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> + NonOptParser {
+    OptAndPC::new(
+        whitespace(),
+        in_parenthesis(csv(param_name_node_p()).allow_default()),
+    )
+    .keep_right()
+    .allow_default()
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::{
         BuiltInStyle, FunctionImplementation, Name, ParamName, ParamType, Statement, TopLevelToken,
         TypeQualifier,
     };
-
-    macro_rules! assert_function_declaration {
-        ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
-            match parse($input).demand_single().strip_location() {
-                TopLevelToken::FunctionDeclaration(name, parameters) => {
-                    assert_eq!(name, $expected_function_name, "Function name mismatch");
-                    assert_eq!(
-                        parameters.len(),
-                        $expected_params.len(),
-                        "Parameter count mismatch"
-                    );
-                    let parameters_without_location: Vec<ParamName> =
-                        parameters.into_iter().map(|x| x.strip_location()).collect();
-                    for i in 0..parameters_without_location.len() {
-                        assert_eq!(
-                            parameters_without_location[i], $expected_params[i],
-                            "Parameter {}",
-                            i
-                        );
-                    }
-                }
-                _ => panic!("{:?}", $input),
-            }
-        };
-    }
+    use crate::{assert_function_declaration, assert_parser_err};
 
     #[test]
     fn test_fn() {
@@ -151,25 +130,26 @@ mod tests {
     #[test]
     fn test_string_fixed_length_function_param_not_allowed() {
         let input = "DECLARE FUNCTION Echo(X AS STRING * 5)";
-        assert_parser_err!(input, QError::syntax_error("Expected: closing parenthesis"));
+        assert_parser_err!(input, QError::syntax_error("Expected: )"));
     }
 
     #[test]
     fn test_string_fixed_length_sub_param_not_allowed() {
         let input = "DECLARE SUB Echo(X AS STRING * 5)";
-        assert_parser_err!(input, QError::syntax_error("Expected: closing parenthesis"));
+        assert_parser_err!(input, QError::syntax_error("Expected: )"));
     }
 
     #[test]
-    fn test_user_defined_function_param_cannot_include_period() {
-        let input = "DECLARE FUNCTION Echo(X.Y AS Card)";
-        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
-    }
-
-    #[test]
-    fn test_user_defined_sub_param_cannot_include_period() {
-        let input = "DECLARE SUB Echo(X.Y AS Card)";
-        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+    fn test_user_defined_param_cannot_include_period() {
+        let inputs = [
+            "DECLARE FUNCTION Echo(X.Y AS Card)",
+            "DECLARE FUNCTION Echo(XY AS Ca.rd)",
+            "DECLARE SUB Echo(X.Y AS Card)",
+            "DECLARE SUB Echo(XY AS Ca.rd)",
+        ];
+        for input in inputs {
+            assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+        }
     }
 
     #[test]

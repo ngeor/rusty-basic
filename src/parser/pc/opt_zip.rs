@@ -1,7 +1,8 @@
 // Mixed type or
 
+use crate::binary_parser_declaration;
 use crate::common::QError;
-use crate::parser::pc::{HasOutput, Parser, Tokenizer};
+use crate::parser::pc::{Parser, Tokenizer};
 
 pub enum ZipValue<L, R> {
     Left(L),
@@ -30,20 +31,26 @@ impl<L, R> ZipValue<L, R> {
             _ => None,
         }
     }
+
+    pub fn right(self) -> Option<R> {
+        match self {
+            Self::Right(right) | Self::Both(_, right) => Some(right),
+            _ => None,
+        }
+    }
+
+    pub fn collect_right(items: Vec<Self>) -> Vec<R> {
+        items
+            .into_iter()
+            .flat_map(|zip_value| zip_value.right().into_iter())
+            .collect()
+    }
 }
 
-pub struct OptZip<L, R>(L, R);
+binary_parser_declaration!(pub struct OptZip);
 
 pub fn opt_zip<L, R>(left: L, right: R) -> OptZip<L, R> {
-    OptZip(left, right)
-}
-
-impl<L, R> HasOutput for OptZip<L, R>
-where
-    L: HasOutput,
-    R: HasOutput,
-{
-    type Output = ZipValue<L::Output, R::Output>;
+    OptZip::new(left, right)
 }
 
 impl<L, R> Parser for OptZip<L, R>
@@ -51,17 +58,18 @@ where
     L: Parser,
     R: Parser,
 {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let opt_left = self.0.parse(tokenizer)?;
-        let opt_right = self.1.parse(tokenizer)?;
+    type Output = ZipValue<L::Output, R::Output>;
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let opt_left = self.left.parse_opt(tokenizer)?;
+        let opt_right = self.right.parse_opt(tokenizer)?;
         match opt_left {
             Some(left) => match opt_right {
-                Some(right) => Ok(Some(ZipValue::Both(left, right))),
-                _ => Ok(Some(ZipValue::Left(left))),
+                Some(right) => Ok(ZipValue::Both(left, right)),
+                _ => Ok(ZipValue::Left(left)),
             },
             None => match opt_right {
-                Some(right) => Ok(Some(ZipValue::Right(right))),
-                _ => Ok(None),
+                Some(right) => Ok(ZipValue::Right(right)),
+                _ => Err(QError::Incomplete),
             },
         }
     }

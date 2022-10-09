@@ -1,29 +1,44 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
+    use crate::parser::expression::expression_node_p;
+    use crate::parser::expression::file_handle::file_handle_p;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword_followed_by_whitespace_p(Keyword::Get)
-            .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
-            .and_demand(comma_surrounded_by_opt_ws())
-            .and_demand(expression::expression_node_p().or_syntax_error("Expected: record-number"))
-            .map(|(((_, file_number), _), r)| {
+        parse_get_or_put(Keyword::Get, BuiltInSub::Get)
+    }
+
+    pub fn parse_get_or_put(
+        k: Keyword,
+        built_in_sub: BuiltInSub,
+    ) -> impl Parser<Output = Statement> {
+        seq5(
+            keyword(k),
+            whitespace().no_incomplete(),
+            file_handle_p().or_syntax_error("Expected: file-number"),
+            comma().no_incomplete(),
+            expression_node_p().or_syntax_error("Expected: record-number"),
+            move |_, _, file_number_node, _, record_number_expr_node| {
                 Statement::BuiltInSubCall(
-                    BuiltInSub::Get,
-                    vec![file_number.map(|x| Expression::IntegerLiteral(x.into())), r],
+                    built_in_sub,
+                    vec![
+                        file_number_node.map(Expression::from),
+                        record_number_expr_node,
+                    ],
                 )
-            })
+            },
+        )
     }
 }
 
 pub mod linter {
     use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
     use crate::linter::arg_validation::ArgValidation;
-    use crate::parser::ExpressionNode;
+    use crate::parser::ExpressionNodes;
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         if args.len() != 2 {
             return Err(QError::ArgumentCountMismatch).with_err_no_pos();
         }

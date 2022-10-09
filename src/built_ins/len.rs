@@ -1,25 +1,24 @@
 pub mod parser {
     use crate::built_ins::BuiltInFunction;
+    use crate::parser::expression::in_parenthesis_csv_expressions_non_opt;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Expression> {
-        seq2(
-            keyword(Keyword::Len),
-            expression::expressions_non_opt("Expected: variable"),
-            |_, v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v),
-        )
+        keyword(Keyword::Len)
+            .then_demand(in_parenthesis_csv_expressions_non_opt("Expected: variable"))
+            .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
     }
 }
 
 pub mod linter {
     use crate::common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
     use crate::parser::{
-        Expression, ExpressionNode, ExpressionType, HasExpressionType, TypeQualifier,
+        Expression, ExpressionNodes, ExpressionType, HasExpressionType, TypeQualifier,
     };
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         if args.len() != 1 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
@@ -33,7 +32,7 @@ pub mod linter {
                     }
                     _ => Ok(()),
                 }
-            } else if !args[0].can_cast_to(TypeQualifier::DollarString) {
+            } else if !args[0].as_ref().can_cast_to(TypeQualifier::DollarString) {
                 Err(QError::VariableRequired).with_err_at(&args[0])
             } else {
                 Ok(())

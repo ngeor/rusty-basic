@@ -1,38 +1,47 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
+    use crate::parser::expression::expression_node_p;
+    use crate::parser::expression::file_handle::{
+        file_handle_as_expression_node_p, guarded_file_handle_or_expression_p,
+    };
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
+    // <result> ::= <CLOSE> | <CLOSE><file_handles>
+    // file_handles ::= <first_file_handle> | <first_file_handle> <opt-ws> "," <opt-ws> <next_file_handles>
+    // next_file_handles ::= <file_handle> | <file_handle> <opt-ws> "," <opt-ws> <next_file_handles>
+    // first_file_handle ::= "(" <file_handle> ")" | <ws> <file_handle>
+    // file_handle ::= "#" <digits> | <expr>
     pub fn parse() -> impl Parser<Output = Statement> {
-        // TODO rewrite this
-        keyword(Keyword::Close)
-            .and_opt(
-                expression::guarded_file_handle_or_expression_p().and_opt(
-                    comma_surrounded_by_opt_ws()
-                        .and(expression::file_handle_or_expression_p())
-                        .keep_right()
-                        .one_or_more(),
-                ),
-            )
-            .keep_right()
-            .map(|opt_first_and_remaining| {
-                let mut args: ExpressionNodes = vec![];
-                if let Some((first, opt_remaining)) = opt_first_and_remaining {
-                    args.push(first);
-                    args.extend(opt_remaining.unwrap_or_default());
-                }
-                Statement::BuiltInSubCall(BuiltInSub::Close, args)
-            })
+        seq2(
+            keyword(Keyword::Close),
+            file_handles(),
+            |_, file_handles| Statement::BuiltInSubCall(BuiltInSub::Close, file_handles),
+        )
+    }
+
+    fn file_handles() -> impl Parser<Output = ExpressionNodes> + NonOptParser {
+        AccumulateParser::new(
+            guarded_file_handle_or_expression_p(),
+            comma().then_demand(file_handle_or_expression_p()),
+        )
+        .allow_default()
+    }
+
+    fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> + NonOptParser {
+        file_handle_as_expression_node_p()
+            .or(expression_node_p())
+            .or_syntax_error("Expected: file handle")
     }
 }
 
 pub mod linter {
     use crate::common::QErrorNode;
     use crate::linter::arg_validation::ArgValidation;
-    use crate::parser::ExpressionNode;
+    use crate::parser::ExpressionNodes;
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         for i in 0..args.len() {
             args.require_integer_argument(i)?;
         }

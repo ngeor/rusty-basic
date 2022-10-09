@@ -2,9 +2,9 @@ pub mod linter {
     use crate::common::{
         CanCastTo, Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError,
     };
-    use crate::parser::{Expression, ExpressionNode, ExpressionType, TypeQualifier, VariableInfo};
+    use crate::parser::{Expression, ExpressionNodes, ExpressionType, TypeQualifier, VariableInfo};
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         if args.is_empty() || args.len() > 2 {
             return Err(QError::ArgumentCountMismatch).with_err_no_pos();
         }
@@ -24,7 +24,7 @@ pub mod linter {
         ) = first
         {
             if args.len() == 2 {
-                if args[1].can_cast_to(TypeQualifier::PercentInteger) {
+                if args[1].as_ref().can_cast_to(TypeQualifier::PercentInteger) {
                     Ok(())
                 } else {
                     Err(QError::ArgumentTypeMismatch).with_err_at(&args[1])

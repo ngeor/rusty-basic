@@ -1,15 +1,15 @@
 pub mod parser {
     use crate::built_ins::BuiltInFunction;
+    use crate::parser::expression::in_parenthesis_csv_expressions_non_opt;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Expression> {
-        seq3(
-            keyword(Keyword::String_),
-            item_p('$'),
-            expression::expressions_non_opt("Expected: expression"),
-            |_, _, v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v),
+        seq2(
+            keyword_dollar_sign(Keyword::String),
+            in_parenthesis_csv_expressions_non_opt("Expected: expression"),
+            |_, v| Expression::BuiltInFunctionCall(BuiltInFunction::String_, v),
         )
     }
 }
@@ -17,15 +17,15 @@ pub mod parser {
 pub mod linter {
     use crate::common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
     use crate::linter::arg_validation::ArgValidation;
-    use crate::parser::{ExpressionNode, TypeQualifier};
+    use crate::parser::{ExpressionNodes, TypeQualifier};
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         if args.len() != 2 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
             args.require_integer_argument(0)?;
-            if args[1].can_cast_to(TypeQualifier::PercentInteger)
-                || args[1].can_cast_to(TypeQualifier::DollarString)
+            if args[1].as_ref().can_cast_to(TypeQualifier::PercentInteger)
+                || args[1].as_ref().can_cast_to(TypeQualifier::DollarString)
             {
                 Ok(())
             } else {

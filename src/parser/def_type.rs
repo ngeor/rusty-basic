@@ -10,9 +10,12 @@ use crate::parser::{DefType, Keyword, LetterRange, TypeQualifier};
 // Letter       ::= [a-zA-Z]
 
 pub fn def_type_p() -> impl Parser<Output = DefType> {
-    seq3(def_keyword_p(), whitespace(), letter_ranges(), |l, _, r| {
-        DefType::new(l, r)
-    })
+    seq3(
+        def_keyword_p(),
+        whitespace().no_incomplete(),
+        letter_ranges(),
+        |l, _, r| DefType::new(l, r),
+    )
 }
 
 fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
@@ -25,13 +28,14 @@ fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
     ])
 }
 
-fn letter_ranges() -> impl NonOptParser<Output = Vec<LetterRange>> {
-    csv_non_opt(letter_range())
+fn letter_ranges() -> impl Parser<Output = Vec<LetterRange>> + NonOptParser {
+    csv_non_opt(letter_range(), "Expected: letter ranges")
 }
 
-fn letter_range() -> impl NonOptParser<Output = LetterRange> {
+fn letter_range() -> impl Parser<Output = LetterRange> {
     letter()
-        .and_opt(item_p('-').and(letter()))
+        .no_incomplete()
+        .and_opt(minus_sign().and(letter()))
         .and_then(|(l, opt_r)| match opt_r {
             Some((_, r)) => {
                 if l < r {
@@ -44,28 +48,11 @@ fn letter_range() -> impl NonOptParser<Output = LetterRange> {
         })
 }
 
-fn letter() -> impl Parser<Output = char> + NonOptParser<Output = char> {
-    LetterToken.parser().map(token_to_char)
-}
-
-struct LetterToken;
-
-impl TokenPredicate for LetterToken {
-    fn test(&self, token: &Token) -> bool {
-        token.kind == TokenType::Identifier as i32
-            && token.text.chars().count() == 1
-            && is_letter(token_ref_to_char(token))
-    }
-}
-
-impl ErrorProvider for LetterToken {
-    fn provide_error(&self) -> QError {
-        QError::syntax_error("Expected: letter")
-    }
-}
-
-fn token_ref_to_char(token: &Token) -> char {
-    token.text.chars().next().unwrap()
+fn letter() -> impl Parser<Output = char> {
+    any_token_of(TokenType::Identifier)
+        .filter(|token| token.text.chars().count() == 1)
+        .map(token_to_char)
+        .map_incomplete_err(QError::expected("Expected: letter"))
 }
 
 fn token_to_char(token: Token) -> char {
@@ -75,24 +62,10 @@ fn token_to_char(token: Token) -> char {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assert_parser_err;
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::types::{Statement, TopLevelToken};
-
-    /// Asserts that the given input program contains a def type top level token.
-    macro_rules! assert_def_type {
-        ($input:expr, $expected_qualifier:expr, $expected_ranges:expr) => {
-            match parse($input).demand_single().strip_location() {
-                TopLevelToken::DefType(def_type) => {
-                    let def_type_qualifier: &crate::parser::TypeQualifier = def_type.as_ref();
-                    assert_eq!(*def_type_qualifier, $expected_qualifier);
-                    assert_eq!(def_type.ranges(), &$expected_ranges);
-                }
-                _ => panic!("{:?}", $input),
-            }
-        };
-    }
+    use crate::{assert_def_type, assert_parser_err};
 
     #[test]
     fn test_parse_def_int_a_z() {

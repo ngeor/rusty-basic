@@ -1,19 +1,21 @@
 use crate::common::{Locatable, QError};
 use crate::parser::expression::expression_node_p;
-use crate::parser::name::bare_name_p;
+use crate::parser::name::bare_name_with_dots;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::{Expression, Keyword, OnErrorOption, Statement};
 
 pub fn statement_on_error_go_to_p() -> impl Parser<Output = Statement> {
-    keyword_pair(Keyword::On, Keyword::Error)
-        .followed_by_req_ws()
-        .then_use(
-            next()
-                .or(goto())
-                .or_syntax_error("Expected: GOTO or RESUME"),
-        )
-        .map(Statement::OnError)
+    Seq2::new(
+        keyword_pair(Keyword::On, Keyword::Error),
+        whitespace().no_incomplete(),
+    )
+    .then_demand(
+        next()
+            .or(goto())
+            .or_syntax_error("Expected: GOTO or RESUME"),
+    )
+    .map(Statement::OnError)
 }
 
 fn next() -> impl Parser<Output = OnErrorOption> {
@@ -22,17 +24,15 @@ fn next() -> impl Parser<Output = OnErrorOption> {
 }
 
 fn goto() -> impl Parser<Output = OnErrorOption> {
-    keyword_followed_by_whitespace_p(Keyword::GoTo)
-        .and_demand(
-            goto_label()
-                .or(goto_zero())
-                .or_syntax_error("Expected: label or 0"),
-        )
-        .keep_right()
+    keyword_followed_by_whitespace_p(Keyword::GoTo).then_demand(
+        goto_label()
+            .or(goto_zero())
+            .or_syntax_error("Expected: label or 0"),
+    )
 }
 
 fn goto_label() -> impl Parser<Output = OnErrorOption> {
-    bare_name_p().map(OnErrorOption::Label)
+    bare_name_with_dots().map(OnErrorOption::Label)
 }
 
 fn goto_zero() -> impl Parser<Output = OnErrorOption> {

@@ -9,59 +9,65 @@ pub trait Recognizer {
     fn recognize(&self, buffer: &str) -> Recognition;
 }
 
-struct AnySingleCharRecognizer {}
-
-impl Recognizer for AnySingleCharRecognizer {
-    fn recognize(&self, buffer: &str) -> Recognition {
-        if buffer.chars().count() == 1 {
-            Recognition::Positive
-        } else {
-            Recognition::Negative
-        }
-    }
-}
-
-struct SingleNewLineRecognizer {}
-
-impl Recognizer for SingleNewLineRecognizer {
-    fn recognize(&self, buffer: &str) -> Recognition {
-        if buffer == "\r" || buffer == "\n" || buffer == "\r\n" {
-            Recognition::Positive
-        } else {
-            Recognition::Negative
-        }
-    }
-}
-
-struct ManyPredicateRecognizer<T: Fn(char) -> bool> {
-    predicate: T,
-}
-
-impl<T: Fn(char) -> bool> Recognizer for ManyPredicateRecognizer<T> {
-    fn recognize(&self, buffer: &str) -> Recognition {
-        if !buffer.is_empty() && buffer.chars().all(&self.predicate) {
-            Recognition::Positive
-        } else {
-            Recognition::Negative
-        }
-    }
-}
-
-struct LeadingRemainingPredicateRecognizer<T: Fn(char) -> bool, U: Fn(char) -> bool> {
-    leading_predicate: T,
-    remaining_predicate: U,
-}
-
-impl<T: Fn(char) -> bool, U: Fn(char) -> bool> Recognizer
-    for LeadingRemainingPredicateRecognizer<T, U>
+// blanket implementation for functions, so that any `fn(&str) -> Recognition`
+// automatically implements the [Recognizer] trait
+impl<F> Recognizer for F
+where
+    F: Fn(&str) -> Recognition,
 {
     fn recognize(&self, buffer: &str) -> Recognition {
+        (self)(buffer)
+    }
+}
+
+/// A recognizer that matches a single character. It can be used as a fallback
+/// mechanism when nothing else matches.
+pub fn any_single_char_recognizer(buffer: &str) -> Recognition {
+    if buffer.chars().count() == 1 {
+        Recognition::Positive
+    } else {
+        Recognition::Negative
+    }
+}
+
+/// A recognizer that matches a single new line.
+pub fn single_new_line_recognizer(buffer: &str) -> Recognition {
+    if buffer == "\r" || buffer == "\n" || buffer == "\r\n" {
+        Recognition::Positive
+    } else {
+        Recognition::Negative
+    }
+}
+
+/// A recognizer that matches any non-empty string where all characters meet
+/// the given predicate.
+pub fn all_chars_are<F>(predicate: F) -> impl Recognizer
+where
+    F: Fn(char) -> bool,
+{
+    move |buffer: &str| {
+        if !buffer.is_empty() && buffer.chars().all(&predicate) {
+            Recognition::Positive
+        } else {
+            Recognition::Negative
+        }
+    }
+}
+
+/// A recognizer that matches a string that starts with a character satisfying
+/// the [leading_predicate] and continues with characters that satisfy
+/// the [remaining_predicate].
+pub fn leading_remaining_recognizer<T: Fn(char) -> bool, U: Fn(char) -> bool>(
+    leading_predicate: T,
+    remaining_predicate: U,
+) -> impl Recognizer {
+    move |buffer: &str| {
         let mut idx: usize = 0;
         for ch in buffer.chars() {
             let matches = if idx == 0 {
-                (self.leading_predicate)(ch)
+                (leading_predicate)(ch)
             } else {
-                (self.remaining_predicate)(ch)
+                (remaining_predicate)(ch)
             };
             if !matches {
                 return Recognition::Negative;
@@ -76,13 +82,10 @@ impl<T: Fn(char) -> bool, U: Fn(char) -> bool> Recognizer
     }
 }
 
-struct SingleCharRecognizer {
-    needle: char,
-}
-
-impl Recognizer for SingleCharRecognizer {
+// A recognizer that matches a specific character.
+impl Recognizer for char {
     fn recognize(&self, buffer: &str) -> Recognition {
-        if buffer.len() == 1 && buffer.chars().all(|c| c == self.needle) {
+        if buffer.len() == 1 && buffer.chars().all(|c| c == *self) {
             Recognition::Positive
         } else {
             Recognition::Negative
@@ -90,19 +93,10 @@ impl Recognizer for SingleCharRecognizer {
     }
 }
 
-struct StrRecognizer<'a> {
-    needle: &'a str,
-}
-
-impl<'a> StrRecognizer<'a> {
-    pub fn new(needle: &'a str) -> Self {
-        Self { needle }
-    }
-}
-
-impl<'a> Recognizer for StrRecognizer<'a> {
+// A recognizer that matches a specific string.
+impl<'a> Recognizer for &'a str {
     fn recognize(&self, buffer: &str) -> Recognition {
-        let mut needle_iter = self.needle.chars();
+        let mut needle_iter = self.chars();
         let mut buffer_iter = buffer.chars();
         loop {
             let needle_next = needle_iter.next();
@@ -141,20 +135,11 @@ impl<'a> Recognizer for StrRecognizer<'a> {
     }
 }
 
-struct KeywordRecognizer<'a> {
-    keywords: &'a [&'a str],
-}
-
-impl<'a> KeywordRecognizer<'a> {
-    pub fn new(keywords: &'a [&'a str]) -> Self {
-        Self { keywords }
-    }
-}
-
-impl<'a> Recognizer for KeywordRecognizer<'a> {
-    fn recognize(&self, buffer: &str) -> Recognition {
+/// Recognizes keywords from the given list (case insensitive).
+pub fn keyword_recognizer<'a>(keywords: &'a [&'a str]) -> impl Recognizer + 'a {
+    move |buffer: &str| {
         // TODO use binary search
-        for keyword in self.keywords {
+        for keyword in keywords {
             if keyword.eq_ignore_ascii_case(buffer) {
                 return Recognition::Positive;
             }
@@ -171,30 +156,16 @@ impl<'a> Recognizer for KeywordRecognizer<'a> {
     }
 }
 
-pub fn any_single_char_recognizer() -> impl Recognizer {
-    AnySingleCharRecognizer {}
-}
-
-pub fn single_new_line_recognizer() -> impl Recognizer {
-    SingleNewLineRecognizer {}
-}
-
 pub fn many_digits_recognizer() -> impl Recognizer {
-    ManyPredicateRecognizer {
-        predicate: is_digit,
-    }
+    all_chars_are(is_digit)
 }
 
 pub fn many_white_space_recognizer() -> impl Recognizer {
-    ManyPredicateRecognizer {
-        predicate: |ch| ch == ' ' || ch == '\t',
-    }
+    all_chars_are(|ch| ch == ' ' || ch == '\t')
 }
 
 pub fn many_letters_recognizer() -> impl Recognizer {
-    ManyPredicateRecognizer {
-        predicate: is_letter,
-    }
+    all_chars_are(is_letter)
 }
 
 pub fn is_letter(ch: char) -> bool {
@@ -203,28 +174,6 @@ pub fn is_letter(ch: char) -> bool {
 
 pub fn is_digit(ch: char) -> bool {
     ch >= '0' && ch <= '9'
-}
-
-pub fn leading_remaining_recognizer<T: Fn(char) -> bool, U: Fn(char) -> bool>(
-    leading_predicate: T,
-    remaining_predicate: U,
-) -> impl Recognizer {
-    LeadingRemainingPredicateRecognizer {
-        leading_predicate,
-        remaining_predicate,
-    }
-}
-
-pub fn single_char_recognizer(needle: char) -> impl Recognizer {
-    SingleCharRecognizer { needle }
-}
-
-pub fn str_recognizer(needle: &str) -> impl Recognizer + '_ {
-    StrRecognizer::new(needle)
-}
-
-pub fn keyword_recognizer<'a>(keywords: &'a [&'a str]) -> impl Recognizer + 'a {
-    KeywordRecognizer::new(keywords)
 }
 
 #[cfg(test)]
@@ -240,8 +189,5 @@ mod tests {
     }
 }
 
-// TODO token type as generic
-// TODO automatic parser implementation for every non-opt-parser -> prerequisite: errors more structured instead of everything being a QError
 // TODO error codes e.g. QB001
 // TODO break down the project to libraries (?) to improve module encapsulation
-// TODO simple functions as parsers

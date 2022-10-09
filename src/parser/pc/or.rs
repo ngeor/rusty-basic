@@ -23,22 +23,25 @@ macro_rules! alt_pc {
             }
         }
 
-        impl <OUT, $($generics),+> HasOutput for $name <OUT, $($generics),+> {
-            type Output = OUT;
-        }
-
+        // It would be nice to have a last_type, so that the last return statement is just invoking the last parser,
+        // but then Rust gives an error:
+        // local ambiguity when calling macro `alt_pc`: multiple parsing options: built-in NTs tt ('last_type') or tt ('generics')
         impl <OUT, $($generics : Parser<Output=OUT>),+> Parser for $name <OUT, $($generics),+> {
-            fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<OUT>, QError> {
+            type Output = OUT;
+            fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<OUT, QError> {
                 $(
-                    if let Some(value) = self.$generics.parse(tokenizer)? {
-                        return Ok(Some(value));
+                    if let Some(value) = self.$generics.parse_opt(tokenizer)? {
+                        return Ok(value);
                     }
                 )+
-                Ok(None)
+                Err(QError::Incomplete)
             }
         }
     }
 }
+
+// if the last parser is NonOpt, the Alt2 parser is also NonOpt
+impl<OUT, L: Parser<Output = OUT>, R: NonOptParser<Output = OUT>> NonOptParser for Alt2<OUT, L, R> {}
 
 alt_pc!(
     Alt2 ; A, B
@@ -85,34 +88,3 @@ alt_pc!(
 alt_pc!(
     Alt16 ; A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P
 );
-
-impl<O, L, R> NonOptParser for Alt2<O, L, R>
-where
-    L: Parser<Output = O>,
-    R: NonOptParser<Output = O>,
-{
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        match self.A.parse(tokenizer)? {
-            Some(left) => Ok(left),
-            _ => self.B.parse_non_opt(tokenizer),
-        }
-    }
-}
-
-// OrTrait
-
-pub trait OrTrait<O, P>
-where
-    Self: Sized + HasOutput,
-{
-    fn or(self, other: P) -> Alt2<O, Self, P>;
-}
-
-impl<O, S, P> OrTrait<O, P> for S
-where
-    S: HasOutput,
-{
-    fn or(self, other: P) -> Alt2<O, Self, P> {
-        Alt2::new(self, other)
-    }
-}

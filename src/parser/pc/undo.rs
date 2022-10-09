@@ -1,4 +1,4 @@
-use crate::parser::pc::*;
+use crate::parser::pc::{Token, TokenList, Tokenizer};
 
 pub trait Undo {
     fn undo(self, tokenizer: &mut impl Tokenizer);
@@ -10,9 +10,12 @@ impl Undo for Token {
     }
 }
 
-impl Undo for (Option<Token>, Token, Option<Token>) {
+impl<A, B> Undo for (A, B)
+where
+    A: Undo,
+    B: Undo,
+{
     fn undo(self, tokenizer: &mut impl Tokenizer) {
-        self.2.undo(tokenizer);
         self.1.undo(tokenizer);
         self.0.undo(tokenizer);
     }
@@ -29,7 +32,7 @@ where
     }
 }
 
-impl Undo for Vec<Token> {
+impl Undo for TokenList {
     fn undo(self, tokenizer: &mut impl Tokenizer) {
         let mut x = self;
         loop {
@@ -42,16 +45,5 @@ impl Undo for Vec<Token> {
                 }
             }
         }
-    }
-}
-
-impl<A, B> Undo for (A, B)
-where
-    A: Undo,
-    B: Undo,
-{
-    fn undo(self, tokenizer: &mut impl Tokenizer) {
-        self.1.undo(tokenizer);
-        self.0.undo(tokenizer);
     }
 }

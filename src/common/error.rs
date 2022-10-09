@@ -212,11 +212,20 @@ pub enum QError {
 
     // General fallback
     Other(String),
+
+    // Parser errors
+    Incomplete,
+    Expected(String),
+    Failure,
 }
 
 impl QError {
     pub fn syntax_error<S: AsRef<str>>(msg: S) -> Self {
         QError::SyntaxError(format!("{}", msg.as_ref()))
+    }
+
+    pub fn expected(msg: &str) -> Self {
+        QError::Expected(msg.to_owned())
     }
 
     pub fn get_code(&self) -> i32 {
@@ -238,6 +247,42 @@ impl QError {
             Self::ForLoopZeroStep => 258,
             _ => todo!(),
         }
+    }
+}
+
+pub trait ParserErrorTrait {
+    fn is_incomplete(&self) -> bool;
+
+    fn no_incomplete(self) -> Self;
+}
+
+impl ParserErrorTrait for QError {
+    fn is_incomplete(&self) -> bool {
+        match self {
+            Self::Incomplete | Self::Expected(_) => true,
+            _ => false,
+        }
+    }
+
+    fn no_incomplete(self) -> Self {
+        match self {
+            Self::Incomplete => Self::Failure,
+            Self::Expected(s) => Self::SyntaxError(s),
+            _ => self,
+        }
+    }
+}
+
+impl<T, E: ParserErrorTrait> ParserErrorTrait for Result<T, E> {
+    fn is_incomplete(&self) -> bool {
+        match self {
+            Err(err) if err.is_incomplete() => true,
+            _ => false,
+        }
+    }
+
+    fn no_incomplete(self) -> Self {
+        self.map_err(|err| err.no_incomplete())
     }
 }
 

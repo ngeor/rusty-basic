@@ -2,7 +2,9 @@ use super::post_conversion_linter::PostConversionLinter;
 use crate::built_ins::{linter, BuiltInSub};
 use crate::common::*;
 use crate::linter::NameContext;
-use crate::parser::{Expression, ExpressionNode, FunctionImplementation, SubImplementation};
+use crate::parser::{
+    Expression, ExpressionNode, ExpressionNodes, FunctionImplementation, SubImplementation,
+};
 
 /// Lints built-in functions and subs.
 pub struct BuiltInLinter {
@@ -38,7 +40,7 @@ impl PostConversionLinter for BuiltInLinter {
     fn visit_built_in_sub_call(
         &mut self,
         built_in_sub: &BuiltInSub,
-        args: &Vec<ExpressionNode>,
+        args: &ExpressionNodes,
     ) -> Result<(), QErrorNode> {
         self.visit_expressions(args)?;
         linter::lint_sub_call(built_in_sub, args, self.name_context)

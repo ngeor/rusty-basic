@@ -10,25 +10,22 @@ use crate::parser::types::*;
 // NEXT (I)
 
 pub fn for_loop_p() -> impl Parser<Output = Statement> {
-    parse_for_step_p()
-        .and_demand(ZeroOrMoreStatements::new(keyword(Keyword::Next)))
-        .and_demand(keyword(Keyword::Next).map_err(QError::ForWithoutNext))
-        .and_opt(next_counter_p())
-        .map(
-            |(
-                (((variable_name, lower_bound, upper_bound, opt_step), statements), _),
-                opt_next_name_node,
-            )| {
-                Statement::ForLoop(ForLoopNode {
-                    variable_name,
-                    lower_bound,
-                    upper_bound,
-                    step: opt_step,
-                    statements,
-                    next_counter: opt_next_name_node,
-                })
-            },
-        )
+    seq4(
+        parse_for_step_p(),
+        ZeroOrMoreStatements::new(keyword(Keyword::Next)),
+        keyword(Keyword::Next).or_fail(QError::ForWithoutNext),
+        next_counter_p().allow_none(),
+        |(variable_name, lower_bound, upper_bound, opt_step), statements, _, opt_next_name_node| {
+            Statement::ForLoop(ForLoopNode {
+                variable_name,
+                lower_bound,
+                upper_bound,
+                step: opt_step,
+                statements,
+                next_counter: opt_next_name_node,
+            })
+        },
+    )
 }
 
 /// Parses the "FOR I = 1 TO 2 [STEP X]" part
@@ -40,45 +37,33 @@ fn parse_for_step_p() -> impl Parser<
         Option<ExpressionNode>,
     ),
 > {
-    parse_for_p()
-        .and_opt_factory(|(_, _, upper)| {
-            seq2(
-                whitespace_boundary_after_expr(upper).and(keyword(Keyword::Step)),
-                expression::guarded_expression_node_p()
-                    .or_syntax_error("Expected: expression after STEP"),
-                |_, step_expr| step_expr,
-            )
-        })
+    opt_second_expression_after_keyword(parse_for_p(), Keyword::Step)
         .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
+}
+
+impl ExtractExpression for (ExpressionNode, ExpressionNode, ExpressionNode) {
+    fn to_expression(&self) -> &ExpressionNode {
+        &self.2
+    }
 }
 
 /// Parses the "FOR I = 1 TO 2" part
 fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, ExpressionNode)> {
-    keyword_followed_by_whitespace_p(Keyword::For)
-        .and_demand(
-            expression::word::word_p()
-                .with_pos()
-                .or_syntax_error("Expected: name after FOR"),
-        )
-        .and_demand(
-            item_p('=')
-                .preceded_by_opt_ws()
-                .or_syntax_error("Expected: = after name"),
-        )
-        .and_demand(
-            expression::back_guarded_expression_node_p()
-                .or_syntax_error("Expected: lower bound of FOR loop"),
-        )
-        .and_demand(keyword(Keyword::To))
-        .and_demand(
-            expression::guarded_expression_node_p()
-                .or_syntax_error("Expected: upper bound of FOR loop"),
-        )
-        .map(|(((((_, n), _), l), _), u)| (n, l, u))
+    seq6(
+        keyword_followed_by_whitespace_p(Keyword::For),
+        expression::property::parser().or_syntax_error("Expected: name after FOR"),
+        equal_sign().no_incomplete(),
+        expression::expr_node_ws().or_syntax_error("Expected: lower bound of FOR loop"),
+        keyword(Keyword::To).no_incomplete(),
+        expression::ws_expr_node().or_syntax_error("Expected: upper bound of FOR loop"),
+        |_, name, _, lower_bound, _, upper_bound| (name, lower_bound, upper_bound),
+    )
 }
 
 fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
-    expression::word::word_p().with_pos().preceded_by_req_ws()
+    whitespace()
+        .and(expression::property::parser())
+        .keep_right()
 }
 
 #[cfg(test)]
@@ -154,7 +139,7 @@ mod tests {
 
     #[test]
     fn fn_fixture_for_nested() {
-        let result = parse_file("FOR_NESTED.BAS").strip_location();
+        let result = parse_file_no_location("FOR_NESTED.BAS");
         assert_eq!(
             result,
             vec![

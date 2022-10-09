@@ -17,6 +17,10 @@ use crate::parser::ExpressionNode;
 /// LPRINT USING format-string$; [expression list] [{; | ,}]
 /// ```
 ///
+/// `expression list`: A list of one or more numeric or string expressions to
+/// print, separated by commas, semicolons, spaces, or tabs (note: spaces or
+/// tabs means `PRINT , , 4` is a valid statement, as is `PRINT 4, , ,`).
+///
 /// `{; | ,}` Determines where the next output begins:
 ///
 /// - `;` means print immediately after the last value.

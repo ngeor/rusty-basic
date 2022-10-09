@@ -1,28 +1,19 @@
 pub mod parser {
+    use crate::built_ins::get::parser::parse_get_or_put;
     use crate::built_ins::BuiltInSub;
-    use crate::parser::pc::*;
-    use crate::parser::pc_specific::*;
-    use crate::parser::*;
+    use crate::parser::pc::Parser;
+    use crate::parser::{Keyword, Statement};
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword_followed_by_whitespace_p(Keyword::Put)
-            .and_demand(expression::file_handle_p().or_syntax_error("Expected: file-number"))
-            .and_demand(comma_surrounded_by_opt_ws())
-            .and_demand(expression::expression_node_p().or_syntax_error("Expected: record-number"))
-            .map(|(((_, file_number), _), r)| {
-                Statement::BuiltInSubCall(
-                    BuiltInSub::Put,
-                    vec![file_number.map(|x| Expression::IntegerLiteral(x.into())), r],
-                )
-            })
+        parse_get_or_put(Keyword::Put, BuiltInSub::Put)
     }
 }
 
 pub mod linter {
     use crate::common::QErrorNode;
-    use crate::parser::ExpressionNode;
+    use crate::parser::ExpressionNodes;
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         super::super::get::linter::lint(args)
     }
 }

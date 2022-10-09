@@ -8,9 +8,12 @@ use crate::parser::statements::{
 use crate::parser::types::*;
 
 pub fn if_block_p() -> impl Parser<Output = Statement> {
-    if_expr_then_p()
-        .and_demand(single_line_if_else_p().or(multi_line_if_p()))
-        .map(|(condition, (statements, else_if_blocks, else_block))| {
+    seq2(
+        if_expr_then_p(),
+        single_line_if_else_p()
+            .or(multi_line_if_p())
+            .or_syntax_error("Expected: single line or multi line IF"),
+        |condition, (statements, else_if_blocks, else_block)| {
             Statement::IfBlock(IfBlockNode {
                 if_block: ConditionalBlockNode {
                     condition,
@@ -19,7 +22,8 @@ pub fn if_block_p() -> impl Parser<Output = Statement> {
                 else_if_blocks,
                 else_block,
             })
-        })
+        },
+    )
 }
 
 // IF expr THEN ( single line if | multi line if)
@@ -30,9 +34,8 @@ pub fn if_block_p() -> impl Parser<Output = Statement> {
 fn if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
     seq3(
         keyword(Keyword::If),
-        expression::back_guarded_expression_node_p()
-            .or_syntax_error("Expected: expression after IF"),
-        keyword(Keyword::Then),
+        expression::ws_expr_node_ws().or_syntax_error("Expected: expression after IF"),
+        keyword(Keyword::Then).no_incomplete(),
         |_, m, _| m,
     )
 }
@@ -47,9 +50,9 @@ fn single_line_if_else_p() -> impl Parser<
     single_line_non_comment_statements_p()
         .and_opt(
             // comment or ELSE
-            comment::comment_p()
-                .preceded_by_req_ws()
-                .with_pos()
+            whitespace()
+                .and(comment::comment_p().with_pos())
+                .keep_right()
                 .map(|s| vec![s])
                 .or(single_line_else_p()),
         )
@@ -57,54 +60,57 @@ fn single_line_if_else_p() -> impl Parser<
 }
 
 fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
-    keyword(Keyword::Else).preceded_by_req_ws().then_use(
+    whitespace().and(keyword(Keyword::Else)).then_demand(
         single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
     )
 }
 
-fn multi_line_if_p() -> impl NonOptParser<
+fn multi_line_if_p() -> impl Parser<
     Output = (
         StatementNodes,
         Vec<ConditionalBlockNode>,
         Option<StatementNodes>,
     ),
 > {
-    ZeroOrMoreStatements::new(keyword_choice(&[
-        Keyword::End,
-        Keyword::Else,
-        Keyword::ElseIf,
-    ]))
-    .and_demand(else_if_block_p().zero_or_more())
-    .and_opt(else_block_p())
-    .and_demand(keyword_pair_non_opt(Keyword::End, Keyword::If))
-    .map(|(((if_block, else_if_blocks), opt_else), _)| (if_block, else_if_blocks, opt_else))
+    seq4(
+        ZeroOrMoreStatements::new(keyword_choice(&[
+            Keyword::End,
+            Keyword::Else,
+            Keyword::ElseIf,
+        ])),
+        else_if_block_p().zero_or_more(),
+        else_block_p().allow_none(),
+        keyword_pair(Keyword::End, Keyword::If).no_incomplete(),
+        |if_block, else_if_blocks, opt_else, _| (if_block, else_if_blocks, opt_else),
+    )
 }
 
 fn else_if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
     seq3(
         keyword(Keyword::ElseIf),
-        expression::back_guarded_expression_node_p()
-            .or_syntax_error("Expected: expression after ELSEIF"),
-        keyword(Keyword::Then),
+        expression::ws_expr_node_ws().or_syntax_error("Expected: expression after ELSEIF"),
+        keyword(Keyword::Then).no_incomplete(),
         |_, m, _| m,
     )
 }
 
 fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {
-    else_if_expr_then_p()
-        .and_demand(ZeroOrMoreStatements::new(keyword_choice(&[
+    seq2(
+        else_if_expr_then_p(),
+        ZeroOrMoreStatements::new(keyword_choice(&[
             Keyword::End,
             Keyword::Else,
             Keyword::ElseIf,
-        ])))
-        .map(|(condition, statements)| ConditionalBlockNode {
+        ])),
+        |condition, statements| ConditionalBlockNode {
             condition,
             statements,
-        })
+        },
+    )
 }
 
 fn else_block_p() -> impl Parser<Output = StatementNodes> {
-    keyword(Keyword::Else).then_use(ZeroOrMoreStatements::new(keyword(Keyword::End)))
+    keyword(Keyword::Else).then_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
 }
 
 #[cfg(test)]
@@ -145,7 +151,7 @@ mod tests {
         IF X THEN Flint X
         SYSTEM
         ";
-        let program = parse(input).strip_location();
+        let program = parse_str_no_location(input);
         assert_eq!(
             program,
             vec![

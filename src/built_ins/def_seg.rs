@@ -1,41 +1,34 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
+    use crate::parser::expression::expression_node_p;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
+    // DEF SEG(=expr)?
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword_pair(Keyword::Def, Keyword::Seg)
-            .and_opt(equal_sign_and_expression())
-            .keep_right()
-            .map(opt_arg_to_args)
-            .map(|args| Statement::BuiltInSubCall(BuiltInSub::DefSeg, args))
+        seq2(
+            keyword_pair(Keyword::Def, Keyword::Seg),
+            equal_sign_and_expression().allow_none(),
+            |_, opt_expr_node| {
+                Statement::BuiltInSubCall(BuiltInSub::DefSeg, opt_expr_node.into_iter().collect())
+            },
+        )
     }
 
     fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {
-        item_p('=')
-            .surrounded_by_opt_ws()
-            .and_demand(
-                expression::expression_node_p()
-                    .or_syntax_error("Expected expression after equal sign"),
-            )
-            .keep_right()
-    }
-
-    fn opt_arg_to_args(opt_arg: Option<ExpressionNode>) -> ExpressionNodes {
-        match opt_arg {
-            Some(arg) => vec![arg],
-            _ => vec![],
-        }
+        equal_sign().then_demand(
+            expression_node_p().or_syntax_error("Expected expression after equal sign"),
+        )
     }
 }
 
 pub mod linter {
     use crate::common::QErrorNode;
     use crate::linter::arg_validation::ArgValidation;
-    use crate::parser::ExpressionNode;
+    use crate::parser::ExpressionNodes;
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         if args.is_empty() {
             Ok(())
         } else {

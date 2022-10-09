@@ -7,13 +7,11 @@ use crate::parser::types::{Keyword, Statement};
 pub fn constant_p() -> impl Parser<Output = Statement> {
     seq5(
         keyword(Keyword::Const),
-        whitespace(),
-        name::name_with_dot_p()
+        whitespace().no_incomplete(),
+        name::name_with_dots()
             .with_pos()
             .or_syntax_error("Expected: const name"),
-        item_p('=')
-            .surrounded_by_opt_ws()
-            .or_syntax_error("Expected: ="),
+        equal_sign().no_incomplete(),
         expression_node_p().or_syntax_error("Expected: const value"),
         |_, _, const_name, _, const_value_expr| Statement::Const(const_name, const_value_expr),
     )
@@ -31,7 +29,7 @@ mod tests {
         CONST X = 42
         CONST Y$ = "hello"
         "#;
-        let program = parse(input).strip_location();
+        let program = parse_str_no_location(input);
         assert_eq!(
             program,
             vec![

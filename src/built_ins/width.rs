@@ -8,7 +8,7 @@ pub mod parser {
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_followed_by_whitespace_p(Keyword::Width)
-            .then_use(csv_allow_missing())
+            .then_demand(csv_allow_missing())
             .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args)))
     }
 
@@ -27,9 +27,9 @@ pub mod parser {
 pub mod linter {
     use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
     use crate::linter::arg_validation::ArgValidation;
-    use crate::parser::ExpressionNode;
+    use crate::parser::ExpressionNodes;
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         // 1 or 2 arguments (row, col) but they're duplicated because they're optional
         if args.len() > 4 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()

@@ -1,34 +1,32 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
+    use crate::parser::expression::{ws_expr_node, ws_expr_node_ws};
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair(Keyword::View, Keyword::Print)
-            .and_opt(parse_args())
-            .keep_right()
-            .map(|opt_args| {
-                Statement::BuiltInSubCall(BuiltInSub::ViewPrint, opt_args.unwrap_or_default())
-            })
+            .then_demand(parse_args().allow_default())
+            .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::ViewPrint, opt_args))
     }
 
     fn parse_args() -> impl Parser<Output = ExpressionNodes> {
-        expression::back_guarded_expression_node_p()
-            .and_demand(keyword(Keyword::To))
-            .and_demand(
-                expression::guarded_expression_node_p().or_syntax_error("Expected: expression"),
-            )
-            .map(|((l, _), r)| vec![l, r])
+        seq3(
+            ws_expr_node_ws(),
+            keyword(Keyword::To).no_incomplete(),
+            ws_expr_node().or_syntax_error("Expected: expression"),
+            |l, _, r| vec![l, r],
+        )
     }
 }
 
 pub mod linter {
     use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
     use crate::linter::arg_validation::ArgValidation;
-    use crate::parser::ExpressionNode;
+    use crate::parser::ExpressionNodes;
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         if args.is_empty() {
             Ok(())
         } else if args.len() == 2 {

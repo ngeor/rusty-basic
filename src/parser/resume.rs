@@ -1,4 +1,4 @@
-use crate::parser::name::bare_name_p;
+use crate::parser::name::bare_name_with_dots;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::statement_separator::peek_eof_or_statement_separator;
@@ -10,7 +10,9 @@ use crate::parser::{Keyword, ResumeOption, Statement};
 
 pub fn statement_resume_p() -> impl Parser<Output = Statement> {
     keyword(Keyword::Resume)
-        .then_use(resume_option_p().or_syntax_error("Expected: label or NEXT or end-of-statement"))
+        .then_demand(
+            resume_option_p().or_syntax_error("Expected: label or NEXT or end-of-statement"),
+        )
         .map(Statement::Resume)
 }
 
@@ -23,13 +25,16 @@ fn blank_resume() -> impl Parser<Output = ResumeOption> {
 }
 
 fn resume_next() -> impl Parser<Output = ResumeOption> {
-    keyword(Keyword::Next)
-        .preceded_by_req_ws()
+    whitespace()
+        .and(keyword(Keyword::Next))
         .map(|_| ResumeOption::Next)
 }
 
 fn resume_label() -> impl Parser<Output = ResumeOption> {
-    bare_name_p().preceded_by_req_ws().map(ResumeOption::Label)
+    whitespace()
+        .and(bare_name_with_dots())
+        .keep_right()
+        .map(ResumeOption::Label)
 }
 
 #[cfg(test)]

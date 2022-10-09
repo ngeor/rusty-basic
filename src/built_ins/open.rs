@@ -1,76 +1,77 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
+    use crate::parser::expression::file_handle::guarded_file_handle_or_expression_p;
+    use crate::parser::expression::{expression_node_p, ws_expr_node_ws};
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        to_impl_parser(keyword(Keyword::Open))
-            .and_demand(
-                expression::back_guarded_expression_node_p()
-                    .or_syntax_error("Expected: file name after OPEN"),
-            )
-            .and_opt(parse_open_mode_p())
-            .and_opt(parse_open_access_p())
-            .and_demand(parse_file_number_p().or_syntax_error("Expected: AS file-number"))
-            .and_opt(parse_len_p())
-            .map(
-                |(((((_, file_name), opt_file_mode), opt_file_access), file_number), opt_len)| {
-                    Statement::BuiltInSubCall(
-                        BuiltInSub::Open,
-                        vec![
-                            file_name,
-                            map_opt_locatable_enum(opt_file_mode, FileMode::Random),
-                            map_opt_locatable_enum(opt_file_access, FileAccess::Unspecified),
-                            file_number,
-                            map_opt_len(opt_len),
-                        ],
-                    )
-                },
-            )
+        seq6(
+            keyword(Keyword::Open),
+            ws_expr_node_ws().or_syntax_error("Expected: file name after OPEN"),
+            parse_open_mode_p().allow_none(),
+            parse_open_access_p().allow_none(),
+            parse_file_number_p().or_syntax_error("Expected: AS file-number"),
+            parse_len_p().allow_none(),
+            |_, file_name, opt_file_mode, opt_file_access, file_number, opt_len| {
+                Statement::BuiltInSubCall(
+                    BuiltInSub::Open,
+                    vec![
+                        file_name,
+                        map_opt_locatable_enum(opt_file_mode, FileMode::Random),
+                        map_opt_locatable_enum(opt_file_access, FileAccess::Unspecified),
+                        file_number,
+                        map_opt_len(opt_len),
+                    ],
+                )
+            },
+        )
     }
 
     // FOR <ws+> INPUT <ws+>
     fn parse_open_mode_p() -> impl Parser<Output = Locatable<FileMode>> {
-        seq3(
-            keyword_followed_by_whitespace_p(Keyword::For),
+        seq4(
+            keyword(Keyword::For),
+            whitespace().no_incomplete(),
             keyword_map(&[
                 (Keyword::Append, FileMode::Append),
                 (Keyword::Input, FileMode::Input),
                 (Keyword::Output, FileMode::Output),
                 (Keyword::Random, FileMode::Random),
             ])
-            .with_pos(),
-            whitespace(),
-            |_, file_mode, _| file_mode,
+            .with_pos()
+            .no_incomplete(),
+            whitespace().no_incomplete(),
+            |_, _, file_mode, _| file_mode,
         )
     }
 
     // ACCESS <ws+> READ <ws+>
     fn parse_open_access_p() -> impl Parser<Output = Locatable<FileAccess>> {
-        keyword_followed_by_whitespace_p(Keyword::Access)
-            .and_demand(keyword(Keyword::Read).with_pos())
-            .keep_right()
-            .followed_by_req_ws()
-            .map(|x| FileAccess::Read.at(x.pos()))
+        seq4(
+            keyword(Keyword::Access),
+            whitespace().no_incomplete(),
+            keyword(Keyword::Read).with_pos().no_incomplete(),
+            whitespace().no_incomplete(),
+            |_, _, Locatable { pos, .. }, _| FileAccess::Read.at(pos),
+        )
     }
 
     // AS <ws+> expression
     // AS ( expression )
     fn parse_file_number_p() -> impl Parser<Output = ExpressionNode> {
-        keyword(Keyword::As).then_use(
-            expression::guarded_file_handle_or_expression_p()
-                .or_syntax_error("Expected: #file-number%"),
+        keyword(Keyword::As).then_demand(
+            guarded_file_handle_or_expression_p().or_syntax_error("Expected: #file-number%"),
         )
     }
 
     fn parse_len_p() -> impl Parser<Output = ExpressionNode> {
         seq3(
             whitespace().and(keyword(Keyword::Len)),
-            item_p('=').preceded_by_opt_ws(),
-            expression::guarded_expression_node_p()
-                .or_syntax_error("Expected: expression after LEN ="),
+            equal_sign().no_incomplete(),
+            expression_node_p().or_syntax_error("Expected: expression after LEN ="),
             |_, _, e| e,
         )
     }
@@ -83,7 +84,7 @@ pub mod parser {
         u8: From<T>,
     {
         opt_locatable_enum
-            .map(|Locatable { element, pos }| u8_to_expr(element).at(pos))
+            .map(|locatable| locatable.map(u8_to_expr))
             .unwrap_or_else(|| u8_to_expr(fallback).at(Location::start()))
     }
 
@@ -95,19 +96,16 @@ pub mod parser {
     }
 
     fn map_opt_len(opt_len: Option<ExpressionNode>) -> ExpressionNode {
-        match opt_len {
-            Some(expr) => expr,
-            _ => Expression::IntegerLiteral(0).at(Location::start()),
-        }
+        opt_len.unwrap_or_else(|| Expression::IntegerLiteral(0).at(Location::start()))
     }
 }
 
 pub mod linter {
     use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
     use crate::linter::arg_validation::ArgValidation;
-    use crate::parser::ExpressionNode;
+    use crate::parser::ExpressionNodes;
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         // must have 5 arguments:
         // filename
         // file mode

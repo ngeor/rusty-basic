@@ -1,8 +1,6 @@
-use std::str::FromStr;
-
 use crate::common::*;
-use crate::parser::expression;
-use crate::parser::name::MAX_LENGTH;
+use crate::parser::expression::expression_node_p;
+use crate::parser::name::bare_name_without_dots;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
@@ -15,71 +13,64 @@ use crate::parser::types::*;
 
 pub fn param_name_node_p() -> impl Parser<Output = ParamNameNode> {
     param_name_p()
-        .with_pos()
         .and_opt(type_definition_extended_p())
-        .and_then(
-            |(
-                Locatable {
-                    element: (name, is_array),
-                    pos,
-                },
-                opt_type_definition,
-            )| match name {
-                Name::Bare(b) => match opt_type_definition {
-                    Some(param_type) => match param_type {
-                        ParamType::UserDefined(_) => {
-                            if b.contains('.') {
-                                Err(QError::IdentifierCannotIncludePeriod)
-                            } else {
-                                Ok(ParamName::new(b, final_param_type(param_type, is_array))
-                                    .at(pos))
-                            }
+        .and_then(|((name, is_array, pos), opt_type_definition)| match name {
+            Name::Bare(b) => match opt_type_definition {
+                Some(param_type) => match param_type {
+                    ParamType::UserDefined(_) => {
+                        if b.contains('.') {
+                            Err(QError::IdentifierCannotIncludePeriod)
+                        } else {
+                            Ok(ParamName::new(b, final_param_type(param_type, is_array)).at(pos))
                         }
-                        _ => Ok(ParamName::new(b, final_param_type(param_type, is_array)).at(pos)),
-                    },
-                    None => {
-                        Ok(ParamName::new(b, final_param_type(ParamType::Bare, is_array)).at(pos))
                     }
+                    _ => Ok(ParamName::new(b, final_param_type(param_type, is_array)).at(pos)),
                 },
-                Name::Qualified(QualifiedName {
-                    bare_name,
-                    qualifier,
-                }) => match opt_type_definition {
-                    Some(_) => Err(QError::syntax_error(
-                        "Identifier cannot end with %, &, !, #, or $",
-                    )),
-                    None => Ok(ParamName::new(
-                        bare_name,
-                        final_param_type(
-                            ParamType::BuiltIn(qualifier, BuiltInStyle::Compact),
-                            is_array,
-                        ),
-                    )
-                    .at(pos)),
-                },
+                None => Ok(ParamName::new(b, final_param_type(ParamType::Bare, is_array)).at(pos)),
             },
-        )
+            Name::Qualified(QualifiedName {
+                bare_name,
+                qualifier,
+            }) => match opt_type_definition {
+                Some(_) => Err(QError::syntax_error(
+                    "Identifier cannot end with %, &, !, #, or $",
+                )),
+                None => Ok(ParamName::new(
+                    bare_name,
+                    final_param_type(
+                        ParamType::BuiltIn(qualifier, BuiltInStyle::Compact),
+                        is_array,
+                    ),
+                )
+                .at(pos)),
+            },
+        })
 }
 
-fn param_name_p() -> impl Parser<Output = (Name, bool)> {
-    expression::word::word_p().and_then(|name_expr| match name_expr {
-        Expression::Variable(var_name, _) => Ok((var_name, false)),
-        Expression::Property(_, _, _) => {
-            // only allowed if we can fold it back into a single name
-            name_expr
-                .fold_name()
-                .ok_or(QError::syntax_error("Invalid parameter name"))
-                .map(|x| (x, false))
-        }
-        Expression::FunctionCall(var_name, args) => {
-            if args.is_empty() {
-                Ok((var_name, true))
-            } else {
-                Err(QError::syntax_error("Invalid parameter name"))
+fn param_name_p() -> impl Parser<Output = (Name, bool, Location)> {
+    expression_node_p().and_then(
+        |Locatable {
+             element: name_expr,
+             pos,
+         }| match name_expr {
+            Expression::Variable(var_name, _) => Ok((var_name, false, pos)),
+            Expression::Property(_, _, _) => {
+                // only allowed if we can fold it back into a single name
+                name_expr
+                    .fold_name()
+                    .ok_or(QError::syntax_error("Invalid parameter name"))
+                    .map(|x| (x, false, pos))
             }
-        }
-        _ => Err(QError::syntax_error("Invalid parameter name")),
-    })
+            Expression::FunctionCall(var_name, args) => {
+                if args.is_empty() {
+                    Ok((var_name, true, pos))
+                } else {
+                    Err(QError::syntax_error("Invalid parameter name"))
+                }
+            }
+            _ => Err(QError::syntax_error("Invalid parameter name")),
+        },
+    )
 }
 
 fn final_param_type(param_type: ParamType, is_array: bool) -> ParamType {
@@ -92,48 +83,42 @@ fn final_param_type(param_type: ParamType, is_array: bool) -> ParamType {
 
 fn type_definition_extended_p() -> impl Parser<Output = ParamType> {
     // <ws+> AS <ws+> identifier
-    keyword_followed_by_whitespace_p(Keyword::As)
-        .preceded_by_req_ws()
-        .and_demand(extended_type_p().or_syntax_error("Expected: type after AS"))
-        .keep_right()
+    seq3(
+        whitespace().and(keyword(Keyword::As)),
+        whitespace().no_incomplete(),
+        extended_type_p().or_syntax_error(
+            "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
+        ),
+        |_, _, param_type| param_type,
+    )
 }
 
 fn extended_type_p() -> impl Parser<Output = ParamType> {
-    identifier_or_keyword_without_dot()
-        .with_pos()
-        .and_then(
-            |Locatable { element: x, pos }| match Keyword::from_str(&x.text) {
-                Ok(Keyword::Single) => Ok(ParamType::BuiltIn(
-                    TypeQualifier::BangSingle,
-                    BuiltInStyle::Extended,
-                )),
-                Ok(Keyword::Double) => Ok(ParamType::BuiltIn(
-                    TypeQualifier::HashDouble,
-                    BuiltInStyle::Extended,
-                )),
-                Ok(Keyword::String_) => Ok(ParamType::BuiltIn(
-                    TypeQualifier::DollarString,
-                    BuiltInStyle::Extended,
-                )),
-                Ok(Keyword::Integer) => Ok(ParamType::BuiltIn(
-                    TypeQualifier::PercentInteger,
-                    BuiltInStyle::Extended,
-                )),
-                Ok(Keyword::Long) => Ok(ParamType::BuiltIn(
-                    TypeQualifier::AmpersandLong,
-                    BuiltInStyle::Extended,
-                )),
-                Ok(_) => Err(QError::syntax_error(
-                    "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-                )),
-                Err(_) => {
-                    if x.text.chars().count() > MAX_LENGTH {
-                        Err(QError::IdentifierTooLong)
-                    } else {
-                        let type_name: BareName = x.text.into();
-                        Ok(ParamType::UserDefined(type_name.at(pos)))
-                    }
-                }
-            },
-        )
+    Alt2::new(
+        bare_name_without_dots()
+            .with_pos()
+            .map(ParamType::UserDefined),
+        keyword_map(&[
+            (
+                Keyword::Single,
+                ParamType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::Double,
+                ParamType::BuiltIn(TypeQualifier::HashDouble, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::String,
+                ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::Integer,
+                ParamType::BuiltIn(TypeQualifier::PercentInteger, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::Long,
+                ParamType::BuiltIn(TypeQualifier::AmpersandLong, BuiltInStyle::Extended),
+            ),
+        ]),
+    )
 }

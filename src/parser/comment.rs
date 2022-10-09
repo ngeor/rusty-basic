@@ -10,30 +10,27 @@ pub fn comment_p() -> impl Parser<Output = Statement> {
 
 pub struct CommentAsString;
 
-impl HasOutput for CommentAsString {
-    type Output = String;
-}
-
 impl Parser for CommentAsString {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+    type Output = String;
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
-            Some(token) if token.kind == TokenType::SingleQuote as i32 => {
+            Some(token) if TokenType::SingleQuote.matches(&token) => {
                 let mut result = String::new();
                 while let Some(token) = tokenizer.read()? {
-                    if token.kind == TokenType::Eol as i32 {
+                    if TokenType::Eol.matches(&token) {
                         tokenizer.unread(token);
                         break;
                     } else {
                         result.push_str(&token.text);
                     }
                 }
-                Ok(Some(result))
+                Ok(result)
             }
             Some(token) => {
                 tokenizer.unread(token);
-                Ok(None)
+                Err(QError::Incomplete)
             }
-            None => Ok(None),
+            None => Err(QError::Incomplete),
         }
     }
 }

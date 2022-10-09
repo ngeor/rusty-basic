@@ -1,4 +1,3 @@
-use crate::common::StripLocation;
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{Instruction, PrinterType};
 use crate::variant::Variant;
@@ -10,7 +9,7 @@ fn test_constant_definition_and_usage_in_print() {
     PRINT X
     "#;
     assert_eq!(
-        generate_instructions_str(program).strip_location(),
+        generate_instructions_str_no_location(program),
         [
             // print
             Instruction::PrintSetPrinterType(PrinterType::Print),

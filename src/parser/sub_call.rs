@@ -15,41 +15,37 @@ pub fn sub_call_or_assignment_p() -> impl Parser<Output = Statement> {
 
 struct SubCallOrAssignment;
 
-impl HasOutput for SubCallOrAssignment {
-    type Output = Statement;
-}
-
 impl Parser for SubCallOrAssignment {
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        let opt_item = Self::name_and_opt_eq_sign().parse(reader)?;
-        match opt_item {
-            Some((name_expr, opt_equal_sign)) => match opt_equal_sign {
-                Some(_) => {
-                    let right_side_expr = expression::expression_node_p()
-                        .or_syntax_error("Expected: expression for assignment")
-                        .parse_non_opt(reader)?;
-                    Ok(Some(Statement::Assignment(name_expr, right_side_expr)))
-                }
-                _ => match expr_to_bare_name_args(name_expr) {
-                    Ok((bare_name, Some(args))) => Ok(Some(Statement::SubCall(bare_name, args))),
-                    Ok((bare_name, None)) => {
-                        let args = expression::expression_nodes_p().parse(reader)?;
-                        Ok(Some(Statement::SubCall(
-                            bare_name,
-                            args.unwrap_or_default(),
-                        )))
-                    }
-                    Err(err) => Err(err),
-                },
+    type Output = Statement;
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        let (
+            Locatable {
+                element: name_expr, ..
             },
-            _ => Ok(None),
+            opt_equal_sign,
+        ) = Self::name_and_opt_eq_sign().parse(tokenizer)?;
+        match opt_equal_sign {
+            Some(_) => {
+                let right_side_expr = expression::expression_node_p()
+                    .or_syntax_error("Expected: expression for assignment")
+                    .parse(tokenizer)?;
+                Ok(Statement::Assignment(name_expr, right_side_expr))
+            }
+            _ => match expr_to_bare_name_args(name_expr) {
+                Ok((bare_name, Some(args))) => Ok(Statement::SubCall(bare_name, args)),
+                Ok((bare_name, None)) => {
+                    let args = expression::csv_expressions_first_guarded().parse_opt(tokenizer)?;
+                    Ok(Statement::SubCall(bare_name, args.unwrap_or_default()))
+                }
+                Err(err) => Err(err),
+            },
         }
     }
 }
 
 impl SubCallOrAssignment {
-    fn name_and_opt_eq_sign() -> impl Parser<Output = (Expression, Option<Token>)> {
-        expression::word::word_p().and_opt(item_p('=').surrounded_by_opt_ws())
+    fn name_and_opt_eq_sign() -> impl Parser<Output = (ExpressionNode, Option<Token>)> {
+        expression::property::parser().and_opt(equal_sign())
     }
 }
 
@@ -153,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_parse_fixture_hello_system() {
-        let program = parse_file("HELLO_S.BAS").strip_location();
+        let program = parse_file_no_location("HELLO_S.BAS");
         assert_eq!(
             program,
             vec![
@@ -167,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_parse_fixture_input() {
-        let program = parse_file("INPUT.BAS").strip_location();
+        let program = parse_file_no_location("INPUT.BAS");
         assert_eq!(
             program,
             vec![
@@ -185,7 +181,7 @@ mod tests {
 
     #[test]
     fn test_parse_fixture_environ() {
-        let program = parse_file("ENVIRON.BAS").strip_location();
+        let program = parse_file_no_location("ENVIRON.BAS");
         assert_eq!(
             program,
             vec![TopLevelToken::Statement(Statement::Print(PrintNode::one(
@@ -203,7 +199,7 @@ mod tests {
             ENVIRON "FOO=BAR"
         END SUB
         "#;
-        let program = parse(input).strip_location();
+        let program = parse_str_no_location(input);
         assert_eq!(
             program,
             vec![
@@ -235,7 +231,7 @@ mod tests {
             ENVIRON N$ + "=" + V$
         END SUB
         "#;
-        let program = parse(input).strip_location();
+        let program = parse_str_no_location(input);
         assert_eq!(
             program,
             vec![

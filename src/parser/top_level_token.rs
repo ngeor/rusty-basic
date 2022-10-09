@@ -7,7 +7,6 @@ use crate::parser::pc_specific::*;
 use crate::parser::statement;
 use crate::parser::types::*;
 use crate::parser::user_defined_type;
-use std::convert::TryFrom;
 
 pub struct TopLevelTokensParser;
 
@@ -17,19 +16,17 @@ impl TopLevelTokensParser {
     }
 }
 
-impl HasOutput for TopLevelTokensParser {
-    type Output = ProgramNode;
-}
-
 impl Parser for TopLevelTokensParser {
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+    type Output = ProgramNode;
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut read_separator = true; // we are at the beginning of the file
         let mut top_level_tokens: ProgramNode = vec![];
+        let top_level_token_parser = top_level_token_one_p();
         loop {
-            let opt_item = reader.read()?;
+            let opt_item = tokenizer.read()?;
             match opt_item {
                 Some(ch) => {
-                    let token_type = TokenType::try_from(ch.kind)?;
+                    let token_type = TokenType::from_token(&ch);
                     if token_type == TokenType::Whitespace {
                         // skip whitespace
                     } else if token_type == TokenType::Eol || token_type == TokenType::Colon {
@@ -40,8 +37,8 @@ impl Parser for TopLevelTokensParser {
                         if !can_read {
                             return Err(QError::SyntaxError(format!("No separator: {}", ch.text)));
                         }
-                        reader.unread(ch);
-                        let opt_top_level_token = top_level_token_one_p().parse(reader)?;
+                        tokenizer.unread(ch);
+                        let opt_top_level_token = top_level_token_parser.parse_opt(tokenizer)?;
                         match opt_top_level_token {
                             Some(top_level_token) => {
                                 top_level_tokens.push(top_level_token);
@@ -58,7 +55,7 @@ impl Parser for TopLevelTokensParser {
                 }
             }
         }
-        Ok(Some(top_level_tokens))
+        Ok(top_level_tokens)
     }
 }
 

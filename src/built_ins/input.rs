@@ -1,41 +1,34 @@
 pub mod parser {
+    use crate::built_ins::parser::{encode_opt_file_handle_arg, opt_file_handle_comma_p};
     use crate::built_ins::BuiltInSub;
-    use crate::common::*;
+    use crate::parser::expression::csv_expressions_non_opt;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
+    // INPUT variable-list
+    // INPUT #file-number%, variable-list
     pub fn parse() -> impl Parser<Output = Statement> {
-        // INPUT variable-list
-        // LINE INPUT variable$
-        // INPUT #file-number%, variable-list
-        // LINE INPUT #file-number%, variable$
-        keyword_followed_by_whitespace_p(Keyword::Input)
-            .and_opt(expression::file_handle_comma_p())
-            .and_demand(
-                csv(expression::expression_node_p())
-                    .or_syntax_error("Expected: #file-number or variable"),
-            )
-            .map(|((_, opt_loc_file_number), variables)| {
-                let mut args: Vec<ExpressionNode> = vec![];
-                if let Some(Locatable { element, pos }) = opt_loc_file_number {
-                    args.push(Expression::IntegerLiteral(1.into()).at(Location::start()));
-                    args.push(Expression::IntegerLiteral(element.into()).at(pos));
-                } else {
-                    args.push(Expression::IntegerLiteral(0.into()).at(Location::start()));
-                }
+        seq4(
+            keyword(Keyword::Input),
+            whitespace().no_incomplete(),
+            opt_file_handle_comma_p(),
+            csv_expressions_non_opt("Expected: #file-number or variable"),
+            |_, _, opt_loc_file_number, variables| {
+                let mut args: ExpressionNodes = encode_opt_file_handle_arg(opt_loc_file_number);
                 args.extend(variables);
                 Statement::BuiltInSubCall(BuiltInSub::Input, args)
-            })
+            },
+        )
     }
 }
 
 pub mod linter {
     use crate::common::*;
     use crate::linter::arg_validation::ArgValidation;
-    use crate::parser::{Expression, ExpressionNode};
+    use crate::parser::{Expression, ExpressionNodes};
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         // the first one or two arguments stand for the file number
         // if the first argument is 0, no file handle
         // if the first argument is 1, the second is the file handle

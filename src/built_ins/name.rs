@@ -1,5 +1,6 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
+    use crate::parser::expression::{ws_expr_node, ws_expr_node_ws};
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
@@ -7,9 +8,9 @@ pub mod parser {
     pub fn parse() -> impl Parser<Output = Statement> {
         seq4(
             keyword(Keyword::Name),
-            expression::back_guarded_expression_node_p().or_syntax_error("Expected: old file name"),
-            keyword(Keyword::As),
-            expression::guarded_expression_node_p().or_syntax_error("Expected: new file name"),
+            ws_expr_node_ws().or_syntax_error("Expected: old file name"),
+            keyword(Keyword::As).no_incomplete(),
+            ws_expr_node().or_syntax_error("Expected: new file name"),
             |_, l, _, r| Statement::BuiltInSubCall(BuiltInSub::Name, vec![l, r]),
         )
     }
@@ -18,9 +19,9 @@ pub mod parser {
 pub mod linter {
     use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
     use crate::linter::arg_validation::ArgValidation;
-    use crate::parser::ExpressionNode;
+    use crate::parser::ExpressionNodes;
 
-    pub fn lint(args: &Vec<ExpressionNode>) -> Result<(), QErrorNode> {
+    pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         if args.len() != 2 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {

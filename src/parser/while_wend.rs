@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::parser::expression::guarded_expression_node_p;
+use crate::parser::expression::ws_expr_node;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::statements::*;
@@ -8,12 +8,12 @@ use crate::parser::types::*;
 pub fn while_wend_p() -> impl Parser<Output = Statement> {
     seq4(
         keyword(Keyword::While),
-        guarded_expression_node_p().or_syntax_error("Expected: expression after WHILE"),
+        ws_expr_node().or_syntax_error("Expected: expression after WHILE"),
         ZeroOrMoreStatements::new_with_custom_error(
             keyword(Keyword::Wend),
             QError::WhileWithoutWend,
         ),
-        keyword(Keyword::Wend).map_err(QError::WhileWithoutWend),
+        keyword(Keyword::Wend).or_fail(QError::WhileWithoutWend),
         |_, condition, statements, _| {
             Statement::While(ConditionalBlockNode {
                 condition,

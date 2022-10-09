@@ -8,10 +8,6 @@ pub struct KeywordChoice<'a> {
     keywords: &'a [Keyword],
 }
 
-impl<'a> HasOutput for KeywordChoice<'a> {
-    type Output = (Keyword, Token);
-}
-
 impl Undo for (Keyword, Token) {
     fn undo(self, tokenizer: &mut impl Tokenizer) {
         self.1.undo(tokenizer)
@@ -19,35 +15,24 @@ impl Undo for (Keyword, Token) {
 }
 
 impl<'a> Parser for KeywordChoice<'a> {
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        match tokenizer.read()? {
-            Some(token) => match self.find_keyword(&token) {
-                Some(keyword) => Ok(Some((keyword, token))),
-                None => {
-                    tokenizer.unread(token);
-                    Ok(None)
-                }
-            },
-            None => Ok(None),
-        }
-    }
-}
-
-impl<'a> NonOptParser for KeywordChoice<'a> {
-    fn parse_non_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    type Output = (Keyword, Token);
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         match tokenizer.read()? {
             Some(token) => match self.find_keyword(&token) {
                 Some(keyword) => Ok((keyword, token)),
-                None => Err(self.provide_error()),
+                None => {
+                    tokenizer.unread(token);
+                    self.to_err()
+                }
             },
-            None => Err(self.provide_error()),
+            None => self.to_err(),
         }
     }
 }
 
 impl<'a> KeywordChoice<'a> {
     fn find_keyword(&self, token: &Token) -> Option<Keyword> {
-        if token.kind == TokenType::Keyword as i32 {
+        if TokenType::Keyword.matches(&token) {
             // if it panics, it means the recognizer somehow has a bug
             let needle = Keyword::from_str(&token.text).unwrap();
             if self.keywords.contains(&needle) {
@@ -59,27 +44,23 @@ impl<'a> KeywordChoice<'a> {
             None
         }
     }
-}
 
-impl<'a> ErrorProvider for KeywordChoice<'a> {
-    fn provide_error(&self) -> QError {
-        keyword_syntax_error(self.keywords.iter())
+    fn to_err(&self) -> Result<(Keyword, Token), QError> {
+        Err(QError::Expected(keyword_syntax_error(self.keywords.iter())))
     }
 }
 
-pub fn keyword_choice(
-    keywords: &[Keyword],
-) -> impl Parser<Output = (Keyword, Token)> + NonOptParser<Output = (Keyword, Token)> + '_ {
+pub fn keyword_choice(keywords: &[Keyword]) -> impl Parser<Output = (Keyword, Token)> + '_ {
     KeywordChoice { keywords }
 }
 
-pub fn keyword_syntax_error<'a>(keywords: impl Iterator<Item = &'a Keyword>) -> QError {
+pub fn keyword_syntax_error<'a>(keywords: impl Iterator<Item = &'a Keyword>) -> String {
     let mut s = String::new();
     for keyword in keywords {
         if !s.is_empty() {
             s.push_str(" or ");
         }
-        s.push_str(keyword.as_str());
+        s.push_str(&keyword.to_string());
     }
-    QError::SyntaxError(format!("Expected: {}", s))
+    format!("Expected: {}", s)
 }

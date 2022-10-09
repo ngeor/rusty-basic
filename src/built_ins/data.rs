@@ -1,16 +1,16 @@
 pub mod parser {
     use crate::built_ins::BuiltInSub;
+    use crate::parser::expression::csv_expressions_first_guarded;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
     pub fn parse() -> impl Parser<Output = Statement> {
-        keyword(Keyword::Data)
-            .and_opt(expression::expression_nodes_p())
-            .keep_right()
-            .map(|opt_args| {
-                Statement::BuiltInSubCall(BuiltInSub::Data, opt_args.unwrap_or_default())
-            })
+        seq2(
+            keyword(Keyword::Data),
+            csv_expressions_first_guarded().allow_default(),
+            |_, args| Statement::BuiltInSubCall(BuiltInSub::Data, args),
+        )
     }
 }
 

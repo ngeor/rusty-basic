@@ -1,9 +1,5 @@
-use std::str::FromStr;
-
 use crate::common::*;
-use crate::parser::expression;
-use crate::parser::name;
-use crate::parser::name::name_with_dot_p;
+use crate::parser::name::name_with_dots;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
@@ -20,140 +16,140 @@ use crate::parser::types::*;
 // A(1 TO 5) AS INTEGER
 
 pub fn dim_name_node_p() -> impl Parser<Output = DimNameNode> {
-    name_with_dot_p()
-        .with_pos()
-        .and_opt(array_dimensions_p())
-        .and_opt(type_definition_extended_p())
-        .and_then(
-            |((name_node, opt_array_dimensions), opt_extended_type_definition)| {
-                map_name_opt_extended_type_definition(
-                    name_node,
-                    opt_array_dimensions,
-                    opt_extended_type_definition,
-                )
-            },
-        )
-}
-
-pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
-    name_with_dot_p()
-        .with_pos()
-        .and_demand(array_dimensions_p().or_syntax_error("Expected: array dimensions"))
-        .and_opt(type_definition_extended_p())
-        .and_then(
-            |((name_node, array_dimensions), opt_extended_type_definition)| {
-                map_name_opt_extended_type_definition(
-                    name_node,
-                    Some(array_dimensions),
-                    opt_extended_type_definition,
-                )
-            },
-        )
-}
-
-fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
-    in_parenthesis(csv(array_dimension_p()).or_syntax_error("Expected: array dimension"))
-}
-
-// expr (e.g. 10)
-// expr ws+ TO ws+ expr (e.g. 1 TO 10)
-// paren_expr ws* TO ws* paren_expr
-fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
-    expression::expression_node_p()
-        .and_opt_factory(|lower_bound_expr| {
-            seq2(
-                whitespace_boundary_after_expr(lower_bound_expr).and(keyword(Keyword::To)),
-                expression::guarded_expression_node_p()
-                    .or_syntax_error("Expected: expression after TO"),
-                |_, upper_bound_expr| upper_bound_expr,
+    Seq3::new(
+        name_with_dots().with_pos(),
+        array_dimensions::array_dimensions_p().allow_default(),
+        type_definition::type_definition_extended_p(),
+    )
+    .and_then(
+        |(name_node, array_dimensions, opt_extended_type_definition)| {
+            map_name_opt_extended_type_definition(
+                name_node,
+                array_dimensions,
+                opt_extended_type_definition,
             )
-        })
-        .map(|(l, opt_r)| match opt_r {
-            Some(r) => ArrayDimension {
-                lbound: Some(l),
-                ubound: r,
-            },
-            None => ArrayDimension {
-                lbound: None,
-                ubound: l,
-            },
-        })
-}
-
-fn type_definition_extended_p() -> impl Parser<Output = DimType> {
-    // <ws+> AS <ws+> identifier
-    seq3(
-        whitespace().and(keyword(Keyword::As)),
-        whitespace(),
-        extended_type_p().or_syntax_error("Expected: type after AS"),
-        |_, _, identifier| identifier,
+        },
     )
 }
 
-fn extended_type_p() -> impl Parser<Output = DimType> {
-    ExtendedTypeParser {}
-}
-
-struct ExtendedTypeParser;
-
-impl HasOutput for ExtendedTypeParser {
-    type Output = DimType;
-}
-
-impl Parser for ExtendedTypeParser {
-    fn parse(&self, reader: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
-        // TODO rewrite this
-        // TODO only try to parse keyword if the token kind matches
-        let opt_identifier = identifier_or_keyword_without_dot()
-            .with_pos()
-            .parse(reader)?;
-        match opt_identifier {
-            Some(Locatable { element: x, pos }) => match Keyword::from_str(&x.text) {
-                Ok(Keyword::Single) => Self::built_in(TypeQualifier::BangSingle),
-                Ok(Keyword::Double) => Self::built_in(TypeQualifier::HashDouble),
-                Ok(Keyword::String_) => Self::string(reader),
-                Ok(Keyword::Integer) => Self::built_in(TypeQualifier::PercentInteger),
-                Ok(Keyword::Long) => Self::built_in(TypeQualifier::AmpersandLong),
-                Ok(_) => Err(QError::syntax_error(
-                    "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-                )),
-                Err(_) => {
-                    if x.text.chars().count() > name::MAX_LENGTH {
-                        Err(QError::IdentifierTooLong)
-                    } else {
-                        Ok(Some(DimType::UserDefined(BareName::from(x.text).at(pos))))
-                    }
-                }
-            },
-            _ => Ok(None),
-        }
-    }
-}
-
-impl ExtendedTypeParser {
-    fn built_in(q: TypeQualifier) -> Result<Option<DimType>, QError> {
-        Ok(Some(DimType::BuiltIn(q, BuiltInStyle::Extended)))
-    }
-
-    fn string(reader: &mut impl Tokenizer) -> Result<Option<DimType>, QError> {
-        let opt_len = whitespace_boundary(true)
-            .and(item_p('*'))
-            .and_demand(
-                expression::guarded_expression_node_p()
-                    .or_syntax_error("Expected: string length after *"),
+pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
+    Seq3::new(
+        name_with_dots().with_pos(),
+        array_dimensions::array_dimensions_p().or_syntax_error("Expected: array dimensions"),
+        type_definition::type_definition_extended_p(),
+    )
+    .and_then(
+        |(name_node, array_dimensions, opt_extended_type_definition)| {
+            map_name_opt_extended_type_definition(
+                name_node,
+                array_dimensions,
+                opt_extended_type_definition,
             )
-            .keep_right()
-            .parse(reader)?;
-        match opt_len {
-            Some(len) => Ok(Some(DimType::FixedLengthString(len, 0))),
-            _ => Self::built_in(TypeQualifier::DollarString),
-        }
+        },
+    )
+}
+
+mod array_dimensions {
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
+    use crate::parser::*;
+
+    pub fn array_dimensions_p() -> impl Parser<Output = ArrayDimensions> {
+        in_parenthesis(csv_non_opt(
+            array_dimension_p(),
+            "Expected: array dimension",
+        ))
+    }
+
+    // expr (e.g. 10)
+    // expr ws+ TO ws+ expr (e.g. 1 TO 10)
+    // paren_expr ws* TO ws* paren_expr
+    fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
+        opt_second_expression_after_keyword(expression::expression_node_p(), Keyword::To).map(
+            |(l, opt_r)| match opt_r {
+                Some(r) => ArrayDimension {
+                    lbound: Some(l),
+                    ubound: r,
+                },
+                None => ArrayDimension {
+                    lbound: None,
+                    ubound: l,
+                },
+            },
+        )
+    }
+}
+
+mod type_definition {
+    use crate::parser::expression::expression_node_p;
+    use crate::parser::name::bare_name_without_dots;
+    use crate::parser::pc::*;
+    use crate::parser::pc_specific::*;
+    use crate::parser::*;
+
+    pub fn type_definition_extended_p() -> impl Parser<Output = Option<DimType>> + NonOptParser {
+        // <ws+> AS <ws+> identifier
+        seq3(
+            whitespace().and(keyword(Keyword::As)),
+            whitespace().no_incomplete(),
+            extended_type_p().or_syntax_error(
+                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
+            ),
+            |_, _, identifier| identifier,
+        )
+        .allow_none()
+    }
+
+    fn extended_type_p() -> impl Parser<Output = DimType> {
+        Alt3::new(
+            user_defined_type(),
+            built_in_numeric_type(),
+            built_in_string(),
+        )
+    }
+
+    fn user_defined_type() -> impl Parser<Output = DimType> {
+        bare_name_without_dots()
+            .with_pos()
+            .map(DimType::UserDefined)
+    }
+
+    fn built_in_numeric_type() -> impl Parser<Output = DimType> {
+        keyword_map(&[
+            (
+                Keyword::Single,
+                DimType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::Double,
+                DimType::BuiltIn(TypeQualifier::HashDouble, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::Integer,
+                DimType::BuiltIn(TypeQualifier::PercentInteger, BuiltInStyle::Extended),
+            ),
+            (
+                Keyword::Long,
+                DimType::BuiltIn(TypeQualifier::AmpersandLong, BuiltInStyle::Extended),
+            ),
+        ])
+    }
+
+    fn built_in_string() -> impl Parser<Output = DimType> {
+        keyword(Keyword::String)
+            .and_opt(star().then_demand(
+                expression_node_p().or_syntax_error("Expected: string length after *"),
+            ))
+            .map(|(_, opt_len)| match opt_len {
+                Some(len) => DimType::FixedLengthString(len, 0),
+                _ => DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),
+            })
     }
 }
 
 fn map_name_opt_extended_type_definition(
     name_node: NameNode,
-    opt_array_dimensions: Option<ArrayDimensions>,
+    array_dimensions: ArrayDimensions,
     opt_type_definition: Option<DimType>,
 ) -> Result<DimNameNode, QError> {
     let Locatable { element: name, pos } = name_node;
@@ -165,9 +161,10 @@ fn map_name_opt_extended_type_definition(
             map_qualified_name_opt_extended_type_definition(qualified_name, opt_type_definition)?
         }
     };
-    let final_dim_type = match opt_array_dimensions {
-        Some(array_dimensions) => DimType::Array(array_dimensions, Box::new(dim_type)),
-        _ => dim_type,
+    let final_dim_type = if array_dimensions.is_empty() {
+        dim_type
+    } else {
+        DimType::Array(array_dimensions, Box::new(dim_type))
     };
     let bare_name: BareName = name.into();
     let dim_name = DimName::new(bare_name, final_dim_type);
@@ -198,6 +195,7 @@ fn map_qualified_name_opt_extended_type_definition(
     opt_type_definition: Option<DimType>,
 ) -> Result<DimType, QError> {
     if opt_type_definition.is_some() {
+        // TODO find all usages of this error and try to solve it before parsing
         Err(QError::syntax_error(
             "Identifier cannot end with %, &, !, #, or $",
         ))

@@ -3,44 +3,46 @@ use crate::parser::char_reader::CharReader;
 use crate::parser::pc::{Recognition, Recognizer};
 use std::iter;
 
-pub struct Position {
-    pub begin: Location,
-    pub end: Location,
-}
+pub type TokenKind = u8;
 
+// TODO make fields private
+/// Represents a recognized token.
+///
+/// The [kind] field could have been a generic parameter, but that would require
+/// propagating the type in the [Tokenizer] and eventually also to the parsers.
+#[derive(Debug)]
 pub struct Token {
-    // TODO support enum type
-    pub kind: i32,
+    pub kind: TokenKind,
     pub text: String,
-    pub position: Position,
+    pub pos: Location,
 }
 
 pub type TokenList = Vec<Token>;
 
-pub fn token_list_to_string(list: &[Token]) -> String {
-    let mut result = String::new();
-    for token in list {
-        result.push_str(&token.text);
-    }
-    result
+pub fn token_list_to_string(tokens: TokenList) -> String {
+    tokens.into_iter().map(|token| token.text).collect()
 }
 
 pub trait Tokenizer {
+    // TODO this can also be Result<Token, ?> where ? is Fatal/NotFound, or an Iterator
     fn read(&mut self) -> std::io::Result<Option<Token>>;
     fn unread(&mut self, token: Token);
     fn position(&self) -> Location;
 }
 
+pub type RecognizerWithTypePair = (TokenKind, Box<dyn Recognizer>);
+pub type RecognizersWithType = Vec<RecognizerWithTypePair>;
+
 pub fn create_tokenizer<R: CharReader>(
     reader: R,
-    recognizers: Vec<Box<dyn Recognizer>>,
+    recognizers: RecognizersWithType,
 ) -> impl Tokenizer {
     UndoTokenizerImpl::new(TokenizerImpl::new(reader, recognizers))
 }
 
 struct TokenizerImpl<R: CharReader> {
     reader: R,
-    recognizers: Vec<Box<dyn Recognizer>>,
+    recognizers: RecognizersWithType,
     pos: Location,
 }
 
@@ -73,7 +75,7 @@ impl RecognizerResponses {
 }
 
 impl<R: CharReader> TokenizerImpl<R> {
-    pub fn new(reader: R, recognizers: Vec<Box<dyn Recognizer>>) -> Self {
+    pub fn new(reader: R, recognizers: RecognizersWithType) -> Self {
         Self {
             reader,
             recognizers,
@@ -91,7 +93,7 @@ impl<R: CharReader> TokenizerImpl<R> {
                 Some(ch) => {
                     buffer.push(ch);
                     let mut i: usize = 0;
-                    for recognizer in &self.recognizers {
+                    for (_, recognizer) in &self.recognizers {
                         let last_response = recognizer_responses.get_last_response(i);
                         if last_response != Recognition::Negative {
                             let recognition = recognizer.recognize(&buffer);
@@ -120,11 +122,11 @@ impl<R: CharReader> TokenizerImpl<R> {
 
         // find the longest win
         let mut max_positive_size: usize = 0;
-        let mut max_positive_index: i32 = -1;
+        let mut token_type: Option<TokenKind> = None;
         for i in 0..self.recognizers.len() {
             if sizes[i] > max_positive_size {
                 max_positive_size = sizes[i];
-                max_positive_index = i as i32;
+                token_type = Some(self.recognizers[i].0);
             }
         }
 
@@ -134,7 +136,7 @@ impl<R: CharReader> TokenizerImpl<R> {
             self.reader.unread(last_char);
         }
 
-        if max_positive_index >= 0 {
+        if token_type.is_some() {
             let begin: Location = self.pos;
             let mut previous_char: char = ' ';
             for ch in buffer.chars() {
@@ -152,15 +154,19 @@ impl<R: CharReader> TokenizerImpl<R> {
                 previous_char = ch;
             }
             Ok(Some(Token {
-                kind: max_positive_index,
+                kind: token_type.unwrap(),
                 text: buffer,
-                position: Position {
-                    begin,
-                    end: self.pos,
-                },
+                pos: begin,
             }))
         } else {
-            Ok(None)
+            if buffer.is_empty() {
+                Ok(None)
+            } else {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Could not recognize token!",
+                ))
+            }
         }
     }
 }
@@ -188,10 +194,24 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
 
     fn position(&self) -> Location {
         match self.buffer.last() {
-            Some(token) => token.position.begin,
+            Some(token) => token.pos,
             _ => self.tokenizer.pos,
         }
     }
+}
+
+#[macro_export]
+macro_rules! recognizers {
+    [$($token_type:expr => $recognizer:expr),+$(,)?] => {
+        vec![
+            $(
+            (
+                $token_type.into(),
+                Box::new($recognizer)
+            )
+            ),+
+        ]
+    };
 }
 
 #[cfg(test)]
@@ -204,14 +224,19 @@ mod tests {
     fn test_digits() {
         let input = "1234";
         let reader = string_char_reader(input);
-        let mut tokenizer = TokenizerImpl::new(reader, vec![Box::new(many_digits_recognizer())]);
+        let mut tokenizer = TokenizerImpl::new(
+            reader,
+            recognizers![
+                0 => many_digits_recognizer()
+            ],
+        );
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "1234");
         assert_eq!(token.kind, 0);
-        assert_eq!(token.position.begin.row(), 1);
-        assert_eq!(token.position.begin.col(), 1);
-        assert_eq!(token.position.end.row(), 1);
-        assert_eq!(token.position.end.col(), 5);
+        assert_eq!(token.pos.row(), 1);
+        assert_eq!(token.pos.col(), 1);
+        assert_eq!(tokenizer.pos.row(), 1);
+        assert_eq!(tokenizer.pos.col(), 5);
     }
 
     #[test]
@@ -220,25 +245,25 @@ mod tests {
         let reader = string_char_reader(input);
         let mut tokenizer = TokenizerImpl::new(
             reader,
-            vec![
-                Box::new(many_letters_recognizer()),
-                Box::new(many_digits_recognizer()),
+            recognizers![
+                0 => many_letters_recognizer(),
+                1 => many_digits_recognizer()
             ],
         );
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "abc");
         assert_eq!(token.kind, 0);
-        assert_eq!(token.position.begin.row(), 1);
-        assert_eq!(token.position.begin.col(), 1);
-        assert_eq!(token.position.end.row(), 1);
-        assert_eq!(token.position.end.col(), 4);
+        assert_eq!(token.pos.row(), 1);
+        assert_eq!(token.pos.col(), 1);
+        assert_eq!(tokenizer.pos.row(), 1);
+        assert_eq!(tokenizer.pos.col(), 4);
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "1234");
         assert_eq!(token.kind, 1);
-        assert_eq!(token.position.begin.row(), 1);
-        assert_eq!(token.position.begin.col(), 4);
-        assert_eq!(token.position.end.row(), 1);
-        assert_eq!(token.position.end.col(), 8);
+        assert_eq!(token.pos.row(), 1);
+        assert_eq!(token.pos.col(), 4);
+        assert_eq!(tokenizer.pos.row(), 1);
+        assert_eq!(tokenizer.pos.col(), 8);
     }
 
     #[test]
@@ -247,9 +272,9 @@ mod tests {
         let reader = string_char_reader(input);
         let mut tokenizer = UndoTokenizerImpl::new(TokenizerImpl::new(
             reader,
-            vec![
-                Box::new(many_letters_recognizer()),
-                Box::new(many_digits_recognizer()),
+            recognizers![
+                0 => many_letters_recognizer(),
+                1 => many_digits_recognizer(),
             ],
         ));
 

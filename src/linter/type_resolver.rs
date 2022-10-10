@@ -35,10 +35,11 @@ pub trait TypeResolver {
 
     fn resolve_dim_name_node_to_qualifier(&self, dim_name_node: &DimNameNode) -> TypeQualifier {
         let DimNameNode {
-            element: DimName {
-                bare_name,
-                dim_type,
-            },
+            element:
+                DimName {
+                    bare_name,
+                    var_type: dim_type,
+                },
             ..
         } = dim_name_node;
         self.resolve_dim_name_to_qualifier(bare_name, dim_type)

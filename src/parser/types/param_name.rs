@@ -1,15 +1,13 @@
+use crate::common::*;
+use crate::parser::pc::Token;
+use crate::parser::types::*;
 use std::collections::HashMap;
 
-use crate::common::*;
-use crate::parser::types::*;
+pub type ParamName = VarName<ParamType>;
+pub type ParamNameNode = Locatable<ParamName>;
+pub type ParamNameNodes = Vec<ParamNameNode>;
 
-// same as dim minus the x as string * 5
-#[derive(Clone, Debug, PartialEq)]
-pub struct ParamName {
-    pub bare_name: BareName,
-    pub param_type: ParamType,
-}
-
+// same as dim minus the x as string * 5 and the array dimensions
 #[derive(Clone, Debug)]
 pub enum ParamType {
     Bare,
@@ -18,47 +16,37 @@ pub enum ParamType {
     Array(Box<ParamType>),
 }
 
-pub type ParamNameNode = Locatable<ParamName>;
-pub type ParamNameNodes = Vec<ParamNameNode>;
-
-impl ParamName {
-    pub fn new(bare_name: BareName, param_type: ParamType) -> Self {
-        Self {
-            bare_name,
-            param_type,
-        }
-    }
-
-    pub fn new_array(self) -> Self {
-        Self::new(self.bare_name, ParamType::Array(Box::new(self.param_type)))
-    }
-
-    pub fn to_name(&self) -> Name {
-        Self::make_name(self.bare_name.clone(), self.param_type.clone())
-    }
-
-    fn make_name(bare_name: BareName, param_type: ParamType) -> Name {
-        match param_type {
-            ParamType::Bare | ParamType::UserDefined(_) => Name::new(bare_name, None),
-            ParamType::BuiltIn(q, _) => Name::new(bare_name, Some(q)),
-            ParamType::Array(boxed_element_type) => Self::make_name(bare_name, *boxed_element_type),
-        }
-    }
-}
-
-impl AsRef<BareName> for ParamName {
-    fn as_ref(&self) -> &BareName {
-        &self.bare_name
-    }
-}
-
-impl HasExpressionType for ParamName {
-    fn expression_type(&self) -> ExpressionType {
-        self.param_type.expression_type()
-    }
-}
-
 pub type ParamTypes = Vec<ParamType>;
+
+impl Default for ParamType {
+    fn default() -> Self {
+        Self::Bare
+    }
+}
+
+impl From<TypeQualifier> for ParamType {
+    fn from(q: TypeQualifier) -> Self {
+        Self::BuiltIn(q, BuiltInStyle::Compact)
+    }
+}
+
+impl VarTypeToArray for ParamType {
+    type ArrayType = Option<(Token, Token)>;
+
+    fn to_array(self, array_type: Self::ArrayType) -> Self {
+        if array_type.is_none() {
+            self
+        } else {
+            Self::Array(Box::new(self))
+        }
+    }
+}
+
+impl VarTypeUserDefined for ParamType {
+    fn from_user_defined(name_node: BareNameNode) -> Self {
+        Self::UserDefined(name_node)
+    }
+}
 
 // Custom implementation of PartialEq because we want to compare the parameter types are equal,
 // regardless of the location of the UserDefinedName node. This is used in subprogram_context (pre-linter).

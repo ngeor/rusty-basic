@@ -48,10 +48,11 @@ impl<'a> SameTypeConverterWithImplicitsInContext<DimNameNode, (DimContext, bool)
     ) -> R<DimNameNode> {
         let (dim_context, shared) = context;
         let Locatable {
-            element: DimName {
-                bare_name,
-                dim_type,
-            },
+            element:
+                DimName {
+                    bare_name,
+                    var_type: dim_type,
+                },
             pos,
         } = item;
         convert(self, bare_name, dim_type, dim_context, shared, pos)
@@ -122,7 +123,7 @@ fn convert_param_name_node(
     let Locatable {
         element: ParamName {
             bare_name,
-            param_type,
+            var_type: param_type,
         },
         pos,
     } = param_name_node;
@@ -141,7 +142,7 @@ fn convert_param_name_node(
     let Locatable {
         element: DimName {
             bare_name,
-            dim_type,
+            var_type: dim_type,
         },
         ..
     } = converted_dim_list

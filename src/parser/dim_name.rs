@@ -1,52 +1,33 @@
-use crate::common::*;
-use crate::parser::name::name_with_dots;
+use crate::parser::dim_name::type_definition::built_in_extended_type;
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::types::*;
+use crate::parser::var_name::var_name;
 
-// Parses a declared name. Possible options:
-// A
-// A%
-// A AS INTEGER
-// A AS UserDefinedType
-//
-// Arrays:
-// A(10)
-// A$(1 TO 2, 0 TO 10)
-// A(1 TO 5) AS INTEGER
-
+/// Parses a declared name. Possible options:
+/// A
+/// A%
+/// A AS INTEGER
+/// A AS UserDefinedType
+///
+/// Arrays:
+/// A(10)
+/// A$(1 TO 2, 0 TO 10)
+/// A(1 TO 5) AS INTEGER
 pub fn dim_name_node_p() -> impl Parser<Output = DimNameNode> {
-    Seq3::new(
-        name_with_dots().with_pos(),
-        array_dimensions::array_dimensions_p().allow_default(),
-        type_definition::type_definition_extended_p(),
-    )
-    .and_then(
-        |(name_node, array_dimensions, opt_extended_type_definition)| {
-            map_name_opt_extended_type_definition(
-                name_node,
-                array_dimensions,
-                opt_extended_type_definition,
-            )
-        },
-    )
+    dim_or_redim(array_dimensions::array_dimensions_p().allow_default())
 }
 
 pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
-    Seq3::new(
-        name_with_dots().with_pos(),
+    dim_or_redim(
         array_dimensions::array_dimensions_p().or_syntax_error("Expected: array dimensions"),
-        type_definition::type_definition_extended_p(),
     )
-    .and_then(
-        |(name_node, array_dimensions, opt_extended_type_definition)| {
-            map_name_opt_extended_type_definition(
-                name_node,
-                array_dimensions,
-                opt_extended_type_definition,
-            )
-        },
-    )
+}
+
+fn dim_or_redim(
+    array_dimensions_parser: impl Parser<Output = ArrayDimensions> + NonOptParser,
+) -> impl Parser<Output = DimNameNode> {
+    var_name(array_dimensions_parser, built_in_extended_type).with_pos()
 }
 
 mod array_dimensions {
@@ -81,37 +62,16 @@ mod array_dimensions {
 }
 
 mod type_definition {
+    use crate::common::QError;
     use crate::parser::expression::expression_node_p;
-    use crate::parser::name::bare_name_without_dots;
     use crate::parser::pc::*;
     use crate::parser::pc_specific::*;
     use crate::parser::*;
 
-    pub fn type_definition_extended_p() -> impl Parser<Output = Option<DimType>> + NonOptParser {
-        // <ws+> AS <ws+> identifier
-        seq3(
-            whitespace().and(keyword(Keyword::As)),
-            whitespace().no_incomplete(),
-            extended_type_p().or_syntax_error(
-                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-            ),
-            |_, _, identifier| identifier,
-        )
-        .allow_none()
-    }
-
-    fn extended_type_p() -> impl Parser<Output = DimType> {
-        Alt3::new(
-            user_defined_type(),
-            built_in_numeric_type(),
-            built_in_string(),
-        )
-    }
-
-    fn user_defined_type() -> impl Parser<Output = DimType> {
-        bare_name_without_dots()
-            .with_pos()
-            .map(DimType::UserDefined)
+    pub fn built_in_extended_type() -> impl Parser<Output = DimType> {
+        Alt2::new(built_in_numeric_type(), built_in_string()).map_incomplete_err(QError::expected(
+            "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING",
+        ))
     }
 
     fn built_in_numeric_type() -> impl Parser<Output = DimType> {
@@ -144,63 +104,5 @@ mod type_definition {
                 Some(len) => DimType::FixedLengthString(len, 0),
                 _ => DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),
             })
-    }
-}
-
-fn map_name_opt_extended_type_definition(
-    name_node: NameNode,
-    array_dimensions: ArrayDimensions,
-    opt_type_definition: Option<DimType>,
-) -> Result<DimNameNode, QError> {
-    let Locatable { element: name, pos } = name_node;
-    let dim_type: DimType = match &name {
-        Name::Bare(bare_name) => {
-            map_bare_name_opt_extended_type_definition(bare_name, opt_type_definition)?
-        }
-        Name::Qualified(qualified_name) => {
-            map_qualified_name_opt_extended_type_definition(qualified_name, opt_type_definition)?
-        }
-    };
-    let final_dim_type = if array_dimensions.is_empty() {
-        dim_type
-    } else {
-        DimType::Array(array_dimensions, Box::new(dim_type))
-    };
-    let bare_name: BareName = name.into();
-    let dim_name = DimName::new(bare_name, final_dim_type);
-    Ok(dim_name.at(pos))
-}
-
-fn map_bare_name_opt_extended_type_definition(
-    bare_name: &BareName,
-    opt_type_definition: Option<DimType>,
-) -> Result<DimType, QError> {
-    match opt_type_definition {
-        Some(dim_type) => match dim_type {
-            DimType::UserDefined(_) => {
-                if bare_name.contains('.') {
-                    Err(QError::IdentifierCannotIncludePeriod)
-                } else {
-                    Ok(dim_type)
-                }
-            }
-            _ => Ok(dim_type),
-        },
-        None => Ok(DimType::Bare),
-    }
-}
-
-fn map_qualified_name_opt_extended_type_definition(
-    qualified_name: &QualifiedName,
-    opt_type_definition: Option<DimType>,
-) -> Result<DimType, QError> {
-    if opt_type_definition.is_some() {
-        // TODO find all usages of this error and try to solve it before parsing
-        Err(QError::syntax_error(
-            "Identifier cannot end with %, &, !, #, or $",
-        ))
-    } else {
-        let QualifiedName { qualifier, .. } = qualified_name;
-        Ok(DimType::BuiltIn(*qualifier, BuiltInStyle::Compact))
     }
 }

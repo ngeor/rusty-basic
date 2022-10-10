@@ -343,17 +343,18 @@ pub trait ExpressionReducer {
         dim_name_node: DimNameNode,
     ) -> Result<DimNameNode, QErrorNode> {
         let DimNameNode {
-            element: DimName {
-                bare_name,
-                dim_type,
-            },
+            element:
+                DimName {
+                    bare_name,
+                    var_type: dim_type,
+                },
             pos,
         } = dim_name_node;
         let converted_dim_type = self.visit_dim_type(dim_type)?;
         Ok(DimNameNode {
             element: DimName {
                 bare_name,
-                dim_type: converted_dim_type,
+                var_type: converted_dim_type,
             },
             pos,
         })

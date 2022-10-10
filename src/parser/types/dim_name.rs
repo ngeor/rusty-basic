@@ -1,14 +1,9 @@
-use std::convert::TryFrom;
-
 use crate::common::*;
 use crate::parser::types::*;
+#[cfg(test)]
+use std::convert::TryFrom;
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct DimName {
-    pub bare_name: BareName,
-    pub dim_type: DimType,
-}
-
+pub type DimName = VarName<DimType>;
 pub type DimNameNode = Locatable<DimName>;
 pub type DimNameNodes = Vec<DimNameNode>;
 
@@ -19,34 +14,7 @@ impl DimName {
     {
         Self {
             bare_name: BareName::from(bare_name),
-            dim_type: DimType::BuiltIn(qualifier, BuiltInStyle::Compact),
-        }
-    }
-
-    pub fn new(bare_name: BareName, dim_type: DimType) -> Self {
-        Self {
-            bare_name,
-            dim_type,
-        }
-    }
-
-    pub fn bare_name(&self) -> &BareName {
-        &self.bare_name
-    }
-
-    pub fn dim_type(&self) -> &DimType {
-        &self.dim_type
-    }
-
-    pub fn is_bare(&self) -> bool {
-        self.dim_type == DimType::Bare
-    }
-
-    pub fn is_built_in_extended(&self) -> Option<TypeQualifier> {
-        if let DimType::BuiltIn(q, BuiltInStyle::Extended) = self.dim_type {
-            Some(q)
-        } else {
-            None
+            var_type: DimType::BuiltIn(qualifier, BuiltInStyle::Compact),
         }
     }
 
@@ -76,35 +44,6 @@ impl From<QualifiedName> for DimName {
             qualifier,
         } = qualified_name;
         Self::new_compact_local(bare_name, qualifier)
-    }
-}
-
-impl DimTypeTrait for DimName {
-    fn is_extended(&self) -> bool {
-        self.dim_type.is_extended()
-    }
-}
-
-impl HasExpressionType for DimName {
-    fn expression_type(&self) -> ExpressionType {
-        self.dim_type.expression_type()
-    }
-}
-
-impl TryFrom<&DimNameNode> for TypeQualifier {
-    type Error = QErrorNode;
-
-    fn try_from(value: &DimNameNode) -> Result<Self, Self::Error> {
-        let Locatable { element, .. } = value;
-        TypeQualifier::try_from(element).with_err_at(value)
-    }
-}
-
-impl TryFrom<&DimName> for TypeQualifier {
-    type Error = QError;
-
-    fn try_from(value: &DimName) -> Result<Self, Self::Error> {
-        TypeQualifier::try_from(value.dim_type())
     }
 }
 

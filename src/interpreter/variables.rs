@@ -61,7 +61,7 @@ impl Variables {
     fn param_to_name(param_name: ParamName) -> Name {
         let ParamName {
             bare_name,
-            param_type,
+            var_type: param_type,
         } = param_name;
         match param_type {
             ParamType::Bare => panic!("Unresolved param {:?}", bare_name),
@@ -81,8 +81,7 @@ impl Variables {
     pub fn insert_dim(&mut self, dim_name: DimName, value: Variant) {
         let DimName {
             bare_name,
-            dim_type,
-            ..
+            var_type: dim_type,
         } = dim_name;
         self.insert_dim_internal(bare_name, dim_type, value);
     }
@@ -175,7 +174,7 @@ impl Variables {
     }
 
     pub fn get_by_dim_name(&self, dim_name: &DimName) -> Option<&Variant> {
-        self.get_by_dim_name_internal(dim_name.bare_name(), dim_name.dim_type())
+        self.get_by_dim_name_internal(dim_name.bare_name(), dim_name.var_type())
     }
 
     fn get_by_dim_name_internal(

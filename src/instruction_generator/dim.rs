@@ -50,7 +50,7 @@ impl InstructionGenerator {
     fn generate_dim_name(&mut self, dim_name: DimName, shared: bool, pos: Location) {
         let DimName {
             bare_name,
-            dim_type,
+            var_type: dim_type,
         } = dim_name;
         match dim_type {
             DimType::Array(array_dimensions, box_element_type) => {

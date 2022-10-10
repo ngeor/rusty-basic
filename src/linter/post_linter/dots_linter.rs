@@ -41,7 +41,7 @@ impl<'a> NoDotNamesCheck<Locatable<ParamName>, QErrorNode> for DotsLinter<'a> {
 
 impl<'a> NoDotNamesCheck<ParamName, QError> for DotsLinter<'a> {
     fn ensure_no_dots(&self, x: &ParamName) -> Result<(), QError> {
-        let bare_name: &BareName = x.as_ref();
+        let bare_name: &BareName = x.bare_name();
         self.ensure_no_dots(bare_name)
     }
 }

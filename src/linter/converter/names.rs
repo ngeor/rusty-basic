@@ -2,8 +2,7 @@ use crate::common::CaseInsensitiveString;
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::NameContext;
 use crate::parser::{
-    BareName, BuiltInStyle, DimType, DimTypeTrait, HasExpressionType, RedimInfo, TypeQualifier,
-    VariableInfo,
+    BareName, BuiltInStyle, DimType, HasExpressionType, RedimInfo, TypeQualifier, VariableInfo,
 };
 use crate::variant::Variant;
 use std::collections::hash_map::Values;

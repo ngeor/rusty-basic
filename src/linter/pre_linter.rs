@@ -312,8 +312,8 @@ impl<T> SubprogramContext<T> {
             element: param,
             pos,
         } = param;
-        let bare_name: &BareName = param.as_ref();
-        match &param.param_type {
+        let bare_name: &BareName = param.bare_name();
+        match &param.var_type {
             ParamType::Bare => {
                 let q: TypeQualifier = resolver.resolve(bare_name);
                 Ok(ParamType::BuiltIn(q, BuiltInStyle::Compact))

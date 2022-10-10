@@ -1,9 +1,7 @@
-use std::convert::TryFrom;
-
-use crate::common::{AtLocation, Location, QError};
+use crate::common::{AtLocation, Location};
 use crate::parser::{
     ArrayDimensions, BareNameNode, BuiltInStyle, Expression, ExpressionNode, ExpressionType,
-    HasExpressionType, TypeQualifier,
+    HasExpressionType, TypeQualifier, VarTypeToArray, VarTypeUserDefined,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -15,25 +13,42 @@ pub enum DimType {
     Array(ArrayDimensions, Box<DimType>),
 }
 
-impl DimType {
-    pub fn dimension_count(&self) -> usize {
-        match self {
-            Self::Array(array_dimensions, _) => array_dimensions.len(),
-            _ => 0,
+impl Default for DimType {
+    fn default() -> Self {
+        Self::Bare
+    }
+}
+
+impl From<TypeQualifier> for DimType {
+    fn from(q: TypeQualifier) -> Self {
+        Self::BuiltIn(q, BuiltInStyle::Compact)
+    }
+}
+
+impl VarTypeToArray for DimType {
+    type ArrayType = ArrayDimensions;
+
+    fn to_array(self, array_type: Self::ArrayType) -> Self {
+        if array_type.is_empty() {
+            self
+        } else {
+            Self::Array(array_type, Box::new(self))
         }
     }
+}
 
+impl VarTypeUserDefined for DimType {
+    fn from_user_defined(name_node: BareNameNode) -> Self {
+        Self::UserDefined(name_node)
+    }
+}
+
+impl DimType {
     pub fn fixed_length_string(len: u16, pos: Location) -> Self {
         DimType::FixedLengthString(Expression::IntegerLiteral(len as i32).at(pos), len)
     }
-}
 
-pub trait DimTypeTrait {
-    fn is_extended(&self) -> bool;
-}
-
-impl DimTypeTrait for DimType {
-    fn is_extended(&self) -> bool {
+    pub fn is_extended(&self) -> bool {
         match self {
             Self::BuiltIn(_, BuiltInStyle::Extended)
             | Self::FixedLengthString(_, _)
@@ -55,15 +70,6 @@ impl HasExpressionType for DimType {
             }
             Self::Bare => panic!("Unresolved type"),
         }
-    }
-}
-
-impl TryFrom<&DimType> for TypeQualifier {
-    type Error = QError;
-
-    fn try_from(value: &DimType) -> Result<Self, Self::Error> {
-        let opt_q: Option<TypeQualifier> = value.into();
-        opt_q.ok_or(QError::TypeMismatch)
     }
 }
 

@@ -29,6 +29,7 @@ mod sub_call;
 mod top_level_token;
 mod types;
 mod user_defined_type;
+mod var_name;
 mod while_wend;
 
 #[cfg(test)]

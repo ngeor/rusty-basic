@@ -78,7 +78,7 @@ mod tests {
                         } = dim_list.variables.pop().unwrap();
                         assert_eq!(pos, Location::new(1, 5));
                         assert_eq!(dim_name.bare_name().clone(), var_name_bare);
-                        match dim_name.dim_type() {
+                        match dim_name.var_type() {
                             DimType::UserDefined(Locatable { element, .. }) => {
                                 assert_eq!(element, &var_type_bare);
                             }
@@ -105,10 +105,7 @@ mod tests {
     #[test]
     fn test_parse_dim_extended_with_qualified_name() {
         let input = "DIM A$ AS STRING";
-        assert_parser_err!(
-            input,
-            QError::syntax_error("Identifier cannot end with %, &, !, #, or $")
-        );
+        assert_parser_err!(input, QError::syntax_error("No separator: AS"));
     }
 
     #[test]
@@ -120,7 +117,10 @@ mod tests {
     #[test]
     fn test_parse_dim_user_defined_cannot_include_period() {
         let input = "DIM A.B AS Card";
-        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(
+            input,
+            "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING"
+        );
     }
 
     #[test]

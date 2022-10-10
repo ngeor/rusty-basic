@@ -140,11 +140,23 @@ mod tests {
     }
 
     #[test]
-    fn test_user_defined_param_cannot_include_period() {
+    fn test_user_defined_param_name_cannot_include_period() {
         let inputs = [
             "DECLARE FUNCTION Echo(X.Y AS Card)",
-            "DECLARE FUNCTION Echo(XY AS Ca.rd)",
             "DECLARE SUB Echo(X.Y AS Card)",
+        ];
+        for input in inputs {
+            assert_parser_err!(
+                input,
+                "Expected: SINGLE or DOUBLE or STRING or INTEGER or LONG"
+            );
+        }
+    }
+
+    #[test]
+    fn test_user_defined_param_type_cannot_include_period() {
+        let inputs = [
+            "DECLARE FUNCTION Echo(XY AS Ca.rd)",
             "DECLARE SUB Echo(XY AS Ca.rd)",
         ];
         for input in inputs {

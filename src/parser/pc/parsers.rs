@@ -4,8 +4,9 @@ use crate::parser::pc::many::OneOrMoreParser;
 use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
 use crate::parser::pc::{
     AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, Alt2, AndPC, AndThen, ChainParser,
-    FilterMapParser, FilterParser, GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser, MapOnce,
-    NegateParser, NoIncompleteParser, OrFailParser, PeekParser, Tokenizer, Undo,
+    FilterMapParser, FilterParser, GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser,
+    NegateParser, NoIncompleteParser, OrFailParser, ParserToParserOnceAdapter, PeekParser,
+    Tokenizer, Undo,
 };
 
 // TODO make QError generic param too
@@ -75,14 +76,6 @@ pub trait Parser {
         F: Fn(Self::Output) -> U,
     {
         FnMapper::new(self, mapper)
-    }
-
-    fn map_once<F, U>(self, mapper: F) -> MapOnce<Self, F>
-    where
-        Self: Sized,
-        F: FnOnce(Self::Output) -> U,
-    {
-        MapOnce::new(self, mapper)
     }
 
     fn map_incomplete_err(self, err: QError) -> MapIncompleteErrParser<Self>
@@ -228,6 +221,17 @@ pub trait Parser {
     {
         ChainParser::new(self, right_factory)
     }
+
+    /// Converts a [Parser] to a [ParserOnce].
+    /// A blanket implementation is technically possible,
+    /// but creates problems when generic parameters need to be
+    /// adjusted e.g. from [Fn] to [FnOnce].
+    fn to_parser_once(self) -> ParserToParserOnceAdapter<Self>
+    where
+        Self: Sized,
+    {
+        ParserToParserOnceAdapter::new(self)
+    }
 }
 
 /// A parser that returns a successful result or a fatal error.
@@ -243,6 +247,22 @@ pub trait ParserOnce {
     type Output;
 
     fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
+
+    fn map<F, U>(self, mapper: F) -> FnMapper<Self, F>
+    where
+        Self: Sized,
+        F: FnOnce(Self::Output) -> U,
+    {
+        FnMapper::new(self, mapper)
+    }
+
+    fn or<O, R>(self, right: R) -> Alt2<O, Self, R>
+    where
+        Self: Sized + ParserOnce<Output = O>,
+        R: ParserOnce<Output = O>,
+    {
+        Alt2::new(self, right)
+    }
 }
 
 // TODO remove all "impl Parser" outside the main framework

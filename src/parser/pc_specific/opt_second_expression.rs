@@ -1,6 +1,6 @@
 use crate::common::QError;
 use crate::parser::expression::ws_expr_node;
-use crate::parser::pc::Parser;
+use crate::parser::pc::{Parser, ParserOnce};
 use crate::parser::pc_specific::{keyword, whitespace};
 use crate::parser::types::Keyword;
 use crate::parser::ExpressionNode;
@@ -28,7 +28,9 @@ where
     parser.chain(move |first: P::Output| {
         let first_expr = first.to_expression();
         let is_paren = first_expr.as_ref().is_parenthesis();
-        parse_second(keyword, is_paren).map_once(|opt_second| (first, opt_second))
+        parse_second(keyword, is_paren)
+            .to_parser_once()
+            .map(|opt_second| (first, opt_second))
     })
 }
 

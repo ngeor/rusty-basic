@@ -148,7 +148,10 @@ mod tests {
         FUNCTION Echo(X.Y AS Card)
         END FUNCTION
         ";
-        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(
+            input,
+            "Expected: SINGLE or DOUBLE or STRING or INTEGER or LONG"
+        );
     }
 
     #[test]
@@ -157,6 +160,9 @@ mod tests {
         SUB Echo(X.Y AS Card)
         END SUB
         ";
-        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(
+            input,
+            "Expected: SINGLE or DOUBLE or STRING or INTEGER or LONG"
+        );
     }
 }

@@ -1,4 +1,4 @@
-use crate::common::QError;
+use crate::common::{ParserErrorTrait, QError};
 use crate::parser::pc::*;
 
 macro_rules! alt_pc {
@@ -30,8 +30,34 @@ macro_rules! alt_pc {
             type Output = OUT;
             fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<OUT, QError> {
                 $(
-                    if let Some(value) = self.$generics.parse_opt(tokenizer)? {
-                        return Ok(value);
+                    let result = self.$generics.parse(tokenizer);
+                    match result {
+                        Err(err) if err.is_incomplete() => {
+                            // continue to the next parser if incomplete
+                        },
+                        _ => {
+                            // return on success or fatal error
+                            return result;
+                        }
+                    }
+                )+
+                Err(QError::Incomplete)
+            }
+        }
+
+        impl <OUT, $($generics : ParserOnce<Output=OUT>),+> ParserOnce for $name <OUT, $($generics),+> {
+            type Output = OUT;
+            fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<OUT, QError> {
+                $(
+                    let result = self.$generics.parse(tokenizer);
+                    match result {
+                        Err(err) if err.is_incomplete() => {
+                            // continue to the next parser if incomplete
+                        },
+                        _ => {
+                            // return on success or fatal error
+                            return result;
+                        }
                     }
                 )+
                 Err(QError::Incomplete)

@@ -92,7 +92,8 @@ fn followed_by_ws(
         whitespace()
             .allow_none_if(is_paren)
             .no_incomplete()
-            .map_once(|_| expr)
+            .to_parser_once()
+            .map(|_| expr)
     })
 }
 

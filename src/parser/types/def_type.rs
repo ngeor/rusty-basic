@@ -15,10 +15,8 @@ impl DefType {
     pub fn ranges(&self) -> &Vec<LetterRange> {
         &self.ranges
     }
-}
 
-impl AsRef<TypeQualifier> for DefType {
-    fn as_ref(&self) -> &TypeQualifier {
-        &self.qualifier
+    pub fn qualifier(&self) -> TypeQualifier {
+        self.qualifier
     }
 }

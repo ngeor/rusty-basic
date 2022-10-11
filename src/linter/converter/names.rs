@@ -1,8 +1,9 @@
 use crate::common::CaseInsensitiveString;
-use crate::linter::const_value_resolver::ConstValueResolver;
+use crate::linter::const_value_resolver::ConstLookup;
 use crate::linter::NameContext;
 use crate::parser::{
-    BareName, BuiltInStyle, DimType, HasExpressionType, RedimInfo, TypeQualifier, VariableInfo,
+    BareName, BuiltInStyle, HasExpressionType, RedimInfo, TypeQualifier, VarTypeIsExtended,
+    VariableInfo,
 };
 use crate::variant::Variant;
 use std::collections::hash_map::Values;
@@ -175,10 +176,10 @@ impl Names {
         }
     }
 
-    pub fn insert(
+    pub fn insert<T: HasExpressionType + VarTypeIsExtended>(
         &mut self,
         bare_name: BareName,
-        dim_type: &DimType,
+        dim_type: &T,
         shared: bool,
         redim_info: Option<RedimInfo>,
     ) {
@@ -305,7 +306,7 @@ impl Names {
     }
 }
 
-impl ConstValueResolver for Names {
+impl ConstLookup for Names {
     fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
         match self.get_const_value_no_recursion(name) {
             Some(v) => Some(v),

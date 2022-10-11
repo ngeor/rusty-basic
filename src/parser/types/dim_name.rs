@@ -48,6 +48,7 @@ impl From<QualifiedName> for DimName {
 }
 
 #[derive(Default)]
+// TODO #[deprecated]
 pub struct DimNameBuilder {
     pub bare_name: Option<BareName>,
     pub dim_type: Option<DimType>,

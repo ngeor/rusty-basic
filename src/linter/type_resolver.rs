@@ -1,5 +1,10 @@
-use crate::parser::{BareName, DimName, DimNameNode, DimType, Name, QualifiedName, TypeQualifier};
+use crate::common::Locatable;
+use crate::parser::{BareName, Name, QualifiedName, TypeQualifier, VarName, VarTypeQualifier};
 
+//noinspection ALL
+/// Resolves the type of a name-like expression.
+/// For bare names, the type comes from their first character, according to
+/// the `DEFINT` etc statements.
 pub trait TypeResolver {
     fn resolve_char(&self, ch: char) -> TypeQualifier;
 
@@ -33,25 +38,26 @@ pub trait TypeResolver {
         }
     }
 
-    fn resolve_dim_name_node_to_qualifier(&self, dim_name_node: &DimNameNode) -> TypeQualifier {
-        let DimNameNode {
-            element:
-                DimName {
-                    bare_name,
-                    var_type: dim_type,
-                },
+    fn resolve_dim_name_node_to_qualifier<T: VarTypeQualifier>(
+        &self,
+        dim_name_node: &Locatable<VarName<T>>,
+    ) -> TypeQualifier {
+        let Locatable {
+            element: VarName {
+                bare_name,
+                var_type,
+            },
             ..
         } = dim_name_node;
-        self.resolve_dim_name_to_qualifier(bare_name, dim_type)
+        self.resolve_dim_name_to_qualifier(bare_name, var_type)
     }
 
-    fn resolve_dim_name_to_qualifier(
+    fn resolve_dim_name_to_qualifier<T: VarTypeQualifier>(
         &self,
         bare_name: &BareName,
-        dim_type: &DimType,
+        dim_type: &T,
     ) -> TypeQualifier {
-        let opt_q: Option<TypeQualifier> = dim_type.into();
-        match opt_q {
+        match dim_type.to_qualifier_recursively() {
             Some(q) => q,
             _ => self.resolve(bare_name),
         }

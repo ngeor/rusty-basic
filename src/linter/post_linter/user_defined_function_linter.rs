@@ -1,10 +1,12 @@
 use crate::common::*;
+use crate::linter::pre_linter::HasFunctionView;
+use crate::linter::ParamTypes;
 use crate::parser::*;
 
 use super::post_conversion_linter::PostConversionLinter;
 
-pub struct UserDefinedFunctionLinter<'a> {
-    pub functions: &'a FunctionMap,
+pub struct UserDefinedFunctionLinter<'a, R> {
+    pub context: &'a R,
 }
 
 pub fn lint_call_args(args: &ExpressionNodes, param_types: &ParamTypes) -> Result<(), QErrorNode> {
@@ -142,14 +144,17 @@ fn has_at_least_one_arg(opt_args: Option<&ExpressionNodes>) -> bool {
     }
 }
 
-impl<'a> UserDefinedFunctionLinter<'a> {
+impl<'a, R> UserDefinedFunctionLinter<'a, R>
+where
+    R: HasFunctionView,
+{
     fn visit_function(&self, name: &Name, args: &ExpressionNodes) -> Result<(), QErrorNode> {
         if let Name::Qualified(qualified_name) = name {
             let QualifiedName {
                 bare_name,
                 qualifier,
             } = qualified_name;
-            match self.functions.get(bare_name) {
+            match self.context.functions().get(bare_name) {
                 Some(Locatable {
                     element: (return_type, param_types),
                     ..
@@ -187,7 +192,10 @@ impl<'a> UserDefinedFunctionLinter<'a> {
     }
 }
 
-impl<'a> PostConversionLinter for UserDefinedFunctionLinter<'a> {
+impl<'a, R> PostConversionLinter for UserDefinedFunctionLinter<'a, R>
+where
+    R: HasFunctionView,
+{
     fn visit_expression(&mut self, expr_node: &ExpressionNode) -> Result<(), QErrorNode> {
         let Locatable { element: e, pos } = expr_node;
         match e {

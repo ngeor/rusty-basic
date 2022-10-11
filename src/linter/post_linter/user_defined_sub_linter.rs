@@ -1,19 +1,23 @@
 use super::post_conversion_linter::PostConversionLinter;
 use super::user_defined_function_linter::lint_call_args;
 use crate::common::*;
-use crate::parser::{ExpressionNodes, SubMap};
+use crate::linter::pre_linter::HasSubView;
+use crate::parser::ExpressionNodes;
 
-pub struct UserDefinedSubLinter<'a> {
-    pub subs: &'a SubMap,
+pub struct UserDefinedSubLinter<'a, R> {
+    pub context: &'a R,
 }
 
-impl<'a> PostConversionLinter for UserDefinedSubLinter<'a> {
+impl<'a, R> PostConversionLinter for UserDefinedSubLinter<'a, R>
+where
+    R: HasSubView,
+{
     fn visit_sub_call(
         &mut self,
         name: &CaseInsensitiveString,
         args: &ExpressionNodes,
     ) -> Result<(), QErrorNode> {
-        match self.subs.get(name) {
+        match self.context.subs().get(name) {
             Some(Locatable {
                 element: param_types,
                 ..

@@ -5,7 +5,8 @@ use crate::parser::name::{bare_name_without_dots, name_with_dots};
 use crate::parser::pc::*;
 use crate::parser::pc_specific::*;
 use crate::parser::{
-    BareName, Keyword, Name, TypeQualifier, VarName, VarTypeToArray, VarTypeUserDefined,
+    BareName, Keyword, Name, TypeQualifier, VarName, VarTypeNewBuiltInCompact,
+    VarTypeNewUserDefined, VarTypeToArray,
 };
 
 /// Parses a variable name (dim name or param name).
@@ -31,9 +32,9 @@ pub fn var_name<T, A, P>(
 ) -> impl Parser<Output = VarName<T>>
 where
     T: Default,
-    T: From<TypeQualifier>,
+    T: VarTypeNewBuiltInCompact,
+    T: VarTypeNewUserDefined,
     T: VarTypeToArray<ArrayType = A>,
-    T: VarTypeUserDefined,
     P: Parser<Output = T> + 'static,
 {
     Seq2::new(name_with_dots(), array_p)
@@ -57,8 +58,8 @@ fn name_chain<A, T, F, P>(
 ) -> impl ParserOnce<Output = (Name, A, T)>
 where
     T: Default,
-    T: From<TypeQualifier>,
-    T: VarTypeUserDefined,
+    T: VarTypeNewBuiltInCompact,
+    T: VarTypeNewUserDefined,
     F: Fn() -> P,
     P: Parser<Output = T>,
 {
@@ -66,7 +67,7 @@ where
     match_option_p(
         name.qualifier(),
         // qualified name can't have an "AS" clause
-        |q: TypeQualifier| once_p(q.into()),
+        |q: TypeQualifier| once_p(T::new_built_in_compact(q)),
         // bare names might have an "AS" clause
         move || {
             as_clause()
@@ -95,7 +96,7 @@ fn as_clause() -> impl Parser<Output = (Token, Token, Token)> {
 
 fn any_extended<T>(built_in_parser: impl Parser<Output = T>) -> impl Parser<Output = T>
 where
-    T: VarTypeUserDefined,
+    T: VarTypeNewUserDefined,
 {
     built_in_parser
         .or(user_defined_type())
@@ -106,9 +107,9 @@ where
 
 fn user_defined_type<T>() -> impl Parser<Output = T>
 where
-    T: VarTypeUserDefined,
+    T: VarTypeNewUserDefined,
 {
     bare_name_without_dots()
         .with_pos()
-        .map(VarTypeUserDefined::from_user_defined)
+        .map(VarTypeNewUserDefined::new_user_defined)
 }

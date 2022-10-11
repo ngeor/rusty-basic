@@ -1,7 +1,9 @@
 use crate::common::{AtLocation, Location};
 use crate::parser::{
     ArrayDimensions, BareNameNode, BuiltInStyle, Expression, ExpressionNode, ExpressionType,
-    HasExpressionType, TypeQualifier, VarTypeToArray, VarTypeUserDefined,
+    HasExpressionType, TypeQualifier, VarTypeIsExtended, VarTypeNewBuiltInCompact,
+    VarTypeNewBuiltInExtended, VarTypeNewUserDefined, VarTypeQualifier, VarTypeToArray,
+    VarTypeToUserDefinedRecursively,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -19,9 +21,15 @@ impl Default for DimType {
     }
 }
 
-impl From<TypeQualifier> for DimType {
-    fn from(q: TypeQualifier) -> Self {
+impl VarTypeNewBuiltInCompact for DimType {
+    fn new_built_in_compact(q: TypeQualifier) -> Self {
         Self::BuiltIn(q, BuiltInStyle::Compact)
+    }
+}
+
+impl VarTypeNewBuiltInExtended for DimType {
+    fn new_built_in_extended(q: TypeQualifier) -> Self {
+        Self::BuiltIn(q, BuiltInStyle::Extended)
     }
 }
 
@@ -37,9 +45,19 @@ impl VarTypeToArray for DimType {
     }
 }
 
-impl VarTypeUserDefined for DimType {
-    fn from_user_defined(name_node: BareNameNode) -> Self {
+impl VarTypeNewUserDefined for DimType {
+    fn new_user_defined(name_node: BareNameNode) -> Self {
         Self::UserDefined(name_node)
+    }
+}
+
+impl VarTypeToUserDefinedRecursively for DimType {
+    fn as_user_defined_recursively(&self) -> Option<&BareNameNode> {
+        match self {
+            Self::UserDefined(n) => Some(n),
+            Self::Array(_, e) => e.as_user_defined_recursively(),
+            _ => None,
+        }
     }
 }
 
@@ -47,8 +65,10 @@ impl DimType {
     pub fn fixed_length_string(len: u16, pos: Location) -> Self {
         DimType::FixedLengthString(Expression::IntegerLiteral(len as i32).at(pos), len)
     }
+}
 
-    pub fn is_extended(&self) -> bool {
+impl VarTypeIsExtended for DimType {
+    fn is_extended(&self) -> bool {
         match self {
             Self::BuiltIn(_, BuiltInStyle::Extended)
             | Self::FixedLengthString(_, _)
@@ -73,12 +93,12 @@ impl HasExpressionType for DimType {
     }
 }
 
-impl From<&DimType> for Option<TypeQualifier> {
-    fn from(dim_type: &DimType) -> Self {
-        match dim_type {
-            DimType::BuiltIn(q, _) => Some(*q),
-            DimType::FixedLengthString(_, _) => Some(TypeQualifier::DollarString),
-            DimType::Array(_, boxed_element_type) => Self::from(boxed_element_type.as_ref()),
+impl VarTypeQualifier for DimType {
+    fn to_qualifier_recursively(&self) -> Option<TypeQualifier> {
+        match self {
+            Self::BuiltIn(q, _) => Some(*q),
+            Self::FixedLengthString(_, _) => Some(TypeQualifier::DollarString),
+            Self::Array(_, e) => e.to_qualifier_recursively(),
             _ => None,
         }
     }

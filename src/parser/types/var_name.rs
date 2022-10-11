@@ -1,4 +1,4 @@
-use crate::parser::{BareName, BareNameNode, ExpressionType, HasExpressionType};
+use crate::parser::{BareName, BareNameNode, ExpressionType, HasExpressionType, TypeQualifier};
 
 /// A variable name with a type.
 ///
@@ -45,6 +45,26 @@ pub trait VarTypeToArray {
     fn to_array(self, array_type: Self::ArrayType) -> Self;
 }
 
-pub trait VarTypeUserDefined {
-    fn from_user_defined(name_node: BareNameNode) -> Self;
+pub trait VarTypeNewUserDefined {
+    fn new_user_defined(name_node: BareNameNode) -> Self;
+}
+
+pub trait VarTypeToUserDefinedRecursively {
+    fn as_user_defined_recursively(&self) -> Option<&BareNameNode>;
+}
+
+pub trait VarTypeQualifier {
+    fn to_qualifier_recursively(&self) -> Option<TypeQualifier>;
+}
+
+pub trait VarTypeIsExtended {
+    fn is_extended(&self) -> bool;
+}
+
+pub trait VarTypeNewBuiltInCompact {
+    fn new_built_in_compact(q: TypeQualifier) -> Self;
+}
+
+pub trait VarTypeNewBuiltInExtended {
+    fn new_built_in_extended(q: TypeQualifier) -> Self;
 }

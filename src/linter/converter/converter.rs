@@ -9,18 +9,19 @@ use super::expr_rules;
 use super::names::Names;
 use crate::common::*;
 use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
+use crate::linter::pre_linter::{
+    HasFunctionView, HasSubView, HasUserDefinedTypesView, PreLinterResult,
+};
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::linter::{DimContext, NameContext};
+use crate::linter::{DimContext, FunctionMap, NameContext, SubMap};
 use crate::parser::*;
 
 pub fn convert(
     program: ProgramNode,
-    f_c: &FunctionMap,
-    s_c: &SubMap,
-    user_defined_types: &UserDefinedTypes,
+    pre_linter_result: &PreLinterResult,
 ) -> Result<(ProgramNode, HashSet<BareName>), QErrorNode> {
-    let mut converter = ConverterImpl::new(user_defined_types, f_c, s_c);
+    let mut converter = ConverterImpl::new(pre_linter_result);
     let result = converter.convert_program(program)?;
     // consume
     let names_without_dot = converter.consume();
@@ -43,15 +44,11 @@ pub struct ConverterImpl<'a> {
 }
 
 impl<'a> ConverterImpl<'a> {
-    pub fn new(
-        user_defined_types: &'a UserDefinedTypes,
-        functions: &'a FunctionMap,
-        subs: &'a SubMap,
-    ) -> Self {
+    pub fn new(pre_linter_result: &'a PreLinterResult) -> Self {
         let resolver = Rc::new(RefCell::new(TypeResolverImpl::new()));
         Self {
             resolver: Rc::clone(&resolver),
-            context: Context::new(functions, subs, user_defined_types, Rc::clone(&resolver)),
+            context: Context::new(pre_linter_result, Rc::clone(&resolver)),
         }
     }
 
@@ -192,9 +189,7 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 // TODO visibility creep due to mod reorg
 
 pub struct Context<'a> {
-    pub functions: &'a FunctionMap,
-    pub subs: &'a SubMap,
-    pub user_defined_types: &'a UserDefinedTypes,
+    pre_linter_result: &'a PreLinterResult,
     resolver: Rc<RefCell<TypeResolverImpl>>,
     pub names: Names,
     names_without_dot: HashSet<BareName>,
@@ -206,17 +201,31 @@ impl<'a> TypeResolver for Context<'a> {
     }
 }
 
+impl<'a> HasFunctionView for Context<'a> {
+    fn functions(&self) -> &FunctionMap {
+        self.pre_linter_result.functions()
+    }
+}
+
+impl<'a> HasSubView for Context<'a> {
+    fn subs(&self) -> &SubMap {
+        self.pre_linter_result.subs()
+    }
+}
+
+impl<'a> HasUserDefinedTypesView for Context<'a> {
+    fn user_defined_types(&self) -> &UserDefinedTypes {
+        self.pre_linter_result.user_defined_types()
+    }
+}
+
 impl<'a> Context<'a> {
     pub fn new(
-        functions: &'a FunctionMap,
-        subs: &'a SubMap,
-        user_defined_types: &'a UserDefinedTypes,
+        pre_linter_result: &'a PreLinterResult,
         resolver: Rc<RefCell<TypeResolverImpl>>,
     ) -> Self {
         Self {
-            functions,
-            subs,
-            user_defined_types,
+            pre_linter_result,
             resolver,
             names: Names::new_root(),
             names_without_dot: HashSet::new(),
@@ -330,7 +339,7 @@ impl<'a> Context<'a> {
     /// Gets the function qualifier of the function identified by the given bare name.
     /// If no such function exists, returns `None`.
     pub fn function_qualifier(&self, bare_name: &BareName) -> Option<TypeQualifier> {
-        self.functions.get(bare_name).map(
+        self.functions().get(bare_name).map(
             |Locatable {
                  element: (q, _), ..
              }| *q,

@@ -1,13 +1,17 @@
 use super::expression_reducer::*;
 use crate::common::*;
-use crate::parser::{Expression, FunctionMap};
+use crate::linter::pre_linter::HasFunctionView;
+use crate::parser::Expression;
 
 /// Finds undefined functions and converts them to zeroes.
-pub struct UndefinedFunctionReducer<'a> {
-    pub functions: &'a FunctionMap,
+pub struct UndefinedFunctionReducer<'a, R> {
+    pub context: &'a R,
 }
 
-impl<'a> ExpressionReducer for UndefinedFunctionReducer<'a> {
+impl<'a, R> ExpressionReducer for UndefinedFunctionReducer<'a, R>
+where
+    R: HasFunctionView,
+{
     fn visit_expression(&mut self, expression: Expression) -> Result<Expression, QErrorNode> {
         match expression {
             Expression::BinaryExpression(op, left, right, _) => {
@@ -20,7 +24,7 @@ impl<'a> ExpressionReducer for UndefinedFunctionReducer<'a> {
                 Ok(Expression::UnaryExpression(op, Box::new(mapped_child)))
             }
             Expression::FunctionCall(name, args) => {
-                if self.functions.contains_key(name.bare_name()) {
+                if self.context.functions().contains_key(name.bare_name()) {
                     Ok(Expression::FunctionCall(
                         name,
                         self.visit_expression_nodes(args)?,

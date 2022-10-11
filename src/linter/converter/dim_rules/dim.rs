@@ -58,14 +58,14 @@ fn to_dim_type(
     }
 }
 
-fn bare_to_dim_type(
+fn bare_to_dim_type<T: VarTypeNewBuiltInCompact>(
     ctx: &mut Context,
     bare_name: &BareName,
     pos: Location,
-) -> Result<DimType, QErrorNode> {
+) -> Result<T, QErrorNode> {
     let resolved_q = ctx.resolve(bare_name);
     require_compact_can_be_defined(ctx, bare_name, resolved_q).with_err_at(pos)?;
-    Ok(DimType::BuiltIn(resolved_q, BuiltInStyle::Compact))
+    Ok(T::new_built_in_compact(resolved_q))
 }
 
 fn require_compact_can_be_defined(
@@ -88,21 +88,21 @@ fn require_compact_can_be_defined(
         })
 }
 
-fn built_in_to_dim_type(
+fn built_in_to_dim_type<T: VarTypeNewBuiltInCompact + VarTypeNewBuiltInExtended>(
     ctx: &mut Context,
     bare_name: &BareName,
     q: TypeQualifier,
     built_in_style: BuiltInStyle,
     pos: Location,
-) -> Result<DimType, QErrorNode> {
+) -> Result<T, QErrorNode> {
     match built_in_style {
         BuiltInStyle::Compact => {
             require_compact_can_be_defined(ctx, bare_name, q).with_err_at(pos)?;
-            Ok(DimType::BuiltIn(q, BuiltInStyle::Compact))
+            Ok(T::new_built_in_compact(q))
         }
         BuiltInStyle::Extended => {
             require_extended_can_be_defined(ctx, bare_name).with_err_at(pos)?;
-            Ok(DimType::BuiltIn(q, BuiltInStyle::Extended))
+            Ok(T::new_built_in_extended(q))
         }
     }
 }
@@ -126,14 +126,14 @@ fn fixed_length_string_to_dim_type(
     ))
 }
 
-fn user_defined_to_dim_type(
+fn user_defined_to_dim_type<T: VarTypeNewUserDefined>(
     ctx: &mut Context,
     bare_name: &BareName,
     user_defined_type: &BareNameNode,
     pos: Location,
-) -> Result<DimType, QErrorNode> {
+) -> Result<T, QErrorNode> {
     require_extended_can_be_defined(ctx, bare_name).with_err_at(pos)?;
-    Ok(DimType::UserDefined(user_defined_type.clone()))
+    Ok(T::new_user_defined(user_defined_type.clone()))
 }
 
 fn array_to_dim_type(

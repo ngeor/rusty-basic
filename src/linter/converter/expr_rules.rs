@@ -125,6 +125,7 @@ mod binary {
 
 mod variable {
     use super::*;
+    use crate::linter::pre_linter::HasSubView;
 
     pub fn convert(
         ctx: &mut Context,
@@ -164,7 +165,7 @@ mod variable {
     }
 
     fn validate(ctx: &Context, name: &Name, pos: Location) -> Result<(), QErrorNode> {
-        if ctx.subs.contains_key(name.bare_name()) {
+        if ctx.subs().contains_key(name.bare_name()) {
             return Err(QError::DuplicateDefinition).with_err_at(pos);
         }
 
@@ -389,6 +390,7 @@ mod property {
         add_as_new_implicit_var, AssignToFunction, ExistingConst, ExistingVar,
         VarAsUserDefinedFunctionCall, VarResolve,
     };
+    use crate::linter::pre_linter::HasUserDefinedTypesView;
 
     pub fn convert(
         ctx: &mut Context,
@@ -537,7 +539,7 @@ mod property {
         implicit_left_side: Implicits,
         pos: Location,
     ) -> R<ExpressionNode> {
-        match ctx.user_defined_types.get(user_defined_type_name) {
+        match ctx.user_defined_types().get(user_defined_type_name) {
             Some(user_defined_type) => existing_property_user_defined_type(
                 resolved_left_side,
                 user_defined_type,

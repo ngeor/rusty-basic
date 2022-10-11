@@ -1,7 +1,6 @@
 use crate::common::*;
 use crate::parser::pc::Token;
 use crate::parser::types::*;
-use std::collections::HashMap;
 
 pub type ParamName = VarName<ParamType>;
 pub type ParamNameNode = Locatable<ParamName>;
@@ -16,17 +15,21 @@ pub enum ParamType {
     Array(Box<ParamType>),
 }
 
-pub type ParamTypes = Vec<ParamType>;
-
 impl Default for ParamType {
     fn default() -> Self {
         Self::Bare
     }
 }
 
-impl From<TypeQualifier> for ParamType {
-    fn from(q: TypeQualifier) -> Self {
+impl VarTypeNewBuiltInCompact for ParamType {
+    fn new_built_in_compact(q: TypeQualifier) -> Self {
         Self::BuiltIn(q, BuiltInStyle::Compact)
+    }
+}
+
+impl VarTypeNewBuiltInExtended for ParamType {
+    fn new_built_in_extended(q: TypeQualifier) -> Self {
+        Self::BuiltIn(q, BuiltInStyle::Extended)
     }
 }
 
@@ -42,9 +45,19 @@ impl VarTypeToArray for ParamType {
     }
 }
 
-impl VarTypeUserDefined for ParamType {
-    fn from_user_defined(name_node: BareNameNode) -> Self {
+impl VarTypeNewUserDefined for ParamType {
+    fn new_user_defined(name_node: BareNameNode) -> Self {
         Self::UserDefined(name_node)
+    }
+}
+
+impl VarTypeToUserDefinedRecursively for ParamType {
+    fn as_user_defined_recursively(&self) -> Option<&BareNameNode> {
+        match self {
+            Self::UserDefined(n) => Some(n),
+            Self::Array(e) => e.as_user_defined_recursively(),
+            _ => None,
+        }
     }
 }
 
@@ -104,13 +117,27 @@ impl HasExpressionType for ParamType {
     }
 }
 
-pub type SubSignature = ParamTypes;
-pub type SubSignatureNode = Locatable<SubSignature>;
-pub type SubMap = HashMap<BareName, SubSignatureNode>;
+impl VarTypeQualifier for ParamType {
+    fn to_qualifier_recursively(&self) -> Option<TypeQualifier> {
+        match self {
+            Self::BuiltIn(q, _) => Some(*q),
+            Self::Array(e) => e.to_qualifier_recursively(),
+            _ => None,
+        }
+    }
+}
 
-pub type FunctionSignature = (TypeQualifier, ParamTypes);
-pub type FunctionSignatureNode = Locatable<FunctionSignature>;
-pub type FunctionMap = HashMap<BareName, FunctionSignatureNode>;
+impl VarTypeIsExtended for ParamType {
+    fn is_extended(&self) -> bool {
+        match self {
+            Self::BuiltIn(_, BuiltInStyle::Extended) | Self::UserDefined(_) => true,
+            Self::Array(element_type) => element_type.is_extended(),
+            _ => false,
+        }
+    }
+}
+
+// TODO delete the following from impls
 
 impl From<ParamType> for DimType {
     fn from(param_type: ParamType) -> Self {

@@ -345,8 +345,8 @@ macro_rules! assert_def_type {
     ($input:expr, $expected_qualifier:expr, $expected_ranges:expr) => {
         match parse($input).demand_single().element() {
             TopLevelToken::DefType(def_type) => {
-                let def_type_qualifier: &crate::parser::TypeQualifier = def_type.as_ref();
-                assert_eq!(*def_type_qualifier, $expected_qualifier);
+                let def_type_qualifier = def_type.qualifier();
+                assert_eq!(def_type_qualifier, $expected_qualifier);
                 assert_eq!(def_type.ranges(), &$expected_ranges);
             }
             _ => panic!("{:?}", $input),

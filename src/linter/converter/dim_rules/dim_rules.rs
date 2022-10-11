@@ -91,7 +91,7 @@ pub fn resolve_string_length(
     ctx: &Context,
     length_expression: &ExpressionNode,
 ) -> Result<u16, QErrorNode> {
-    let v = ctx.names.resolve_const_value_node(length_expression)?;
+    let v = ctx.names.resolve_const(length_expression)?;
     let i: i32 = v.try_cast().with_err_at(length_expression)?;
     if i >= 1 && i < MAX_INTEGER {
         Ok(i as u16)

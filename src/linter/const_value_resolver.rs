@@ -3,15 +3,31 @@ use crate::parser::{Expression, ExpressionNode, Operator, TypeQualifier, UnaryOp
 use crate::variant::Variant;
 use std::cmp::Ordering;
 
-pub trait ConstValueResolver {
+pub trait ConstLookup {
     fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant>;
+}
 
-    fn resolve_const_value_node(&self, expr_node: &ExpressionNode) -> Result<Variant, QErrorNode> {
-        self.resolve_const_value(expr_node.as_ref())
-            .patch_err_pos(expr_node)
+/// Resolves the value ([Variant]) of a `CONST` expression.
+pub trait ConstValueResolver<T, E> {
+    fn resolve_const(&self, item: &T) -> Result<Variant, E>;
+}
+
+impl<S> ConstValueResolver<CaseInsensitiveString, QError> for S
+where
+    S: ConstLookup,
+{
+    fn resolve_const(&self, item: &CaseInsensitiveString) -> Result<Variant, QError> {
+        self.get_resolved_constant(item)
+            .map(|v| v.clone())
+            .ok_or(QError::InvalidConstant)
     }
+}
 
-    fn resolve_const_value(&self, expression: &Expression) -> Result<Variant, QErrorNode> {
+impl<S> ConstValueResolver<Expression, QErrorNode> for S
+where
+    S: ConstLookup,
+{
+    fn resolve_const(&self, expression: &Expression) -> Result<Variant, QErrorNode> {
         match expression {
             Expression::SingleLiteral(f) => Ok(Variant::VSingle(*f)),
             Expression::DoubleLiteral(d) => Ok(Variant::VDouble(*d)),
@@ -19,42 +35,34 @@ pub trait ConstValueResolver {
             Expression::IntegerLiteral(i) => Ok(Variant::VInteger(*i)),
             Expression::LongLiteral(l) => Ok(Variant::VLong(*l)),
             Expression::Variable(name_expr, _) => {
+                let v = self
+                    .resolve_const(name_expr.bare_name())
+                    .with_err_no_pos()?;
                 if let Some(qualifier) = name_expr.qualifier() {
-                    match self.get_resolved_constant(name_expr.bare_name()) {
-                        Some(v) => {
-                            let v_q = match v {
-                                Variant::VDouble(_) => TypeQualifier::HashDouble,
-                                Variant::VSingle(_) => TypeQualifier::BangSingle,
-                                Variant::VInteger(_) => TypeQualifier::PercentInteger,
-                                Variant::VLong(_) => TypeQualifier::AmpersandLong,
-                                Variant::VString(_) => TypeQualifier::DollarString,
-                                _ => panic!(
-                                    "should not have been possible to store a constant of this type"
-                                ),
-                            };
-                            if v_q == qualifier {
-                                Ok(v.clone())
-                            } else {
-                                Err(QError::TypeMismatch).with_err_no_pos()
-                            }
+                    let v_q = match v {
+                        Variant::VDouble(_) => TypeQualifier::HashDouble,
+                        Variant::VSingle(_) => TypeQualifier::BangSingle,
+                        Variant::VInteger(_) => TypeQualifier::PercentInteger,
+                        Variant::VLong(_) => TypeQualifier::AmpersandLong,
+                        Variant::VString(_) => TypeQualifier::DollarString,
+                        _ => {
+                            panic!("should not have been possible to store a constant of this type")
                         }
-                        None => Err(QError::InvalidConstant).with_err_no_pos(),
+                    };
+                    if v_q == qualifier {
+                        Ok(v.clone())
+                    } else {
+                        Err(QError::TypeMismatch).with_err_no_pos()
                     }
                 } else {
-                    match self.get_resolved_constant(name_expr.bare_name()) {
-                        Some(v) => Ok(v.clone()),
-                        None => Err(QError::InvalidConstant).with_err_no_pos(),
-                    }
+                    Ok(v)
                 }
-            }
-            Expression::Property(_, _, _) | Expression::FunctionCall(_, _) => {
-                Err(QError::InvalidConstant).with_err_no_pos()
             }
             Expression::BinaryExpression(op, left, right, _) => {
                 let Locatable { element, pos } = left.as_ref();
-                let v_left = self.resolve_const_value(element).patch_err_pos(*pos)?;
+                let v_left = self.resolve_const(element).patch_err_pos(*pos)?;
                 let Locatable { element, pos } = right.as_ref();
-                let v_right = self.resolve_const_value(element).patch_err_pos(*pos)?;
+                let v_right = self.resolve_const(element).patch_err_pos(*pos)?;
                 match *op {
                     Operator::Less => {
                         let order = v_left.cmp(&v_right).with_err_at(*pos)?;
@@ -91,7 +99,7 @@ pub trait ConstValueResolver {
             }
             Expression::UnaryExpression(op, child) => {
                 let Locatable { element, pos } = child.as_ref();
-                let v = self.resolve_const_value(element).patch_err_pos(*pos)?;
+                let v = self.resolve_const(element).patch_err_pos(*pos)?;
                 match *op {
                     UnaryOperator::Minus => v.negate().with_err_at(*pos),
                     UnaryOperator::Not => v.unary_not().with_err_at(*pos),
@@ -99,10 +107,24 @@ pub trait ConstValueResolver {
             }
             Expression::Parenthesis(child) => {
                 let Locatable { element, pos } = child.as_ref();
-                self.resolve_const_value(element).patch_err_pos(*pos)
+                self.resolve_const(element).patch_err_pos(*pos)
             }
-            Expression::ArrayElement(_, _, _) => unimplemented!(),
-            Expression::BuiltInFunctionCall(_, _) => unimplemented!(),
+            Expression::Property(_, _, _)
+            | Expression::FunctionCall(_, _)
+            | Expression::ArrayElement(_, _, _)
+            | Expression::BuiltInFunctionCall(_, _) => {
+                Err(QError::InvalidConstant).with_err_no_pos()
+            }
         }
+    }
+}
+
+impl<S> ConstValueResolver<ExpressionNode, QErrorNode> for S
+where
+    S: ConstLookup,
+{
+    fn resolve_const(&self, expr_node: &ExpressionNode) -> Result<Variant, QErrorNode> {
+        self.resolve_const(expr_node.as_ref())
+            .patch_err_pos(expr_node)
     }
 }

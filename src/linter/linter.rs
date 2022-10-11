@@ -1,17 +1,31 @@
-use crate::common::QErrorNode;
+use crate::common::{Locatable, QErrorNode};
 use crate::linter::converter::convert;
 use crate::linter::post_linter::post_linter;
-use crate::linter::pre_linter::parse_subprograms_and_types;
-use crate::parser::{BareName, ProgramNode, QualifiedName, UserDefinedTypes};
+use crate::linter::pre_linter::PreLinterResult;
+use crate::parser::{
+    BareName, ParamType, ProgramNode, QualifiedName, TypeQualifier, UserDefinedTypes,
+};
+use std::collections::HashMap;
 
 pub fn lint(program: ProgramNode) -> Result<(ProgramNode, UserDefinedTypes), QErrorNode> {
     // first pass, get user defined types and functions/subs
-    let (functions, subs, user_defined_types) = parse_subprograms_and_types(&program)?;
+    let pre_linter_result = PreLinterResult::parse(&program)?;
     // convert to fully typed
-    let (result, names_without_dot) = convert(program, &functions, &subs, &user_defined_types)?;
+    let (result, names_without_dot) = convert(program, &pre_linter_result)?;
     // lint and reduce
-    post_linter(result, &functions, &subs, &names_without_dot).map(|p| (p, user_defined_types))
+    post_linter(result, &pre_linter_result, &names_without_dot)
+        .map(|program_node| (program_node, UserDefinedTypes::from(pre_linter_result)))
 }
+
+pub type ParamTypes = Vec<ParamType>;
+
+pub type SubSignature = ParamTypes;
+pub type SubSignatureNode = Locatable<SubSignature>;
+pub type SubMap = HashMap<BareName, SubSignatureNode>;
+
+pub type FunctionSignature = (TypeQualifier, ParamTypes);
+pub type FunctionSignatureNode = Locatable<FunctionSignature>;
+pub type FunctionMap = HashMap<BareName, FunctionSignatureNode>;
 
 /// Holds the resolved name of a subprogram.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

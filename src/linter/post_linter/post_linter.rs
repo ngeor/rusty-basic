@@ -6,26 +6,27 @@ use crate::linter::post_linter::{
     label_linter, print_linter, select_case_linter, undefined_function_reducer,
     user_defined_function_linter, user_defined_sub_linter,
 };
-use crate::parser::{FunctionMap, ProgramNode, SubMap};
+use crate::linter::pre_linter::{HasFunctionView, HasSubView};
+use crate::parser::ProgramNode;
 use std::collections::HashSet;
 
 pub fn post_linter(
     result: ProgramNode,
-    functions: &FunctionMap,
-    subs: &SubMap,
+    pre_linter_result: &(impl HasFunctionView + HasSubView),
     names_without_dot: &HashSet<CaseInsensitiveString>,
 ) -> Result<ProgramNode, QErrorNode> {
     // lint
-    apply_linters(&result, functions, subs, names_without_dot)?;
+    apply_linters(&result, pre_linter_result, names_without_dot)?;
     // reduce
-    let mut reducer = undefined_function_reducer::UndefinedFunctionReducer { functions };
+    let mut reducer = undefined_function_reducer::UndefinedFunctionReducer {
+        context: pre_linter_result,
+    };
     reducer.visit_program(result)
 }
 
 fn apply_linters(
     result: &ProgramNode,
-    functions: &FunctionMap,
-    subs: &SubMap,
+    pre_linter_result: &(impl HasFunctionView + HasSubView),
     names_without_dot: &HashSet<CaseInsensitiveString>,
 ) -> Result<(), QErrorNode> {
     let mut linter = for_next_counter_match_linter::ForNextCounterMatch {};
@@ -40,10 +41,14 @@ fn apply_linters(
     let mut linter = print_linter::PrintLinter {};
     linter.visit_program(&result)?;
 
-    let mut linter = user_defined_function_linter::UserDefinedFunctionLinter { functions };
+    let mut linter = user_defined_function_linter::UserDefinedFunctionLinter {
+        context: pre_linter_result,
+    };
     linter.visit_program(&result)?;
 
-    let mut linter = user_defined_sub_linter::UserDefinedSubLinter { subs };
+    let mut linter = user_defined_sub_linter::UserDefinedSubLinter {
+        context: pre_linter_result,
+    };
     linter.visit_program(&result)?;
 
     let mut linter = select_case_linter::SelectCaseLinter {};

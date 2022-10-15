@@ -9,9 +9,7 @@ use super::expr_rules;
 use super::names::Names;
 use crate::common::*;
 use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
-use crate::linter::pre_linter::{
-    HasFunctionView, HasSubView, HasUserDefinedTypesView, PreLinterResult,
-};
+use crate::linter::pre_linter::{HasFunctions, HasSubs, HasUserDefinedTypes, PreLinterResult};
 use crate::linter::type_resolver::{IntoQualified, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::{DimContext, FunctionMap, NameContext, SubMap};
@@ -201,19 +199,19 @@ impl<'a> TypeResolver for Context<'a> {
     }
 }
 
-impl<'a> HasFunctionView for Context<'a> {
+impl<'a> HasFunctions for Context<'a> {
     fn functions(&self) -> &FunctionMap {
         self.pre_linter_result.functions()
     }
 }
 
-impl<'a> HasSubView for Context<'a> {
+impl<'a> HasSubs for Context<'a> {
     fn subs(&self) -> &SubMap {
         self.pre_linter_result.subs()
     }
 }
 
-impl<'a> HasUserDefinedTypesView for Context<'a> {
+impl<'a> HasUserDefinedTypes for Context<'a> {
     fn user_defined_types(&self) -> &UserDefinedTypes {
         self.pre_linter_result.user_defined_types()
     }

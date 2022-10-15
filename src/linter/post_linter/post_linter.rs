@@ -6,13 +6,13 @@ use crate::linter::post_linter::{
     label_linter, print_linter, select_case_linter, undefined_function_reducer,
     user_defined_function_linter, user_defined_sub_linter,
 };
-use crate::linter::pre_linter::{HasFunctionView, HasSubView};
+use crate::linter::pre_linter::{HasFunctions, HasSubs};
 use crate::parser::ProgramNode;
 use std::collections::HashSet;
 
 pub fn post_linter(
     result: ProgramNode,
-    pre_linter_result: &(impl HasFunctionView + HasSubView),
+    pre_linter_result: &(impl HasFunctions + HasSubs),
     names_without_dot: &HashSet<CaseInsensitiveString>,
 ) -> Result<ProgramNode, QErrorNode> {
     // lint
@@ -26,7 +26,7 @@ pub fn post_linter(
 
 fn apply_linters(
     result: &ProgramNode,
-    pre_linter_result: &(impl HasFunctionView + HasSubView),
+    pre_linter_result: &(impl HasFunctions + HasSubs),
     names_without_dot: &HashSet<CaseInsensitiveString>,
 ) -> Result<(), QErrorNode> {
     let mut linter = for_next_counter_match_linter::ForNextCounterMatch {};

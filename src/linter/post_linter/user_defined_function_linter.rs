@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::linter::pre_linter::HasFunctionView;
+use crate::linter::pre_linter::HasFunctions;
 use crate::linter::ParamTypes;
 use crate::parser::*;
 
@@ -146,7 +146,7 @@ fn has_at_least_one_arg(opt_args: Option<&ExpressionNodes>) -> bool {
 
 impl<'a, R> UserDefinedFunctionLinter<'a, R>
 where
-    R: HasFunctionView,
+    R: HasFunctions,
 {
     fn visit_function(&self, name: &Name, args: &ExpressionNodes) -> Result<(), QErrorNode> {
         if let Name::Qualified(bare_name, qualifier) = name {
@@ -190,7 +190,7 @@ where
 
 impl<'a, R> PostConversionLinter for UserDefinedFunctionLinter<'a, R>
 where
-    R: HasFunctionView,
+    R: HasFunctions,
 {
     fn visit_expression(&mut self, expr_node: &ExpressionNode) -> Result<(), QErrorNode> {
         let Locatable { element: e, pos } = expr_node;

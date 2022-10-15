@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::Context;
-use crate::linter::pre_linter::{HasFunctionView, HasSubView};
+use crate::linter::pre_linter::{HasFunctions, HasSubs};
 use crate::parser::*;
 use std::convert::TryFrom;
 

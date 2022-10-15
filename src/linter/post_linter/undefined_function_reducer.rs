@@ -1,6 +1,6 @@
 use super::expression_reducer::*;
 use crate::common::*;
-use crate::linter::pre_linter::HasFunctionView;
+use crate::linter::pre_linter::HasFunctions;
 use crate::parser::Expression;
 
 /// Finds undefined functions and converts them to zeroes.
@@ -10,7 +10,7 @@ pub struct UndefinedFunctionReducer<'a, R> {
 
 impl<'a, R> ExpressionReducer for UndefinedFunctionReducer<'a, R>
 where
-    R: HasFunctionView,
+    R: HasFunctions,
 {
     fn visit_expression(&mut self, expression: Expression) -> Result<Expression, QErrorNode> {
         match expression {

@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use super::user_defined_function_linter::lint_call_args;
 use crate::common::*;
-use crate::linter::pre_linter::HasSubView;
+use crate::linter::pre_linter::HasSubs;
 use crate::parser::ExpressionNodes;
 
 pub struct UserDefinedSubLinter<'a, R> {
@@ -10,7 +10,7 @@ pub struct UserDefinedSubLinter<'a, R> {
 
 impl<'a, R> PostConversionLinter for UserDefinedSubLinter<'a, R>
 where
-    R: HasSubView,
+    R: HasSubs,
 {
     fn visit_sub_call(
         &mut self,

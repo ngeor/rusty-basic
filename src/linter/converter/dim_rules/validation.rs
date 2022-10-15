@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::linter::converter::Context;
-use crate::linter::pre_linter::{HasFunctionView, HasSubView, HasUserDefinedTypesView};
+use crate::linter::pre_linter::{HasFunctions, HasSubs, HasUserDefinedTypes};
 use crate::linter::type_resolver::IntoTypeQualifier;
 use crate::linter::DimContext;
 use crate::parser::{

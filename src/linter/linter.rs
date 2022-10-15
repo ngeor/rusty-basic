@@ -1,7 +1,7 @@
 use crate::common::{Locatable, QErrorNode};
 use crate::linter::converter::convert;
 use crate::linter::post_linter::post_linter;
-use crate::linter::pre_linter::PreLinterResult;
+use crate::linter::pre_linter::pre_lint_program;
 use crate::parser::{
     BareName, ParamType, ProgramNode, QualifiedName, TypeQualifier, UserDefinedTypes,
 };
@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 pub fn lint(program: ProgramNode) -> Result<(ProgramNode, UserDefinedTypes), QErrorNode> {
     // first pass, get user defined types and functions/subs
-    let pre_linter_result = PreLinterResult::parse(&program)?;
+    let pre_linter_result = pre_lint_program(&program)?;
     // convert to fully typed
     let (result, names_without_dot) = convert(program, &pre_linter_result)?;
     // lint and reduce

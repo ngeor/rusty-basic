@@ -124,7 +124,7 @@ mod binary {
 
 mod variable {
     use super::*;
-    use crate::linter::pre_linter::HasSubView;
+    use crate::linter::pre_linter::HasSubs;
     use crate::linter::type_resolver::{IntoQualified, IntoTypeQualifier};
 
     pub fn convert(
@@ -387,7 +387,7 @@ mod property {
         add_as_new_implicit_var, AssignToFunction, ExistingConst, ExistingVar,
         VarAsUserDefinedFunctionCall, VarResolve,
     };
-    use crate::linter::pre_linter::HasUserDefinedTypesView;
+    use crate::linter::pre_linter::HasUserDefinedTypes;
 
     pub fn convert(
         ctx: &mut Context,

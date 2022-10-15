@@ -1,138 +1,94 @@
 use self::sub_program::*;
 use crate::common::*;
 use crate::linter::const_value_resolver::{ConstLookup, ConstValueResolver};
+use crate::linter::pre_linter::PreLinterResult;
 use crate::linter::type_resolver::TypeResolver;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::linter::{FunctionMap, SubMap};
 use crate::parser::*;
 use crate::variant::Variant;
 use std::collections::HashMap;
 
-pub struct PreLinterResult {
-    functions: FunctionMap,
-    subs: SubMap,
-    user_defined_types: UserDefinedTypes,
-}
+pub fn pre_lint_program(program: &ProgramNode) -> Result<PreLinterResult, QErrorNode> {
+    let mut resolver: TypeResolverImpl = TypeResolverImpl::new();
+    let mut user_defined_types: UserDefinedTypes = UserDefinedTypes::new();
+    let mut function_context = FunctionContext::new();
+    let mut sub_context = SubContext::new();
+    let mut global_constants: HashMap<BareName, Variant> = HashMap::new();
 
-impl PreLinterResult {
-    pub fn parse(program: &ProgramNode) -> Result<Self, QErrorNode> {
-        let mut resolver: TypeResolverImpl = TypeResolverImpl::new();
-        let mut user_defined_types: UserDefinedTypes = UserDefinedTypes::new();
-        let mut function_context = FunctionContext::new();
-        let mut sub_context = SubContext::new();
-        let mut global_constants: HashMap<BareName, Variant> = HashMap::new();
-
-        for Locatable { element, pos } in program {
-            match element {
-                TopLevelToken::DefType(def_type) => {
-                    on_def_type(def_type, &mut resolver);
-                }
-                TopLevelToken::FunctionDeclaration(name_node, params) => {
-                    on_function_declaration(
-                        name_node,
-                        params,
-                        *pos,
-                        &mut function_context,
-                        &resolver,
-                        &user_defined_types,
-                    )?;
-                }
-                TopLevelToken::SubDeclaration(bare_name_node, params) => {
-                    on_sub_declaration(
-                        bare_name_node,
-                        params,
-                        *pos,
-                        &mut sub_context,
-                        &resolver,
-                        &user_defined_types,
-                    )?;
-                }
-                TopLevelToken::FunctionImplementation(FunctionImplementation {
-                    name: name_node,
+    for Locatable { element, pos } in program {
+        match element {
+            TopLevelToken::DefType(def_type) => {
+                on_def_type(def_type, &mut resolver);
+            }
+            TopLevelToken::FunctionDeclaration(name_node, params) => {
+                on_function_declaration(
+                    name_node,
                     params,
-                    ..
-                }) => {
-                    on_function_implementation(
-                        name_node,
-                        params,
-                        *pos,
-                        &mut function_context,
-                        &resolver,
-                        &user_defined_types,
-                    )?;
-                }
-                TopLevelToken::SubImplementation(SubImplementation {
-                    name: bare_name_node,
+                    *pos,
+                    &mut function_context,
+                    &resolver,
+                    &user_defined_types,
+                )?;
+            }
+            TopLevelToken::SubDeclaration(bare_name_node, params) => {
+                on_sub_declaration(
+                    bare_name_node,
                     params,
-                    ..
-                }) => {
-                    on_sub_implementation(
-                        bare_name_node,
-                        params,
-                        *pos,
-                        &mut sub_context,
-                        &resolver,
-                        &user_defined_types,
-                    )?;
+                    *pos,
+                    &mut sub_context,
+                    &resolver,
+                    &user_defined_types,
+                )?;
+            }
+            TopLevelToken::FunctionImplementation(FunctionImplementation {
+                name: name_node,
+                params,
+                ..
+            }) => {
+                on_function_implementation(
+                    name_node,
+                    params,
+                    *pos,
+                    &mut function_context,
+                    &resolver,
+                    &user_defined_types,
+                )?;
+            }
+            TopLevelToken::SubImplementation(SubImplementation {
+                name: bare_name_node,
+                params,
+                ..
+            }) => {
+                on_sub_implementation(
+                    bare_name_node,
+                    params,
+                    *pos,
+                    &mut sub_context,
+                    &resolver,
+                    &user_defined_types,
+                )?;
+            }
+            TopLevelToken::Statement(s) => match s {
+                Statement::Const(name_node, expression_node) => {
+                    global_const(&mut global_constants, name_node, expression_node)?;
                 }
-                TopLevelToken::Statement(s) => match s {
-                    Statement::Const(name_node, expression_node) => {
-                        global_const(&mut global_constants, name_node, expression_node)?;
-                    }
-                    _ => {}
-                },
-                TopLevelToken::UserDefinedType(u) => {
-                    user_defined_type(&mut user_defined_types, &global_constants, u, *pos)
-                        .patch_err_pos(*pos)?;
-                }
+                _ => {}
+            },
+            TopLevelToken::UserDefinedType(u) => {
+                user_defined_type(&mut user_defined_types, &global_constants, u, *pos)
+                    .patch_err_pos(*pos)?;
             }
         }
-
-        function_context.post_visit()?;
-        sub_context.post_visit()?;
-
-        Ok(Self {
-            functions: function_context.implementations(),
-            subs: sub_context.implementations(),
-            user_defined_types,
-        })
     }
-}
 
-pub trait HasFunctionView {
-    fn functions(&self) -> &FunctionMap;
-}
+    function_context.post_visit()?;
+    sub_context.post_visit()?;
 
-pub trait HasSubView {
-    fn subs(&self) -> &SubMap;
-}
-
-pub trait HasUserDefinedTypesView {
-    fn user_defined_types(&self) -> &UserDefinedTypes;
-}
-
-impl HasFunctionView for PreLinterResult {
-    fn functions(&self) -> &FunctionMap {
-        &self.functions
-    }
-}
-
-impl HasSubView for PreLinterResult {
-    fn subs(&self) -> &SubMap {
-        &self.subs
-    }
-}
-
-impl HasUserDefinedTypesView for PreLinterResult {
-    fn user_defined_types(&self) -> &UserDefinedTypes {
-        &self.user_defined_types
-    }
-}
-
-impl From<PreLinterResult> for UserDefinedTypes {
-    fn from(pre_linter_result: PreLinterResult) -> Self {
-        pre_linter_result.user_defined_types
-    }
+    Ok(PreLinterResult::new(
+        function_context.implementations(),
+        sub_context.implementations(),
+        user_defined_types,
+    ))
 }
 
 fn on_def_type(def_type: &DefType, resolver: &mut TypeResolverImpl) {

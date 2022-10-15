@@ -3,11 +3,23 @@
 //! the `DEFINT` etc statements.
 
 use crate::parser::{BareName, Name, TypeQualifier};
+use std::rc::Rc;
 
 /// Finds the [TypeQualifier] that corresponds to the given character,
 /// based on the `DEFINT` etc statements.
 pub trait TypeResolver {
     fn char_to_qualifier(&self, ch: char) -> TypeQualifier;
+}
+
+// blanket for Rc
+
+impl<T> TypeResolver for Rc<T>
+where
+    T: TypeResolver,
+{
+    fn char_to_qualifier(&self, ch: char) -> TypeQualifier {
+        self.as_ref().char_to_qualifier(ch)
+    }
 }
 
 /// Represents something that can give a [TypeQualifier],

@@ -110,6 +110,12 @@ impl From<Name> for BareName {
     }
 }
 
+impl AsRef<BareName> for Name {
+    fn as_ref(&self) -> &BareName {
+        self.bare_name()
+    }
+}
+
 #[cfg(test)]
 impl From<&str> for Name {
     fn from(s: &str) -> Self {

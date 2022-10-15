@@ -23,7 +23,7 @@ pub mod parser {
 
     fn build_args(name_node: NameNode, value_expr_node: ExpressionNode) -> ExpressionNodes {
         let Locatable { element: name, pos } = name_node;
-        let variable_name: String = name.bare_name().as_ref().to_owned();
+        let variable_name: String = name.bare_name().to_string();
         let name_expr_node = Expression::Variable(name, VariableInfo::unresolved()).at(pos);
         vec![
             // pass the name of the variable as a special argument

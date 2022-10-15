@@ -41,7 +41,7 @@ pub mod parser {
         args.push(file_number_node.map(Expression::from));
         for (width, Locatable { element: name, pos }) in fields {
             args.push(width);
-            let variable_name: String = name.bare_name().as_ref().to_string();
+            let variable_name: String = name.bare_name().to_string();
             args.push(Expression::StringLiteral(variable_name).at(pos));
             // to lint the variable, not used at runtime
             args.push(Expression::Variable(name, VariableInfo::unresolved()).at(pos));

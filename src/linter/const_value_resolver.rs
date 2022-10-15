@@ -9,6 +9,7 @@ pub trait ConstLookup {
 
 /// Resolves the value ([Variant]) of a `CONST` expression.
 pub trait ConstValueResolver<T, E> {
+    /// Resolves the value ([Variant]) of a `CONST` expression.
     fn resolve_const(&self, item: &T) -> Result<Variant, E>;
 }
 

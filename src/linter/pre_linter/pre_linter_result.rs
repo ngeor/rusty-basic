@@ -2,6 +2,7 @@ use crate::linter::pre_linter::{HasFunctions, HasSubs, HasUserDefinedTypes};
 use crate::linter::{FunctionMap, SubMap};
 use crate::parser::UserDefinedTypes;
 
+/// Stores the result of the pre-linter.
 pub struct PreLinterResult {
     functions: FunctionMap,
     subs: SubMap,

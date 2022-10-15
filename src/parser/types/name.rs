@@ -1,6 +1,7 @@
 use crate::common::{Locatable, QError};
-use crate::parser::types::{BareName, QualifiedName, TypeQualifier};
-use crate::parser::{ExpressionType, HasExpressionType};
+use crate::parser::types::{
+    BareName, ExpressionType, HasExpressionType, QualifiedName, TypeQualifier,
+};
 #[cfg(test)]
 use std::convert::TryFrom;
 
@@ -26,14 +27,14 @@ use std::convert::TryFrom;
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Name {
     Bare(BareName),
-    Qualified(QualifiedName),
+    Qualified(BareName, TypeQualifier),
 }
 
 impl Name {
     pub fn new(bare_name: BareName, optional_type_qualifier: Option<TypeQualifier>) -> Self {
         match optional_type_qualifier {
-            Some(q) => QualifiedName::new(bare_name, q).into(),
-            None => bare_name.into(),
+            Some(q) => Self::Qualified(bare_name, q),
+            None => Self::Bare(bare_name),
         }
     }
 
@@ -47,24 +48,14 @@ impl Name {
     pub fn is_bare_or_of_type(&self, qualifier: TypeQualifier) -> bool {
         match self {
             Self::Bare(_) => true,
-            Self::Qualified(qualified_name) => qualified_name.is_of_type(qualifier),
-        }
-    }
-
-    pub fn into_inner(self) -> (BareName, Option<TypeQualifier>) {
-        match self {
-            Self::Bare(bare_name) => (bare_name, None),
-            Self::Qualified(QualifiedName {
-                bare_name,
-                qualifier,
-            }) => (bare_name, Some(qualifier)),
+            Self::Qualified(_, q) => *q == qualifier,
         }
     }
 
     pub fn qualifier(&self) -> Option<TypeQualifier> {
         match self {
             Self::Bare(_) => None,
-            Self::Qualified(QualifiedName { qualifier, .. }) => Some(*qualifier),
+            Self::Qualified(_, qualifier) => Some(*qualifier),
         }
     }
 
@@ -72,13 +63,9 @@ impl Name {
         match self {
             Self::Bare(left_name) => match right {
                 Self::Bare(right_bare) => Some(Name::Bare(left_name + '.' + right_bare)),
-                Self::Qualified(QualifiedName {
-                    bare_name,
-                    qualifier,
-                }) => Some(Name::Qualified(QualifiedName::new(
-                    left_name + '.' + bare_name,
-                    qualifier,
-                ))),
+                Self::Qualified(right_bare, qualifier) => {
+                    Some(Name::Qualified(left_name + '.' + right_bare, qualifier))
+                }
             },
             _ => None,
         }
@@ -88,17 +75,9 @@ impl Name {
     /// Fails if the name is already qualified with a different qualifier.
     pub fn try_qualify(self, qualifier: TypeQualifier) -> Result<Self, QError> {
         match self {
-            Self::Bare(bare_name) => Ok(Self::Qualified(QualifiedName::new(bare_name, qualifier))),
-            Self::Qualified(QualifiedName {
-                bare_name,
-                qualifier: q,
-            }) => {
-                if q == qualifier {
-                    Ok(Self::Qualified(QualifiedName::new(bare_name, qualifier)))
-                } else {
-                    Err(QError::DuplicateDefinition)
-                }
-            }
+            Self::Bare(bare_name) => Ok(Self::Qualified(bare_name, qualifier)),
+            Self::Qualified(_, q) if q != qualifier => Err(QError::DuplicateDefinition),
+            _ => Ok(self),
         }
     }
 
@@ -111,24 +90,22 @@ impl Name {
 
     pub fn demand_qualified(self) -> QualifiedName {
         match self {
-            Self::Qualified(qualified_name) => qualified_name,
+            Self::Qualified(bare_name, qualifier) => QualifiedName::new(bare_name, qualifier),
             _ => panic!("{:?} was not qualified", self),
         }
     }
 
     pub fn bare_name(&self) -> &BareName {
         match self {
-            Name::Bare(b) => b,
-            Name::Qualified(QualifiedName { bare_name, .. }) => bare_name,
+            Name::Bare(bare_name) | Name::Qualified(bare_name, _) => &bare_name,
         }
     }
 }
 
 impl From<Name> for BareName {
-    fn from(n: Name) -> BareName {
-        match n {
-            Name::Bare(b) => b,
-            Name::Qualified(QualifiedName { bare_name, .. }) => bare_name,
+    fn from(name: Name) -> Self {
+        match name {
+            Name::Bare(bare_name) | Name::Qualified(bare_name, _) => bare_name,
         }
     }
 }
@@ -139,24 +116,12 @@ impl From<&str> for Name {
         let mut buf = s.to_string();
         let last_ch: char = buf.pop().unwrap();
         match TypeQualifier::try_from(last_ch) {
-            Ok(qualifier) => QualifiedName::new(BareName::new(buf), qualifier).into(),
+            Ok(qualifier) => Self::Qualified(buf.into(), qualifier),
             _ => {
                 buf.push(last_ch);
-                BareName::new(buf).into()
+                Self::Bare(buf.into())
             }
         }
-    }
-}
-
-impl From<BareName> for Name {
-    fn from(bare_name: BareName) -> Self {
-        Self::Bare(bare_name)
-    }
-}
-
-impl From<QualifiedName> for Name {
-    fn from(qualified_name: QualifiedName) -> Self {
-        Self::Qualified(qualified_name)
     }
 }
 
@@ -164,7 +129,9 @@ impl std::fmt::Display for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Bare(bare_name) => bare_name.fmt(f),
-            Self::Qualified(qualified_name) => qualified_name.fmt(f),
+            Self::Qualified(bare_name, qualifier) => {
+                bare_name.fmt(f).and_then(|_| qualifier.fmt(f))
+            }
         }
     }
 }
@@ -173,7 +140,7 @@ impl HasExpressionType for Name {
     fn expression_type(&self) -> ExpressionType {
         match self {
             Self::Bare(_) => ExpressionType::Unresolved,
-            Self::Qualified(QualifiedName { qualifier, .. }) => ExpressionType::BuiltIn(*qualifier),
+            Self::Qualified(_, qualifier) => ExpressionType::BuiltIn(*qualifier),
         }
     }
 }
@@ -190,10 +157,10 @@ mod tests {
         assert_eq!(Name::from("A"), Name::Bare("A".into()));
         assert_eq!(
             Name::from("Pos%"),
-            Name::Qualified(QualifiedName::new(
+            Name::Qualified(
                 BareName::new("Pos".to_string()),
                 TypeQualifier::PercentInteger
-            ))
+            )
         );
     }
 

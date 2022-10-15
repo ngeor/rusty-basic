@@ -1,7 +1,7 @@
 use crate::common::Locatable;
 #[cfg(test)]
 use crate::common::QError;
-use crate::parser::types::{BareName, TypeQualifier};
+use crate::parser::types::{BareName, Name, TypeQualifier};
 #[cfg(test)]
 use std::convert::TryFrom;
 
@@ -9,8 +9,8 @@ use std::convert::TryFrom;
 /// Example: `name$`, `age%`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct QualifiedName {
-    pub bare_name: BareName,
-    pub qualifier: TypeQualifier,
+    bare_name: BareName,
+    qualifier: TypeQualifier,
 }
 
 impl QualifiedName {
@@ -21,26 +21,14 @@ impl QualifiedName {
         }
     }
 
-    pub fn is_of_type(&self, qualifier: TypeQualifier) -> bool {
-        self.qualifier == qualifier
+    pub fn into_inner(self) -> (BareName, TypeQualifier) {
+        (self.bare_name, self.qualifier)
     }
 }
 
-impl AsRef<TypeQualifier> for QualifiedName {
-    fn as_ref(&self) -> &TypeQualifier {
-        &self.qualifier
-    }
-}
-
-impl AsRef<BareName> for QualifiedName {
-    fn as_ref(&self) -> &BareName {
-        &self.bare_name
-    }
-}
-
-impl From<QualifiedName> for BareName {
-    fn from(qualified_name: QualifiedName) -> BareName {
-        qualified_name.bare_name
+impl From<QualifiedName> for Name {
+    fn from(qualified_name: QualifiedName) -> Self {
+        Self::Qualified(qualified_name.bare_name, qualified_name.qualifier)
     }
 }
 

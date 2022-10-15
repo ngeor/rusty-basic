@@ -22,7 +22,7 @@ pub fn stash_function_return_value<T: InterpreterTrait>(
     interpreter: &mut T,
     function_name: &QualifiedName,
 ) {
-    let name: Name = Name::Qualified(function_name.clone());
+    let name: Name = Name::from(function_name.clone());
     let v = interpreter
         .context_mut()
         .variables_mut()

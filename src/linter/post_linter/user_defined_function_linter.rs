@@ -149,11 +149,7 @@ where
     R: HasFunctionView,
 {
     fn visit_function(&self, name: &Name, args: &ExpressionNodes) -> Result<(), QErrorNode> {
-        if let Name::Qualified(qualified_name) = name {
-            let QualifiedName {
-                bare_name,
-                qualifier,
-            } = qualified_name;
+        if let Name::Qualified(bare_name, qualifier) = name {
             match self.context.functions().get(bare_name) {
                 Some(Locatable {
                     element: (return_type, param_types),

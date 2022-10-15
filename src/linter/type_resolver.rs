@@ -2,7 +2,7 @@
 //! For bare names, the type comes from their first character, according to
 //! the `DEFINT` etc statements.
 
-use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, Name, TypeQualifier};
 
 /// Finds the [TypeQualifier] that corresponds to the given character,
 /// based on the `DEFINT` etc statements.
@@ -31,7 +31,7 @@ impl IntoTypeQualifier for Name {
     fn qualify(&self, resolver: &impl TypeResolver) -> TypeQualifier {
         match self {
             Self::Bare(bare_name) => bare_name.qualify(resolver),
-            Self::Qualified(QualifiedName { qualifier, .. }) => *qualifier,
+            Self::Qualified(_, qualifier) => *qualifier,
         }
     }
 }
@@ -52,7 +52,7 @@ impl IntoQualified for BareName {
 
     fn to_qualified(self, resolver: &impl TypeResolver) -> Self::Output {
         let q = self.qualify(resolver);
-        Name::Qualified(QualifiedName::new(self, q))
+        Name::Qualified(self, q)
     }
 }
 

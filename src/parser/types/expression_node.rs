@@ -406,7 +406,7 @@ impl HasExpressionType for Expression {
                     expression_type.clone()
                 }
             }
-            Self::FunctionCall(Name::Qualified(QualifiedName { qualifier, .. }), _) => {
+            Self::FunctionCall(Name::Qualified(_, qualifier), _) => {
                 ExpressionType::BuiltIn(*qualifier)
             }
             Self::BuiltInFunctionCall(f, _) => ExpressionType::BuiltIn(f.into()),

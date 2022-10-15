@@ -334,12 +334,26 @@ impl InstructionGenerator {
             element: function_implementation,
             pos,
         } = function_node;
-        let FunctionImplementation { name, body, .. } = function_implementation;
-        let function_name = name.element.demand_qualified();
-        self.mark_current_subprogram(SubprogramName::Function(function_name.clone()), pos);
-        // set default value
-        self.push_load(function_name.qualifier, pos);
-        self.subprogram_body(body, pos);
+        let FunctionImplementation {
+            name:
+                Locatable {
+                    element: function_name,
+                    ..
+                },
+            body,
+            ..
+        } = function_implementation;
+        match function_name {
+            Name::Bare(_) => panic!("Expected qualified function name"),
+            Name::Qualified(bare_name, qualifier) => {
+                let qualifier_copy = qualifier;
+                let q_function_name = QualifiedName::new(bare_name, qualifier);
+                self.mark_current_subprogram(SubprogramName::Function(q_function_name), pos);
+                // set default value
+                self.push_load(qualifier_copy, pos);
+                self.subprogram_body(body, pos);
+            }
+        }
     }
 
     fn visit_subs(&mut self, subs: Vec<Locatable<SubImplementation>>) {

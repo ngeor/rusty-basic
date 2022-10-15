@@ -1,5 +1,5 @@
 use crate::common::{CanCastTo, QError};
-use crate::parser::{BareName, Name, Operator, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, Name, Operator, TypeQualifier};
 
 /// The resolved type of an expression.
 #[derive(Clone, Debug, PartialEq)]
@@ -14,26 +14,16 @@ pub enum ExpressionType {
 impl ExpressionType {
     /// Validates and normalizes the given name
     pub fn qualify_name(&self, name: Name) -> Result<Name, QError> {
-        match name {
-            Name::Bare(bare_name) => match self.opt_qualifier() {
-                Some(q) => Ok(Name::new(bare_name, Some(q))),
-                _ => Ok(Name::Bare(bare_name)),
-            },
-            Name::Qualified(QualifiedName {
-                bare_name,
-                qualifier,
-            }) => {
-                match self.opt_qualifier() {
-                    Some(expr_q) => {
-                        if qualifier == expr_q {
-                            Ok(Name::new(bare_name, Some(qualifier)))
-                        } else {
-                            // trying to use the wrong qualifier
-                            Err(QError::TypeMismatch)
-                        }
-                    }
+        match self.opt_qualifier() {
+            Some(expr_q) => {
+                // try to modify the name to have the expected qualifier
+                name.try_qualify(expr_q).map_err(|_| QError::TypeMismatch)
+            }
+            None => {
+                match name {
                     // trying to use a qualifier on an ExpressionType that doesn't accept it
-                    _ => Err(QError::TypeMismatch),
+                    Name::Qualified(_, _) => Err(QError::TypeMismatch),
+                    _ => Ok(name),
                 }
             }
         }

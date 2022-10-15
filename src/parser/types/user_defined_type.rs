@@ -2,8 +2,9 @@ use std::collections::HashMap;
 use std::slice::Iter;
 
 use crate::common::{Locatable, QError, StringUtils};
-use crate::parser::types::{BareName, BareNameNode, ExpressionNode};
-use crate::parser::{ExpressionType, HasExpressionType, Name, QualifiedName, TypeQualifier};
+use crate::parser::types::{
+    BareName, BareNameNode, ExpressionNode, ExpressionType, HasExpressionType, Name, TypeQualifier,
+};
 use crate::variant::{UserDefinedTypeValue, Variant};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -114,7 +115,7 @@ impl ElementType {
     pub fn can_be_referenced_by_property_name(&self, name: &Name) -> bool {
         match name {
             Name::Bare(_) => true,
-            Name::Qualified(QualifiedName { qualifier, .. }) => match self {
+            Name::Qualified(_, qualifier) => match self {
                 Self::Integer => *qualifier == TypeQualifier::PercentInteger,
                 Self::Long => *qualifier == TypeQualifier::AmpersandLong,
                 Self::Single => *qualifier == TypeQualifier::BangSingle,

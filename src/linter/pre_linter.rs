@@ -246,23 +246,19 @@ fn global_const(
 ) -> Result<(), QErrorNode> {
     let Locatable { element: name, pos } = name_node;
     let bare_name: &BareName = name.bare_name();
-    if global_constants.contains_key(bare_name) {
-        return Err(QError::DuplicateDefinition).with_err_at(pos);
-    }
-    let v: Variant = global_constants.resolve_const(expression_node)?;
-    match name {
-        Name::Bare(b) => {
-            global_constants.insert(b.clone(), v);
-        }
-        Name::Qualified(QualifiedName {
-            bare_name,
-            qualifier,
-        }) => {
-            let casted = v.cast(*qualifier).with_err_at(expression_node)?;
-            global_constants.insert(bare_name.clone(), casted);
-        }
-    }
-    Ok(())
+    (match global_constants.get(bare_name) {
+        Some(_) => Err(QError::DuplicateDefinition).with_err_at(pos),
+        _ => Ok(()),
+    })
+    .and_then(|_| global_constants.resolve_const(expression_node))
+    .and_then(|v| match name {
+        Name::Bare(_) => Ok(v),
+        Name::Qualified(_, qualifier) => v.cast(*qualifier).with_err_at(expression_node),
+    })
+    .map(|casted| {
+        global_constants.insert(bare_name.clone(), casted);
+        ()
+    })
 }
 
 impl ConstLookup for HashMap<CaseInsensitiveString, Variant> {

@@ -67,19 +67,8 @@ impl<'a> NoDotNamesCheck<NameNode, QErrorNode> for DotsLinter<'a> {
 }
 
 impl<'a> NoDotNamesCheck<Name, QError> for DotsLinter<'a> {
-    fn ensure_no_dots(&self, x: &Name) -> Result<(), QError> {
-        match x {
-            Name::Bare(bare_name) | Name::Qualified(QualifiedName { bare_name, .. }) => {
-                self.ensure_no_dots(bare_name)
-            }
-        }
-    }
-}
-
-impl<'a> NoDotNamesCheck<QualifiedNameNode, QErrorNode> for DotsLinter<'a> {
-    fn ensure_no_dots(&self, x: &QualifiedNameNode) -> Result<(), QErrorNode> {
-        let Locatable { element, pos } = x;
-        self.ensure_no_dots(element).with_err_at(pos)
+    fn ensure_no_dots(&self, name: &Name) -> Result<(), QError> {
+        self.ensure_no_dots(name.bare_name())
     }
 }
 
@@ -87,15 +76,6 @@ impl<'a> NoDotNamesCheck<BareNameNode, QErrorNode> for DotsLinter<'a> {
     fn ensure_no_dots(&self, x: &BareNameNode) -> Result<(), QErrorNode> {
         let Locatable { element, pos } = x;
         self.ensure_no_dots(element).with_err_at(pos)
-    }
-}
-
-impl<'a> NoDotNamesCheck<QualifiedName, QError> for DotsLinter<'a> {
-    fn ensure_no_dots(&self, x: &QualifiedName) -> Result<(), QError> {
-        let QualifiedName {
-            bare_name: name, ..
-        } = x;
-        self.ensure_no_dots(name)
     }
 }
 

@@ -336,7 +336,7 @@ mod variable {
             .map(|token| token.text)
             .collect();
         let mut result = Expression::Variable(
-            Name::new(BareName::new(property_names.pop_front().unwrap()), None),
+            Name::Bare(BareName::new(property_names.pop_front().unwrap())),
             VariableInfo::unresolved(),
         );
         while let Some(property_name) = property_names.pop_front() {

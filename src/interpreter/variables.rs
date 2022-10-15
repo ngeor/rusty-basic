@@ -1,9 +1,7 @@
 use crate::common::{IndexedMap, QError};
 use crate::instruction_generator::Path;
 use crate::interpreter::arguments::{ArgumentInfo, Arguments};
-use crate::parser::{
-    BareName, DimName, DimType, Name, ParamName, ParamType, QualifiedName, TypeQualifier,
-};
+use crate::parser::{BareName, DimName, DimType, Name, ParamName, ParamType, TypeQualifier};
 use crate::variant::{AsciiSize, Variant, V_FALSE};
 
 #[derive(Debug)]
@@ -40,16 +38,16 @@ impl Variables {
         qualifier: TypeQualifier,
         value: Variant,
     ) {
-        self.insert(QualifiedName::new(bare_name, qualifier).into(), value);
+        self.insert(Name::Qualified(bare_name, qualifier), value);
     }
 
     pub fn insert_user_defined(&mut self, bare_name: BareName, value: Variant) {
-        self.insert(bare_name.into(), value);
+        self.insert(Name::Bare(bare_name), value);
     }
 
     fn insert_unnamed(&mut self, value: Variant, arg_path: Option<Path>) {
         let dummy_name = format!("{}", self.map.len());
-        let name = Name::new(BareName::new(dummy_name), None);
+        let name = Name::Bare(BareName::new(dummy_name));
         self.map
             .insert(name, RuntimeVariableInfo::new(value, arg_path));
     }
@@ -65,8 +63,8 @@ impl Variables {
         } = param_name;
         match param_type {
             ParamType::Bare => panic!("Unresolved param {:?}", bare_name),
-            ParamType::BuiltIn(q, _) => Name::new(bare_name, Some(q)),
-            ParamType::UserDefined(_) => Name::new(bare_name, None),
+            ParamType::BuiltIn(q, _) => Name::Qualified(bare_name, q),
+            ParamType::UserDefined(_) => Name::Bare(bare_name),
             ParamType::Array(boxed_param_type) => {
                 let dummy_param = ParamName::new(bare_name, *boxed_param_type);
                 Self::param_to_name(dummy_param)
@@ -139,12 +137,15 @@ impl Variables {
     }
 
     pub fn get_built_in(&self, bare_name: &BareName, qualifier: TypeQualifier) -> Option<&Variant> {
-        self.get_by_name(&QualifiedName::new(bare_name.clone(), qualifier).into())
+        // TODO make a structure that allows to lookup by BareName and QualifiedName without the need to clone
+        let temp = Name::Qualified(bare_name.clone(), qualifier);
+        self.get_by_name(&temp)
     }
 
     pub fn get_user_defined(&self, bare_name: &BareName) -> Option<&Variant> {
         // TODO make a structure that allows to lookup by BareName and QualifiedName without the need to clone
-        self.get_by_name(&bare_name.clone().into())
+        let temp = Name::Bare(bare_name.clone());
+        self.get_by_name(&temp)
     }
 
     pub fn get_by_name(&self, name: &Name) -> Option<&Variant> {

@@ -39,10 +39,7 @@ impl DimName {
 
 impl From<QualifiedName> for DimName {
     fn from(qualified_name: QualifiedName) -> Self {
-        let QualifiedName {
-            bare_name,
-            qualifier,
-        } = qualified_name;
+        let (bare_name, qualifier) = qualified_name.into_inner();
         Self::new_compact_local(bare_name, qualifier)
     }
 }

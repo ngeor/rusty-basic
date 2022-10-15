@@ -2,6 +2,7 @@ mod can_pre_lint;
 mod const_map;
 mod const_rules;
 mod context;
+mod convertible;
 mod main;
 mod pre_linter_result;
 mod sub_program_context;

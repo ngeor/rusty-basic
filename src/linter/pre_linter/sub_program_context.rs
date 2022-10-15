@@ -1,6 +1,7 @@
 use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
 use crate::linter::pre_linter::context::MainContextWithPos;
+use crate::linter::pre_linter::convertible::Convertible;
 use crate::linter::type_resolver::{IntoTypeQualifier, TypeResolver};
 use crate::linter::{FunctionSignature, ParamTypes, SubSignature};
 use crate::parser::{BareName, Name, ParamNameNodes};
@@ -102,7 +103,7 @@ where
         let Locatable { element: name, pos } = name_node;
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
-        let param_types: ParamTypes = params::resolve_param_types(context, param_name_nodes)?;
+        let param_types: ParamTypes = param_name_nodes.convert(context)?;
         let bare_name: &BareName = name.as_ref();
         let signature = name.to_signature(context, param_types);
         self.implementations
@@ -135,7 +136,7 @@ where
         // param count must match declaration
         // param types must match declaration
         // name needs to be unique
-        let param_types: ParamTypes = params::resolve_param_types(context, param_name_nodes)?;
+        let param_types: ParamTypes = param_name_nodes.convert(context)?;
         let bare_name: &BareName = name.as_ref();
         let signature = name.to_signature(context, param_types);
         match self.implementations.get(bare_name) {
@@ -202,48 +203,57 @@ impl PostVisit for SubContext {
 }
 
 mod params {
-    //! resolving function/sub parameters
+    //! Resolves bare parameter types to qualified and ensures user defined types exist.
 
-    use crate::common::{AtLocation, Locatable, QError, QErrorNode, ToLocatableError};
+    use crate::common::*;
     use crate::linter::pre_linter::context::MainContext;
+    use crate::linter::pre_linter::convertible::Convertible;
     use crate::linter::type_resolver::IntoTypeQualifier;
-    use crate::parser::{
-        BareName, BuiltInStyle, ParamName, ParamNameNode, ParamNameNodes, ParamType,
-    };
+    use crate::parser::*;
 
-    pub fn resolve_param_types(
-        context: &MainContext,
-        params: &ParamNameNodes,
-    ) -> Result<Vec<ParamType>, QErrorNode> {
-        params.iter().map(|p| parameter(context, p)).collect()
+    impl Convertible for ParamNameNode {
+        type Context = MainContext;
+        type Output = ParamType;
+        type Error = QErrorNode;
+
+        fn convert(&self, context: &Self::Context) -> Result<Self::Output, Self::Error> {
+            let Locatable {
+                element: param_name,
+                pos,
+            } = self;
+            param_name.convert(context).with_err_at(pos)
+        }
     }
 
-    /// Resolves bare parameter types to qualified and ensures user defined types exist.
-    fn parameter(context: &MainContext, param: &ParamNameNode) -> Result<ParamType, QErrorNode> {
-        let Locatable {
-            element: param,
-            pos,
-        } = param;
-        let bare_name: &BareName = param.bare_name();
-        match &param.var_type {
-            ParamType::Bare => {
-                let q = bare_name.qualify(context);
-                Ok(ParamType::BuiltIn(q, BuiltInStyle::Compact))
-            }
-            ParamType::BuiltIn(q, built_in_style) => Ok(ParamType::BuiltIn(*q, *built_in_style)),
-            ParamType::UserDefined(u) => {
-                let type_name: &BareName = u.as_ref();
-                if context.user_defined_types().contains_key(type_name) {
-                    Ok(ParamType::UserDefined(u.clone()))
-                } else {
-                    Err(QError::TypeNotDefined).with_err_at(pos)
+    impl Convertible for ParamName {
+        type Context = MainContext;
+        type Output = ParamType;
+        type Error = QError;
+
+        fn convert(&self, context: &Self::Context) -> Result<Self::Output, Self::Error> {
+            let bare_name = self.bare_name();
+            match &self.var_type {
+                ParamType::Bare => {
+                    let q = bare_name.qualify(context);
+                    Ok(ParamType::BuiltIn(q, BuiltInStyle::Compact))
                 }
-            }
-            ParamType::Array(element_type) => {
-                let dummy_element_param =
-                    ParamName::new(bare_name.clone(), element_type.as_ref().clone()).at(pos);
-                let element_param_type = parameter(context, &dummy_element_param)?;
-                Ok(ParamType::Array(Box::new(element_param_type)))
+                ParamType::BuiltIn(q, built_in_style) => {
+                    Ok(ParamType::BuiltIn(*q, *built_in_style))
+                }
+                ParamType::UserDefined(u) => {
+                    let type_name: &BareName = u.as_ref();
+                    if context.user_defined_types().contains_key(type_name) {
+                        Ok(ParamType::UserDefined(u.clone()))
+                    } else {
+                        Err(QError::TypeNotDefined)
+                    }
+                }
+                ParamType::Array(element_type) => {
+                    let dummy_element_param =
+                        ParamName::new(bare_name.clone(), element_type.as_ref().clone());
+                    let element_param_type = dummy_element_param.convert(context)?;
+                    Ok(ParamType::Array(Box::new(element_param_type)))
+                }
             }
         }
     }

@@ -51,7 +51,7 @@ impl TypeResolverImpl {
 }
 
 impl TypeResolver for TypeResolverImpl {
-    fn resolve_char(&self, ch: char) -> TypeQualifier {
+    fn char_to_qualifier(&self, ch: char) -> TypeQualifier {
         let x = char_to_alphabet_index(ch);
         self.ranges[x]
     }

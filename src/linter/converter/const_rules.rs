@@ -53,7 +53,6 @@ fn new_const(
             .cast(const_name.qualifier().unwrap())
             .with_err_at(&right_side)?
     };
-    ctx.names
-        .insert_const(const_name.bare_name().clone(), final_value.clone());
+    ctx.names.insert_const(const_name.into(), final_value);
     Ok(())
 }

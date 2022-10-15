@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::linter::converter::Context;
 use crate::linter::pre_linter::{HasFunctionView, HasSubView, HasUserDefinedTypesView};
-use crate::linter::type_resolver::TypeResolver;
+use crate::linter::type_resolver::IntoTypeQualifier;
 use crate::linter::DimContext;
 use crate::parser::{
     BareName, VarTypeIsExtended, VarTypeQualifier, VarTypeToUserDefinedRecursively,
@@ -49,7 +49,9 @@ fn cannot_clash_with_functions<T: VarTypeIsExtended + VarTypeQualifier>(
                 Err(QError::DuplicateDefinition)
             } else {
                 // for some reason you can have a FUNCTION Add(Add)
-                let q = ctx.resolve_dim_name_to_qualifier(bare_name, dim_type);
+                let q = dim_type
+                    .to_qualifier_recursively()
+                    .unwrap_or_else(|| bare_name.qualify(ctx));
                 if q == func_qualifier {
                     Ok(())
                 } else {

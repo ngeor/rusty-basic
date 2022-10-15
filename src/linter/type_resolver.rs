@@ -1,65 +1,70 @@
-use crate::common::Locatable;
-use crate::parser::{BareName, Name, QualifiedName, TypeQualifier, VarName, VarTypeQualifier};
+//! Resolves the type of a name-like expression.
+//! For bare names, the type comes from their first character, according to
+//! the `DEFINT` etc statements.
 
-//noinspection ALL
-/// Resolves the type of a name-like expression.
-/// For bare names, the type comes from their first character, according to
-/// the `DEFINT` etc statements.
+use crate::parser::{BareName, Name, QualifiedName, TypeQualifier};
+
+/// Finds the [TypeQualifier] that corresponds to the given character,
+/// based on the `DEFINT` etc statements.
 pub trait TypeResolver {
-    fn resolve_char(&self, ch: char) -> TypeQualifier;
+    fn char_to_qualifier(&self, ch: char) -> TypeQualifier;
+}
 
-    fn resolve(&self, bare_name: &BareName) -> TypeQualifier {
-        let s: &str = bare_name.as_ref();
-        let ch = s.chars().next().unwrap();
-        self.resolve_char(ch)
+/// Represents something that can give a [TypeQualifier],
+/// with the help of a [TypeResolver].
+pub trait IntoTypeQualifier {
+    fn qualify(&self, resolver: &impl TypeResolver) -> TypeQualifier;
+}
+
+// BareName -> TypeQualifier, based on the first character of the name
+
+impl IntoTypeQualifier for BareName {
+    fn qualify(&self, resolver: &impl TypeResolver) -> TypeQualifier {
+        let first_char = self.chars().next().unwrap();
+        resolver.char_to_qualifier(first_char)
     }
+}
 
-    fn resolve_name_to_qualifier(&self, name: &Name) -> TypeQualifier {
-        match name {
-            Name::Bare(bare_name) => self.resolve(bare_name),
-            Name::Qualified(QualifiedName { qualifier, .. }) => *qualifier,
+// Name -> TypeQualifier. If already qualified, it doesn't use the resolver.
+
+impl IntoTypeQualifier for Name {
+    fn qualify(&self, resolver: &impl TypeResolver) -> TypeQualifier {
+        match self {
+            Self::Bare(bare_name) => bare_name.qualify(resolver),
+            Self::Qualified(QualifiedName { qualifier, .. }) => *qualifier,
         }
     }
+}
 
-    fn resolve_name(&self, name: &Name) -> QualifiedName {
-        match name {
-            Name::Bare(bare_name) => QualifiedName::new(bare_name.clone(), self.resolve(bare_name)),
-            Name::Qualified(qualified_name) => qualified_name.clone(),
-        }
+/// Converts this object into a qualified object.
+pub trait IntoQualified {
+    /// The qualified type.
+    type Output;
+
+    /// Converts this object into a qualified object.
+    fn to_qualified(self, resolver: &impl TypeResolver) -> Self::Output;
+}
+
+// BareName -> Name
+
+impl IntoQualified for BareName {
+    type Output = Name;
+
+    fn to_qualified(self, resolver: &impl TypeResolver) -> Self::Output {
+        let q = self.qualify(resolver);
+        Name::Qualified(QualifiedName::new(self, q))
     }
+}
 
-    fn resolve_name_to_name(&self, name: Name) -> Name {
-        match name {
-            Name::Bare(bare_name) => {
-                let qualifier = self.resolve(&bare_name);
-                Name::new(bare_name, Some(qualifier))
-            }
-            _ => name,
-        }
-    }
+// Name -> Name. If already qualified, it doesn't use the resolver.
 
-    fn resolve_dim_name_node_to_qualifier<T: VarTypeQualifier>(
-        &self,
-        dim_name_node: &Locatable<VarName<T>>,
-    ) -> TypeQualifier {
-        let Locatable {
-            element: VarName {
-                bare_name,
-                var_type,
-            },
-            ..
-        } = dim_name_node;
-        self.resolve_dim_name_to_qualifier(bare_name, var_type)
-    }
+impl IntoQualified for Name {
+    type Output = Name;
 
-    fn resolve_dim_name_to_qualifier<T: VarTypeQualifier>(
-        &self,
-        bare_name: &BareName,
-        dim_type: &T,
-    ) -> TypeQualifier {
-        match dim_type.to_qualifier_recursively() {
-            Some(q) => q,
-            _ => self.resolve(bare_name),
+    fn to_qualified(self, resolver: &impl TypeResolver) -> Self::Output {
+        match self {
+            Self::Bare(bare_name) => bare_name.to_qualified(resolver),
+            _ => self,
         }
     }
 }

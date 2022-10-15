@@ -1,4 +1,4 @@
-use crate::common::Locatable;
+use crate::common::{Locatable, QError};
 use crate::parser::types::{BareName, QualifiedName, TypeQualifier};
 use crate::parser::{ExpressionType, HasExpressionType};
 #[cfg(test)]
@@ -84,15 +84,21 @@ impl Name {
         }
     }
 
-    pub fn qualify(&self, qualifier: TypeQualifier) -> Self {
-        let bare_name: &BareName = self.bare_name();
-        Self::new(bare_name.clone(), Some(qualifier))
-    }
-
-    pub fn un_qualify(self) -> Self {
+    /// Tries to convert this name into a qualified name.
+    /// Fails if the name is already qualified with a different qualifier.
+    pub fn try_qualify(self, qualifier: TypeQualifier) -> Result<Self, QError> {
         match self {
-            Self::Qualified(QualifiedName { bare_name, .. }) => Self::Bare(bare_name),
-            _ => self,
+            Self::Bare(bare_name) => Ok(Self::Qualified(QualifiedName::new(bare_name, qualifier))),
+            Self::Qualified(QualifiedName {
+                bare_name,
+                qualifier: q,
+            }) => {
+                if q == qualifier {
+                    Ok(Self::Qualified(QualifiedName::new(bare_name, qualifier)))
+                } else {
+                    Err(QError::DuplicateDefinition)
+                }
+            }
         }
     }
 

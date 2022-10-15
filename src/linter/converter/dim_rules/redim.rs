@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::linter::converter::dim_rules::{convert_array_dimensions, resolve_string_length};
 use crate::linter::converter::{Context, R};
-use crate::linter::type_resolver::TypeResolver;
+use crate::linter::type_resolver::IntoTypeQualifier;
 use crate::parser::*;
 
 pub fn convert(
@@ -78,7 +78,7 @@ fn bare_to_dim_type(
     pos: Location,
 ) -> Result<DimType, QErrorNode> {
     let mut found: Option<(BuiltInStyle, &VariableInfo)> = None;
-    let q = ctx.resolve(bare_name);
+    let q = bare_name.qualify(ctx);
     for (built_in_style, variable_info) in ctx.names.names_iterator(bare_name) {
         match &variable_info.redim_info {
             Some(r) => {

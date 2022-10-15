@@ -12,7 +12,7 @@ use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
 use crate::linter::pre_linter::{
     HasFunctionView, HasSubView, HasUserDefinedTypesView, PreLinterResult,
 };
-use crate::linter::type_resolver::TypeResolver;
+use crate::linter::type_resolver::{IntoQualified, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::{DimContext, FunctionMap, NameContext, SubMap};
 use crate::parser::*;
@@ -151,8 +151,8 @@ impl<'a> ConverterImpl<'a> {
 }
 
 impl<'a> TypeResolver for ConverterImpl<'a> {
-    fn resolve_char(&self, ch: char) -> TypeQualifier {
-        self.resolver.borrow().resolve_char(ch)
+    fn char_to_qualifier(&self, ch: char) -> TypeQualifier {
+        self.resolver.borrow().char_to_qualifier(ch)
     }
 }
 
@@ -196,8 +196,8 @@ pub struct Context<'a> {
 }
 
 impl<'a> TypeResolver for Context<'a> {
-    fn resolve_char(&self, ch: char) -> TypeQualifier {
-        self.resolver.borrow().resolve_char(ch)
+    fn char_to_qualifier(&self, ch: char) -> TypeQualifier {
+        self.resolver.borrow().char_to_qualifier(ch)
     }
 }
 
@@ -250,7 +250,7 @@ impl<'a> Context<'a> {
         let temp_dummy = Names::new_root();
         let old_names = std::mem::replace(&mut self.names, temp_dummy);
         self.names = Names::new(Some(Box::new(old_names)), Some(name.bare_name().clone()));
-        let converted_function_name = self.resolve_name_to_name(name);
+        let converted_function_name = name.to_qualified(self);
         Ok((converted_function_name, dim_rules::on_params(self, params)?))
     }
 

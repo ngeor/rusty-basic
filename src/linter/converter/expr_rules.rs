@@ -1,7 +1,6 @@
 use crate::built_ins::BuiltInFunction;
 use crate::common::*;
 use crate::linter::converter::{Context, ExprContext, Implicits, R};
-use crate::linter::type_resolver::TypeResolver;
 use crate::parser::*;
 use crate::variant::Variant;
 use std::convert::TryFrom;
@@ -126,6 +125,7 @@ mod binary {
 mod variable {
     use super::*;
     use crate::linter::pre_linter::HasSubView;
+    use crate::linter::type_resolver::{IntoQualified, IntoTypeQualifier};
 
     pub fn convert(
         ctx: &mut Context,
@@ -177,7 +177,7 @@ mod variable {
         name: Name,
         pos: Location,
     ) -> (ExpressionNode, Implicits) {
-        let resolved_name = ctx.resolve_name_to_name(name);
+        let resolved_name = name.to_qualified(ctx);
 
         let bare_name = resolved_name.bare_name();
         let q = resolved_name.qualifier().expect("Should be resolved");
@@ -226,7 +226,7 @@ mod variable {
             if self.var_info.is_some() {
                 true
             } else {
-                let q: TypeQualifier = ctx.resolve_name_to_qualifier(&name);
+                let q = name.qualify(ctx);
                 self.var_info = ctx.names.get_compact_var_recursively(bare_name, q);
                 self.var_info.is_some()
             }
@@ -320,18 +320,14 @@ mod variable {
             pos: Location,
         ) -> Result<ExpressionNode, QErrorNode> {
             let function_qualifier = self.function_qualifier.unwrap();
-            let bare_name = name.bare_name();
-            if name.is_bare_or_of_type(function_qualifier) {
-                if ctx.names.is_in_function(bare_name) {
-                    let converted_name = name.qualify(function_qualifier);
-                    let expr_type = ExpressionType::BuiltIn(function_qualifier);
-                    let expr =
-                        Expression::Variable(converted_name, VariableInfo::new_local(expr_type));
-                    return Ok(expr.at(pos));
-                }
+            if ctx.names.is_in_function(name.bare_name()) {
+                let converted_name = name.try_qualify(function_qualifier).with_err_at(pos)?;
+                let expr_type = ExpressionType::BuiltIn(function_qualifier);
+                let expr = Expression::Variable(converted_name, VariableInfo::new_local(expr_type));
+                Ok(expr.at(pos))
+            } else {
+                Err(QError::DuplicateDefinition).with_err_at(pos)
             }
-
-            Err(QError::DuplicateDefinition).with_err_at(pos)
         }
     }
 
@@ -378,7 +374,8 @@ mod variable {
             name: Name,
             pos: Location,
         ) -> Result<ExpressionNode, QErrorNode> {
-            let converted_name = name.qualify(self.function_qualifier.unwrap());
+            let q = self.function_qualifier.unwrap();
+            let converted_name = name.try_qualify(q).with_err_at(pos)?;
             Ok(Expression::FunctionCall(converted_name, vec![]).at(pos))
         }
     }
@@ -577,10 +574,12 @@ mod property {
         implicit_left_side: Implicits,
         pos: Location,
     ) -> R<ExpressionNode> {
+        let bare_name = property_name.into();
+        let property_name = Name::Bare(bare_name);
         Ok((
             Expression::Property(
                 Box::new(resolved_left_side),
-                property_name.un_qualify(),
+                property_name,
                 element_type.expression_type(),
             )
             .at(pos),
@@ -618,6 +617,7 @@ mod built_in_function {
 
 mod function {
     use super::*;
+    use crate::linter::type_resolver::{IntoQualified, IntoTypeQualifier};
     pub fn convert(
         ctx: &mut Context,
         name: Name,
@@ -655,8 +655,10 @@ mod function {
             }
             _ => {
                 let converted_name: Name = match ctx.function_qualifier(name.bare_name()) {
-                    Some(q) => name.qualify(q),
-                    _ => ctx.resolve_name_to_name(name),
+                    Some(function_qualifier) => {
+                        name.try_qualify(function_qualifier).with_err_at(pos)?
+                    }
+                    _ => name.to_qualified(ctx),
                 };
                 Expression::FunctionCall(converted_name, converted_args)
             }
@@ -704,7 +706,7 @@ mod function {
             if self.var_info.is_some() {
                 self.is_array()
             } else {
-                let qualifier: TypeQualifier = ctx.resolve_name_to_qualifier(&name);
+                let qualifier = name.qualify(ctx);
                 self.var_info = ctx
                     .names
                     .get_compact_var_recursively(bare_name, qualifier)

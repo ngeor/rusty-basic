@@ -3,7 +3,7 @@ use crate::linter::converter::dim_rules::{
     convert_array_dimensions, no_implicits, resolve_string_length,
 };
 use crate::linter::converter::{Context, R};
-use crate::linter::type_resolver::TypeResolver;
+use crate::linter::type_resolver::IntoTypeQualifier;
 use crate::linter::DimContext;
 use crate::parser::*;
 
@@ -63,7 +63,7 @@ fn bare_to_dim_type<T: VarTypeNewBuiltInCompact>(
     bare_name: &BareName,
     pos: Location,
 ) -> Result<T, QErrorNode> {
-    let resolved_q = ctx.resolve(bare_name);
+    let resolved_q = bare_name.qualify(ctx);
     require_compact_can_be_defined(ctx, bare_name, resolved_q).with_err_at(pos)?;
     Ok(T::new_built_in_compact(resolved_q))
 }

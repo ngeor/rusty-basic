@@ -221,8 +221,8 @@ impl<'a, 'b, R> TypeResolver for ContextImpl<'a, 'b, R>
 where
     R: TypeResolver,
 {
-    fn resolve_char(&self, ch: char) -> TypeQualifier {
-        self.resolver.resolve_char(ch)
+    fn char_to_qualifier(&self, ch: char) -> TypeQualifier {
+        self.resolver.char_to_qualifier(ch)
     }
 }
 
@@ -415,7 +415,7 @@ fn validate_element_type_str_len(
 mod sub_program {
     use crate::built_ins::{BuiltInFunction, BuiltInSub};
     use crate::common::*;
-    use crate::linter::type_resolver::TypeResolver;
+    use crate::linter::type_resolver::{IntoTypeQualifier, TypeResolver};
     use crate::linter::{FunctionSignature, ParamTypes, SubSignature};
     use crate::parser::{BareName, Name, ParamNameNodes};
     use std::collections::HashMap;
@@ -500,7 +500,7 @@ mod sub_program {
             resolver: &impl TypeResolver,
             qualified_params: ParamTypes,
         ) -> Self::Signature {
-            let q = resolver.resolve_name(self).qualifier;
+            let q = self.qualify(resolver);
             (q, qualified_params)
         }
     }
@@ -627,9 +627,9 @@ mod sub_program {
 
         use super::Context;
         use crate::common::{AtLocation, Locatable, QError, QErrorNode, ToLocatableError};
+        use crate::linter::type_resolver::IntoTypeQualifier;
         use crate::parser::{
             BareName, BuiltInStyle, ParamName, ParamNameNode, ParamNameNodes, ParamType,
-            TypeQualifier,
         };
 
         pub fn resolve_param_types(
@@ -651,7 +651,7 @@ mod sub_program {
             let bare_name: &BareName = param.bare_name();
             match &param.var_type {
                 ParamType::Bare => {
-                    let q: TypeQualifier = context.resolve(bare_name);
+                    let q = bare_name.qualify(context);
                     Ok(ParamType::BuiltIn(q, BuiltInStyle::Compact))
                 }
                 ParamType::BuiltIn(q, built_in_style) => {

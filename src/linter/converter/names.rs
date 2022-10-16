@@ -1,9 +1,10 @@
 use crate::common::CaseInsensitiveString;
 use crate::linter::const_value_resolver::ConstLookup;
+use crate::linter::converter::converter::Implicits;
 use crate::linter::NameContext;
 use crate::parser::{
-    BareName, BuiltInStyle, HasExpressionType, RedimInfo, TypeQualifier, VarTypeIsExtended,
-    VariableInfo,
+    BareName, BuiltInStyle, HasExpressionType, QualifiedNameNode, RedimInfo, TypeQualifier,
+    VarTypeIsExtended, VariableInfo,
 };
 use crate::variant::Variant;
 use std::collections::hash_map::Values;
@@ -13,6 +14,7 @@ pub struct Names {
     map: HashMap<BareName, NameInfo>,
     current_function_name: Option<BareName>,
     parent: Option<Box<Names>>,
+    implicits: Implicits,
 }
 
 pub enum NameInfo {
@@ -27,11 +29,20 @@ impl Names {
             map: HashMap::new(),
             current_function_name,
             parent,
+            implicits: Implicits::new(),
         }
     }
 
     pub fn new_root() -> Self {
         Self::new(None, None)
+    }
+
+    pub fn add_implicit(&mut self, name_node: QualifiedNameNode) {
+        self.implicits.push(name_node);
+    }
+
+    pub fn get_implicits(&mut self) -> &mut Implicits {
+        &mut self.implicits
     }
 
     pub fn visit_names<F, T, E>(&self, bare_name: &BareName, f: F) -> Result<T, E>

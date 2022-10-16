@@ -13,14 +13,6 @@ fn test_built_in_len_with_string_variable_parameter() {
     assert_eq!(
         generate_instructions_str(input),
         [
-            // implicit dim X
-            Instruction::AllocateBuiltIn(TypeQualifier::BangSingle).at_rc(2, 5),
-            Instruction::VarPathName(RootPath {
-                name: "X!".into(),
-                shared: false
-            })
-            .at_rc(2, 5),
-            Instruction::CopyAToVarPath.at_rc(2, 5),
             // implicit dim A$
             Instruction::AllocateBuiltIn(TypeQualifier::DollarString).at_rc(2, 13),
             Instruction::VarPathName(RootPath {
@@ -29,6 +21,14 @@ fn test_built_in_len_with_string_variable_parameter() {
             })
             .at_rc(2, 13),
             Instruction::CopyAToVarPath.at_rc(2, 13),
+            // implicit dim X
+            Instruction::AllocateBuiltIn(TypeQualifier::BangSingle).at_rc(2, 5),
+            Instruction::VarPathName(RootPath {
+                name: "X!".into(),
+                shared: false
+            })
+            .at_rc(2, 5),
+            Instruction::CopyAToVarPath.at_rc(2, 5),
             // function call
             Instruction::BeginCollectArguments.at_rc(2, 9),
             Instruction::VarPathName(RootPath {
@@ -63,7 +63,7 @@ fn test_built_in_len_with_string_variable_parameter() {
             })
             .at_rc(2, 5),
             Instruction::CopyAToVarPath.at_rc(2, 5),
-            Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
+            Instruction::Halt.at_rc(u32::MAX, u32::MAX)
         ]
     );
 }

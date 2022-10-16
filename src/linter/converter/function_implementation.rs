@@ -26,7 +26,6 @@ impl ConverterImpl {
             body: self.convert_block_hoisting_implicits(body)?,
             is_static,
         });
-        self.context.pop_context();
         Ok(mapped)
     }
 }

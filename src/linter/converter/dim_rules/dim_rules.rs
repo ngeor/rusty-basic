@@ -1,51 +1,51 @@
 use super::{dim, redim, validation};
 use crate::common::*;
 use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::converter::conversion_traits::{
-    SameTypeConverterWithImplicits, SameTypeConverterWithImplicitsInContext,
-};
-use crate::linter::converter::{Context, ExprContext, Implicits, R};
+use crate::linter::converter::conversion_traits::{SameTypeConverter, SameTypeConverterInContext};
+use crate::linter::converter::{Context, ExprContext};
 use crate::linter::DimContext;
 use crate::parser::*;
 use crate::variant::{QBNumberCast, MAX_INTEGER};
 
-pub fn on_dim(ctx: &mut Context, dim_list: DimList, dim_context: DimContext) -> R<DimList> {
-    ctx.convert_same_type_with_implicits_in_context(dim_list, dim_context)
+pub fn on_dim(
+    ctx: &mut Context,
+    dim_list: DimList,
+    dim_context: DimContext,
+) -> Result<DimList, QErrorNode> {
+    ctx.convert_in_context(dim_list, dim_context)
 }
 
-impl SameTypeConverterWithImplicits<ArrayDimension> for Context {
-    fn convert_same_type_with_implicits(&mut self, a: ArrayDimension) -> R<ArrayDimension> {
-        let (lbound, mut implicits) = self.on_opt_expression(a.lbound, ExprContext::Default)?;
-        let (ubound, mut ubound_implicits) = self.on_expression(a.ubound, ExprContext::Default)?;
-        implicits.append(&mut ubound_implicits);
-        Ok((ArrayDimension { lbound, ubound }, implicits))
+impl SameTypeConverter<ArrayDimension> for Context {
+    fn convert(&mut self, a: ArrayDimension) -> Result<ArrayDimension, QErrorNode> {
+        let lbound = self.on_opt_expression(a.lbound, ExprContext::Default)?;
+        let ubound = self.on_expression(a.ubound, ExprContext::Default)?;
+        Ok(ArrayDimension { lbound, ubound })
     }
 }
 
-impl SameTypeConverterWithImplicitsInContext<DimList, DimContext> for Context {
-    fn convert_same_type_with_implicits_in_context(
+impl SameTypeConverterInContext<DimList, DimContext> for Context {
+    fn convert_in_context(
         &mut self,
         item: DimList,
         dim_context: DimContext,
-    ) -> R<DimList> {
+    ) -> Result<DimList, QErrorNode> {
         let DimList { variables, shared } = item;
         let new_extra = (dim_context, shared);
-        let (converted_variables, implicits) =
-            self.convert_same_type_with_implicits_in_context(variables, new_extra)?;
+        let converted_variables = self.convert_in_context(variables, new_extra)?;
         let converted_dim_list = DimList {
             variables: converted_variables,
             shared,
         };
-        Ok((converted_dim_list, implicits))
+        Ok(converted_dim_list)
     }
 }
 
-impl SameTypeConverterWithImplicitsInContext<DimNameNode, (DimContext, bool)> for Context {
-    fn convert_same_type_with_implicits_in_context(
+impl SameTypeConverterInContext<DimNameNode, (DimContext, bool)> for Context {
+    fn convert_in_context(
         &mut self,
         item: DimNameNode,
         context: (DimContext, bool),
-    ) -> R<DimNameNode> {
+    ) -> Result<DimNameNode, QErrorNode> {
         let (dim_context, shared) = context;
         let Locatable {
             element:
@@ -66,7 +66,7 @@ fn convert(
     dim_context: DimContext,
     shared: bool,
     pos: Location,
-) -> R<DimNameNode> {
+) -> Result<DimNameNode, QErrorNode> {
     validation::validate(ctx, &bare_name, &dim_type, dim_context, shared).patch_err_pos(pos)?;
     do_convert(ctx, bare_name, dim_type, dim_context, shared, pos)
 }
@@ -78,7 +78,7 @@ fn do_convert(
     dim_context: DimContext,
     shared: bool,
     pos: Location,
-) -> R<DimNameNode> {
+) -> Result<DimNameNode, QErrorNode> {
     match dim_context {
         DimContext::Default | DimContext::Param => {
             dim::convert(ctx, bare_name, dim_type, dim_context, shared, pos)
@@ -98,13 +98,6 @@ pub fn resolve_string_length(
     } else {
         Err(QError::OutOfStringSpace).with_err_at(length_expression)
     }
-}
-
-pub fn convert_array_dimensions(
-    ctx: &mut Context,
-    array_dimensions: ArrayDimensions,
-) -> R<ArrayDimensions> {
-    ctx.convert_same_type_with_implicits(array_dimensions)
 }
 
 pub fn on_params(ctx: &mut Context, params: ParamNameNodes) -> Result<ParamNameNodes, QErrorNode> {
@@ -134,11 +127,7 @@ fn convert_param_name_node(
         .dim_type(dim_type)
         .build_list(pos);
     // convert
-    let (mut converted_dim_list, implicits) = on_dim(ctx, dim_list, DimContext::Param)?;
-    debug_assert!(
-        implicits.is_empty(),
-        "Should not have introduced implicit variables via parameter"
-    );
+    let mut converted_dim_list = on_dim(ctx, dim_list, DimContext::Param)?;
     let Locatable {
         element: DimName {
             bare_name,
@@ -152,8 +141,4 @@ fn convert_param_name_node(
     let param_type = ParamType::from(dim_type);
     let param_name = ParamName::new(bare_name, param_type);
     Ok(param_name.at(pos))
-}
-
-pub fn no_implicits<T>(value: T) -> (T, Implicits) {
-    (value, vec![])
 }

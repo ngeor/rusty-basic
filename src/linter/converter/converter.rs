@@ -8,7 +8,7 @@ use super::dim_rules;
 use super::expr_rules;
 use super::names::Names;
 use crate::common::*;
-use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
+use crate::linter::converter::conversion_traits::SameTypeConverter;
 use crate::linter::pre_linter::PreLinterResult;
 use crate::linter::type_resolver::{IntoQualified, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
@@ -32,10 +32,6 @@ pub fn convert(
 /// e.g. `INPUT N` is a statement implicitly defining variable `N`.
 pub type Implicits = Vec<QualifiedNameNode>;
 
-/// Alias for the result of returning something together with any implicit
-/// variables collected during its conversion.
-pub type R<T> = Result<(T, Implicits), QErrorNode>;
-
 /// Resolves all symbols of the program, converting it into an explicitly typed
 /// equivalent program.
 pub struct ConverterImpl {
@@ -56,27 +52,20 @@ impl ConverterImpl {
         self.context.names_without_dot()
     }
 
-    pub fn convert_block_keeping_implicits(
+    pub fn convert_block_removing_constants(
         &mut self,
         statements: StatementNodes,
-    ) -> R<StatementNodes> {
+    ) -> Result<StatementNodes, QErrorNode> {
         let mut result: StatementNodes = vec![];
-        let mut implicits: Implicits = vec![];
         for statement in statements {
-            let (converted_statement_node, mut part_implicits) =
-                self.convert_same_type_with_implicits(statement)?;
+            let converted_statement_node = self.convert(statement)?;
             if let Statement::Const(_, _) = converted_statement_node.as_ref() {
                 // filter out CONST statements, they've been registered into context as values
-                debug_assert!(
-                    part_implicits.is_empty(),
-                    "Should not introduce implicits in a CONST"
-                );
             } else {
                 result.push(converted_statement_node);
-                implicits.append(&mut part_implicits);
             }
         }
-        Ok((result, implicits))
+        Ok(result)
     }
 
     // A statement can be expanded into multiple statements to convert implicitly
@@ -92,25 +81,25 @@ impl ConverterImpl {
         &mut self,
         statements: StatementNodes,
     ) -> Result<StatementNodes, QErrorNode> {
-        let (mut result, implicits) = self.convert_block_keeping_implicits(statements)?;
-        let mut index = 0;
-        for implicit_var in implicits {
-            let Locatable {
-                element: q_name,
-                pos,
-            } = implicit_var;
-            result.insert(
-                index,
-                Statement::Dim(DimName::from(q_name).into_list(pos)).at(pos),
-            );
-            index += 1;
-        }
-        Ok(result)
+        let mut result = self.convert_block_removing_constants(statements)?;
+
+        let implicits = self.context.pop_context();
+        let mut implicit_dim: StatementNodes = implicits
+            .into_iter()
+            .map(
+                |Locatable {
+                     element: q_name,
+                     pos,
+                 }| Statement::Dim(DimName::from(q_name).into_list(pos)).at(pos),
+            )
+            .collect();
+
+        implicit_dim.append(&mut result);
+        Ok(implicit_dim)
     }
 
     pub fn convert_program(&mut self, program: ProgramNode) -> Result<ProgramNode, QErrorNode> {
         let mut result: ProgramNode = vec![];
-        let mut index: usize = 0;
         for Locatable { element, pos } in program {
             match element {
                 TopLevelToken::DefType(def_type) => {
@@ -122,19 +111,12 @@ impl ConverterImpl {
                     result.push(converted.at(pos));
                 }
                 TopLevelToken::Statement(s) => {
-                    let (converted, implicits) =
-                        self.convert_block_keeping_implicits(vec![s.at(pos)])?;
-                    // insert implicits at the top
-                    for Locatable { element, pos } in implicits {
-                        let implicit_statement =
-                            Statement::Dim(DimName::from(element).into_list(pos));
-                        result.insert(index, TopLevelToken::Statement(implicit_statement).at(pos));
-                        index += 1;
-                    }
-                    // insert statements
-                    for Locatable { element, pos } in converted {
-                        result.push(TopLevelToken::Statement(element).at(pos));
-                    }
+                    let converted = self.convert_block_removing_constants(vec![s.at(pos)])?;
+                    result.extend(
+                        converted
+                            .into_iter()
+                            .map(|statement_node| statement_node.map(TopLevelToken::Statement)),
+                    );
                 }
                 TopLevelToken::SubDeclaration(_name, _params) => {}
                 TopLevelToken::SubImplementation(s) => {
@@ -146,7 +128,19 @@ impl ConverterImpl {
                 }
             }
         }
-        Ok(result)
+
+        // insert implicits at the top
+        let mut implicits = Implicits::new();
+        implicits.append(self.context.names.get_implicits());
+        let mut implicit_statements: ProgramNode = implicits
+            .into_iter()
+            .map(|Locatable { element, pos }| {
+                TopLevelToken::Statement(Statement::Dim(DimName::from(element).into_list(pos)))
+                    .at(pos)
+            })
+            .collect();
+        implicit_statements.append(&mut result);
+        Ok(implicit_statements)
     }
 }
 
@@ -254,15 +248,19 @@ impl Context {
         Ok((converted_function_name, dim_rules::on_params(self, params)?))
     }
 
-    pub fn pop_context(&mut self) {
+    pub fn pop_context(&mut self) -> Implicits {
         // temp object for mem swap
         let temp_dummy = Names::new_root();
         // take current "self.names" and store into "current"
         let mut current = std::mem::replace(&mut self.names, temp_dummy);
         // collect extended names of sub-program, as they can't be combined with dots anywhere in the program
         current.drain_extended_names_into(&mut self.names_without_dot);
+        // collect implicits
+        let mut implicits = Implicits::new();
+        implicits.append(current.get_implicits());
         // set parent as current
         self.names = current.pop_parent().expect("Stack underflow");
+        implicits
     }
 
     pub fn is_in_subprogram(&self) -> bool {
@@ -283,7 +281,7 @@ impl Context {
         &mut self,
         expr_node: ExpressionNode,
         expr_context: ExprContext,
-    ) -> R<ExpressionNode> {
+    ) -> Result<ExpressionNode, QErrorNode> {
         expr_rules::on_expression(self, expr_node, expr_context)
     }
 
@@ -291,12 +289,10 @@ impl Context {
         &mut self,
         opt_expr_node: Option<ExpressionNode>,
         expr_context: ExprContext,
-    ) -> R<Option<ExpressionNode>> {
+    ) -> Result<Option<ExpressionNode>, QErrorNode> {
         match opt_expr_node {
-            Some(expr_node) => self
-                .on_expression(expr_node, expr_context)
-                .map(|(x, y)| (Some(x), y)),
-            _ => Ok((None, vec![])),
+            Some(expr_node) => self.on_expression(expr_node, expr_context).map(Some),
+            _ => Ok(None),
         }
     }
 
@@ -304,27 +300,28 @@ impl Context {
         &mut self,
         expr_nodes: ExpressionNodes,
         expr_context: ExprContext,
-    ) -> R<ExpressionNodes> {
-        let mut implicit_vars: Implicits = vec![];
+    ) -> Result<ExpressionNodes, QErrorNode> {
         let mut converted_expr_nodes: ExpressionNodes = vec![];
         for expr_node in expr_nodes {
-            let (converted_expr_node, mut implicits) =
-                self.on_expression(expr_node, expr_context)?;
+            let converted_expr_node = self.on_expression(expr_node, expr_context)?;
             converted_expr_nodes.push(converted_expr_node);
-            implicit_vars.append(&mut implicits);
         }
-        Ok((converted_expr_nodes, implicit_vars))
+        Ok(converted_expr_nodes)
     }
 
     pub fn on_assignment(
         &mut self,
         left_side: ExpressionNode,
         right_side: ExpressionNode,
-    ) -> Result<(ExpressionNode, ExpressionNode, Implicits), QErrorNode> {
+    ) -> Result<(ExpressionNode, ExpressionNode), QErrorNode> {
         assignment::on_assignment(self, left_side, right_side)
     }
 
-    pub fn on_dim(&mut self, dim_list: DimList, dim_context: DimContext) -> R<DimList> {
+    pub fn on_dim(
+        &mut self,
+        dim_list: DimList,
+        dim_context: DimContext,
+    ) -> Result<DimList, QErrorNode> {
         dim_rules::on_dim(self, dim_list, dim_context)
     }
 

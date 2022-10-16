@@ -18,7 +18,7 @@ fn test_declaration_built_in_bare() {
             })
             .at_rc(2, 9),
             Instruction::CopyAToVarPath.at_rc(2, 9),
-            Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
+            Instruction::Halt.at_rc(u32::MAX, u32::MAX)
         ]
     );
 }
@@ -38,7 +38,7 @@ fn test_declaration_built_in_qualified() {
             })
             .at_rc(2, 9),
             Instruction::CopyAToVarPath.at_rc(2, 9),
-            Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
+            Instruction::Halt.at_rc(u32::MAX, u32::MAX)
         ]
     );
 }
@@ -58,7 +58,7 @@ fn test_declaration_built_in_extended() {
             })
             .at_rc(2, 9),
             Instruction::CopyAToVarPath.at_rc(2, 9),
-            Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
+            Instruction::Halt.at_rc(u32::MAX, u32::MAX)
         ]
     );
 }
@@ -78,7 +78,7 @@ fn test_declaration_built_in_fixed_length_string() {
             })
             .at_rc(2, 9),
             Instruction::CopyAToVarPath.at_rc(2, 9),
-            Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
+            Instruction::Halt.at_rc(u32::MAX, u32::MAX)
         ]
     );
 }
@@ -102,7 +102,7 @@ fn test_declaration_user_defined() {
             })
             .at_rc(6, 9),
             Instruction::CopyAToVarPath.at_rc(6, 9),
-            Instruction::Halt.at_rc(std::u32::MAX, std::u32::MAX)
+            Instruction::Halt.at_rc(u32::MAX, u32::MAX)
         ]
     );
 }

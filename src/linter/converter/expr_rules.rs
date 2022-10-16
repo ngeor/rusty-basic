@@ -1,6 +1,6 @@
 use crate::built_ins::BuiltInFunction;
 use crate::common::*;
-use crate::linter::converter::{Context, ExprContext, Implicits, R};
+use crate::linter::converter::{Context, ExprContext};
 use crate::parser::*;
 use crate::variant::Variant;
 use std::convert::TryFrom;
@@ -9,15 +9,15 @@ pub fn on_expression(
     ctx: &mut Context,
     expr_node: ExpressionNode,
     expr_context: ExprContext,
-) -> R<ExpressionNode> {
+) -> Result<ExpressionNode, QErrorNode> {
     let Locatable { element: expr, pos } = expr_node;
     match expr {
         // literals
-        Expression::SingleLiteral(f) => ok_no_implicits(Expression::SingleLiteral(f), pos),
-        Expression::DoubleLiteral(d) => ok_no_implicits(Expression::DoubleLiteral(d), pos),
-        Expression::StringLiteral(s) => ok_no_implicits(Expression::StringLiteral(s), pos),
-        Expression::IntegerLiteral(i) => ok_no_implicits(Expression::IntegerLiteral(i), pos),
-        Expression::LongLiteral(l) => ok_no_implicits(Expression::LongLiteral(l), pos),
+        Expression::SingleLiteral(f) => ok_locatable(Expression::SingleLiteral(f), pos),
+        Expression::DoubleLiteral(d) => ok_locatable(Expression::DoubleLiteral(d), pos),
+        Expression::StringLiteral(s) => ok_locatable(Expression::StringLiteral(s), pos),
+        Expression::IntegerLiteral(i) => ok_locatable(Expression::IntegerLiteral(i), pos),
+        Expression::LongLiteral(l) => ok_locatable(Expression::LongLiteral(l), pos),
         // parenthesis
         Expression::Parenthesis(box_child) => {
             parenthesis::convert(ctx, box_child, expr_context, pos)
@@ -52,8 +52,9 @@ pub fn on_expression(
     }
 }
 
-fn ok_no_implicits(expr: Expression, pos: Location) -> R<ExpressionNode> {
-    Ok((expr.at(pos), vec![]))
+// TODO #[deprecated] use a blanket Locatable impl
+fn ok_locatable(expr: Expression, pos: Location) -> Result<ExpressionNode, QErrorNode> {
+    Ok(expr.at(pos))
 }
 
 mod parenthesis {
@@ -64,11 +65,11 @@ mod parenthesis {
         box_child: Box<ExpressionNode>,
         expr_context: ExprContext,
         pos: Location,
-    ) -> R<ExpressionNode> {
+    ) -> Result<ExpressionNode, QErrorNode> {
         // convert child (recursion)
-        let (converted_child, implicit_vars) = ctx.on_expression(*box_child, expr_context)?;
+        let converted_child = ctx.on_expression(*box_child, expr_context)?;
         let parenthesis_expr = Expression::Parenthesis(Box::new(converted_child));
-        Ok((parenthesis_expr.at(pos), implicit_vars))
+        Ok(parenthesis_expr.at(pos))
     }
 }
 
@@ -80,14 +81,14 @@ mod unary {
         box_child: Box<ExpressionNode>,
         expr_context: ExprContext,
         pos: Location,
-    ) -> R<ExpressionNode> {
+    ) -> Result<ExpressionNode, QErrorNode> {
         // convert child (recursion)
-        let (converted_child, implicit_vars) = ctx.on_expression(*box_child, expr_context)?;
+        let converted_child = ctx.on_expression(*box_child, expr_context)?;
         // ensure operator applies to converted expr
         let converted_expr_type = converted_child.as_ref().expression_type();
         if is_applicable_to_expr_type(&converted_expr_type) {
             let unary_expr = Expression::UnaryExpression(unary_operator, Box::new(converted_child));
-            Ok((unary_expr.at(pos), implicit_vars))
+            Ok(unary_expr.at(pos))
         } else {
             Err(QError::TypeMismatch).with_err_at(&converted_child)
         }
@@ -113,12 +114,11 @@ mod binary {
         right: Box<ExpressionNode>,
         expr_context: ExprContext,
         pos: Location,
-    ) -> R<ExpressionNode> {
-        let (converted_left, mut left_implicit_vars) = ctx.on_expression(*left, expr_context)?;
-        let (converted_right, mut right_implicit_vars) = ctx.on_expression(*right, expr_context)?;
+    ) -> Result<ExpressionNode, QErrorNode> {
+        let converted_left = ctx.on_expression(*left, expr_context)?;
+        let converted_right = ctx.on_expression(*right, expr_context)?;
         let new_expr = Expression::binary(converted_left, converted_right, binary_operator)?;
-        left_implicit_vars.append(&mut right_implicit_vars);
-        Ok((new_expr.at(pos), left_implicit_vars))
+        Ok(new_expr.at(pos))
     }
 }
 
@@ -133,7 +133,7 @@ mod variable {
         variable_info: VariableInfo,
         expr_context: ExprContext,
         pos: Location,
-    ) -> R<ExpressionNode> {
+    ) -> Result<ExpressionNode, QErrorNode> {
         // validation rules
         validate(ctx, &name, pos)?;
 
@@ -151,7 +151,7 @@ mod variable {
 
         for mut rule in rules {
             if rule.can_handle(ctx, &name) {
-                return rule.resolve_no_implicits(ctx, name, pos);
+                return rule.resolve(ctx, name, pos);
             }
         }
 
@@ -160,7 +160,7 @@ mod variable {
             Ok(add_as_new_implicit_var(ctx, name, pos))
         } else {
             // repack as unresolved
-            Ok((Expression::Variable(name, variable_info).at(pos), vec![]))
+            Ok(Expression::Variable(name, variable_info).at(pos))
         }
     }
 
@@ -172,11 +172,7 @@ mod variable {
         Ok(())
     }
 
-    pub fn add_as_new_implicit_var(
-        ctx: &mut Context,
-        name: Name,
-        pos: Location,
-    ) -> (ExpressionNode, Implicits) {
+    pub fn add_as_new_implicit_var(ctx: &mut Context, name: Name, pos: Location) -> ExpressionNode {
         let resolved_name = name.to_qualified(ctx);
 
         let bare_name = resolved_name.bare_name();
@@ -189,9 +185,9 @@ mod variable {
         );
 
         let var_info = VariableInfo::new_built_in(q, false);
-        let implicit_vars: Implicits = vec![resolved_name.clone().demand_qualified().at(pos)];
-        let resolved_expr = Expression::Variable(resolved_name, var_info).at(pos);
-        (resolved_expr, implicit_vars)
+        ctx.names
+            .add_implicit(resolved_name.clone().demand_qualified().at(pos));
+        Expression::Variable(resolved_name, var_info).at(pos)
     }
 
     pub trait VarResolve {
@@ -203,15 +199,6 @@ mod variable {
             name: Name,
             pos: Location,
         ) -> Result<ExpressionNode, QErrorNode>;
-
-        fn resolve_no_implicits(
-            &self,
-            ctx: &Context,
-            name: Name,
-            pos: Location,
-        ) -> R<ExpressionNode> {
-            self.resolve(ctx, name, pos).map(|e| (e, vec![]))
-        }
     }
 
     #[derive(Default)]
@@ -397,7 +384,7 @@ mod property {
         property_name: Name,
         expr_context: ExprContext,
         pos: Location,
-    ) -> R<ExpressionNode> {
+    ) -> Result<ExpressionNode, QErrorNode> {
         // can we fold it into a name?
         let opt_folded_name = try_fold(&left_side, property_name.clone());
         if let Some(folded_name) = opt_folded_name {
@@ -414,7 +401,7 @@ mod property {
             rules.push(Box::new(ExistingConst::new_recursive()));
             for mut rule in rules {
                 if rule.can_handle(ctx, &folded_name) {
-                    return rule.resolve_no_implicits(ctx, folded_name, pos);
+                    return rule.resolve(ctx, folded_name, pos);
                 }
             }
         }
@@ -422,13 +409,10 @@ mod property {
         // it is not a folded name, either it is a property of a known variable or expression,
         // or we need to introduce a new implicit var with a dot
         let unboxed_left_side = *left_side;
-        let (
-            Locatable {
-                element: resolved_left_side,
-                ..
-            },
-            implicit_left_side,
-        ) = ctx.on_expression(
+        let Locatable {
+            element: resolved_left_side,
+            ..
+        } = ctx.on_expression(
             unboxed_left_side.at(pos),
             ExprContext::ResolvingPropertyOwner,
         )?;
@@ -447,7 +431,6 @@ mod property {
                     resolved_left_side,
                     &temp_expression_type,
                     property_name,
-                    implicit_left_side,
                     pos,
                     true,
                 )
@@ -465,7 +448,6 @@ mod property {
                     resolved_left_side,
                     &temp_expression_type,
                     property_name,
-                    implicit_left_side,
                     pos,
                     false,
                 )
@@ -477,7 +459,6 @@ mod property {
                     resolved_left_side,
                     &temp_expression_type,
                     property_name,
-                    implicit_left_side,
                     pos,
                     false,
                 )
@@ -501,10 +482,9 @@ mod property {
         resolved_left_side: Expression,
         expression_type: &ExpressionType,
         property_name: Name,
-        implicit_left_side: Implicits,
         pos: Location,
         allow_unresolved: bool,
-    ) -> R<ExpressionNode> {
+    ) -> Result<ExpressionNode, QErrorNode> {
         match expression_type {
             ExpressionType::UserDefined(user_defined_type_name) => {
                 existing_property_user_defined_type_name(
@@ -512,7 +492,6 @@ mod property {
                     resolved_left_side,
                     user_defined_type_name,
                     property_name,
-                    implicit_left_side,
                     pos,
                 )
             }
@@ -535,15 +514,13 @@ mod property {
         resolved_left_side: Expression,
         user_defined_type_name: &BareName,
         property_name: Name,
-        implicit_left_side: Implicits,
         pos: Location,
-    ) -> R<ExpressionNode> {
+    ) -> Result<ExpressionNode, QErrorNode> {
         match ctx.user_defined_types().get(user_defined_type_name) {
             Some(user_defined_type) => existing_property_user_defined_type(
                 resolved_left_side,
                 user_defined_type,
                 property_name,
-                implicit_left_side,
                 pos,
             ),
             _ => Err(QError::TypeNotDefined).with_err_at(pos),
@@ -554,17 +531,12 @@ mod property {
         resolved_left_side: Expression,
         user_defined_type: &UserDefinedType,
         property_name: Name,
-        implicit_left_side: Implicits,
         pos: Location,
-    ) -> R<ExpressionNode> {
+    ) -> Result<ExpressionNode, QErrorNode> {
         match user_defined_type.demand_element_by_name(&property_name) {
-            Ok(element_type) => existing_property_element_type(
-                resolved_left_side,
-                element_type,
-                property_name,
-                implicit_left_side,
-                pos,
-            ),
+            Ok(element_type) => {
+                existing_property_element_type(resolved_left_side, element_type, property_name, pos)
+            }
             Err(e) => Err(e).with_err_at(pos),
         }
     }
@@ -573,20 +545,16 @@ mod property {
         resolved_left_side: Expression,
         element_type: &ElementType,
         property_name: Name,
-        implicit_left_side: Implicits,
         pos: Location,
-    ) -> R<ExpressionNode> {
+    ) -> Result<ExpressionNode, QErrorNode> {
         let bare_name = property_name.into();
         let property_name = Name::Bare(bare_name);
-        Ok((
-            Expression::Property(
-                Box::new(resolved_left_side),
-                property_name,
-                element_type.expression_type(),
-            )
-            .at(pos),
-            implicit_left_side,
-        ))
+        Ok(Expression::Property(
+            Box::new(resolved_left_side),
+            property_name,
+            element_type.expression_type(),
+        )
+        .at(pos))
     }
 }
 
@@ -598,7 +566,10 @@ fn functions_must_have_arguments(args: &ExpressionNodes, pos: Location) -> Resul
     }
 }
 
-fn convert_function_args(ctx: &mut Context, args: ExpressionNodes) -> R<ExpressionNodes> {
+fn convert_function_args(
+    ctx: &mut Context,
+    args: ExpressionNodes,
+) -> Result<ExpressionNodes, QErrorNode> {
     ctx.on_expressions(args, ExprContext::Parameter)
 }
 
@@ -609,11 +580,11 @@ mod built_in_function {
         built_in_function: BuiltInFunction,
         args: ExpressionNodes,
         pos: Location,
-    ) -> R<ExpressionNode> {
+    ) -> Result<ExpressionNode, QErrorNode> {
         functions_must_have_arguments(&args, pos)?;
-        let (converted_args, implicit_vars) = convert_function_args(ctx, args)?;
+        let converted_args = convert_function_args(ctx, args)?;
         let converted_expr = Expression::BuiltInFunctionCall(built_in_function, converted_args);
-        Ok((converted_expr.at(pos), implicit_vars))
+        Ok(converted_expr.at(pos))
     }
 }
 
@@ -626,7 +597,7 @@ mod function {
         args: ExpressionNodes,
         expr_context: ExprContext,
         pos: Location,
-    ) -> R<ExpressionNode> {
+    ) -> Result<ExpressionNode, QErrorNode> {
         let mut rules: Vec<Box<dyn FuncResolve>> = vec![];
         // these go first because they're allowed to have no arguments
         rules.push(Box::new(ExistingArrayWithParenthesis::default()));
@@ -647,9 +618,9 @@ mod function {
         name: Name,
         args: ExpressionNodes,
         pos: Location,
-    ) -> R<ExpressionNode> {
+    ) -> Result<ExpressionNode, QErrorNode> {
         // convert args
-        let (converted_args, implicit_vars) = convert_function_args(ctx, args)?;
+        let converted_args = convert_function_args(ctx, args)?;
         // is it built-in function?
         let converted_expr = match Option::<BuiltInFunction>::try_from(&name).with_err_at(pos)? {
             Some(built_in_function) => {
@@ -665,7 +636,7 @@ mod function {
                 Expression::FunctionCall(converted_name, converted_args)
             }
         };
-        Ok((converted_expr.at(pos), implicit_vars))
+        Ok(converted_expr.at(pos))
     }
 
     trait FuncResolve {
@@ -678,7 +649,7 @@ mod function {
             args: ExpressionNodes,
             expr_context: ExprContext,
             pos: Location,
-        ) -> R<ExpressionNode>;
+        ) -> Result<ExpressionNode, QErrorNode>;
     }
 
     #[derive(Default)]
@@ -724,9 +695,9 @@ mod function {
             args: ExpressionNodes,
             expr_context: ExprContext,
             pos: Location,
-        ) -> R<ExpressionNode> {
+        ) -> Result<ExpressionNode, QErrorNode> {
             // convert args
-            let (converted_args, implicit_vars) = ctx.on_expressions(args, expr_context)?;
+            let converted_args = ctx.on_expressions(args, expr_context)?;
             // convert name
             let VariableInfo {
                 expression_type,
@@ -746,7 +717,7 @@ mod function {
                             redim_info,
                         },
                     );
-                    Ok((result_expr.at(pos), implicit_vars))
+                    Ok(result_expr.at(pos))
                 }
                 _ => Err(QError::ArrayNotDefined).with_err_at(pos),
             }

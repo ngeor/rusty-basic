@@ -1,6 +1,7 @@
 use crate::common::*;
-use crate::linter::converter::dim_rules::{convert_array_dimensions, resolve_string_length};
-use crate::linter::converter::{Context, R};
+use crate::linter::converter::conversion_traits::SameTypeConverter;
+use crate::linter::converter::dim_rules::resolve_string_length;
+use crate::linter::converter::Context;
 use crate::linter::type_resolver::IntoTypeQualifier;
 use crate::parser::*;
 
@@ -10,11 +11,10 @@ pub fn convert(
     dim_type: DimType,
     shared: bool,
     pos: Location,
-) -> R<DimNameNode> {
+) -> Result<DimNameNode, QErrorNode> {
     if let DimType::Array(array_dimensions, element_type) = dim_type {
         let dimension_count = array_dimensions.len();
-        let (converted_array_dimensions, implicits) =
-            convert_array_dimensions(ctx, array_dimensions)?;
+        let converted_array_dimensions: ArrayDimensions = ctx.convert(array_dimensions)?;
         debug_assert_eq!(dimension_count, converted_array_dimensions.len());
         let converted_element_type = to_dim_type(
             ctx,
@@ -31,7 +31,7 @@ pub fn convert(
             shared,
             Some(RedimInfo { dimension_count }),
         );
-        Ok((DimName::new(bare_name, array_dim_type).at(pos), implicits))
+        Ok(DimName::new(bare_name, array_dim_type).at(pos))
     } else {
         panic!("REDIM without array")
     }

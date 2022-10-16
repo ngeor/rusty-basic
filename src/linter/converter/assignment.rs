@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::linter::converter::{Context, ConverterImpl, ExprContext, Implicits, R};
+use crate::linter::converter::{Context, ConverterImpl, ExprContext};
 use crate::parser::{ExpressionNode, Statement, StatementNode};
 
 impl ConverterImpl {
@@ -7,11 +7,11 @@ impl ConverterImpl {
         &mut self,
         name_expr_node: ExpressionNode,
         expression_node: ExpressionNode,
-    ) -> R<StatementNode> {
+    ) -> Result<StatementNode, QErrorNode> {
         self.context
             .on_assignment(name_expr_node, expression_node)
-            .map(|(Locatable { element: left, pos }, right, implicit_vars)| {
-                (Statement::Assignment(left, right).at(pos), implicit_vars)
+            .map(|(Locatable { element: left, pos }, right)| {
+                Statement::Assignment(left, right).at(pos)
             })
     }
 }
@@ -20,22 +20,15 @@ pub fn on_assignment(
     context: &mut Context,
     left_side: ExpressionNode,
     right_side: ExpressionNode,
-) -> Result<(ExpressionNode, ExpressionNode, Implicits), QErrorNode> {
+) -> Result<(ExpressionNode, ExpressionNode), QErrorNode> {
     assignment_pre_conversion_validation_rules::validate(context, &left_side)?;
-    let (converted_right_side, mut right_side_implicit_vars) =
-        context.on_expression(right_side, ExprContext::Default)?;
-    let (converted_left_side, mut left_side_implicit_vars) =
-        context.on_expression(left_side, ExprContext::Assignment)?;
+    let converted_right_side = context.on_expression(right_side, ExprContext::Default)?;
+    let converted_left_side = context.on_expression(left_side, ExprContext::Assignment)?;
     assignment_post_conversion_validation_rules::validate(
         &converted_left_side,
         &converted_right_side,
     )?;
-    left_side_implicit_vars.append(&mut right_side_implicit_vars);
-    Ok((
-        converted_left_side,
-        converted_right_side,
-        left_side_implicit_vars,
-    ))
+    Ok((converted_left_side, converted_right_side))
 }
 
 mod assignment_pre_conversion_validation_rules {

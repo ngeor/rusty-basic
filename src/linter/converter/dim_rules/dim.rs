@@ -1,8 +1,7 @@
 use crate::common::*;
-use crate::linter::converter::dim_rules::{
-    convert_array_dimensions, no_implicits, resolve_string_length,
-};
-use crate::linter::converter::{Context, R};
+use crate::linter::converter::conversion_traits::SameTypeConverter;
+use crate::linter::converter::dim_rules::resolve_string_length;
+use crate::linter::converter::Context;
 use crate::linter::type_resolver::IntoTypeQualifier;
 use crate::linter::DimContext;
 use crate::parser::*;
@@ -14,14 +13,12 @@ pub fn convert(
     dim_context: DimContext,
     shared: bool,
     pos: Location,
-) -> R<DimNameNode> {
+) -> Result<DimNameNode, QErrorNode> {
     debug_assert_ne!(dim_context, DimContext::Redim);
-    to_dim_type(ctx, &bare_name, &dim_type, dim_context, shared, pos).map(
-        |(dim_type, implicits)| {
-            ctx.names.insert(bare_name.clone(), &dim_type, shared, None);
-            (DimName::new(bare_name, dim_type).at(pos), implicits)
-        },
-    )
+    to_dim_type(ctx, &bare_name, &dim_type, dim_context, shared, pos).map(|dim_type| {
+        ctx.names.insert(bare_name.clone(), &dim_type, shared, None);
+        DimName::new(bare_name, dim_type).at(pos)
+    })
 }
 
 fn to_dim_type(
@@ -31,21 +28,18 @@ fn to_dim_type(
     dim_context: DimContext,
     shared: bool,
     pos: Location,
-) -> R<DimType> {
+) -> Result<DimType, QErrorNode> {
     debug_assert_ne!(dim_context, DimContext::Redim);
     match dim_type {
-        DimType::Bare => bare_to_dim_type(ctx, bare_name, pos).map(no_implicits),
+        DimType::Bare => bare_to_dim_type(ctx, bare_name, pos),
         DimType::BuiltIn(q, built_in_style) => {
-            built_in_to_dim_type(ctx, bare_name, *q, *built_in_style, pos).map(no_implicits)
+            built_in_to_dim_type(ctx, bare_name, *q, *built_in_style, pos)
         }
         DimType::FixedLengthString(length_expression, resolved_length) => {
             debug_assert_eq!(*resolved_length, 0, "Should not be resolved yet");
             fixed_length_string_to_dim_type(ctx, bare_name, length_expression, pos)
-                .map(no_implicits)
         }
-        DimType::UserDefined(u) => {
-            user_defined_to_dim_type(ctx, bare_name, u, pos).map(no_implicits)
-        }
+        DimType::UserDefined(u) => user_defined_to_dim_type(ctx, bare_name, u, pos),
         DimType::Array(array_dimensions, element_type) => array_to_dim_type(
             ctx,
             bare_name,
@@ -144,7 +138,7 @@ fn array_to_dim_type(
     dim_context: DimContext,
     shared: bool,
     pos: Location,
-) -> R<DimType> {
+) -> Result<DimType, QErrorNode> {
     debug_assert!(match dim_context {
         DimContext::Default => {
             array_dimensions.len() > 0
@@ -155,14 +149,12 @@ fn array_to_dim_type(
         _ => true,
     });
     // TODO optimize array_dimensions.clone()
-    let (converted_array_dimensions, mut implicits) =
-        convert_array_dimensions(ctx, array_dimensions.clone())?;
-    let (resolved_element_dim_type, mut resolved_implicits) =
+    let converted_array_dimensions: ArrayDimensions = ctx.convert(array_dimensions.clone())?;
+    let resolved_element_dim_type =
         to_dim_type(ctx, bare_name, element_type, dim_context, shared, pos)?;
-    implicits.append(&mut resolved_implicits);
     let array_dim_type = DimType::Array(
         converted_array_dimensions,
         Box::new(resolved_element_dim_type),
     );
-    Ok((array_dim_type, implicits))
+    Ok(array_dim_type)
 }

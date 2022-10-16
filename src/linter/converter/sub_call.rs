@@ -1,6 +1,6 @@
 use crate::built_ins::BuiltInSub;
-use crate::common::{AtLocation, Locatable};
-use crate::linter::converter::{ConverterImpl, ExprContext, R};
+use crate::common::{AtLocation, Locatable, QErrorNode};
+use crate::linter::converter::{ConverterImpl, ExprContext};
 use crate::parser::{BareNameNode, ExpressionNodes, Statement, StatementNode};
 
 impl ConverterImpl {
@@ -8,23 +8,16 @@ impl ConverterImpl {
         &mut self,
         sub_name_node: BareNameNode,
         args: ExpressionNodes,
-    ) -> R<StatementNode> {
-        let (converted_args, implicit_vars) =
-            self.context.on_expressions(args, ExprContext::Parameter)?;
+    ) -> Result<StatementNode, QErrorNode> {
+        let converted_args = self.context.on_expressions(args, ExprContext::Parameter)?;
         let Locatable {
             element: sub_name,
             pos,
         } = sub_name_node;
         let opt_built_in: Option<BuiltInSub> = BuiltInSub::parse_non_keyword_sub(sub_name.as_ref());
         match opt_built_in {
-            Some(b) => Ok((
-                Statement::BuiltInSubCall(b, converted_args).at(pos),
-                implicit_vars,
-            )),
-            None => Ok((
-                Statement::SubCall(sub_name, converted_args).at(pos),
-                implicit_vars,
-            )),
+            Some(b) => Ok(Statement::BuiltInSubCall(b, converted_args).at(pos)),
+            None => Ok(Statement::SubCall(sub_name, converted_args).at(pos)),
         }
     }
 }

@@ -1,44 +1,30 @@
-use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
-use crate::linter::converter::{ConverterImpl, ExprContext, R};
+use crate::common::QErrorNode;
+use crate::linter::converter::conversion_traits::SameTypeConverter;
+use crate::linter::converter::{ConverterImpl, ExprContext};
 use crate::parser::{ConditionalBlockNode, IfBlockNode};
 
-impl SameTypeConverterWithImplicits<ConditionalBlockNode> for ConverterImpl {
-    fn convert_same_type_with_implicits(
-        &mut self,
-        a: ConditionalBlockNode,
-    ) -> R<ConditionalBlockNode> {
-        let (condition, mut implicit_vars) = self
+impl SameTypeConverter<ConditionalBlockNode> for ConverterImpl {
+    fn convert(&mut self, a: ConditionalBlockNode) -> Result<ConditionalBlockNode, QErrorNode> {
+        let condition = self
             .context
             .on_expression(a.condition, ExprContext::Default)?;
-        let (statements, mut block_implicits) =
-            self.convert_block_keeping_implicits(a.statements)?;
-        implicit_vars.append(&mut block_implicits);
-        Ok((
-            ConditionalBlockNode {
-                condition,
-                statements,
-            },
-            implicit_vars,
-        ))
+        let statements = self.convert_block_removing_constants(a.statements)?;
+        Ok(ConditionalBlockNode {
+            condition,
+            statements,
+        })
     }
 }
 
-impl SameTypeConverterWithImplicits<IfBlockNode> for ConverterImpl {
-    fn convert_same_type_with_implicits(&mut self, a: IfBlockNode) -> R<IfBlockNode> {
-        let (if_block, mut implicits) = self.convert_same_type_with_implicits(a.if_block)?;
-        let (else_if_blocks, mut implicit_vars_else_if_blocks) =
-            self.convert_same_type_with_implicits(a.else_if_blocks)?;
-        implicits.append(&mut implicit_vars_else_if_blocks);
-        let (else_block, mut implicits_else) =
-            self.convert_same_type_with_implicits(a.else_block)?;
-        implicits.append(&mut implicits_else);
-        Ok((
-            IfBlockNode {
-                if_block,
-                else_if_blocks,
-                else_block,
-            },
-            implicits,
-        ))
+impl SameTypeConverter<IfBlockNode> for ConverterImpl {
+    fn convert(&mut self, a: IfBlockNode) -> Result<IfBlockNode, QErrorNode> {
+        let if_block = self.convert(a.if_block)?;
+        let else_if_blocks = self.convert(a.else_if_blocks)?;
+        let else_block = self.convert(a.else_block)?;
+        Ok(IfBlockNode {
+            if_block,
+            else_if_blocks,
+            else_block,
+        })
     }
 }

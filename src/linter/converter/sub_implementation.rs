@@ -2,7 +2,7 @@ use crate::common::QErrorNode;
 use crate::linter::converter::ConverterImpl;
 use crate::parser::{SubImplementation, TopLevelToken};
 
-impl<'a> ConverterImpl<'a> {
+impl ConverterImpl {
     pub fn convert_sub_implementation(
         &mut self,
         sub_implementation: SubImplementation,

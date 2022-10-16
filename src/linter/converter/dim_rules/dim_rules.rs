@@ -13,7 +13,7 @@ pub fn on_dim(ctx: &mut Context, dim_list: DimList, dim_context: DimContext) -> 
     ctx.convert_same_type_with_implicits_in_context(dim_list, dim_context)
 }
 
-impl<'a> SameTypeConverterWithImplicits<ArrayDimension> for Context<'a> {
+impl SameTypeConverterWithImplicits<ArrayDimension> for Context {
     fn convert_same_type_with_implicits(&mut self, a: ArrayDimension) -> R<ArrayDimension> {
         let (lbound, mut implicits) = self.on_opt_expression(a.lbound, ExprContext::Default)?;
         let (ubound, mut ubound_implicits) = self.on_expression(a.ubound, ExprContext::Default)?;
@@ -22,7 +22,7 @@ impl<'a> SameTypeConverterWithImplicits<ArrayDimension> for Context<'a> {
     }
 }
 
-impl<'a> SameTypeConverterWithImplicitsInContext<DimList, DimContext> for Context<'a> {
+impl SameTypeConverterWithImplicitsInContext<DimList, DimContext> for Context {
     fn convert_same_type_with_implicits_in_context(
         &mut self,
         item: DimList,
@@ -40,7 +40,7 @@ impl<'a> SameTypeConverterWithImplicitsInContext<DimList, DimContext> for Contex
     }
 }
 
-impl<'a> SameTypeConverterWithImplicitsInContext<DimNameNode, (DimContext, bool)> for Context<'a> {
+impl SameTypeConverterWithImplicitsInContext<DimNameNode, (DimContext, bool)> for Context {
     fn convert_same_type_with_implicits_in_context(
         &mut self,
         item: DimNameNode,

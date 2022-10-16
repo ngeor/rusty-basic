@@ -2,7 +2,7 @@ use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
 use crate::linter::converter::{ConverterImpl, ExprContext, R};
 use crate::parser::{ConditionalBlockNode, IfBlockNode};
 
-impl<'a> SameTypeConverterWithImplicits<ConditionalBlockNode> for ConverterImpl<'a> {
+impl SameTypeConverterWithImplicits<ConditionalBlockNode> for ConverterImpl {
     fn convert_same_type_with_implicits(
         &mut self,
         a: ConditionalBlockNode,
@@ -23,7 +23,7 @@ impl<'a> SameTypeConverterWithImplicits<ConditionalBlockNode> for ConverterImpl<
     }
 }
 
-impl<'a> SameTypeConverterWithImplicits<IfBlockNode> for ConverterImpl<'a> {
+impl SameTypeConverterWithImplicits<IfBlockNode> for ConverterImpl {
     fn convert_same_type_with_implicits(&mut self, a: IfBlockNode) -> R<IfBlockNode> {
         let (if_block, mut implicits) = self.convert_same_type_with_implicits(a.if_block)?;
         let (else_if_blocks, mut implicit_vars_else_if_blocks) =

@@ -1,6 +1,6 @@
 use super::expression_reducer::*;
 use crate::common::*;
-use crate::linter::pre_linter::HasFunctions;
+use crate::linter::HasFunctions;
 use crate::parser::Expression;
 
 /// Finds undefined functions and converts them to zeroes.

@@ -2,7 +2,7 @@ use crate::common::*;
 use crate::linter::converter::{Context, ConverterImpl, ExprContext, Implicits, R};
 use crate::parser::{ExpressionNode, Statement, StatementNode};
 
-impl<'a> ConverterImpl<'a> {
+impl ConverterImpl {
     pub fn assignment(
         &mut self,
         name_expr_node: ExpressionNode,

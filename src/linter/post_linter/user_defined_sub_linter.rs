@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use super::user_defined_function_linter::lint_call_args;
 use crate::common::*;
-use crate::linter::pre_linter::HasSubs;
+use crate::linter::HasSubs;
 use crate::parser::ExpressionNodes;
 
 pub struct UserDefinedSubLinter<'a, R> {

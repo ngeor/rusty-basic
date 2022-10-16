@@ -2,7 +2,7 @@ use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
 use crate::linter::converter::{ConverterImpl, ExprContext, R};
 use crate::parser::{CaseBlockNode, CaseExpression, SelectCaseNode};
 
-impl<'a> SameTypeConverterWithImplicits<SelectCaseNode> for ConverterImpl<'a> {
+impl SameTypeConverterWithImplicits<SelectCaseNode> for ConverterImpl {
     fn convert_same_type_with_implicits(&mut self, a: SelectCaseNode) -> R<SelectCaseNode> {
         let (expr, mut implicit_vars_expr) =
             self.context.on_expression(a.expr, ExprContext::Default)?;
@@ -24,7 +24,7 @@ impl<'a> SameTypeConverterWithImplicits<SelectCaseNode> for ConverterImpl<'a> {
     }
 }
 
-impl<'a> SameTypeConverterWithImplicits<CaseBlockNode> for ConverterImpl<'a> {
+impl SameTypeConverterWithImplicits<CaseBlockNode> for ConverterImpl {
     fn convert_same_type_with_implicits(&mut self, a: CaseBlockNode) -> R<CaseBlockNode> {
         let (expression_list, mut implicit_vars_expr) =
             self.convert_same_type_with_implicits(a.expression_list)?;
@@ -41,7 +41,7 @@ impl<'a> SameTypeConverterWithImplicits<CaseBlockNode> for ConverterImpl<'a> {
     }
 }
 
-impl<'a> SameTypeConverterWithImplicits<CaseExpression> for ConverterImpl<'a> {
+impl SameTypeConverterWithImplicits<CaseExpression> for ConverterImpl {
     fn convert_same_type_with_implicits(&mut self, a: CaseExpression) -> R<CaseExpression> {
         match a {
             CaseExpression::Simple(e) => self

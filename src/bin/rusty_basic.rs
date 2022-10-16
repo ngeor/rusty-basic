@@ -3,9 +3,11 @@ use std::fs::File;
 
 use rusty_basic::instruction_generator;
 use rusty_basic::interpreter::interpreter::new_default_interpreter;
+use rusty_basic::interpreter::interpreter_trait::InterpreterTrait;
 use rusty_basic::linter;
+use rusty_basic::linter::HasUserDefinedTypes;
 use rusty_basic::parser;
-use rusty_basic::parser::{ProgramNode, UserDefinedTypes};
+use rusty_basic::parser::ProgramNode;
 
 fn main() {
     let is_running_in_apache = is_running_in_apache();
@@ -27,16 +29,20 @@ fn main() {
 
 fn on_parsed(program: ProgramNode, run_options: RunOptions) {
     match linter::lint(program) {
-        Ok((linted_program, user_defined_types)) => {
-            on_linted(linted_program, user_defined_types, run_options)
+        Ok((linted_program, user_defined_types_holder)) => {
+            on_linted(linted_program, user_defined_types_holder, run_options)
         }
         Err(e) => eprintln!("Could not lint program. {:?}", e),
     }
 }
 
-fn on_linted(program: ProgramNode, user_defined_types: UserDefinedTypes, run_options: RunOptions) {
+fn on_linted(
+    program: ProgramNode,
+    user_defined_types_holder: impl HasUserDefinedTypes,
+    run_options: RunOptions,
+) {
     let instruction_generator_result = instruction_generator::generate_instructions(program);
-    let mut interpreter = new_default_interpreter(user_defined_types);
+    let mut interpreter = new_default_interpreter(user_defined_types_holder);
     run_options.set_current_dir_if_apache();
     match interpreter.interpret(instruction_generator_result) {
         Ok(_) => (),

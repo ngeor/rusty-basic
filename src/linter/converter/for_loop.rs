@@ -2,7 +2,7 @@ use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
 use crate::linter::converter::{ConverterImpl, ExprContext, Implicits, R};
 use crate::parser::ForLoopNode;
 
-impl<'a> SameTypeConverterWithImplicits<ForLoopNode> for ConverterImpl<'a> {
+impl SameTypeConverterWithImplicits<ForLoopNode> for ConverterImpl {
     fn convert_same_type_with_implicits(&mut self, a: ForLoopNode) -> R<ForLoopNode> {
         let mut implicits: Implicits = vec![];
         let (variable_name, mut implicit_variables_variable_name) = self

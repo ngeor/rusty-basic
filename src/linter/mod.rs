@@ -13,3 +13,4 @@ pub mod test_utils;
 mod tests;
 
 pub use self::linter::*;
+pub use self::pre_linter::traits::*;

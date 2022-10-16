@@ -124,8 +124,8 @@ mod binary {
 
 mod variable {
     use super::*;
-    use crate::linter::pre_linter::HasSubs;
     use crate::linter::type_resolver::{IntoQualified, IntoTypeQualifier};
+    use crate::linter::HasSubs;
 
     pub fn convert(
         ctx: &mut Context,
@@ -138,7 +138,7 @@ mod variable {
         validate(ctx, &name, pos)?;
 
         // match existing
-        let mut rules: Vec<Box<dyn VarResolve<'_>>> = vec![];
+        let mut rules: Vec<Box<dyn VarResolve>> = vec![];
         rules.push(Box::new(ExistingVar::default()));
         rules.push(Box::new(ExistingConst::new_local()));
         if expr_context != ExprContext::Default {
@@ -194,19 +194,19 @@ mod variable {
         (resolved_expr, implicit_vars)
     }
 
-    pub trait VarResolve<'a> {
-        fn can_handle(&mut self, ctx: &'a Context, name: &Name) -> bool;
+    pub trait VarResolve {
+        fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool;
 
         fn resolve(
             &self,
-            ctx: &'a Context,
+            ctx: &Context,
             name: Name,
             pos: Location,
         ) -> Result<ExpressionNode, QErrorNode>;
 
         fn resolve_no_implicits(
             &self,
-            ctx: &'a Context,
+            ctx: &Context,
             name: Name,
             pos: Location,
         ) -> R<ExpressionNode> {
@@ -215,44 +215,42 @@ mod variable {
     }
 
     #[derive(Default)]
-    pub struct ExistingVar<'a> {
-        var_info: Option<&'a VariableInfo>,
+    pub struct ExistingVar {
+        var_info: Option<VariableInfo>,
     }
 
-    impl<'a> VarResolve<'a> for ExistingVar<'a> {
-        fn can_handle(&mut self, ctx: &'a Context, name: &Name) -> bool {
+    impl VarResolve for ExistingVar {
+        fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool {
             let bare_name = name.bare_name();
-            self.var_info = ctx.names.get_extended_var_recursively(bare_name);
+            self.var_info = ctx.names.get_extended_var_recursively(bare_name).cloned();
             if self.var_info.is_some() {
                 true
             } else {
                 let q = name.qualify(ctx);
-                self.var_info = ctx.names.get_compact_var_recursively(bare_name, q);
+                self.var_info = ctx.names.get_compact_var_recursively(bare_name, q).cloned();
                 self.var_info.is_some()
             }
         }
 
         fn resolve(
             &self,
-            _ctx: &'a Context,
+            _ctx: &Context,
             name: Name,
             pos: Location,
         ) -> Result<ExpressionNode, QErrorNode> {
-            let variable_info = self.var_info.unwrap();
+            let variable_info = self.var_info.clone().unwrap();
             let expression_type = &variable_info.expression_type;
-            let converted_name = expression_type
-                .qualify_name(name.clone())
-                .with_err_at(pos)?;
-            Ok(Expression::Variable(converted_name, variable_info.clone()).at(pos))
+            let converted_name = expression_type.qualify_name(name).with_err_at(pos)?;
+            Ok(Expression::Variable(converted_name, variable_info).at(pos))
         }
     }
 
-    pub struct ExistingConst<'a> {
+    pub struct ExistingConst {
         use_recursion: bool,
-        opt_v: Option<&'a Variant>,
+        opt_v: Option<Variant>,
     }
 
-    impl<'a> ExistingConst<'a> {
+    impl ExistingConst {
         pub fn new_local() -> Self {
             Self {
                 use_recursion: false,
@@ -268,27 +266,31 @@ mod variable {
         }
     }
 
-    impl<'a> VarResolve<'a> for ExistingConst<'a> {
-        fn can_handle(&mut self, ctx: &'a Context, name: &Name) -> bool {
+    impl VarResolve for ExistingConst {
+        fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool {
             self.opt_v = if self.use_recursion {
-                ctx.names.get_const_value_recursively(name.bare_name())
+                ctx.names
+                    .get_const_value_recursively(name.bare_name())
+                    .cloned()
             } else {
-                ctx.names.get_const_value_no_recursion(name.bare_name())
+                ctx.names
+                    .get_const_value_no_recursion(name.bare_name())
+                    .cloned()
             };
             self.opt_v.is_some()
         }
 
         fn resolve(
             &self,
-            _ctx: &'a Context,
+            _ctx: &Context,
             name: Name,
             pos: Location,
         ) -> Result<ExpressionNode, QErrorNode> {
-            let v = self.opt_v.unwrap();
-            let q = TypeQualifier::try_from(v).with_err_at(pos)?;
+            let v = self.opt_v.clone().unwrap();
+            let q = TypeQualifier::try_from(&v).with_err_at(pos)?;
             if name.is_bare_or_of_type(q) {
                 // resolve to literal expression
-                let expr = Expression::from_constant(v.clone()).with_err_at(pos)?;
+                let expr = Expression::from_constant(v).with_err_at(pos)?;
                 Ok(expr.at(pos))
             } else {
                 Err(QError::DuplicateDefinition).with_err_at(pos)
@@ -301,8 +303,8 @@ mod variable {
         function_qualifier: Option<TypeQualifier>,
     }
 
-    impl<'a> VarResolve<'a> for AssignToFunction {
-        fn can_handle(&mut self, ctx: &'a Context, name: &Name) -> bool {
+    impl VarResolve for AssignToFunction {
+        fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool {
             let bare_name = name.bare_name();
             match ctx.function_qualifier(bare_name) {
                 Some(function_qualifier) => {
@@ -315,7 +317,7 @@ mod variable {
 
         fn resolve(
             &self,
-            ctx: &'a Context,
+            ctx: &Context,
             name: Name,
             pos: Location,
         ) -> Result<ExpressionNode, QErrorNode> {
@@ -336,15 +338,15 @@ mod variable {
         built_in_function: Option<BuiltInFunction>,
     }
 
-    impl<'a> VarResolve<'a> for VarAsBuiltInFunctionCall {
-        fn can_handle(&mut self, _ctx: &'a Context, name: &Name) -> bool {
+    impl VarResolve for VarAsBuiltInFunctionCall {
+        fn can_handle(&mut self, _ctx: &Context, name: &Name) -> bool {
             self.built_in_function = name.bare_name().into();
             self.built_in_function.is_some()
         }
 
         fn resolve(
             &self,
-            _ctx: &'a Context,
+            _ctx: &Context,
             name: Name,
             pos: Location,
         ) -> Result<ExpressionNode, QErrorNode> {
@@ -362,15 +364,15 @@ mod variable {
         function_qualifier: Option<TypeQualifier>,
     }
 
-    impl<'a> VarResolve<'a> for VarAsUserDefinedFunctionCall {
-        fn can_handle(&mut self, ctx: &'a Context<'a>, name: &Name) -> bool {
+    impl VarResolve for VarAsUserDefinedFunctionCall {
+        fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool {
             self.function_qualifier = ctx.function_qualifier(name.bare_name());
             self.function_qualifier.is_some()
         }
 
         fn resolve(
             &self,
-            _ctx: &'a Context<'a>,
+            _ctx: &Context,
             name: Name,
             pos: Location,
         ) -> Result<ExpressionNode, QErrorNode> {
@@ -387,7 +389,7 @@ mod property {
         add_as_new_implicit_var, AssignToFunction, ExistingConst, ExistingVar,
         VarAsUserDefinedFunctionCall, VarResolve,
     };
-    use crate::linter::pre_linter::HasUserDefinedTypes;
+    use crate::linter::HasUserDefinedTypes;
 
     pub fn convert(
         ctx: &mut Context,
@@ -400,7 +402,7 @@ mod property {
         let opt_folded_name = try_fold(&left_side, property_name.clone());
         if let Some(folded_name) = opt_folded_name {
             // checking out if we have an existing variable / const etc that contains a dot
-            let mut rules: Vec<Box<dyn VarResolve<'_>>> = vec![];
+            let mut rules: Vec<Box<dyn VarResolve>> = vec![];
             rules.push(Box::new(ExistingVar::default()));
             if expr_context != ExprContext::Default {
                 rules.push(Box::new(AssignToFunction::default()));

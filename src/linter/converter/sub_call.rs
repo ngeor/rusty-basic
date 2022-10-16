@@ -3,7 +3,7 @@ use crate::common::{AtLocation, Locatable};
 use crate::linter::converter::{ConverterImpl, ExprContext, R};
 use crate::parser::{BareNameNode, ExpressionNodes, Statement, StatementNode};
 
-impl<'a> ConverterImpl<'a> {
+impl ConverterImpl {
     pub fn sub_call(
         &mut self,
         sub_name_node: BareNameNode,

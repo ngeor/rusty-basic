@@ -15,6 +15,7 @@ use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::screen::{CrossTermScreen, Screen};
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
+use crate::linter::HasUserDefinedTypes;
 use crate::parser::UserDefinedTypes;
 use crate::variant::{QBNumberCast, Variant};
 use std::cell::RefCell;
@@ -24,7 +25,13 @@ use std::rc::Rc;
 // TODO make linter types hold references instead of copying parser objects
 // TODO make interpreter types hold references instead of copying parser objects
 
-pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> {
+pub struct Interpreter<
+    TStdlib: Stdlib,
+    TStdIn: Input,
+    TStdOut: Printer,
+    TLpt1: Printer,
+    U: HasUserDefinedTypes,
+> {
     /// Offers system calls
     stdlib: TStdlib,
 
@@ -43,7 +50,7 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     screen: Box<dyn Screen>,
 
     /// Holds the definition of user defined types
-    user_defined_types: UserDefinedTypes,
+    user_defined_types_holder: U,
 
     /// Contains variables and constants, collects function/sub arguments.
     context: Context,
@@ -81,8 +88,16 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     def_seg: Option<usize>,
 }
 
-impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
-    for Interpreter<TStdlib, TStdIn, TStdOut, TLpt1>
+impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUserDefinedTypes>
+    HasUserDefinedTypes for Interpreter<TStdlib, TStdIn, TStdOut, TLpt1, U>
+{
+    fn user_defined_types(&self) -> &UserDefinedTypes {
+        self.user_defined_types_holder.user_defined_types()
+    }
+}
+
+impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUserDefinedTypes>
+    InterpreterTrait for Interpreter<TStdlib, TStdIn, TStdOut, TLpt1, U>
 {
     type TStdlib = TStdlib;
     type TStdIn = TStdIn;
@@ -119,10 +134,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
 
     fn screen_mut(&mut self) -> &mut dyn Screen {
         self.screen.as_mut()
-    }
-
-    fn user_defined_types(&self) -> &UserDefinedTypes {
-        &self.user_defined_types
     }
 
     fn context(&self) -> &Context {
@@ -176,16 +187,68 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> Interpret
     fn get_last_error_code(&self) -> Option<i32> {
         self.last_error_code
     }
+
+    fn interpret(
+        &mut self,
+        instruction_generator_result: InstructionGeneratorResult,
+    ) -> Result<(), QErrorNode> {
+        let InstructionGeneratorResult {
+            instructions,
+            statement_addresses,
+        } = instruction_generator_result;
+        let mut i: usize = 0;
+        let mut ctx: InterpretOneContext = InterpretOneContext {
+            halt: false,
+            error_handler: ErrorHandler::None,
+            opt_next_index: None,
+            nearest_statement_finder: NearestStatementFinder::new(statement_addresses),
+        };
+        while i < instructions.len() && !ctx.halt {
+            let instruction = instructions[i].as_ref();
+            let pos = instructions[i].pos();
+            match self.interpret_one(i, instruction, pos, &mut ctx) {
+                Ok(_) => match ctx.opt_next_index.take() {
+                    Some(next_index) => {
+                        i = next_index;
+                    }
+                    _ => {
+                        i += 1;
+                    }
+                },
+                Err(e) => {
+                    self.last_error_code = Some(e.as_ref().get_code());
+                    match ctx.error_handler {
+                        ErrorHandler::Address(handler_address) => {
+                            // store error address, so we can call RESUME and RESUME NEXT from within the error handler
+                            self.context.push_error_handler_context();
+                            self.last_error_address = Some(i);
+                            i = handler_address;
+                        }
+                        ErrorHandler::Next => {
+                            i = ctx.nearest_statement_finder.find_next(i);
+                        }
+                        ErrorHandler::None => {
+                            return Err(e.patch_stacktrace(&self.stacktrace));
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
-pub type DefaultInterpreter = Interpreter<
+pub type DefaultInterpreter<U> = Interpreter<
     DefaultStdlib,
     ReadInputSource<std::io::Stdin>,
     WritePrinter<std::io::Stdout>,
     WritePrinter<Lpt1Write>,
+    U,
 >;
 
-pub fn new_default_interpreter(user_defined_types: UserDefinedTypes) -> DefaultInterpreter {
+pub fn new_default_interpreter<U: HasUserDefinedTypes>(
+    user_defined_types: U,
+) -> DefaultInterpreter<U> {
     let stdlib = DefaultStdlib::new();
     let stdin = ReadInputSource::new(std::io::stdin());
     let stdout = WritePrinter::new(std::io::stdout());
@@ -194,8 +257,8 @@ pub fn new_default_interpreter(user_defined_types: UserDefinedTypes) -> DefaultI
     Interpreter::new(stdlib, stdin, stdout, lpt1, screen, user_defined_types)
 }
 
-impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
-    Interpreter<TStdlib, TStdIn, TStdOut, TLpt1>
+impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUserDefinedTypes>
+    Interpreter<TStdlib, TStdIn, TStdOut, TLpt1, U>
 {
     pub fn new<TScreen: Screen + 'static>(
         stdlib: TStdlib,
@@ -203,7 +266,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
         stdout: TStdOut,
         lpt1: TLpt1,
         screen: TScreen,
-        user_defined_types: UserDefinedTypes,
+        user_defined_types_holder: U,
     ) -> Self {
         Interpreter {
             stdlib,
@@ -217,7 +280,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
             register_stack: vec![Registers::new()],
             stacktrace: vec![],
             file_manager: FileManager::new(),
-            user_defined_types,
+            user_defined_types_holder,
             var_path_stack: VecDeque::new(),
             by_ref_stack: VecDeque::new(),
             function_result: None,
@@ -541,55 +604,6 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     .expect("File not found"),
             ),
         }
-    }
-
-    pub fn interpret(
-        &mut self,
-        instruction_generator_result: InstructionGeneratorResult,
-    ) -> Result<(), QErrorNode> {
-        let InstructionGeneratorResult {
-            instructions,
-            statement_addresses,
-        } = instruction_generator_result;
-        let mut i: usize = 0;
-        let mut ctx: InterpretOneContext = InterpretOneContext {
-            halt: false,
-            error_handler: ErrorHandler::None,
-            opt_next_index: None,
-            nearest_statement_finder: NearestStatementFinder::new(statement_addresses),
-        };
-        while i < instructions.len() && !ctx.halt {
-            let instruction = instructions[i].as_ref();
-            let pos = instructions[i].pos();
-            match self.interpret_one(i, instruction, pos, &mut ctx) {
-                Ok(_) => match ctx.opt_next_index.take() {
-                    Some(next_index) => {
-                        i = next_index;
-                    }
-                    _ => {
-                        i += 1;
-                    }
-                },
-                Err(e) => {
-                    self.last_error_code = Some(e.as_ref().get_code());
-                    match ctx.error_handler {
-                        ErrorHandler::Address(handler_address) => {
-                            // store error address, so we can call RESUME and RESUME NEXT from within the error handler
-                            self.context.push_error_handler_context();
-                            self.last_error_address = Some(i);
-                            i = handler_address;
-                        }
-                        ErrorHandler::Next => {
-                            i = ctx.nearest_statement_finder.find_next(i);
-                        }
-                        ErrorHandler::None => {
-                            return Err(e.patch_stacktrace(&self.stacktrace));
-                        }
-                    }
-                }
-            }
-        }
-        Ok(())
     }
 
     /// Gets the instruction address where the most recent error occurred.

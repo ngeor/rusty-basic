@@ -2,7 +2,7 @@ use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
 use crate::linter::converter::{ConverterImpl, ExprContext, R};
 use crate::parser::{PrintArg, PrintNode};
 
-impl<'a> SameTypeConverterWithImplicits<PrintNode> for ConverterImpl<'a> {
+impl SameTypeConverterWithImplicits<PrintNode> for ConverterImpl {
     fn convert_same_type_with_implicits(&mut self, a: PrintNode) -> R<PrintNode> {
         let (format_string, mut implicit_vars_format_string) = self
             .context
@@ -23,7 +23,7 @@ impl<'a> SameTypeConverterWithImplicits<PrintNode> for ConverterImpl<'a> {
     }
 }
 
-impl<'a> SameTypeConverterWithImplicits<PrintArg> for ConverterImpl<'a> {
+impl SameTypeConverterWithImplicits<PrintArg> for ConverterImpl {
     fn convert_same_type_with_implicits(&mut self, a: PrintArg) -> R<PrintArg> {
         match a {
             PrintArg::Comma => Ok((PrintArg::Comma, vec![])),

@@ -1,5 +1,4 @@
-use crate::linter::pre_linter::{HasFunctions, HasSubs, HasUserDefinedTypes};
-use crate::linter::{FunctionMap, SubMap};
+use crate::linter::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, SubMap};
 use crate::parser::UserDefinedTypes;
 
 /// Stores the result of the pre-linter.
@@ -34,11 +33,5 @@ impl HasSubs for PreLinterResult {
 impl HasUserDefinedTypes for PreLinterResult {
     fn user_defined_types(&self) -> &UserDefinedTypes {
         &self.user_defined_types
-    }
-}
-
-impl From<PreLinterResult> for UserDefinedTypes {
-    fn from(pre_linter_result: PreLinterResult) -> Self {
-        pre_linter_result.user_defined_types
     }
 }

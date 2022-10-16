@@ -2,19 +2,19 @@ use crate::common::{Locatable, QErrorNode};
 use crate::linter::converter::convert;
 use crate::linter::post_linter::post_linter;
 use crate::linter::pre_linter::pre_lint_program;
-use crate::parser::{
-    BareName, ParamType, ProgramNode, QualifiedName, TypeQualifier, UserDefinedTypes,
-};
+use crate::linter::HasUserDefinedTypes;
+use crate::parser::{BareName, ParamType, ProgramNode, QualifiedName, TypeQualifier};
 use std::collections::HashMap;
+use std::rc::Rc;
 
-pub fn lint(program: ProgramNode) -> Result<(ProgramNode, UserDefinedTypes), QErrorNode> {
+pub fn lint(program: ProgramNode) -> Result<(ProgramNode, impl HasUserDefinedTypes), QErrorNode> {
     // first pass, get user defined types and functions/subs
-    let pre_linter_result = pre_lint_program(&program)?;
+    let pre_linter_result = Rc::new(pre_lint_program(&program)?);
     // convert to fully typed
-    let (result, names_without_dot) = convert(program, &pre_linter_result)?;
+    let (result, names_without_dot) = convert(program, Rc::clone(&pre_linter_result))?;
     // lint and reduce
     post_linter(result, &pre_linter_result, &names_without_dot)
-        .map(|program_node| (program_node, UserDefinedTypes::from(pre_linter_result)))
+        .map(|program_node| (program_node, pre_linter_result))
 }
 
 pub type ParamTypes = Vec<ParamType>;

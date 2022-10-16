@@ -1,14 +1,14 @@
 use crate::common::QErrorNode;
-use crate::linter::lint;
+use crate::linter::{lint, HasUserDefinedTypes};
 use crate::parser::test_utils::parse;
-use crate::parser::{ProgramNode, UserDefinedTypes};
+use crate::parser::ProgramNode;
 
 /// Lints the given string and returns the results.
 ///
 /// # Panics
 ///
 /// Panics if the parser or the linter have an error.
-pub fn linter_ok_with_types<T>(input: T) -> (ProgramNode, UserDefinedTypes)
+pub fn linter_ok_with_types<T>(input: T) -> (ProgramNode, impl HasUserDefinedTypes)
 where
     T: AsRef<[u8]> + 'static,
 {
@@ -38,7 +38,10 @@ where
     T: AsRef<[u8]> + 'static,
 {
     let program = parse(input);
-    lint(program).expect_err(format!("Linter should fail {}", msg).as_str())
+    match lint(program) {
+        Ok(_) => panic!("Linter should fail {}", msg),
+        Err(e) => e,
+    }
 }
 
 #[macro_export]

@@ -6,7 +6,7 @@ use crate::parser::{
     BareName, ExitObject, Expression, Name, Statement, StatementNode, StatementNodes,
 };
 
-impl<'a> SameTypeConverterWithImplicits<Option<StatementNodes>> for ConverterImpl<'a> {
+impl SameTypeConverterWithImplicits<Option<StatementNodes>> for ConverterImpl {
     fn convert_same_type_with_implicits(
         &mut self,
         item: Option<StatementNodes>,
@@ -22,7 +22,7 @@ impl<'a> SameTypeConverterWithImplicits<Option<StatementNodes>> for ConverterImp
     }
 }
 
-impl<'a> SameTypeConverterWithImplicits<StatementNode> for ConverterImpl<'a> {
+impl SameTypeConverterWithImplicits<StatementNode> for ConverterImpl {
     fn convert_same_type_with_implicits(
         &mut self,
         statement_node: StatementNode,

@@ -2,7 +2,7 @@ use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
 use crate::linter::converter::{ConverterImpl, ExprContext, R};
 use crate::parser::DoLoopNode;
 
-impl<'a> SameTypeConverterWithImplicits<DoLoopNode> for ConverterImpl<'a> {
+impl SameTypeConverterWithImplicits<DoLoopNode> for ConverterImpl {
     fn convert_same_type_with_implicits(&mut self, do_loop_node: DoLoopNode) -> R<DoLoopNode> {
         let DoLoopNode {
             condition,

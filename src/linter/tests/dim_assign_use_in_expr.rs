@@ -2,6 +2,7 @@ use crate::assert_linter_err;
 use crate::assert_linter_ok_top_level_statements;
 use crate::common::*;
 use crate::linter::test_utils::*;
+use crate::linter::HasUserDefinedTypes;
 use crate::parser::{
     BareName, BuiltInStyle, DimName, DimType, Element, ElementType, Expression, ExpressionType,
     PrintNode, Statement, TopLevelToken, TypeQualifier,
@@ -104,7 +105,7 @@ fn user_defined_type() {
     DIM B AS Card
     A = B
     "#;
-    let (program, mut user_defined_types) = linter_ok_with_types(input);
+    let (program, user_defined_types_holder) = linter_ok_with_types(input);
     assert_eq!(
         program,
         vec![
@@ -131,21 +132,20 @@ fn user_defined_type() {
             .at_rc(8, 5)
         ]
     );
+    let user_defined_types = user_defined_types_holder.user_defined_types();
     assert_eq!(
         user_defined_types.len(),
         1,
         "Expected one user defined type"
     );
+    let opt_card_type = user_defined_types.get(&"Card".into()).cloned();
     assert!(
-        user_defined_types.contains_key(&"Card".into()),
+        opt_card_type.is_some(),
         "Expected to contain the `Card` type"
     );
-    let user_defined_type = user_defined_types.remove(&"Card".into()).unwrap();
-    assert_eq!(user_defined_type.as_ref(), &BareName::from("Card"));
-    let elements: Vec<Element> = user_defined_type
-        .elements()
-        .map(|x| x.as_ref().clone())
-        .collect();
+    let card_type = opt_card_type.unwrap();
+    assert_eq!(card_type.as_ref(), &BareName::from("Card"));
+    let elements: Vec<Element> = card_type.elements().map(|x| x.as_ref().clone()).collect();
     assert_eq!(
         elements,
         vec![

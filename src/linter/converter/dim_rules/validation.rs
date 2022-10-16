@@ -1,8 +1,7 @@
 use crate::common::*;
 use crate::linter::converter::Context;
-use crate::linter::pre_linter::{HasFunctions, HasSubs, HasUserDefinedTypes};
 use crate::linter::type_resolver::IntoTypeQualifier;
-use crate::linter::DimContext;
+use crate::linter::{DimContext, HasFunctions, HasSubs, HasUserDefinedTypes};
 use crate::parser::{
     BareName, VarTypeIsExtended, VarTypeQualifier, VarTypeToUserDefinedRecursively,
 };

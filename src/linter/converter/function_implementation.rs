@@ -2,7 +2,7 @@ use crate::common::{AtLocation, Locatable, QErrorNode};
 use crate::linter::converter::ConverterImpl;
 use crate::parser::{FunctionImplementation, TopLevelToken};
 
-impl<'a> ConverterImpl<'a> {
+impl ConverterImpl {
     pub fn convert_function_implementation(
         &mut self,
         function_implementation: FunctionImplementation,

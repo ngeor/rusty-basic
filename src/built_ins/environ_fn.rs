@@ -29,7 +29,6 @@ mod tests {
     use crate::assert_has_variable;
     use crate::assert_linter_err;
     use crate::common::QError;
-    use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::test_utils::*;
     use crate::interpreter::Stdlib;
 
@@ -39,10 +38,9 @@ mod tests {
         X$ = ENVIRON$("abc")
         Y$ = ENVIRON$("def")
         "#;
-        let interpreter = interpret_with_env(program, |x| {
-            x.stdlib_mut()
-                .set_env_var("abc".to_string(), "foo".to_string())
-        });
+        let mut stdlib = MockStdlib::new();
+        stdlib.set_env_var("abc".to_string(), "foo".to_string());
+        let interpreter = interpret_with_env(program, stdlib);
         assert_has_variable!(interpreter, "X$", "foo");
         assert_has_variable!(interpreter, "Y$", "");
     }

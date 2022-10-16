@@ -6,7 +6,7 @@ use crate::linter::post_linter::{
     label_linter, print_linter, select_case_linter, undefined_function_reducer,
     user_defined_function_linter, user_defined_sub_linter,
 };
-use crate::linter::pre_linter::{HasFunctions, HasSubs};
+use crate::linter::{HasFunctions, HasSubs};
 use crate::parser::ProgramNode;
 use std::collections::HashSet;
 

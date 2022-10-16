@@ -172,7 +172,9 @@ mod tests {
     use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use crate::interpreter::test_utils::{interpret, interpret_with_raw_input};
+    use crate::interpreter::test_utils::{
+        interpret, interpret_with_raw_input, MockInterpreterTrait,
+    };
     use crate::parser::test_utils::*;
     use crate::parser::*;
     use crate::variant::Variant;

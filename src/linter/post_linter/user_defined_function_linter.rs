@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::linter::pre_linter::HasFunctions;
+use crate::linter::HasFunctions;
 use crate::linter::ParamTypes;
 use crate::parser::*;
 

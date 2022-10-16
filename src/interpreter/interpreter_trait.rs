@@ -1,15 +1,16 @@
-use crate::instruction_generator::Path;
+use crate::common::QErrorNode;
+use crate::instruction_generator::{InstructionGeneratorResult, Path};
 use crate::interpreter::context::{Context, VAR_SEG_BASE};
 use crate::interpreter::data_segment::DataSegment;
 use crate::interpreter::io::{FileManager, Input, Printer};
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::screen::Screen;
 use crate::interpreter::Stdlib;
-use crate::parser::UserDefinedTypes;
+use crate::linter::HasUserDefinedTypes;
 use crate::variant::Variant;
 use std::collections::VecDeque;
 
-pub trait InterpreterTrait {
+pub trait InterpreterTrait: HasUserDefinedTypes {
     type TStdlib: Stdlib;
     type TStdIn: Input;
     type TStdOut: Printer;
@@ -36,9 +37,6 @@ pub trait InterpreterTrait {
     fn screen(&self) -> &dyn Screen;
 
     fn screen_mut(&mut self) -> &mut dyn Screen;
-
-    /// Holds the definition of user defined types
-    fn user_defined_types(&self) -> &UserDefinedTypes;
 
     /// Contains variables and constants, collects function/sub arguments.
     fn context(&self) -> &Context;
@@ -77,4 +75,9 @@ pub trait InterpreterTrait {
     fn set_def_seg(&mut self, def_seg: Option<usize>);
 
     fn get_last_error_code(&self) -> Option<i32>;
+
+    fn interpret(
+        &mut self,
+        instruction_generator_result: InstructionGeneratorResult,
+    ) -> Result<(), QErrorNode>;
 }

@@ -8,20 +8,45 @@ use crate::interpreter::screen::{CrossTermScreen, HeadlessScreen};
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
 use crate::linter;
-use crate::parser::{parse_main_file, Name, UserDefinedTypes};
+use crate::linter::HasUserDefinedTypes;
+use crate::parser::{parse_main_file, Name};
 use crate::variant::Variant;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 
-pub type MockStdout = WritePrinter<Vec<u8>>;
-pub type MockInterpreter =
-    Interpreter<MockStdlib, ReadInputSource<MockStdin>, MockStdout, MockStdout>;
+type MockStdout = WritePrinter<Vec<u8>>;
 
-fn mock_interpreter_for_user_defined_types(
-    user_defined_types: UserDefinedTypes,
-) -> MockInterpreter {
+pub trait MockInterpreterTrait:
+    InterpreterTrait<TStdOut = MockStdout, TStdIn = ReadInputSource<MockStdin>, TLpt1 = MockStdout>
+{
+    // TODO #[deprecated]
+    fn get_variable_str(&self, name: &str) -> Variant {
+        let name = Name::from(name);
+        self.context().get_by_name(&name)
+    }
+}
+
+impl<S> MockInterpreterTrait for S where
+    S: InterpreterTrait<
+        TStdOut = MockStdout,
+        TStdIn = ReadInputSource<MockStdin>,
+        TLpt1 = MockStdout,
+    >
+{
+}
+
+fn mock_interpreter_for_user_defined_types<U: HasUserDefinedTypes>(
+    user_defined_types_holder: U,
+) -> impl MockInterpreterTrait {
     let stdlib = MockStdlib::new();
+    mock_interpreter_for_user_defined_types_stdlib(user_defined_types_holder, stdlib)
+}
+
+fn mock_interpreter_for_user_defined_types_stdlib<U: HasUserDefinedTypes>(
+    user_defined_types_holder: U,
+    stdlib: MockStdlib,
+) -> impl MockInterpreterTrait {
     let stdin = ReadInputSource::new(MockStdin { stdin: vec![] });
     let stdout = WritePrinter::new(vec![]);
     let lpt1 = WritePrinter::new(vec![]);
@@ -35,7 +60,7 @@ fn mock_interpreter_for_user_defined_types(
             stdout,
             lpt1,
             HeadlessScreen {},
-            user_defined_types,
+            user_defined_types_holder,
         )
     } else {
         Interpreter::new(
@@ -44,25 +69,27 @@ fn mock_interpreter_for_user_defined_types(
             stdout,
             lpt1,
             CrossTermScreen::new(),
-            user_defined_types,
+            user_defined_types_holder,
         )
     }
 }
 
-pub fn mock_interpreter_for_input<T>(input: T) -> (InstructionGeneratorResult, MockInterpreter)
+pub fn mock_interpreter_for_input<T>(
+    input: T,
+) -> (InstructionGeneratorResult, impl MockInterpreterTrait)
 where
     T: AsRef<[u8]> + 'static,
 {
-    let (instruction_generator_result, user_defined_types) =
+    let (instruction_generator_result, user_defined_types_holder) =
         generate_instructions_str_with_types(input);
     // println!("{:#?}", instruction_generator_result.instructions);
     (
         instruction_generator_result,
-        mock_interpreter_for_user_defined_types(user_defined_types),
+        mock_interpreter_for_user_defined_types(user_defined_types_holder),
     )
 }
 
-pub fn interpret<T>(input: T) -> MockInterpreter
+pub fn interpret<T>(input: T) -> impl MockInterpreterTrait
 where
     T: AsRef<[u8]> + 'static,
 {
@@ -83,16 +110,16 @@ where
         .unwrap_err()
 }
 
-pub fn interpret_with_raw_input<T>(input: T, raw_input: &str) -> MockInterpreter
+pub fn interpret_with_raw_input<T>(input: T, raw_input: &str) -> impl MockInterpreterTrait
 where
     T: AsRef<[u8]> + 'static,
 {
-    let (instruction_generator_result, user_defined_types) =
+    let (instruction_generator_result, user_defined_types_holder) =
         generate_instructions_str_with_types(input);
     // for i in instructions.iter() {
     //     println!("{:?}", i.as_ref());
     // }
-    let mut interpreter = mock_interpreter_for_user_defined_types(user_defined_types);
+    let mut interpreter = mock_interpreter_for_user_defined_types(user_defined_types_holder);
     if !raw_input.is_empty() {
         interpreter.stdin().add_next_input(raw_input);
     }
@@ -102,23 +129,22 @@ where
         .unwrap()
 }
 
-pub fn interpret_with_env<T, F>(input: T, mut initializer: F) -> MockInterpreter
+pub fn interpret_with_env<T>(input: T, stdlib: MockStdlib) -> impl MockInterpreterTrait
 where
     T: AsRef<[u8]> + 'static,
-    F: FnMut(&mut MockInterpreter) -> (),
 {
-    let (instruction_generator_result, user_defined_types) =
+    let (instruction_generator_result, user_defined_types_holder) =
         generate_instructions_str_with_types(input);
     // println!("{:#?}", instructions);
-    let mut interpreter = mock_interpreter_for_user_defined_types(user_defined_types);
-    initializer(&mut interpreter);
+    let mut interpreter =
+        mock_interpreter_for_user_defined_types_stdlib(user_defined_types_holder, stdlib);
     interpreter
         .interpret(instruction_generator_result)
         .map(|_| interpreter)
         .unwrap()
 }
 
-pub fn interpret_file<S>(filename: S) -> Result<MockInterpreter, QErrorNode>
+pub fn interpret_file<S>(filename: S) -> Result<impl MockInterpreterTrait, QErrorNode>
 where
     S: AsRef<str>,
 {
@@ -136,7 +162,7 @@ where
 pub fn interpret_file_with_raw_input<S>(
     filename: S,
     raw_input: &str,
-) -> Result<MockInterpreter, QErrorNode>
+) -> Result<impl MockInterpreterTrait, QErrorNode>
 where
     S: AsRef<str>,
 {
@@ -238,14 +264,6 @@ impl Stdlib for MockStdlib {
 
     fn set_env_var(&mut self, name: String, value: String) {
         self.env.insert(name, value);
-    }
-}
-
-impl MockInterpreter {
-    // TODO remove this
-    pub fn get_variable_str(&self, name: &str) -> Variant {
-        let name = Name::from(name);
-        self.context().get_by_name(&name)
     }
 }
 

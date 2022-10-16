@@ -9,15 +9,17 @@ use super::expr_rules;
 use super::names::Names;
 use crate::common::*;
 use crate::linter::converter::conversion_traits::SameTypeConverterWithImplicits;
-use crate::linter::pre_linter::{HasFunctions, HasSubs, HasUserDefinedTypes, PreLinterResult};
+use crate::linter::pre_linter::PreLinterResult;
 use crate::linter::type_resolver::{IntoQualified, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::linter::{DimContext, FunctionMap, NameContext, SubMap};
+use crate::linter::{
+    DimContext, FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, NameContext, SubMap,
+};
 use crate::parser::*;
 
 pub fn convert(
     program: ProgramNode,
-    pre_linter_result: &PreLinterResult,
+    pre_linter_result: Rc<PreLinterResult>,
 ) -> Result<(ProgramNode, HashSet<BareName>), QErrorNode> {
     let mut converter = ConverterImpl::new(pre_linter_result);
     let result = converter.convert_program(program)?;
@@ -36,13 +38,13 @@ pub type R<T> = Result<(T, Implicits), QErrorNode>;
 
 /// Resolves all symbols of the program, converting it into an explicitly typed
 /// equivalent program.
-pub struct ConverterImpl<'a> {
+pub struct ConverterImpl {
     pub resolver: Rc<RefCell<TypeResolverImpl>>,
-    pub context: Context<'a>,
+    pub context: Context,
 }
 
-impl<'a> ConverterImpl<'a> {
-    pub fn new(pre_linter_result: &'a PreLinterResult) -> Self {
+impl ConverterImpl {
+    pub fn new(pre_linter_result: Rc<PreLinterResult>) -> Self {
         let resolver = Rc::new(RefCell::new(TypeResolverImpl::new()));
         Self {
             resolver: Rc::clone(&resolver),
@@ -148,7 +150,7 @@ impl<'a> ConverterImpl<'a> {
     }
 }
 
-impl<'a> TypeResolver for ConverterImpl<'a> {
+impl TypeResolver for ConverterImpl {
     fn char_to_qualifier(&self, ch: char) -> TypeQualifier {
         self.resolver.borrow().char_to_qualifier(ch)
     }
@@ -186,40 +188,40 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 
 // TODO visibility creep due to mod reorg
 
-pub struct Context<'a> {
-    pre_linter_result: &'a PreLinterResult,
+pub struct Context {
+    pre_linter_result: Rc<PreLinterResult>,
     resolver: Rc<RefCell<TypeResolverImpl>>,
     pub names: Names,
     names_without_dot: HashSet<BareName>,
 }
 
-impl<'a> TypeResolver for Context<'a> {
+impl TypeResolver for Context {
     fn char_to_qualifier(&self, ch: char) -> TypeQualifier {
         self.resolver.borrow().char_to_qualifier(ch)
     }
 }
 
-impl<'a> HasFunctions for Context<'a> {
+impl HasFunctions for Context {
     fn functions(&self) -> &FunctionMap {
         self.pre_linter_result.functions()
     }
 }
 
-impl<'a> HasSubs for Context<'a> {
+impl HasSubs for Context {
     fn subs(&self) -> &SubMap {
         self.pre_linter_result.subs()
     }
 }
 
-impl<'a> HasUserDefinedTypes for Context<'a> {
+impl HasUserDefinedTypes for Context {
     fn user_defined_types(&self) -> &UserDefinedTypes {
         self.pre_linter_result.user_defined_types()
     }
 }
 
-impl<'a> Context<'a> {
+impl Context {
     pub fn new(
-        pre_linter_result: &'a PreLinterResult,
+        pre_linter_result: Rc<PreLinterResult>,
         resolver: Rc<RefCell<TypeResolverImpl>>,
     ) -> Self {
         Self {

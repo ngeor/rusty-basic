@@ -1,25 +1,25 @@
-use crate::common::QErrorNode;
-use crate::linter::converter::conversion_traits::SameTypeConverter;
+use crate::common::{QErrorNode, Stateful};
+use crate::linter::converter::expr_rules::ExprStateful;
+use crate::linter::converter::statement::StatementsRemovingConstantsStateful;
 use crate::linter::converter::{ConverterImpl, ExprContext};
 use crate::parser::DoLoopNode;
 
-impl SameTypeConverter<DoLoopNode> for ConverterImpl {
-    fn convert(&mut self, do_loop_node: DoLoopNode) -> Result<DoLoopNode, QErrorNode> {
-        let DoLoopNode {
-            condition,
-            statements,
-            position,
-            kind,
-        } = do_loop_node;
-        let condition = self
-            .context
-            .on_expression(condition, ExprContext::Default)?;
-        let statements = self.convert_block_removing_constants(statements)?;
-        Ok(DoLoopNode {
-            condition,
-            statements,
-            position,
-            kind,
-        })
-    }
+pub fn on_do_loop(
+    do_loop_node: DoLoopNode,
+) -> impl Stateful<Output = DoLoopNode, Error = QErrorNode, State = ConverterImpl> {
+    let DoLoopNode {
+        condition,
+        statements,
+        position,
+        kind,
+    } = do_loop_node;
+    let condition_stateful = ExprStateful::new(condition, ExprContext::Default);
+    let statements_stateful = StatementsRemovingConstantsStateful::new(statements);
+    let pair = (condition_stateful, statements_stateful);
+    pair.map(move |(condition, statements)| DoLoopNode {
+        condition,
+        statements,
+        position,
+        kind,
+    })
 }

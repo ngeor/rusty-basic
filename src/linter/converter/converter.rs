@@ -9,6 +9,7 @@ use super::expr_rules;
 use super::names::Names;
 use crate::common::*;
 use crate::linter::converter::conversion_traits::SameTypeConverter;
+use crate::linter::converter::statement::StatementsRemovingConstantsStateful;
 use crate::linter::pre_linter::PreLinterResult;
 use crate::linter::type_resolver::{IntoQualified, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
@@ -52,6 +53,7 @@ impl ConverterImpl {
         self.context.names_without_dot()
     }
 
+    #[deprecated]
     pub fn convert_block_removing_constants(
         &mut self,
         statements: StatementNodes,
@@ -81,8 +83,7 @@ impl ConverterImpl {
         &mut self,
         statements: StatementNodes,
     ) -> Result<StatementNodes, QErrorNode> {
-        let mut result = self.convert_block_removing_constants(statements)?;
-
+        let mut result = StatementsRemovingConstantsStateful::new(statements).unwrap(self)?;
         let implicits = self.context.pop_context();
         let mut implicit_dim: StatementNodes = implicits
             .into_iter()
@@ -111,7 +112,8 @@ impl ConverterImpl {
                     result.push(converted.at(pos));
                 }
                 TopLevelToken::Statement(s) => {
-                    let converted = self.convert_block_removing_constants(vec![s.at(pos)])?;
+                    let converted =
+                        StatementsRemovingConstantsStateful::new(vec![s.at(pos)]).unwrap(self)?;
                     result.extend(
                         converted
                             .into_iter()

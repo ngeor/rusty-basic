@@ -1,5 +1,8 @@
 use crate::common::*;
 use crate::linter::converter::conversion_traits::SameTypeConverter;
+use crate::linter::converter::do_loop::on_do_loop;
+use crate::linter::converter::for_loop::on_for_loop;
+use crate::linter::converter::if_blocks::{on_conditional_block, on_if_block};
 use crate::linter::converter::{ConverterImpl, ExprContext};
 use crate::linter::{DimContext, NameContext};
 use crate::parser::{
@@ -36,13 +39,19 @@ impl SameTypeConverter<StatementNode> for ConverterImpl {
                 let converted_args = self.context.on_expressions(args, ExprContext::Parameter)?;
                 Ok(Statement::BuiltInSubCall(built_in_sub, converted_args).at(pos))
             }
-            Statement::IfBlock(i) => self.convert(i).map(|i| Statement::IfBlock(i).at(pos)),
+            Statement::IfBlock(i) => on_if_block(i)
+                .map(|i| Statement::IfBlock(i).at(pos))
+                .unwrap(self),
             Statement::SelectCase(s) => self.convert(s).map(|s| Statement::SelectCase(s).at(pos)),
-            Statement::ForLoop(f) => self.convert(f).map(|f| Statement::ForLoop(f).at(pos)),
-            Statement::While(c) => self.convert(c).map(|c| Statement::While(c).at(pos)),
-            Statement::DoLoop(do_loop_node) => self
-                .convert(do_loop_node)
-                .map(|d| Statement::DoLoop(d).at(pos)),
+            Statement::ForLoop(f) => on_for_loop(f)
+                .map(|f| Statement::ForLoop(f).at(pos))
+                .unwrap(self),
+            Statement::While(c) => on_conditional_block(c)
+                .map(|c| Statement::While(c).at(pos))
+                .unwrap(self),
+            Statement::DoLoop(do_loop_node) => on_do_loop(do_loop_node)
+                .map(|d| Statement::DoLoop(d).at(pos))
+                .unwrap(self),
             Statement::Return(opt_label) => {
                 if opt_label.is_some() && self.context.is_in_subprogram() {
                     // cannot have RETURN with explicit label inside subprogram
@@ -106,4 +115,24 @@ fn dummy_const() -> StatementNode {
         Expression::IntegerLiteral(0).at(pos),
     )
     .at(pos)
+}
+
+pub struct StatementsRemovingConstantsStateful {
+    statements: StatementNodes,
+}
+
+impl StatementsRemovingConstantsStateful {
+    pub fn new(statements: StatementNodes) -> Self {
+        Self { statements }
+    }
+}
+
+impl Stateful for StatementsRemovingConstantsStateful {
+    type Output = StatementNodes;
+    type State = ConverterImpl;
+    type Error = QErrorNode;
+
+    fn unwrap(self, state: &mut Self::State) -> Result<Self::Output, Self::Error> {
+        state.convert_block_removing_constants(self.statements)
+    }
 }

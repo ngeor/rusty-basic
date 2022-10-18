@@ -1,5 +1,6 @@
 use crate::built_ins::BuiltInFunction;
 use crate::common::*;
+use crate::linter::converter::converter::ConverterImpl;
 use crate::linter::converter::{Context, ExprContext};
 use crate::parser::*;
 use crate::variant::Variant;
@@ -722,5 +723,31 @@ mod function {
                 _ => Err(QError::ArrayNotDefined).with_err_at(pos),
             }
         }
+    }
+}
+
+pub struct ExprStateful {
+    expr_node: ExpressionNode,
+    expr_context: ExprContext,
+}
+
+impl ExprStateful {
+    pub fn new(expr_node: ExpressionNode, expr_context: ExprContext) -> Self {
+        Self {
+            expr_node,
+            expr_context,
+        }
+    }
+}
+
+impl Stateful for ExprStateful {
+    type Output = ExpressionNode;
+    type State = ConverterImpl;
+    type Error = QErrorNode;
+
+    fn unwrap(self, state: &mut Self::State) -> Result<Self::Output, Self::Error> {
+        state
+            .context
+            .on_expression(self.expr_node, self.expr_context)
     }
 }

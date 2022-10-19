@@ -1,8 +1,8 @@
 use crate::common::{AtLocation, Locatable, QErrorNode};
-use crate::linter::converter::ConverterImpl;
+use crate::linter::converter::Context;
 use crate::parser::{FunctionImplementation, TopLevelToken};
 
-impl ConverterImpl {
+impl Context {
     pub fn convert_function_implementation(
         &mut self,
         function_implementation: FunctionImplementation,
@@ -17,9 +17,8 @@ impl ConverterImpl {
             body,
             is_static,
         } = function_implementation;
-        let (resolved_function_name, resolved_params) = self
-            .context
-            .push_function_context(unresolved_function_name, params)?;
+        let (resolved_function_name, resolved_params) =
+            self.push_function_context(unresolved_function_name, params)?;
         let mapped = TopLevelToken::FunctionImplementation(FunctionImplementation {
             name: resolved_function_name.at(pos),
             params: resolved_params,

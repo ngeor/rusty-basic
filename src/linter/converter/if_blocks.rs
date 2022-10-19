@@ -1,14 +1,13 @@
 use crate::common::*;
 use crate::linter::converter::expr_rules::ExprStateful;
 use crate::linter::converter::statement::on_statements;
-use crate::linter::converter::{ConverterImpl, ExprContext};
+use crate::linter::converter::{Context, ExprContext};
 use crate::parser::{ConditionalBlockNode, IfBlockNode};
 
 pub fn on_conditional_block(
     a: ConditionalBlockNode,
-) -> impl Stateful<Output = ConditionalBlockNode, Error = QErrorNode, State = ConverterImpl> {
-    let condition =
-        ExprStateful::new(a.condition, ExprContext::Default).in_child_state(ConverterImpl::context);
+) -> impl Stateful<Output = ConditionalBlockNode, Error = QErrorNode, State = Context> {
+    let condition = ExprStateful::new(a.condition, ExprContext::Default);
     let statements = on_statements(a.statements);
     (condition, statements).map(|(condition, statements)| ConditionalBlockNode {
         condition,
@@ -18,11 +17,11 @@ pub fn on_conditional_block(
 
 pub fn on_if_block(
     a: IfBlockNode,
-) -> impl Stateful<Output = IfBlockNode, Error = QErrorNode, State = ConverterImpl> {
+) -> impl Stateful<Output = IfBlockNode, Error = QErrorNode, State = Context> {
     let if_block = on_conditional_block(a.if_block);
     let else_if_blocks = Unit::new(a.else_if_blocks).vec_flat_map(on_conditional_block);
     let else_block = Unit::new(a.else_block).opt_flat_map(on_statements);
-    FnStateful::new(move |ctx: &mut ConverterImpl| {
+    FnStateful::new(move |ctx: &mut Context| {
         Ok(IfBlockNode {
             if_block: if_block.unwrap(ctx)?,
             else_if_blocks: else_if_blocks.unwrap(ctx)?,

@@ -1,7 +1,3 @@
-use std::cell::RefCell;
-use std::collections::HashSet;
-use std::rc::Rc;
-
 use super::assignment;
 use super::const_rules;
 use super::dim_rules;
@@ -16,12 +12,14 @@ use crate::linter::{
     DimContext, FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, NameContext, SubMap,
 };
 use crate::parser::*;
+use std::collections::HashSet;
+use std::rc::Rc;
 
 pub fn convert(
     program: ProgramNode,
     pre_linter_result: Rc<PreLinterResult>,
 ) -> Result<(ProgramNode, HashSet<BareName>), QErrorNode> {
-    let mut converter = ConverterImpl::new(pre_linter_result);
+    let mut converter = Context::new(pre_linter_result);
     let result = converter.convert_program(program)?;
     // consume
     let names_without_dot = converter.consume();
@@ -31,111 +29,6 @@ pub fn convert(
 /// Alias for the implicit variables collected during evaluating something.
 /// e.g. `INPUT N` is a statement implicitly defining variable `N`.
 pub type Implicits = Vec<QualifiedNameNode>;
-
-/// Resolves all symbols of the program, converting it into an explicitly typed
-/// equivalent program.
-pub struct ConverterImpl {
-    pub resolver: Rc<RefCell<TypeResolverImpl>>,
-    pub context: Context,
-}
-
-impl ConverterImpl {
-    pub fn new(pre_linter_result: Rc<PreLinterResult>) -> Self {
-        let resolver = Rc::new(RefCell::new(TypeResolverImpl::new()));
-        Self {
-            resolver: Rc::clone(&resolver),
-            context: Context::new(pre_linter_result, Rc::clone(&resolver)),
-        }
-    }
-
-    pub fn context(&mut self) -> &mut Context {
-        &mut self.context
-    }
-
-    pub fn consume(self) -> HashSet<BareName> {
-        self.context.names_without_dot()
-    }
-
-    // A statement can be expanded into multiple statements to convert implicitly
-    // declared variables into explicit.
-    // Example:
-    //      A = B + C
-    // becomes
-    //      DIM B
-    //      DIM C
-    //      DIM A
-    //      A = B + C
-    pub fn convert_block_hoisting_implicits(
-        &mut self,
-        statements: StatementNodes,
-    ) -> Result<StatementNodes, QErrorNode> {
-        let mut result = on_statements(statements).unwrap(self)?;
-        let implicits = self.context.pop_context();
-        let mut implicit_dim: StatementNodes = implicits
-            .into_iter()
-            .map(
-                |Locatable {
-                     element: q_name,
-                     pos,
-                 }| Statement::Dim(DimName::from(q_name).into_list(pos)).at(pos),
-            )
-            .collect();
-
-        implicit_dim.append(&mut result);
-        Ok(implicit_dim)
-    }
-
-    pub fn convert_program(&mut self, program: ProgramNode) -> Result<ProgramNode, QErrorNode> {
-        let mut result: ProgramNode = vec![];
-        for Locatable { element, pos } in program {
-            match element {
-                TopLevelToken::DefType(def_type) => {
-                    self.resolver.borrow_mut().set(&def_type);
-                }
-                TopLevelToken::FunctionDeclaration(_name, _params) => {}
-                TopLevelToken::FunctionImplementation(f) => {
-                    let converted = self.convert_function_implementation(f)?;
-                    result.push(converted.at(pos));
-                }
-                TopLevelToken::Statement(s) => {
-                    let converted = on_statements(vec![s.at(pos)]).unwrap(self)?;
-                    result.extend(
-                        converted
-                            .into_iter()
-                            .map(|statement_node| statement_node.map(TopLevelToken::Statement)),
-                    );
-                }
-                TopLevelToken::SubDeclaration(_name, _params) => {}
-                TopLevelToken::SubImplementation(s) => {
-                    let converted = self.convert_sub_implementation(s)?;
-                    result.push(converted.at(pos));
-                }
-                TopLevelToken::UserDefinedType(_) => {
-                    // already handled at first pass
-                }
-            }
-        }
-
-        // insert implicits at the top
-        let mut implicits = Implicits::new();
-        implicits.append(self.context.names.get_implicits());
-        let mut implicit_statements: ProgramNode = implicits
-            .into_iter()
-            .map(|Locatable { element, pos }| {
-                TopLevelToken::Statement(Statement::Dim(DimName::from(element).into_list(pos)))
-                    .at(pos)
-            })
-            .collect();
-        implicit_statements.append(&mut result);
-        Ok(implicit_statements)
-    }
-}
-
-impl TypeResolver for ConverterImpl {
-    fn char_to_qualifier(&self, ch: char) -> TypeQualifier {
-        self.resolver.borrow().char_to_qualifier(ch)
-    }
-}
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ExprContext {
@@ -171,14 +64,14 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 
 pub struct Context {
     pre_linter_result: Rc<PreLinterResult>,
-    resolver: Rc<RefCell<TypeResolverImpl>>,
+    resolver: TypeResolverImpl,
     pub names: Names,
     names_without_dot: HashSet<BareName>,
 }
 
 impl TypeResolver for Context {
     fn char_to_qualifier(&self, ch: char) -> TypeQualifier {
-        self.resolver.borrow().char_to_qualifier(ch)
+        self.resolver.char_to_qualifier(ch)
     }
 }
 
@@ -201,13 +94,10 @@ impl HasUserDefinedTypes for Context {
 }
 
 impl Context {
-    pub fn new(
-        pre_linter_result: Rc<PreLinterResult>,
-        resolver: Rc<RefCell<TypeResolverImpl>>,
-    ) -> Self {
+    pub fn new(pre_linter_result: Rc<PreLinterResult>) -> Self {
         Self {
             pre_linter_result,
-            resolver,
+            resolver: TypeResolverImpl::new(),
             names: Names::new_root(),
             names_without_dot: HashSet::new(),
         }
@@ -317,5 +207,83 @@ impl Context {
                  element: (q, _), ..
              }| *q,
         )
+    }
+
+    // A statement can be expanded into multiple statements to convert implicitly
+    // declared variables into explicit.
+    // Example:
+    //      A = B + C
+    // becomes
+    //      DIM B
+    //      DIM C
+    //      DIM A
+    //      A = B + C
+    pub fn convert_block_hoisting_implicits(
+        &mut self,
+        statements: StatementNodes,
+    ) -> Result<StatementNodes, QErrorNode> {
+        let mut result = on_statements(statements).unwrap(self)?;
+        let implicits = self.pop_context();
+        let mut implicit_dim: StatementNodes = implicits
+            .into_iter()
+            .map(
+                |Locatable {
+                     element: q_name,
+                     pos,
+                 }| Statement::Dim(DimName::from(q_name).into_list(pos)).at(pos),
+            )
+            .collect();
+
+        implicit_dim.append(&mut result);
+        Ok(implicit_dim)
+    }
+
+    pub fn consume(self) -> HashSet<BareName> {
+        self.names_without_dot()
+    }
+
+    pub fn convert_program(&mut self, program: ProgramNode) -> Result<ProgramNode, QErrorNode> {
+        let mut result: ProgramNode = vec![];
+        for Locatable { element, pos } in program {
+            match element {
+                TopLevelToken::DefType(def_type) => {
+                    self.resolver.set(&def_type);
+                }
+                TopLevelToken::FunctionDeclaration(_name, _params) => {}
+                TopLevelToken::FunctionImplementation(f) => {
+                    let converted = self.convert_function_implementation(f)?;
+                    result.push(converted.at(pos));
+                }
+                TopLevelToken::Statement(s) => {
+                    let converted = on_statements(vec![s.at(pos)]).unwrap(self)?;
+                    result.extend(
+                        converted
+                            .into_iter()
+                            .map(|statement_node| statement_node.map(TopLevelToken::Statement)),
+                    );
+                }
+                TopLevelToken::SubDeclaration(_name, _params) => {}
+                TopLevelToken::SubImplementation(s) => {
+                    let converted = self.convert_sub_implementation(s)?;
+                    result.push(converted.at(pos));
+                }
+                TopLevelToken::UserDefinedType(_) => {
+                    // already handled at first pass
+                }
+            }
+        }
+
+        // insert implicits at the top
+        let mut implicits = Implicits::new();
+        implicits.append(self.names.get_implicits());
+        let mut implicit_statements: ProgramNode = implicits
+            .into_iter()
+            .map(|Locatable { element, pos }| {
+                TopLevelToken::Statement(Statement::Dim(DimName::from(element).into_list(pos)))
+                    .at(pos)
+            })
+            .collect();
+        implicit_statements.append(&mut result);
+        Ok(implicit_statements)
     }
 }

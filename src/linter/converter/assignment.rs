@@ -1,18 +1,16 @@
 use crate::common::*;
-use crate::linter::converter::{Context, ConverterImpl, ExprContext};
+use crate::linter::converter::{Context, ExprContext};
 use crate::parser::{ExpressionNode, Statement, StatementNode};
 
-impl ConverterImpl {
+impl Context {
     pub fn assignment(
         &mut self,
         name_expr_node: ExpressionNode,
         expression_node: ExpressionNode,
     ) -> Result<StatementNode, QErrorNode> {
-        self.context
-            .on_assignment(name_expr_node, expression_node)
-            .map(|(Locatable { element: left, pos }, right)| {
-                Statement::Assignment(left, right).at(pos)
-            })
+        self.on_assignment(name_expr_node, expression_node).map(
+            |(Locatable { element: left, pos }, right)| Statement::Assignment(left, right).at(pos),
+        )
     }
 }
 

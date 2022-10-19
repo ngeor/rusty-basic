@@ -2,7 +2,6 @@
 //! as well as resolving variable types.
 mod assignment;
 mod const_rules;
-mod conversion_traits;
 mod converter;
 mod dim_rules;
 mod do_loop;

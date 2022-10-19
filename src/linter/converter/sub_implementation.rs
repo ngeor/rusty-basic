@@ -1,8 +1,8 @@
 use crate::common::QErrorNode;
-use crate::linter::converter::ConverterImpl;
+use crate::linter::converter::Context;
 use crate::parser::{SubImplementation, TopLevelToken};
 
-impl ConverterImpl {
+impl Context {
     pub fn convert_sub_implementation(
         &mut self,
         sub_implementation: SubImplementation,
@@ -13,7 +13,7 @@ impl ConverterImpl {
             body,
             is_static,
         } = sub_implementation;
-        let mapped_params = self.context.push_sub_context(params)?;
+        let mapped_params = self.push_sub_context(params)?;
         let mapped = TopLevelToken::SubImplementation(SubImplementation {
             name,
             params: mapped_params,

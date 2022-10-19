@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::linter::converter::conversion_traits::SameTypeConverter;
+use crate::linter::converter::dim_rules::dim_rules::on_array_dimension;
 use crate::linter::converter::dim_rules::resolve_string_length;
 use crate::linter::converter::Context;
 use crate::linter::type_resolver::IntoTypeQualifier;
@@ -14,7 +14,9 @@ pub fn convert(
 ) -> Result<DimNameNode, QErrorNode> {
     if let DimType::Array(array_dimensions, element_type) = dim_type {
         let dimension_count = array_dimensions.len();
-        let converted_array_dimensions: ArrayDimensions = ctx.convert(array_dimensions)?;
+        let converted_array_dimensions: ArrayDimensions = Unit::new(array_dimensions.clone())
+            .vec_flat_map(on_array_dimension)
+            .unwrap(ctx)?;
         debug_assert_eq!(dimension_count, converted_array_dimensions.len());
         let converted_element_type = to_dim_type(
             ctx,

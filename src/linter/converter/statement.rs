@@ -1,59 +1,59 @@
 use crate::common::*;
-use crate::linter::converter::conversion_traits::SameTypeConverter;
 use crate::linter::converter::do_loop::on_do_loop;
 use crate::linter::converter::for_loop::on_for_loop;
 use crate::linter::converter::if_blocks::{on_conditional_block, on_if_block};
+use crate::linter::converter::print_node::on_print_node;
+use crate::linter::converter::select_case::on_select_case;
 use crate::linter::converter::{ConverterImpl, ExprContext};
 use crate::linter::{DimContext, NameContext};
 use crate::parser::{
     BareName, ExitObject, Expression, Name, Statement, StatementNode, StatementNodes,
 };
 
-impl SameTypeConverter<Option<StatementNodes>> for ConverterImpl {
-    fn convert(
-        &mut self,
-        item: Option<StatementNodes>,
-    ) -> Result<Option<StatementNodes>, QErrorNode> {
-        match item {
-            Some(statements) => {
-                let converted_statements = self.convert_block_removing_constants(statements)?;
-                Ok(Some(converted_statements))
-            }
-            None => Ok(None),
-        }
+pub struct StatementStateful(StatementNode);
+
+impl StatementStateful {
+    pub fn new(statement_node: StatementNode) -> Self {
+        Self(statement_node)
     }
 }
 
-impl SameTypeConverter<StatementNode> for ConverterImpl {
-    fn convert(&mut self, statement_node: StatementNode) -> Result<StatementNode, QErrorNode> {
+impl Stateful for StatementStateful {
+    type Output = StatementNode;
+    type State = ConverterImpl;
+    type Error = QErrorNode;
+
+    fn unwrap(self, state: &mut Self::State) -> Result<Self::Output, Self::Error> {
         let Locatable {
             element: statement,
             pos,
-        } = statement_node;
+        } = self.0;
         match statement {
-            Statement::Assignment(n, e) => self.assignment(n.at(pos), e),
+            Statement::Assignment(n, e) => state.assignment(n.at(pos), e),
             // CONST will be filtered out in the StatementNodes processor
-            Statement::Const(n, e) => self.context.on_const(n, e).map(|_| dummy_const()),
-            Statement::SubCall(n, args) => self.sub_call(n.at(pos), args),
+            Statement::Const(n, e) => state.context.on_const(n, e).map(|_| dummy_const()),
+            Statement::SubCall(n, args) => state.sub_call(n.at(pos), args),
             Statement::BuiltInSubCall(built_in_sub, args) => {
-                let converted_args = self.context.on_expressions(args, ExprContext::Parameter)?;
+                let converted_args = state.context.on_expressions(args, ExprContext::Parameter)?;
                 Ok(Statement::BuiltInSubCall(built_in_sub, converted_args).at(pos))
             }
             Statement::IfBlock(i) => on_if_block(i)
                 .map(|i| Statement::IfBlock(i).at(pos))
-                .unwrap(self),
-            Statement::SelectCase(s) => self.convert(s).map(|s| Statement::SelectCase(s).at(pos)),
+                .unwrap(state),
+            Statement::SelectCase(s) => on_select_case(s)
+                .map(|s| Statement::SelectCase(s).at(pos))
+                .unwrap(state),
             Statement::ForLoop(f) => on_for_loop(f)
                 .map(|f| Statement::ForLoop(f).at(pos))
-                .unwrap(self),
+                .unwrap(state),
             Statement::While(c) => on_conditional_block(c)
                 .map(|c| Statement::While(c).at(pos))
-                .unwrap(self),
+                .unwrap(state),
             Statement::DoLoop(do_loop_node) => on_do_loop(do_loop_node)
                 .map(|d| Statement::DoLoop(d).at(pos))
-                .unwrap(self),
+                .unwrap(state),
             Statement::Return(opt_label) => {
-                if opt_label.is_some() && self.context.is_in_subprogram() {
+                if opt_label.is_some() && state.context.is_in_subprogram() {
                     // cannot have RETURN with explicit label inside subprogram
                     Err(QError::IllegalInSubFunction).with_err_at(pos)
                 } else {
@@ -61,13 +61,13 @@ impl SameTypeConverter<StatementNode> for ConverterImpl {
                 }
             }
             Statement::Resume(resume_option) => {
-                if self.context.is_in_subprogram() {
+                if state.context.is_in_subprogram() {
                     Err(QError::IllegalInSubFunction).with_err_at(pos)
                 } else {
                     Ok(Statement::Resume(resume_option).at(pos))
                 }
             }
-            Statement::Exit(exit_object) => match self.context.get_name_context() {
+            Statement::Exit(exit_object) => match state.context.get_name_context() {
                 NameContext::Global => {
                     Err(QError::syntax_error("Illegal outside of subprogram")).with_err_at(pos)
                 }
@@ -86,17 +86,18 @@ impl SameTypeConverter<StatementNode> for ConverterImpl {
                     }
                 }
             },
-            Statement::Dim(dim_list) => self
+            Statement::Dim(dim_list) => state
                 .context
                 .on_dim(dim_list, DimContext::Default)
                 .map(|dim_list| Statement::Dim(dim_list).at(pos)),
-            Statement::Redim(dim_list) => self
+            Statement::Redim(dim_list) => state
                 .context
                 .on_dim(dim_list, DimContext::Redim)
                 .map(|dim_list| Statement::Redim(dim_list).at(pos)),
-            Statement::Print(print_node) => self
-                .convert(print_node)
-                .map(|p| Statement::Print(p).at(pos)),
+            Statement::Print(print_node) => on_print_node(print_node)
+                .map(Statement::Print)
+                .map(|s| s.at(pos))
+                .unwrap(&mut state.context),
             Statement::OnError(_)
             | Statement::Label(_)
             | Statement::GoTo(_)
@@ -117,22 +118,17 @@ fn dummy_const() -> StatementNode {
     .at(pos)
 }
 
-pub struct StatementsRemovingConstantsStateful {
+pub fn on_statements(
     statements: StatementNodes,
-}
-
-impl StatementsRemovingConstantsStateful {
-    pub fn new(statements: StatementNodes) -> Self {
-        Self { statements }
-    }
-}
-
-impl Stateful for StatementsRemovingConstantsStateful {
-    type Output = StatementNodes;
-    type State = ConverterImpl;
-    type Error = QErrorNode;
-
-    fn unwrap(self, state: &mut Self::State) -> Result<Self::Output, Self::Error> {
-        state.convert_block_removing_constants(self.statements)
-    }
+) -> impl Stateful<Output = StatementNodes, Error = QErrorNode, State = ConverterImpl> {
+    Unit::new(statements)
+        .vec_flat_map(|s| StatementStateful::new(s))
+        // filter out CONST statements, they've been registered into context as values
+        .vec_filter(|s| {
+            if let Statement::Const(_, _) = s.as_ref() {
+                false
+            } else {
+                true
+            }
+        })
 }

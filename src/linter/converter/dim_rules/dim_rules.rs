@@ -1,7 +1,8 @@
 use super::{dim, redim, validation};
 use crate::common::*;
 use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::converter::conversion_traits::{SameTypeConverter, SameTypeConverterInContext};
+use crate::linter::converter::conversion_traits::SameTypeConverterInContext;
+use crate::linter::converter::expr_rules::ExprStateful;
 use crate::linter::converter::{Context, ExprContext};
 use crate::linter::DimContext;
 use crate::parser::*;
@@ -15,12 +16,12 @@ pub fn on_dim(
     ctx.convert_in_context(dim_list, dim_context)
 }
 
-impl SameTypeConverter<ArrayDimension> for Context {
-    fn convert(&mut self, a: ArrayDimension) -> Result<ArrayDimension, QErrorNode> {
-        let lbound = self.on_opt_expression(a.lbound, ExprContext::Default)?;
-        let ubound = self.on_expression(a.ubound, ExprContext::Default)?;
-        Ok(ArrayDimension { lbound, ubound })
-    }
+pub fn on_array_dimension(
+    a: ArrayDimension,
+) -> impl Stateful<Output = ArrayDimension, Error = QErrorNode, State = Context> {
+    let lbound = Unit::new(a.lbound).opt_flat_map(|e| ExprStateful::new(e, ExprContext::Default));
+    let ubound = ExprStateful::new(a.ubound, ExprContext::Default);
+    (lbound, ubound).map(|(lbound, ubound)| ArrayDimension { lbound, ubound })
 }
 
 impl SameTypeConverterInContext<DimList, DimContext> for Context {

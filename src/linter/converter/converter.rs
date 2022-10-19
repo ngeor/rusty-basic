@@ -8,8 +8,7 @@ use super::dim_rules;
 use super::expr_rules;
 use super::names::Names;
 use crate::common::*;
-use crate::linter::converter::conversion_traits::SameTypeConverter;
-use crate::linter::converter::statement::StatementsRemovingConstantsStateful;
+use crate::linter::converter::statement::on_statements;
 use crate::linter::pre_linter::PreLinterResult;
 use crate::linter::type_resolver::{IntoQualified, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
@@ -49,25 +48,12 @@ impl ConverterImpl {
         }
     }
 
-    pub fn consume(self) -> HashSet<BareName> {
-        self.context.names_without_dot()
+    pub fn context(&mut self) -> &mut Context {
+        &mut self.context
     }
 
-    #[deprecated]
-    pub fn convert_block_removing_constants(
-        &mut self,
-        statements: StatementNodes,
-    ) -> Result<StatementNodes, QErrorNode> {
-        let mut result: StatementNodes = vec![];
-        for statement in statements {
-            let converted_statement_node = self.convert(statement)?;
-            if let Statement::Const(_, _) = converted_statement_node.as_ref() {
-                // filter out CONST statements, they've been registered into context as values
-            } else {
-                result.push(converted_statement_node);
-            }
-        }
-        Ok(result)
+    pub fn consume(self) -> HashSet<BareName> {
+        self.context.names_without_dot()
     }
 
     // A statement can be expanded into multiple statements to convert implicitly
@@ -83,7 +69,7 @@ impl ConverterImpl {
         &mut self,
         statements: StatementNodes,
     ) -> Result<StatementNodes, QErrorNode> {
-        let mut result = StatementsRemovingConstantsStateful::new(statements).unwrap(self)?;
+        let mut result = on_statements(statements).unwrap(self)?;
         let implicits = self.context.pop_context();
         let mut implicit_dim: StatementNodes = implicits
             .into_iter()
@@ -112,8 +98,7 @@ impl ConverterImpl {
                     result.push(converted.at(pos));
                 }
                 TopLevelToken::Statement(s) => {
-                    let converted =
-                        StatementsRemovingConstantsStateful::new(vec![s.at(pos)]).unwrap(self)?;
+                    let converted = on_statements(vec![s.at(pos)]).unwrap(self)?;
                     result.extend(
                         converted
                             .into_iter()
@@ -285,17 +270,6 @@ impl Context {
         expr_context: ExprContext,
     ) -> Result<ExpressionNode, QErrorNode> {
         expr_rules::on_expression(self, expr_node, expr_context)
-    }
-
-    pub fn on_opt_expression(
-        &mut self,
-        opt_expr_node: Option<ExpressionNode>,
-        expr_context: ExprContext,
-    ) -> Result<Option<ExpressionNode>, QErrorNode> {
-        match opt_expr_node {
-            Some(expr_node) => self.on_expression(expr_node, expr_context).map(Some),
-            _ => Ok(None),
-        }
     }
 
     pub fn on_expressions(

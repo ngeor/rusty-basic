@@ -35,6 +35,16 @@ pub trait Stateful {
     {
         MapState::new(self, f)
     }
+
+    /// Uses a different state for computing this object. The state is derived
+    /// from the current state using the given function.
+    fn in_child_state<F, ParentState>(self, state_selector: F) -> InChildState<Self, F, ParentState>
+    where
+        Self: Sized,
+        F: FnOnce(&mut ParentState) -> &mut Self::State,
+    {
+        InChildState::new(self, state_selector)
+    }
 }
 
 /// A [Stateful] that returns its value without using the state.
@@ -65,57 +75,57 @@ impl<A, S, E> Stateful for Unit<A, S, E> {
 }
 
 /// Creates a new [Stateful] based on the computed value of this object.
-pub struct FlatMapState<S, F> {
-    current: S,
+pub struct FlatMapState<Decorated, F> {
+    decorated: Decorated,
     mapper: F,
 }
 
-impl<S, F> FlatMapState<S, F> {
-    pub fn new(current: S, mapper: F) -> Self {
-        Self { current, mapper }
+impl<Decorated, F> FlatMapState<Decorated, F> {
+    pub fn new(decorated: Decorated, mapper: F) -> Self {
+        Self { decorated, mapper }
     }
 }
 
-impl<S, F, N> Stateful for FlatMapState<S, F>
+impl<Decorated, F, N> Stateful for FlatMapState<Decorated, F>
 where
-    S: Stateful,
-    F: FnOnce(S::Output) -> N,
-    N: Stateful<State = S::State, Error = S::Error>,
+    Decorated: Stateful,
+    F: FnOnce(Decorated::Output) -> N,
+    N: Stateful<State = Decorated::State, Error = Decorated::Error>,
 {
     type Output = N::Output;
-    type State = S::State;
-    type Error = S::Error;
+    type State = Decorated::State;
+    type Error = Decorated::Error;
 
     fn unwrap(self, state: &mut Self::State) -> Result<Self::Output, Self::Error> {
-        let x = self.current.unwrap(state)?;
+        let x = self.decorated.unwrap(state)?;
         let y = (self.mapper)(x);
         y.unwrap(state)
     }
 }
 
 /// Maps the computed value of the current [Stateful] into a new value, without using the state.
-pub struct MapState<S, F> {
-    current: S,
+pub struct MapState<Decorated, F> {
+    decorated: Decorated,
     mapper: F,
 }
 
-impl<S, F> MapState<S, F> {
-    pub fn new(current: S, mapper: F) -> Self {
-        Self { current, mapper }
+impl<Decorated, F> MapState<Decorated, F> {
+    pub fn new(decorated: Decorated, mapper: F) -> Self {
+        Self { decorated, mapper }
     }
 }
 
-impl<S, F, N> Stateful for MapState<S, F>
+impl<Decorated, F, N> Stateful for MapState<Decorated, F>
 where
-    S: Stateful,
-    F: FnOnce(S::Output) -> N,
+    Decorated: Stateful,
+    F: FnOnce(Decorated::Output) -> N,
 {
     type Output = N;
-    type State = S::State;
-    type Error = S::Error;
+    type State = Decorated::State;
+    type Error = Decorated::Error;
 
     fn unwrap(self, state: &mut Self::State) -> Result<Self::Output, Self::Error> {
-        let x = self.current.unwrap(state)?;
+        let x = self.decorated.unwrap(state)?;
         Ok((self.mapper)(x))
     }
 }
@@ -170,7 +180,7 @@ pub trait OptStateful<O>: Stateful<Output = Option<O>> + Sized {
         N: Stateful<State = Self::State, Error = Self::Error>,
     {
         OptFlatMap {
-            current: self,
+            decorated: self,
             mapper,
         }
     }
@@ -179,23 +189,23 @@ pub trait OptStateful<O>: Stateful<Output = Option<O>> + Sized {
 impl<S, O> OptStateful<O> for S where S: Stateful<Output = Option<O>> {}
 
 /// A variation of the flat map operation, that only applies the mapper when a value is present.
-pub struct OptFlatMap<S, F> {
-    current: S,
+pub struct OptFlatMap<Decorated, F> {
+    decorated: Decorated,
     mapper: F,
 }
 
-impl<S, F, O, N> Stateful for OptFlatMap<S, F>
+impl<Decorated, F, O, N> Stateful for OptFlatMap<Decorated, F>
 where
-    S: Stateful<Output = Option<O>>,
+    Decorated: Stateful<Output = Option<O>>,
     F: FnOnce(O) -> N,
-    N: Stateful<State = S::State, Error = S::Error>,
+    N: Stateful<State = Decorated::State, Error = Decorated::Error>,
 {
     type Output = Option<N::Output>;
-    type State = S::State;
-    type Error = S::Error;
+    type State = Decorated::State;
+    type Error = Decorated::Error;
 
     fn unwrap(self, state: &mut Self::State) -> Result<Self::Output, Self::Error> {
-        let opt_value = self.current.unwrap(state)?;
+        let opt_value = self.decorated.unwrap(state)?;
         match opt_value {
             Some(value) => {
                 let next_stateful = (self.mapper)(value);
@@ -216,8 +226,19 @@ pub trait VecStateful<O>: Stateful<Output = Vec<O>> + Sized {
         N: Stateful<State = Self::State, Error = Self::Error>,
     {
         VecFlatMap {
-            current: self,
+            decorated: self,
             mapper,
+        }
+    }
+
+    /// Filters elements of the computed vector by a predicate.
+    fn vec_filter<F>(self, predicate: F) -> VecFilter<Self, F>
+    where
+        F: Fn(&O) -> bool,
+    {
+        VecFilter {
+            decorated: self,
+            predicate,
         }
     }
 }
@@ -225,23 +246,23 @@ pub trait VecStateful<O>: Stateful<Output = Vec<O>> + Sized {
 impl<S, O> VecStateful<O> for S where S: Stateful<Output = Vec<O>> {}
 
 /// A variation of the flat map operation, that applies the mapper to each element.
-pub struct VecFlatMap<S, F> {
-    current: S,
+pub struct VecFlatMap<Decorated, F> {
+    decorated: Decorated,
     mapper: F,
 }
 
-impl<S, F, O, N> Stateful for VecFlatMap<S, F>
+impl<Decorated, F, O, N> Stateful for VecFlatMap<Decorated, F>
 where
-    S: Stateful<Output = Vec<O>>,
+    Decorated: Stateful<Output = Vec<O>>,
     F: Fn(O) -> N,
-    N: Stateful<State = S::State, Error = S::Error>,
+    N: Stateful<State = Decorated::State, Error = Decorated::Error>,
 {
     type Output = Vec<N::Output>;
-    type State = S::State;
-    type Error = S::Error;
+    type State = Decorated::State;
+    type Error = Decorated::Error;
 
     fn unwrap(self, state: &mut Self::State) -> Result<Self::Output, Self::Error> {
-        let items = self.current.unwrap(state)?;
+        let items = self.decorated.unwrap(state)?;
         let mut result: Vec<N::Output> = vec![];
         for item in items {
             let next_stateful = (self.mapper)(item);
@@ -249,5 +270,63 @@ where
             result.push(next);
         }
         Ok(result)
+    }
+}
+
+/// Filters elements of the computed vector by a predicate.
+pub struct VecFilter<Decorated, F> {
+    decorated: Decorated,
+    predicate: F,
+}
+
+impl<Decorated, F, O> Stateful for VecFilter<Decorated, F>
+where
+    Decorated: Stateful<Output = Vec<O>>,
+    F: Fn(&O) -> bool,
+{
+    type Output = Decorated::Output;
+    type State = Decorated::State;
+    type Error = Decorated::Error;
+
+    fn unwrap(self, state: &mut Self::State) -> Result<Self::Output, Self::Error> {
+        let Self {
+            decorated,
+            predicate,
+        } = self;
+        let items = decorated.unwrap(state)?;
+        // TODO instead of VecStateful, try an IterStateful
+        Ok(items.into_iter().filter(predicate).collect())
+    }
+}
+
+/// Uses a different state to compute a [Stateful].
+pub struct InChildState<Decorated, F, ParentState> {
+    decorated: Decorated,
+    state_selector: F,
+    parent_state: PhantomData<ParentState>,
+}
+
+impl<Decorated, F, ParentState> InChildState<Decorated, F, ParentState> {
+    pub fn new(decorated: Decorated, state_selector: F) -> Self {
+        Self {
+            decorated,
+            state_selector,
+            parent_state: PhantomData,
+        }
+    }
+}
+
+impl<Decorated, F, ParentState> Stateful for InChildState<Decorated, F, ParentState>
+where
+    Decorated: Stateful,
+    F: FnOnce(&mut ParentState) -> &mut Decorated::State,
+{
+    type Output = Decorated::Output;
+    type State = ParentState;
+    type Error = Decorated::Error;
+
+    fn unwrap(self, state: &mut Self::State) -> Result<Self::Output, Self::Error> {
+        let child_state = (self.state_selector)(state);
+        self.decorated.unwrap(child_state)
     }
 }

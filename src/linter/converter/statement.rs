@@ -1,133 +1,112 @@
 use crate::common::*;
-use crate::linter::converter::converter::Context;
-use crate::linter::converter::do_loop::on_do_loop;
-use crate::linter::converter::for_loop::on_for_loop;
-use crate::linter::converter::if_blocks::{on_conditional_block, on_if_block};
-use crate::linter::converter::print_node::on_print_node;
-use crate::linter::converter::select_case::on_select_case;
+use crate::linter::converter::converter::{Context, Convertible};
 use crate::linter::converter::ExprContext;
 use crate::linter::{DimContext, NameContext};
-use crate::parser::{
-    BareName, ExitObject, Expression, Name, Statement, StatementNode, StatementNodes,
-};
+use crate::parser::{ExitObject, Statement, StatementNode, StatementNodes};
 
-pub struct StatementStateful(StatementNode);
-
-impl StatementStateful {
-    pub fn new(statement_node: StatementNode) -> Self {
-        Self(statement_node)
-    }
-}
-
-impl Stateful for StatementStateful {
-    type Output = StatementNode;
-    type State = Context;
-    type Error = QErrorNode;
-
-    fn unwrap(self, state: &mut Self::State) -> Result<Self::Output, Self::Error> {
+impl Convertible<Context, Option<StatementNode>> for StatementNode {
+    fn convert(self, ctx: &mut Context) -> Result<Option<StatementNode>, QErrorNode> {
         let Locatable {
             element: statement,
             pos,
-        } = self.0;
+        } = self;
         match statement {
-            Statement::Assignment(n, e) => state.assignment(n.at(pos), e),
+            Statement::Assignment(n, e) => ctx.assignment(n.at(pos), e).map(Some),
             // CONST will be filtered out in the StatementNodes processor
-            Statement::Const(n, e) => state.on_const(n, e).map(|_| dummy_const()),
-            Statement::SubCall(n, args) => state.sub_call(n.at(pos), args),
+            Statement::Const(n, e) => ctx.on_const(n, e).map(|_| None),
+            Statement::SubCall(n, args) => ctx.sub_call(n.at(pos), args).map(Some),
             Statement::BuiltInSubCall(built_in_sub, args) => {
-                let converted_args = state.on_expressions(args, ExprContext::Parameter)?;
-                Ok(Statement::BuiltInSubCall(built_in_sub, converted_args).at(pos))
+                let converted_args = ctx.on_expressions(args, ExprContext::Parameter)?;
+                Ok(Statement::BuiltInSubCall(built_in_sub, converted_args).at(pos)).map(Some)
             }
-            Statement::IfBlock(i) => on_if_block(i)
+            Statement::IfBlock(i) => i
+                .convert(ctx)
                 .map(|i| Statement::IfBlock(i).at(pos))
-                .unwrap(state),
-            Statement::SelectCase(s) => on_select_case(s)
+                .map(Some),
+            Statement::SelectCase(s) => s
+                .convert(ctx)
                 .map(|s| Statement::SelectCase(s).at(pos))
-                .unwrap(state),
-            Statement::ForLoop(f) => on_for_loop(f)
+                .map(Some),
+            Statement::ForLoop(f) => f
+                .convert(ctx)
                 .map(|f| Statement::ForLoop(f).at(pos))
-                .unwrap(state),
-            Statement::While(c) => on_conditional_block(c)
+                .map(Some),
+            Statement::While(c) => c
+                .convert(ctx)
                 .map(|c| Statement::While(c).at(pos))
-                .unwrap(state),
-            Statement::DoLoop(do_loop_node) => on_do_loop(do_loop_node)
+                .map(Some),
+            Statement::DoLoop(do_loop_node) => do_loop_node
+                .convert(ctx)
                 .map(|d| Statement::DoLoop(d).at(pos))
-                .unwrap(state),
+                .map(Some),
             Statement::Return(opt_label) => {
-                if opt_label.is_some() && state.is_in_subprogram() {
+                if opt_label.is_some() && ctx.is_in_subprogram() {
                     // cannot have RETURN with explicit label inside subprogram
                     Err(QError::IllegalInSubFunction).with_err_at(pos)
                 } else {
-                    Ok(Statement::Return(opt_label).at(pos))
+                    Ok(Statement::Return(opt_label).at(pos)).map(Some)
                 }
             }
             Statement::Resume(resume_option) => {
-                if state.is_in_subprogram() {
+                if ctx.is_in_subprogram() {
                     Err(QError::IllegalInSubFunction).with_err_at(pos)
                 } else {
-                    Ok(Statement::Resume(resume_option).at(pos))
+                    Ok(Statement::Resume(resume_option).at(pos)).map(Some)
                 }
             }
-            Statement::Exit(exit_object) => match state.get_name_context() {
+            Statement::Exit(exit_object) => match ctx.get_name_context() {
                 NameContext::Global => {
                     Err(QError::syntax_error("Illegal outside of subprogram")).with_err_at(pos)
                 }
                 NameContext::Sub => {
                     if exit_object == ExitObject::Sub {
-                        Ok(Statement::Exit(exit_object).at(pos))
+                        Ok(Statement::Exit(exit_object).at(pos)).map(Some)
                     } else {
                         Err(QError::syntax_error("Illegal inside sub")).with_err_at(pos)
                     }
                 }
                 NameContext::Function => {
                     if exit_object == ExitObject::Function {
-                        Ok(Statement::Exit(exit_object).at(pos))
+                        Ok(Statement::Exit(exit_object).at(pos)).map(Some)
                     } else {
                         Err(QError::syntax_error("Illegal inside function")).with_err_at(pos)
                     }
                 }
             },
-            Statement::Dim(dim_list) => state
+            Statement::Dim(dim_list) => ctx
                 .on_dim(dim_list, DimContext::Default)
-                .map(|dim_list| Statement::Dim(dim_list).at(pos)),
-            Statement::Redim(dim_list) => state
+                .map(|dim_list| Statement::Dim(dim_list).at(pos))
+                .map(Some),
+            Statement::Redim(dim_list) => ctx
                 .on_dim(dim_list, DimContext::Redim)
-                .map(|dim_list| Statement::Redim(dim_list).at(pos)),
-            Statement::Print(print_node) => on_print_node(print_node)
+                .map(|dim_list| Statement::Redim(dim_list).at(pos))
+                .map(Some),
+            Statement::Print(print_node) => print_node
+                .convert(ctx)
                 .map(Statement::Print)
                 .map(|s| s.at(pos))
-                .unwrap(state),
+                .map(Some),
             Statement::OnError(_)
             | Statement::Label(_)
             | Statement::GoTo(_)
             | Statement::GoSub(_)
             | Statement::Comment(_)
             | Statement::End
-            | Statement::System => Ok(statement.at(pos)),
+            | Statement::System => Ok(statement.at(pos)).map(Some),
         }
     }
 }
 
-fn dummy_const() -> StatementNode {
-    let pos = Location::start();
-    Statement::Const(
-        Name::Bare(BareName::new(String::new())).at(pos),
-        Expression::IntegerLiteral(0).at(pos),
-    )
-    .at(pos)
-}
-
-pub fn on_statements(
-    statements: StatementNodes,
-) -> impl Stateful<Output = StatementNodes, Error = QErrorNode, State = Context> {
-    Unit::new(statements)
-        .vec_flat_map(|s| StatementStateful::new(s))
-        // filter out CONST statements, they've been registered into context as values
-        .vec_filter(|s| {
-            if let Statement::Const(_, _) = s.as_ref() {
-                false
-            } else {
-                true
-            }
-        })
+impl Convertible for StatementNodes {
+    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
+        self.into_iter()
+            .map(|s| s.convert(ctx))
+            .map(|res| match res {
+                Ok(Some(s)) => Some(Ok(s)),
+                Err(e) => Some(Err(e)),
+                Ok(None) => None,
+            })
+            .flat_map(|opt| opt.into_iter())
+            .collect()
+    }
 }

@@ -4,7 +4,6 @@ use super::dim_rules;
 use super::expr_rules;
 use super::names::Names;
 use crate::common::*;
-use crate::linter::converter::statement::on_statements;
 use crate::linter::pre_linter::PreLinterResult;
 use crate::linter::type_resolver::{IntoQualified, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
@@ -222,7 +221,7 @@ impl Context {
         &mut self,
         statements: StatementNodes,
     ) -> Result<StatementNodes, QErrorNode> {
-        let mut result = on_statements(statements).unwrap(self)?;
+        let mut result = statements.convert(self)?;
         let implicits = self.pop_context();
         let mut implicit_dim: StatementNodes = implicits
             .into_iter()
@@ -255,7 +254,7 @@ impl Context {
                     result.push(converted.at(pos));
                 }
                 TopLevelToken::Statement(s) => {
-                    let converted = on_statements(vec![s.at(pos)]).unwrap(self)?;
+                    let converted = vec![s.at(pos)].convert(self)?;
                     result.extend(
                         converted
                             .into_iter()
@@ -285,5 +284,30 @@ impl Context {
             .collect();
         implicit_statements.append(&mut result);
         Ok(implicit_statements)
+    }
+}
+
+pub trait Convertible<C = Context, O = Self>: Sized {
+    fn convert(self, ctx: &mut C) -> Result<O, QErrorNode>;
+}
+
+impl<C, T> Convertible<C> for Option<T>
+where
+    T: Convertible<C, T>,
+{
+    fn convert(self, ctx: &mut C) -> Result<Self, QErrorNode> {
+        match self {
+            Some(t) => t.convert(ctx).map(Some),
+            None => Ok(None),
+        }
+    }
+}
+
+impl<C, T> Convertible<C> for Vec<T>
+where
+    T: Convertible<C, T>,
+{
+    fn convert(self, ctx: &mut C) -> Result<Self, QErrorNode> {
+        self.into_iter().map(|t| t.convert(ctx)).collect()
     }
 }

@@ -1,25 +1,15 @@
-use crate::common::{QErrorNode, Stateful};
-use crate::linter::converter::expr_rules::ExprStateful;
-use crate::linter::converter::statement::on_statements;
+use crate::common::QErrorNode;
+use crate::linter::converter::converter::Convertible;
+use crate::linter::converter::expr_rules::on_expression;
 use crate::linter::converter::{Context, ExprContext};
 use crate::parser::DoLoopNode;
 
-pub fn on_do_loop(
-    do_loop_node: DoLoopNode,
-) -> impl Stateful<Output = DoLoopNode, Error = QErrorNode, State = Context> {
-    let DoLoopNode {
-        condition,
-        statements,
-        position,
-        kind,
-    } = do_loop_node;
-    let condition_stateful = ExprStateful::new(condition, ExprContext::Default);
-    let statements_stateful = on_statements(statements);
-    let pair = (condition_stateful, statements_stateful);
-    pair.map(move |(condition, statements)| DoLoopNode {
-        condition,
-        statements,
-        position,
-        kind,
-    })
+impl Convertible for DoLoopNode {
+    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
+        Ok(Self {
+            condition: on_expression(ctx, self.condition, ExprContext::Default)?,
+            statements: self.statements.convert(ctx)?,
+            ..self
+        })
+    }
 }

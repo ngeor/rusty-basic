@@ -5,6 +5,18 @@ use crate::parser::*;
 use crate::variant::Variant;
 use std::convert::TryFrom;
 
+pub fn on_opt_expression(
+    ctx: &mut Context,
+    opt_expr_node: Option<ExpressionNode>,
+    expr_context: ExprContext,
+) -> Result<Option<ExpressionNode>, QErrorNode> {
+    match opt_expr_node {
+        Some(expr_node) => on_expression(ctx, expr_node, expr_context).map(Some),
+        _ => Ok(None),
+    }
+}
+
+// TODO #[deprecated]
 pub fn on_expression(
     ctx: &mut Context,
     expr_node: ExpressionNode,
@@ -722,29 +734,5 @@ mod function {
                 _ => Err(QError::ArrayNotDefined).with_err_at(pos),
             }
         }
-    }
-}
-
-pub struct ExprStateful {
-    expr_node: ExpressionNode,
-    expr_context: ExprContext,
-}
-
-impl ExprStateful {
-    pub fn new(expr_node: ExpressionNode, expr_context: ExprContext) -> Self {
-        Self {
-            expr_node,
-            expr_context,
-        }
-    }
-}
-
-impl Stateful for ExprStateful {
-    type Output = ExpressionNode;
-    type State = Context;
-    type Error = QErrorNode;
-
-    fn unwrap(self, state: &mut Self::State) -> Result<Self::Output, Self::Error> {
-        state.on_expression(self.expr_node, self.expr_context)
     }
 }

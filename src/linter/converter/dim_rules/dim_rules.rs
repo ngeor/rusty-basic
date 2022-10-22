@@ -1,7 +1,8 @@
 use super::{dim, redim, validation};
 use crate::common::*;
 use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::converter::expr_rules::ExprStateful;
+use crate::linter::converter::converter::Convertible;
+use crate::linter::converter::expr_rules::{on_expression, on_opt_expression};
 use crate::linter::converter::{Context, ExprContext};
 use crate::linter::DimContext;
 use crate::parser::*;
@@ -12,84 +13,30 @@ pub fn on_dim(
     dim_list: DimList,
     dim_context: DimContext,
 ) -> Result<DimList, QErrorNode> {
-    let mut new_context = ContextWithDimContext {
-        parent_context: ctx,
-        dim_context,
-    };
-    on_dim_list(dim_list).unwrap(&mut new_context)
-}
-
-pub fn on_array_dimension(
-    a: ArrayDimension,
-) -> impl Stateful<Output = ArrayDimension, Error = QErrorNode, State = Context> {
-    let lbound = Unit::new(a.lbound).opt_flat_map(|e| ExprStateful::new(e, ExprContext::Default));
-    let ubound = ExprStateful::new(a.ubound, ExprContext::Default);
-    (lbound, ubound).map(|(lbound, ubound)| ArrayDimension { lbound, ubound })
-}
-
-pub struct ContextWithDimContext<'a> {
-    parent_context: &'a mut Context,
-    dim_context: DimContext,
-}
-
-pub fn on_dim_list<'a>(
-    item: DimList,
-) -> impl Stateful<Output = DimList, Error = QErrorNode, State = ContextWithDimContext<'a>> {
-    FnStateful::new(|ctx: &mut ContextWithDimContext| {
-        let DimList { variables, shared } = item;
-        let ContextWithDimContext {
-            parent_context,
-            dim_context,
-        } = ctx;
-        let mut new_state = ContextWithDimContextShared {
-            parent_context: *parent_context,
-            dim_context: *dim_context,
-            shared,
-        };
-        let converted_variables = Unit::new(variables)
-            .vec_flat_map(on_dim_name_node)
-            .unwrap(&mut new_state)?;
-        let converted_dim_list = DimList {
-            variables: converted_variables,
-            shared,
-        };
-        Ok(converted_dim_list)
-    })
-}
-
-pub struct ContextWithDimContextShared<'a> {
-    parent_context: &'a mut Context,
-    dim_context: DimContext,
-    shared: bool,
-}
-
-pub fn on_dim_name_node<'a>(
-    dim_name_node: DimNameNode,
-) -> impl Stateful<Output = DimNameNode, Error = QErrorNode, State = ContextWithDimContextShared<'a>>
-{
-    FnStateful::new(move |ctx: &mut ContextWithDimContextShared| {
-        let ContextWithDimContextShared {
-            parent_context,
-            dim_context,
-            shared,
-        } = ctx;
-        let Locatable {
-            element:
-                DimName {
-                    bare_name,
-                    var_type: dim_type,
-                },
-            pos,
-        } = dim_name_node;
-        convert(
-            *parent_context,
-            bare_name,
-            dim_type,
-            *dim_context,
-            *shared,
-            pos,
+    let DimList { variables, shared } = dim_list;
+    let variables: DimNameNodes = variables
+        .into_iter()
+        .map(
+            |Locatable {
+                 element:
+                     DimName {
+                         bare_name,
+                         var_type: dim_type,
+                     },
+                 pos,
+             }| { convert(ctx, bare_name, dim_type, dim_context, shared, pos) },
         )
-    })
+        .collect::<Result<DimNameNodes, QErrorNode>>()?;
+    Ok(DimList { variables, shared })
+}
+
+impl Convertible for ArrayDimension {
+    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
+        Ok(Self {
+            lbound: on_opt_expression(ctx, self.lbound, ExprContext::Default)?,
+            ubound: on_expression(ctx, self.ubound, ExprContext::Default)?,
+        })
+    }
 }
 
 fn convert(

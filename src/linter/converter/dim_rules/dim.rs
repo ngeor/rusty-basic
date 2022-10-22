@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::linter::converter::dim_rules::dim_rules::on_array_dimension;
+use crate::linter::converter::converter::Convertible;
 use crate::linter::converter::dim_rules::resolve_string_length;
 use crate::linter::converter::Context;
 use crate::linter::type_resolver::IntoTypeQualifier;
@@ -149,9 +149,7 @@ fn array_to_dim_type(
         _ => true,
     });
     // TODO optimize array_dimensions.clone()
-    let converted_array_dimensions: ArrayDimensions = Unit::new(array_dimensions.clone())
-        .vec_flat_map(on_array_dimension)
-        .unwrap(ctx)?;
+    let converted_array_dimensions: ArrayDimensions = array_dimensions.clone().convert(ctx)?;
     let resolved_element_dim_type =
         to_dim_type(ctx, bare_name, element_type, dim_context, shared, pos)?;
     let array_dim_type = DimType::Array(

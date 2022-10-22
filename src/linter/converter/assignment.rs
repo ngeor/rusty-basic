@@ -1,5 +1,7 @@
 use crate::common::*;
-use crate::linter::converter::{Context, ExprContext};
+use crate::linter::converter::converter::Context;
+use crate::linter::converter::expr_rules::ExprContext;
+use crate::linter::converter::traits::Convertible;
 use crate::parser::{ExpressionNode, Statement, StatementNode};
 
 impl Context {
@@ -20,8 +22,8 @@ pub fn on_assignment(
     right_side: ExpressionNode,
 ) -> Result<(ExpressionNode, ExpressionNode), QErrorNode> {
     assignment_pre_conversion_validation_rules::validate(context, &left_side)?;
-    let converted_right_side = context.on_expression(right_side, ExprContext::Default)?;
-    let converted_left_side = context.on_expression(left_side, ExprContext::Assignment)?;
+    let converted_right_side = right_side.convert_in_default(context)?;
+    let converted_left_side = left_side.convert_in(context, ExprContext::Assignment)?;
     assignment_post_conversion_validation_rules::validate(
         &converted_left_side,
         &converted_right_side,

@@ -1,16 +1,13 @@
 use crate::common::*;
-use crate::linter::converter::converter::Convertible;
-use crate::linter::converter::expr_rules::on_expression;
-use crate::linter::converter::{Context, ExprContext};
+use crate::linter::converter::converter::Context;
+use crate::linter::converter::traits::Convertible;
 use crate::parser::{ConditionalBlockNode, IfBlockNode};
 
 impl Convertible for ConditionalBlockNode {
     fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
-        let condition = on_expression(ctx, self.condition, ExprContext::Default)?;
-        let statements = self.statements.convert(ctx)?;
         Ok(ConditionalBlockNode {
-            condition,
-            statements,
+            condition: self.condition.convert_in_default(ctx)?,
+            statements: self.statements.convert(ctx)?,
         })
     }
 }

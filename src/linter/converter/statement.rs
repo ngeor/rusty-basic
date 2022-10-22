@@ -1,6 +1,7 @@
 use crate::common::*;
-use crate::linter::converter::converter::{Context, Convertible};
-use crate::linter::converter::ExprContext;
+use crate::linter::converter::converter::Context;
+use crate::linter::converter::expr_rules::ExprContext;
+use crate::linter::converter::traits::Convertible;
 use crate::linter::{DimContext, NameContext};
 use crate::parser::{ExitObject, Statement, StatementNode, StatementNodes};
 
@@ -16,7 +17,7 @@ impl Convertible<Context, Option<StatementNode>> for StatementNode {
             Statement::Const(n, e) => ctx.on_const(n, e).map(|_| None),
             Statement::SubCall(n, args) => ctx.sub_call(n.at(pos), args).map(Some),
             Statement::BuiltInSubCall(built_in_sub, args) => {
-                let converted_args = ctx.on_expressions(args, ExprContext::Parameter)?;
+                let converted_args = args.convert_in(ctx, ExprContext::Parameter)?;
                 Ok(Statement::BuiltInSubCall(built_in_sub, converted_args).at(pos)).map(Some)
             }
             Statement::IfBlock(i) => i

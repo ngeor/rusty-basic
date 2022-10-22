@@ -1,5 +1,5 @@
 use crate::common::QErrorNode;
-use crate::linter::converter::Context;
+use crate::linter::converter::converter::Context;
 use crate::parser::{SubImplementation, TopLevelToken};
 
 impl Context {

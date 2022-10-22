@@ -1,9 +1,8 @@
 use super::{dim, redim, validation};
 use crate::common::*;
 use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::converter::converter::Convertible;
-use crate::linter::converter::expr_rules::{on_expression, on_opt_expression};
-use crate::linter::converter::{Context, ExprContext};
+use crate::linter::converter::converter::Context;
+use crate::linter::converter::traits::Convertible;
 use crate::linter::DimContext;
 use crate::parser::*;
 use crate::variant::{QBNumberCast, MAX_INTEGER};
@@ -33,8 +32,8 @@ pub fn on_dim(
 impl Convertible for ArrayDimension {
     fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
         Ok(Self {
-            lbound: on_opt_expression(ctx, self.lbound, ExprContext::Default)?,
-            ubound: on_expression(ctx, self.ubound, ExprContext::Default)?,
+            lbound: self.lbound.convert_in_default(ctx)?,
+            ubound: self.ubound.convert_in_default(ctx)?,
         })
     }
 }

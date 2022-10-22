@@ -1,5 +1,5 @@
 use crate::common::{AtLocation, Locatable, QErrorNode};
-use crate::linter::converter::Context;
+use crate::linter::converter::converter::Context;
 use crate::parser::{FunctionImplementation, TopLevelToken};
 
 impl Context {

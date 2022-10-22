@@ -1,65 +1,81 @@
 use crate::built_ins::BuiltInFunction;
 use crate::common::*;
-use crate::linter::converter::{Context, ExprContext};
+use crate::linter::converter::converter::Context;
+use crate::linter::converter::traits::{Convertible, FromParentContext};
 use crate::parser::*;
 use crate::variant::Variant;
 use std::convert::TryFrom;
 
-pub fn on_opt_expression(
-    ctx: &mut Context,
-    opt_expr_node: Option<ExpressionNode>,
-    expr_context: ExprContext,
-) -> Result<Option<ExpressionNode>, QErrorNode> {
-    match opt_expr_node {
-        Some(expr_node) => on_expression(ctx, expr_node, expr_context).map(Some),
-        _ => Ok(None),
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ExprContext {
+    Default,
+    Assignment,
+    Parameter,
+
+    /// Used in resolving left-side of property expressions
+    ResolvingPropertyOwner,
+}
+
+impl Default for ExprContext {
+    fn default() -> Self {
+        Self::Default
     }
 }
 
-// TODO #[deprecated]
-pub fn on_expression(
-    ctx: &mut Context,
-    expr_node: ExpressionNode,
+pub struct ExprState<'a> {
+    ctx: &'a mut Context,
     expr_context: ExprContext,
-) -> Result<ExpressionNode, QErrorNode> {
-    let Locatable { element: expr, pos } = expr_node;
-    match expr {
-        // literals
-        Expression::SingleLiteral(f) => ok_locatable(Expression::SingleLiteral(f), pos),
-        Expression::DoubleLiteral(d) => ok_locatable(Expression::DoubleLiteral(d), pos),
-        Expression::StringLiteral(s) => ok_locatable(Expression::StringLiteral(s), pos),
-        Expression::IntegerLiteral(i) => ok_locatable(Expression::IntegerLiteral(i), pos),
-        Expression::LongLiteral(l) => ok_locatable(Expression::LongLiteral(l), pos),
-        // parenthesis
-        Expression::Parenthesis(box_child) => {
-            parenthesis::convert(ctx, box_child, expr_context, pos)
-        }
-        // unary
-        Expression::UnaryExpression(unary_operator, box_child) => {
-            unary::convert(ctx, unary_operator, box_child, expr_context, pos)
-        }
-        // binary
-        Expression::BinaryExpression(binary_operator, left, right, _expr_type) => {
-            binary::convert(ctx, binary_operator, left, right, expr_context, pos)
-        }
-        // variables
-        Expression::Variable(name, variable_info) => {
-            variable::convert(ctx, name, variable_info, expr_context, pos)
-        }
-        Expression::ArrayElement(_name, _indices, _variable_info) => {
-            panic!(
-                "Parser is not supposed to produce any ArrayElement expressions, only FunctionCall"
-            )
-        }
-        Expression::Property(box_left_side, property_name, _expr_type) => {
-            property::convert(ctx, box_left_side, property_name, expr_context, pos)
-        }
-        // function call
-        Expression::FunctionCall(name, args) => {
-            function::convert(ctx, name, args, expr_context, pos)
-        }
-        Expression::BuiltInFunctionCall(built_in_function, args) => {
-            built_in_function::convert(ctx, built_in_function, args, pos)
+}
+
+impl<'a> ExprState<'a> {
+    pub fn new(ctx: &'a mut Context, expr_context: ExprContext) -> Self {
+        Self { ctx, expr_context }
+    }
+}
+
+impl<'a> FromParentContext<'a, Context, ExprContext> for ExprState<'a> {
+    fn create_from_parent_context(parent: &'a mut Context, value: ExprContext) -> Self {
+        Self::new(parent, value)
+    }
+}
+
+impl<'a> Convertible<ExprState<'a>> for ExpressionNode {
+    fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, QErrorNode> {
+        let Locatable { element: expr, pos } = self;
+        match expr {
+            // literals
+            Expression::SingleLiteral(f) => ok_locatable(Expression::SingleLiteral(f), pos),
+            Expression::DoubleLiteral(d) => ok_locatable(Expression::DoubleLiteral(d), pos),
+            Expression::StringLiteral(s) => ok_locatable(Expression::StringLiteral(s), pos),
+            Expression::IntegerLiteral(i) => ok_locatable(Expression::IntegerLiteral(i), pos),
+            Expression::LongLiteral(l) => ok_locatable(Expression::LongLiteral(l), pos),
+            // parenthesis
+            Expression::Parenthesis(box_child) => parenthesis::convert(ctx, box_child, pos),
+            // unary
+            Expression::UnaryExpression(unary_operator, box_child) => {
+                unary::convert(ctx, unary_operator, box_child, pos)
+            }
+            // binary
+            Expression::BinaryExpression(binary_operator, left, right, _expr_type) => {
+                binary::convert(ctx, binary_operator, left, right, pos)
+            }
+            // variables
+            Expression::Variable(name, variable_info) => {
+                variable::convert(ctx, name, variable_info, pos)
+            }
+            Expression::ArrayElement(_name, _indices, _variable_info) => {
+                panic!(
+                    "Parser is not supposed to produce any ArrayElement expressions, only FunctionCall"
+                )
+            }
+            Expression::Property(box_left_side, property_name, _expr_type) => {
+                property::convert(ctx, box_left_side, property_name, pos)
+            }
+            // function call
+            Expression::FunctionCall(name, args) => function::convert(ctx, name, args, pos),
+            Expression::BuiltInFunctionCall(built_in_function, args) => {
+                built_in_function::convert(ctx.ctx, built_in_function, args, pos)
+            }
         }
     }
 }
@@ -73,13 +89,12 @@ mod parenthesis {
     use super::*;
 
     pub fn convert(
-        ctx: &mut Context,
+        ctx: &mut ExprState,
         box_child: Box<ExpressionNode>,
-        expr_context: ExprContext,
         pos: Location,
     ) -> Result<ExpressionNode, QErrorNode> {
         // convert child (recursion)
-        let converted_child = ctx.on_expression(*box_child, expr_context)?;
+        let converted_child = (*box_child).convert(ctx)?;
         let parenthesis_expr = Expression::Parenthesis(Box::new(converted_child));
         Ok(parenthesis_expr.at(pos))
     }
@@ -88,14 +103,13 @@ mod parenthesis {
 mod unary {
     use super::*;
     pub fn convert(
-        ctx: &mut Context,
+        ctx: &mut ExprState,
         unary_operator: UnaryOperator,
         box_child: Box<ExpressionNode>,
-        expr_context: ExprContext,
         pos: Location,
     ) -> Result<ExpressionNode, QErrorNode> {
         // convert child (recursion)
-        let converted_child = ctx.on_expression(*box_child, expr_context)?;
+        let converted_child = (*box_child).convert(ctx)?;
         // ensure operator applies to converted expr
         let converted_expr_type = converted_child.as_ref().expression_type();
         if is_applicable_to_expr_type(&converted_expr_type) {
@@ -120,15 +134,14 @@ mod unary {
 mod binary {
     use super::*;
     pub fn convert(
-        ctx: &mut Context,
+        ctx: &mut ExprState,
         binary_operator: Operator,
         left: Box<ExpressionNode>,
         right: Box<ExpressionNode>,
-        expr_context: ExprContext,
         pos: Location,
     ) -> Result<ExpressionNode, QErrorNode> {
-        let converted_left = ctx.on_expression(*left, expr_context)?;
-        let converted_right = ctx.on_expression(*right, expr_context)?;
+        let converted_left = (*left).convert(ctx)?;
+        let converted_right = (*right).convert(ctx)?;
         let new_expr = Expression::binary(converted_left, converted_right, binary_operator)?;
         Ok(new_expr.at(pos))
     }
@@ -140,20 +153,19 @@ mod variable {
     use crate::linter::HasSubs;
 
     pub fn convert(
-        ctx: &mut Context,
+        ctx: &mut ExprState,
         name: Name,
         variable_info: VariableInfo,
-        expr_context: ExprContext,
         pos: Location,
     ) -> Result<ExpressionNode, QErrorNode> {
         // validation rules
-        validate(ctx, &name, pos)?;
+        validate(ctx.ctx, &name, pos)?;
 
         // match existing
         let mut rules: Vec<Box<dyn VarResolve>> = vec![];
         rules.push(Box::new(ExistingVar::default()));
         rules.push(Box::new(ExistingConst::new_local()));
-        if expr_context != ExprContext::Default {
+        if ctx.expr_context != ExprContext::Default {
             rules.push(Box::new(AssignToFunction::default()));
         } else {
             rules.push(Box::new(VarAsBuiltInFunctionCall::default()));
@@ -162,14 +174,14 @@ mod variable {
         rules.push(Box::new(ExistingConst::new_recursive()));
 
         for mut rule in rules {
-            if rule.can_handle(ctx, &name) {
-                return rule.resolve(ctx, name, pos);
+            if rule.can_handle(ctx.ctx, &name) {
+                return rule.resolve(ctx.ctx, name, pos);
             }
         }
 
-        if expr_context != ExprContext::ResolvingPropertyOwner {
+        if ctx.expr_context != ExprContext::ResolvingPropertyOwner {
             // add as new implicit
-            Ok(add_as_new_implicit_var(ctx, name, pos))
+            Ok(add_as_new_implicit_var(ctx.ctx, name, pos))
         } else {
             // repack as unresolved
             Ok(Expression::Variable(name, variable_info).at(pos))
@@ -391,10 +403,9 @@ mod property {
     use crate::linter::HasUserDefinedTypes;
 
     pub fn convert(
-        ctx: &mut Context,
+        ctx: &mut ExprState,
         left_side: Box<Expression>,
         property_name: Name,
-        expr_context: ExprContext,
         pos: Location,
     ) -> Result<ExpressionNode, QErrorNode> {
         // can we fold it into a name?
@@ -403,7 +414,7 @@ mod property {
             // checking out if we have an existing variable / const etc that contains a dot
             let mut rules: Vec<Box<dyn VarResolve>> = vec![];
             rules.push(Box::new(ExistingVar::default()));
-            if expr_context != ExprContext::Default {
+            if ctx.expr_context != ExprContext::Default {
                 rules.push(Box::new(AssignToFunction::default()));
             } else {
                 // no need to check for built-in, they don't have dots
@@ -412,8 +423,8 @@ mod property {
             rules.push(Box::new(ExistingConst::new_local()));
             rules.push(Box::new(ExistingConst::new_recursive()));
             for mut rule in rules {
-                if rule.can_handle(ctx, &folded_name) {
-                    return rule.resolve(ctx, folded_name, pos);
+                if rule.can_handle(ctx.ctx, &folded_name) {
+                    return rule.resolve(ctx.ctx, folded_name, pos);
                 }
             }
         }
@@ -424,10 +435,9 @@ mod property {
         let Locatable {
             element: resolved_left_side,
             ..
-        } = ctx.on_expression(
-            unboxed_left_side.at(pos),
-            ExprContext::ResolvingPropertyOwner,
-        )?;
+        } = unboxed_left_side
+            .at(pos)
+            .convert_in(ctx.ctx, ExprContext::ResolvingPropertyOwner)?;
 
         // functions cannot return udf so no need to check them
         match &resolved_left_side {
@@ -439,7 +449,7 @@ mod property {
             ) => {
                 let temp_expression_type = expression_type.clone();
                 existing_property_expression_type(
-                    ctx,
+                    ctx.ctx,
                     resolved_left_side,
                     &temp_expression_type,
                     property_name,
@@ -456,7 +466,7 @@ mod property {
             ) => {
                 let temp_expression_type = expression_type.clone();
                 existing_property_expression_type(
-                    ctx,
+                    ctx.ctx,
                     resolved_left_side,
                     &temp_expression_type,
                     property_name,
@@ -467,7 +477,7 @@ mod property {
             Expression::Property(_left_side, _name, expr_type) => {
                 let temp_expression_type = expr_type.clone();
                 existing_property_expression_type(
-                    ctx,
+                    ctx.ctx,
                     resolved_left_side,
                     &temp_expression_type,
                     property_name,
@@ -582,7 +592,7 @@ fn convert_function_args(
     ctx: &mut Context,
     args: ExpressionNodes,
 ) -> Result<ExpressionNodes, QErrorNode> {
-    ctx.on_expressions(args, ExprContext::Parameter)
+    args.convert_in(ctx, ExprContext::Parameter)
 }
 
 mod built_in_function {
@@ -604,25 +614,24 @@ mod function {
     use super::*;
     use crate::linter::type_resolver::{IntoQualified, IntoTypeQualifier};
     pub fn convert(
-        ctx: &mut Context,
+        ctx: &mut ExprState,
         name: Name,
         args: ExpressionNodes,
-        expr_context: ExprContext,
         pos: Location,
     ) -> Result<ExpressionNode, QErrorNode> {
         let mut rules: Vec<Box<dyn FuncResolve>> = vec![];
         // these go first because they're allowed to have no arguments
         rules.push(Box::new(ExistingArrayWithParenthesis::default()));
         for mut rule in rules {
-            if rule.can_handle(ctx, &name) {
-                return rule.resolve(ctx, name, args, expr_context, pos);
+            if rule.can_handle(ctx.ctx, &name) {
+                return rule.resolve(ctx, name, args, pos);
             }
         }
 
         // now validate we have arguments
         functions_must_have_arguments(&args, pos)?;
         // continue with built-in/user defined functions
-        resolve_function(ctx, name, args, pos)
+        resolve_function(ctx.ctx, name, args, pos)
     }
 
     fn resolve_function(
@@ -656,10 +665,9 @@ mod function {
 
         fn resolve(
             &self,
-            ctx: &mut Context,
+            ctx: &mut ExprState,
             name: Name,
             args: ExpressionNodes,
-            expr_context: ExprContext,
             pos: Location,
         ) -> Result<ExpressionNode, QErrorNode>;
     }
@@ -702,14 +710,13 @@ mod function {
 
         fn resolve(
             &self,
-            ctx: &mut Context,
+            ctx: &mut ExprState,
             name: Name,
             args: ExpressionNodes,
-            expr_context: ExprContext,
             pos: Location,
         ) -> Result<ExpressionNode, QErrorNode> {
             // convert args
-            let converted_args = ctx.on_expressions(args, expr_context)?;
+            let converted_args = args.convert(ctx)?;
             // convert name
             let VariableInfo {
                 expression_type,

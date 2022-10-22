@@ -1,13 +1,12 @@
 use crate::common::*;
-use crate::linter::converter::converter::{Context, Convertible};
-use crate::linter::converter::expr_rules::{on_expression, on_opt_expression};
-use crate::linter::converter::ExprContext;
+use crate::linter::converter::converter::Context;
+use crate::linter::converter::traits::Convertible;
 use crate::parser::{PrintArg, PrintNode};
 
 impl Convertible for PrintNode {
     fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
         Ok(Self {
-            format_string: on_opt_expression(ctx, self.format_string, ExprContext::Default)?,
+            format_string: self.format_string.convert_in_default(ctx)?,
             args: self.args.convert(ctx)?,
             ..self
         })
@@ -17,9 +16,7 @@ impl Convertible for PrintNode {
 impl Convertible for PrintArg {
     fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
         match self {
-            Self::Expression(e) => {
-                on_expression(ctx, e, ExprContext::Default).map(Self::Expression)
-            }
+            Self::Expression(e) => e.convert_in_default(ctx).map(Self::Expression),
             _ => Ok(self),
         }
     }

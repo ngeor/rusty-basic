@@ -15,6 +15,6 @@ mod select_case;
 mod statement;
 mod sub_call;
 mod sub_implementation;
+mod traits;
 
 pub use self::converter::convert;
-use self::converter::*;

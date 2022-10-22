@@ -1,9 +1,9 @@
 use super::assignment;
 use super::const_rules;
 use super::dim_rules;
-use super::expr_rules;
 use super::names::Names;
 use crate::common::*;
+use crate::linter::converter::traits::Convertible;
 use crate::linter::pre_linter::PreLinterResult;
 use crate::linter::type_resolver::{IntoQualified, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
@@ -28,16 +28,6 @@ pub fn convert(
 /// Alias for the implicit variables collected during evaluating something.
 /// e.g. `INPUT N` is a statement implicitly defining variable `N`.
 pub type Implicits = Vec<QualifiedNameNode>;
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum ExprContext {
-    Default,
-    Assignment,
-    Parameter,
-
-    /// Used in resolving left-side of property expressions
-    ResolvingPropertyOwner,
-}
 
 /*
 
@@ -153,27 +143,6 @@ impl Context {
         self.names_without_dot
     }
 
-    pub fn on_expression(
-        &mut self,
-        expr_node: ExpressionNode,
-        expr_context: ExprContext,
-    ) -> Result<ExpressionNode, QErrorNode> {
-        expr_rules::on_expression(self, expr_node, expr_context)
-    }
-
-    pub fn on_expressions(
-        &mut self,
-        expr_nodes: ExpressionNodes,
-        expr_context: ExprContext,
-    ) -> Result<ExpressionNodes, QErrorNode> {
-        let mut converted_expr_nodes: ExpressionNodes = vec![];
-        for expr_node in expr_nodes {
-            let converted_expr_node = self.on_expression(expr_node, expr_context)?;
-            converted_expr_nodes.push(converted_expr_node);
-        }
-        Ok(converted_expr_nodes)
-    }
-
     pub fn on_assignment(
         &mut self,
         left_side: ExpressionNode,
@@ -284,30 +253,5 @@ impl Context {
             .collect();
         implicit_statements.append(&mut result);
         Ok(implicit_statements)
-    }
-}
-
-pub trait Convertible<C = Context, O = Self>: Sized {
-    fn convert(self, ctx: &mut C) -> Result<O, QErrorNode>;
-}
-
-impl<C, T> Convertible<C> for Option<T>
-where
-    T: Convertible<C, T>,
-{
-    fn convert(self, ctx: &mut C) -> Result<Self, QErrorNode> {
-        match self {
-            Some(t) => t.convert(ctx).map(Some),
-            None => Ok(None),
-        }
-    }
-}
-
-impl<C, T> Convertible<C> for Vec<T>
-where
-    T: Convertible<C, T>,
-{
-    fn convert(self, ctx: &mut C) -> Result<Self, QErrorNode> {
-        self.into_iter().map(|t| t.convert(ctx)).collect()
     }
 }

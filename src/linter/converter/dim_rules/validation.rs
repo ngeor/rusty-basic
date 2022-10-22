@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::linter::converter::Context;
+use crate::linter::converter::converter::Context;
 use crate::linter::type_resolver::IntoTypeQualifier;
 use crate::linter::{DimContext, HasFunctions, HasSubs, HasUserDefinedTypes};
 use crate::parser::{

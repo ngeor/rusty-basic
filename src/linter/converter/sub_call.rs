@@ -1,6 +1,8 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::{AtLocation, Locatable, QErrorNode};
-use crate::linter::converter::{Context, ExprContext};
+use crate::linter::converter::converter::Context;
+use crate::linter::converter::expr_rules::ExprContext;
+use crate::linter::converter::traits::Convertible;
 use crate::parser::{BareNameNode, ExpressionNodes, Statement, StatementNode};
 
 impl Context {
@@ -9,7 +11,7 @@ impl Context {
         sub_name_node: BareNameNode,
         args: ExpressionNodes,
     ) -> Result<StatementNode, QErrorNode> {
-        let converted_args = self.on_expressions(args, ExprContext::Parameter)?;
+        let converted_args = args.convert_in(self, ExprContext::Parameter)?;
         let Locatable {
             element: sub_name,
             pos,

@@ -11,7 +11,7 @@ impl Context {
         sub_name_node: BareNameNode,
         args: ExpressionNodes,
     ) -> Result<StatementNode, QErrorNode> {
-        let converted_args = args.convert_in(self, ExprContext::Parameter)?;
+        let converted_args = args.convert_in(self, ExprContext::Argument)?;
         let Locatable {
             element: sub_name,
             pos,

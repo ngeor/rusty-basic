@@ -17,7 +17,7 @@ impl Convertible<Context, Option<StatementNode>> for StatementNode {
             Statement::Const(n, e) => ctx.on_const(n, e).map(|_| None),
             Statement::SubCall(n, args) => ctx.sub_call(n.at(pos), args).map(Some),
             Statement::BuiltInSubCall(built_in_sub, args) => {
-                let converted_args = args.convert_in(ctx, ExprContext::Parameter)?;
+                let converted_args = args.convert_in(ctx, ExprContext::Argument)?;
                 Ok(Statement::BuiltInSubCall(built_in_sub, converted_args).at(pos)).map(Some)
             }
             Statement::IfBlock(i) => i

@@ -1,15 +1,11 @@
-use super::assignment;
-use super::const_rules;
-use super::dim_rules;
-use super::names::Names;
 use crate::common::*;
+use crate::linter::converter::dim_rules::on_params;
+use crate::linter::converter::names::Names;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::pre_linter::PreLinterResult;
 use crate::linter::type_resolver::{IntoQualified, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
-use crate::linter::{
-    DimContext, FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, NameContext, SubMap,
-};
+use crate::linter::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, NameContext, SubMap};
 use crate::parser::*;
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -99,7 +95,7 @@ impl Context {
         let temp_dummy = Names::new_root();
         let old_names = std::mem::replace(&mut self.names, temp_dummy);
         self.names = Names::new(Some(Box::new(old_names)), None);
-        dim_rules::on_params(self, params)
+        on_params(self, params)
     }
 
     pub fn push_function_context(
@@ -111,7 +107,7 @@ impl Context {
         let old_names = std::mem::replace(&mut self.names, temp_dummy);
         self.names = Names::new(Some(Box::new(old_names)), Some(name.bare_name().clone()));
         let converted_function_name = name.to_qualified(self);
-        Ok((converted_function_name, dim_rules::on_params(self, params)?))
+        Ok((converted_function_name, on_params(self, params)?))
     }
 
     pub fn pop_context(&mut self) -> Implicits {
@@ -141,30 +137,6 @@ impl Context {
         self.names
             .drain_extended_names_into(&mut self.names_without_dot);
         self.names_without_dot
-    }
-
-    pub fn on_assignment(
-        &mut self,
-        left_side: ExpressionNode,
-        right_side: ExpressionNode,
-    ) -> Result<(ExpressionNode, ExpressionNode), QErrorNode> {
-        assignment::on_assignment(self, left_side, right_side)
-    }
-
-    pub fn on_dim(
-        &mut self,
-        dim_list: DimList,
-        dim_context: DimContext,
-    ) -> Result<DimList, QErrorNode> {
-        dim_rules::on_dim(self, dim_list, dim_context)
-    }
-
-    pub fn on_const(
-        &mut self,
-        left_side: NameNode,
-        right_side: ExpressionNode,
-    ) -> Result<(), QErrorNode> {
-        const_rules::on_const(self, left_side, right_side)
     }
 
     /// Gets the function qualifier of the function identified by the given bare name.

@@ -43,15 +43,3 @@ pub enum NameContext {
     Sub,
     Function,
 }
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum DimContext {
-    /// Normal DIM statement
-    Default,
-
-    /// REDIM statement
-    Redim,
-
-    /// A function/sub parameter
-    Param,
-}

@@ -1,5 +1,4 @@
 use crate::common::*;
-use crate::linter::converter::dim_rules::on_params;
 use crate::linter::converter::names::Names;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::pre_linter::PreLinterResult;
@@ -95,7 +94,7 @@ impl Context {
         let temp_dummy = Names::new_root();
         let old_names = std::mem::replace(&mut self.names, temp_dummy);
         self.names = Names::new(Some(Box::new(old_names)), None);
-        on_params(self, params)
+        params.convert(self)
     }
 
     pub fn push_function_context(
@@ -107,7 +106,7 @@ impl Context {
         let old_names = std::mem::replace(&mut self.names, temp_dummy);
         self.names = Names::new(Some(Box::new(old_names)), Some(name.bare_name().clone()));
         let converted_function_name = name.to_qualified(self);
-        Ok((converted_function_name, on_params(self, params)?))
+        Ok((converted_function_name, params.convert(self)?))
     }
 
     pub fn pop_context(&mut self) -> Implicits {

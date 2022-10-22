@@ -27,6 +27,7 @@ fn array_indicator() -> impl Parser<Output = Option<(Token, Token)>> + NonOptPar
 }
 
 fn built_in_extended_type() -> impl Parser<Output = ParamType> {
+    // TODO make a keyword_map that doesn't require Clone
     keyword_map(&[
         (
             Keyword::Single,

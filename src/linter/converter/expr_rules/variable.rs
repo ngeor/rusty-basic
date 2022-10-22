@@ -46,6 +46,7 @@ fn validate(ctx: &Context, name: &Name) -> Result<(), QErrorNode> {
 }
 
 pub fn add_as_new_implicit_var(ctx: &mut PosExprState, name: Name) -> Expression {
+    // TODO fix me
     let resolved_name = {
         let temp: &ExprState = &ctx;
         let temp: &Context = &temp;

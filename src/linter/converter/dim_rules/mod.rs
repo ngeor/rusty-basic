@@ -1,8 +1,25 @@
-mod dim;
+mod array_dimension;
+mod dim_list_state;
+mod dim_name_state;
 mod dim_rules;
+mod dim_type_rules;
+mod param_rules;
+mod param_type_rules;
 mod redim;
+mod string_length;
 mod validation;
 
-use self::dim_rules::resolve_string_length;
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DimContext {
+    /// Normal DIM statement
+    Default,
 
-pub use self::dim_rules::{on_dim, on_params};
+    /// REDIM statement
+    Redim,
+}
+
+impl Default for DimContext {
+    fn default() -> Self {
+        Self::Default
+    }
+}

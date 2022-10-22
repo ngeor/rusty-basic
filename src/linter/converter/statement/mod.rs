@@ -3,16 +3,14 @@ mod const_rules;
 mod do_loop;
 mod for_loop;
 mod if_blocks;
-mod pos_context;
 mod print_node;
 mod select_case;
 mod sub_call;
 
 use crate::common::*;
 use crate::linter::converter::converter::Context;
-use crate::linter::converter::dim_rules::on_dim;
 use crate::linter::converter::expr_rules::ExprContext;
-use crate::linter::converter::statement::pos_context::PosContext;
+use crate::linter::converter::pos_context::PosContext;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::{DimContext, NameContext};
 use crate::parser::{ExitObject, Statement, StatementNode, StatementNodes};
@@ -84,11 +82,13 @@ impl<'a> Convertible<PosContext<'a>, Option<Statement>> for Statement {
                     }
                 }
             },
-            Statement::Dim(dim_list) => on_dim(ctx, dim_list, DimContext::Default)
-                .map(|dim_list| Statement::Dim(dim_list))
+            Statement::Dim(dim_list) => dim_list
+                .convert_in_default(ctx)
+                .map(Statement::Dim)
                 .map(Some),
-            Statement::Redim(dim_list) => on_dim(ctx, dim_list, DimContext::Redim)
-                .map(|dim_list| Statement::Redim(dim_list))
+            Statement::Redim(dim_list) => dim_list
+                .convert_in(ctx, DimContext::Redim)
+                .map(Statement::Redim)
                 .map(Some),
             Statement::Print(print_node) => print_node.convert(ctx).map(Statement::Print).map(Some),
             Statement::OnError(_)

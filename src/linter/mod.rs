@@ -12,5 +12,6 @@ pub mod test_utils;
 #[cfg(test)]
 mod tests;
 
+pub use self::converter::DimContext;
 pub use self::linter::*;
 pub use self::pre_linter::traits::*;

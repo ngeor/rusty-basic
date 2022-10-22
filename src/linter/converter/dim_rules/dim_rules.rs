@@ -1,123 +1,54 @@
-use super::{dim, redim, validation};
 use crate::common::*;
-use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::converter::converter::Context;
+use crate::linter::converter::dim_rules::dim_list_state::DimListState;
+use crate::linter::converter::dim_rules::dim_name_state::DimNameState;
+use crate::linter::converter::dim_rules::dim_type_rules::on_dim_type;
+use crate::linter::converter::dim_rules::redim::on_redim_type;
+use crate::linter::converter::dim_rules::validation;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::DimContext;
 use crate::parser::*;
-use crate::variant::{QBNumberCast, MAX_INTEGER};
 
-pub fn on_dim(
-    ctx: &mut Context,
-    dim_list: DimList,
-    dim_context: DimContext,
-) -> Result<DimList, QErrorNode> {
-    let DimList { variables, shared } = dim_list;
-    let variables: DimNameNodes = variables
-        .into_iter()
-        .map(
-            |Locatable {
-                 element:
-                     DimName {
-                         bare_name,
-                         var_type: dim_type,
-                     },
-                 pos,
-             }| { convert(ctx, bare_name, dim_type, dim_context, shared, pos) },
-        )
-        .collect::<Result<DimNameNodes, QErrorNode>>()?;
-    Ok(DimList { variables, shared })
-}
-
-impl Convertible for ArrayDimension {
-    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
-        Ok(Self {
-            lbound: self.lbound.convert_in_default(ctx)?,
-            ubound: self.ubound.convert_in_default(ctx)?,
+impl<'a> Convertible<DimListState<'a>> for DimList {
+    fn convert(self, ctx: &mut DimListState<'a>) -> Result<Self, QErrorNode> {
+        let Self { variables, shared } = self;
+        let mut new_variables = DimNameNodes::new();
+        for Locatable { element, pos } in variables {
+            let mut new_state = DimNameState::new(ctx, shared, pos);
+            let new_dim_name = element.convert(&mut new_state).patch_err_pos(pos)?;
+            new_variables.push(new_dim_name.at(pos));
+        }
+        Ok(DimList {
+            variables: new_variables,
+            shared,
         })
     }
 }
 
-fn convert(
-    ctx: &mut Context,
-    bare_name: BareName,
-    dim_type: DimType,
-    dim_context: DimContext,
-    shared: bool,
-    pos: Location,
-) -> Result<DimNameNode, QErrorNode> {
-    validation::validate(ctx, &bare_name, &dim_type, dim_context, shared).patch_err_pos(pos)?;
-    do_convert(ctx, bare_name, dim_type, dim_context, shared, pos)
-}
-
-fn do_convert(
-    ctx: &mut Context,
-    bare_name: BareName,
-    dim_type: DimType,
-    dim_context: DimContext,
-    shared: bool,
-    pos: Location,
-) -> Result<DimNameNode, QErrorNode> {
-    match dim_context {
-        DimContext::Default | DimContext::Param => {
-            dim::convert(ctx, bare_name, dim_type, dim_context, shared, pos)
-        }
-        DimContext::Redim => redim::convert(ctx, bare_name, dim_type, shared, pos),
+impl<'a, 'b> Convertible<DimNameState<'a, 'b>> for DimName {
+    fn convert(self, ctx: &mut DimNameState<'a, 'b>) -> Result<Self, QErrorNode> {
+        validation::validate(&self, ctx)?;
+        shared_illegal_in_sub_function(ctx).with_err_no_pos()?;
+        let Self {
+            bare_name,
+            var_type,
+        } = self;
+        let (var_type, redim_info) = if ctx.dim_context() == DimContext::Redim {
+            on_redim_type(var_type, &bare_name, ctx)?
+        } else {
+            let var_type = on_dim_type(var_type, &bare_name, ctx)?;
+            (var_type, None)
+        };
+        let shared = ctx.is_shared();
+        ctx.names
+            .insert(bare_name.clone(), &var_type, shared, redim_info);
+        Ok(DimName::new(bare_name, var_type))
     }
 }
 
-pub fn resolve_string_length(
-    ctx: &Context,
-    length_expression: &ExpressionNode,
-) -> Result<u16, QErrorNode> {
-    let v = ctx.names.resolve_const(length_expression)?;
-    let i: i32 = v.try_cast().with_err_at(length_expression)?;
-    if i >= 1 && i < MAX_INTEGER {
-        Ok(i as u16)
+fn shared_illegal_in_sub_function(ctx: &DimNameState) -> Result<(), QError> {
+    if ctx.is_shared() && ctx.is_in_subprogram() {
+        Err(QError::IllegalInSubFunction)
     } else {
-        Err(QError::OutOfStringSpace).with_err_at(length_expression)
+        Ok(())
     }
-}
-
-pub fn on_params(ctx: &mut Context, params: ParamNameNodes) -> Result<ParamNameNodes, QErrorNode> {
-    params
-        .into_iter()
-        .map(|x| convert_param_name_node(ctx, x))
-        .collect()
-}
-
-// TODO remove the dance between params and dim nodes
-fn convert_param_name_node(
-    ctx: &mut Context,
-    param_name_node: ParamNameNode,
-) -> Result<ParamNameNode, QErrorNode> {
-    // destruct param_name_node
-    let Locatable {
-        element: ParamName {
-            bare_name,
-            var_type: param_type,
-        },
-        pos,
-    } = param_name_node;
-    // construct dim_list
-    let dim_type = DimType::from(param_type);
-    let dim_list: DimList = DimNameBuilder::new()
-        .bare_name(bare_name)
-        .dim_type(dim_type)
-        .build_list(pos);
-    // convert
-    let mut converted_dim_list = on_dim(ctx, dim_list, DimContext::Param)?;
-    let Locatable {
-        element: DimName {
-            bare_name,
-            var_type: dim_type,
-        },
-        ..
-    } = converted_dim_list
-        .variables
-        .pop()
-        .expect("Should have one converted variable");
-    let param_type = ParamType::from(dim_type);
-    let param_name = ParamName::new(bare_name, param_type);
-    Ok(param_name.at(pos))
 }

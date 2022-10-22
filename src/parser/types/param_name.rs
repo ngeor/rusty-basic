@@ -1,12 +1,12 @@
-use crate::common::*;
+use crate::common::Locatable;
 use crate::parser::pc::Token;
-use crate::parser::types::*;
+use crate::parser::*;
 
 pub type ParamName = VarName<ParamType>;
 pub type ParamNameNode = Locatable<ParamName>;
 pub type ParamNameNodes = Vec<ParamNameNode>;
 
-// same as dim minus the x as string * 5 and the array dimensions
+// same as dim minus the "x as string * 5" and the array dimensions
 #[derive(Clone, Debug)]
 pub enum ParamType {
     Bare,
@@ -133,41 +133,6 @@ impl VarTypeIsExtended for ParamType {
             Self::BuiltIn(_, BuiltInStyle::Extended) | Self::UserDefined(_) => true,
             Self::Array(element_type) => element_type.is_extended(),
             _ => false,
-        }
-    }
-}
-
-// TODO delete the following from impls
-
-impl From<ParamType> for DimType {
-    fn from(param_type: ParamType) -> Self {
-        match param_type {
-            ParamType::Bare => DimType::Bare,
-            ParamType::BuiltIn(q, built_in_style) => DimType::BuiltIn(q, built_in_style),
-            ParamType::UserDefined(user_defined_type_name_node) => {
-                DimType::UserDefined(user_defined_type_name_node)
-            }
-            ParamType::Array(boxed_element_type) => {
-                DimType::Array(vec![], Box::new(Self::from(*boxed_element_type)))
-            }
-        }
-    }
-}
-
-impl From<DimType> for ParamType {
-    fn from(dim_type: DimType) -> Self {
-        match dim_type {
-            DimType::Bare => ParamType::Bare,
-            DimType::BuiltIn(q, built_in_style) => ParamType::BuiltIn(q, built_in_style),
-            DimType::UserDefined(user_defined_type_name_node) => {
-                ParamType::UserDefined(user_defined_type_name_node)
-            }
-            DimType::Array(_, boxed_element_type) => {
-                ParamType::Array(Box::new(Self::from(*boxed_element_type)))
-            }
-            DimType::FixedLengthString(_, _) => {
-                panic!("Fixed length string params are not supported")
-            }
         }
     }
 }

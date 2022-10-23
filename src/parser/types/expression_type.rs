@@ -82,10 +82,10 @@ impl CanCastTo<&ExpressionType> for ExpressionType {
                 Self::FixedLengthString(_) => *q_left == TypeQualifier::DollarString,
                 _ => false,
             },
-            Self::FixedLengthString(_) => match other {
-                Self::BuiltIn(TypeQualifier::DollarString) | Self::FixedLengthString(_) => true,
-                _ => false,
-            },
+            Self::FixedLengthString(_) => matches!(
+                other,
+                Self::BuiltIn(TypeQualifier::DollarString) | Self::FixedLengthString(_)
+            ),
             Self::UserDefined(u_left) => match other {
                 Self::UserDefined(u_right) => u_left == u_right,
                 _ => false,

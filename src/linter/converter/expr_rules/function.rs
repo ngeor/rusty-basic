@@ -65,10 +65,7 @@ struct ExistingArrayWithParenthesis {
 impl ExistingArrayWithParenthesis {
     fn is_array(&self) -> bool {
         match &self.var_info {
-            Some(var_info) => match &var_info.expression_type {
-                ExpressionType::Array(_) => true,
-                _ => false,
-            },
+            Some(var_info) => matches!(&var_info.expression_type, ExpressionType::Array(_)),
             _ => false,
         }
     }

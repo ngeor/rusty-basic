@@ -80,9 +80,6 @@ pub enum PrintArg {
 
 impl PrintArg {
     pub fn is_expression(&self) -> bool {
-        match self {
-            Self::Expression(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Expression(_))
     }
 }

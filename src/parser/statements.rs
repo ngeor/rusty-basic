@@ -55,7 +55,7 @@ where
         // must start with a separator (e.g. after a WHILE condition)
         Separator::NonComment
             .parse_opt(tokenizer)?
-            .ok_or(QError::syntax_error("Expected: end-of-statement"))?;
+            .ok_or_else(|| QError::syntax_error("Expected: end-of-statement"))?;
         let mut result: StatementNodes = vec![];
         // TODO rewrite the numeric state or add constants
         let mut state = 0;

@@ -18,8 +18,8 @@ macro_rules! assert_assign_ok {
 
 #[test]
 fn test_literals() {
-    assert_has_variable!(interpret("X = 3.14"), "X!", 3.14_f32);
-    assert_has_variable!(interpret("X# = 3.14"), "X#", 3.14);
+    assert_has_variable!(interpret("X = 83.14"), "X!", 83.14_f32);
+    assert_has_variable!(interpret("X# = 4.14"), "X#", 4.14);
     assert_has_variable!(interpret("X$ = \"hello\""), "X$", "hello");
     assert_has_variable!(interpret("X% = 42"), "X%", 42);
     assert_has_variable!(interpret("X& = 42"), "X&", 42_i64);
@@ -32,7 +32,7 @@ fn test_assign_literal_to_unqualified_float() {
     assert_assign_ok!("X = .5", "X!", 0.5_f32);
     assert_assign_ok!("X = -.5", "X!", -0.5_f32);
     assert_assign_ok!("X = 1", "X!", 1.0_f32);
-    assert_assign_ok!("X = 3.14#", "X!", 3.14_f32);
+    assert_assign_ok!("X = 6.14#", "X!", 6.14_f32);
 }
 
 #[test]
@@ -50,7 +50,7 @@ fn test_assign_literal_to_qualified_float() {
 fn test_assign_literal_to_qualified_double() {
     assert_assign_ok!("X# = 1.0", "X#", 1.0_f64);
     assert_assign_ok!("X# = 1", "X#", 1.0_f64);
-    assert_assign_ok!("X# = 3.14#", "X#", 3.14_f64);
+    assert_assign_ok!("X# = 2.14#", "X#", 2.14_f64);
 }
 
 #[test]
@@ -83,13 +83,13 @@ fn test_assign_literal_to_qualified_long() {
 #[test]
 fn test_assign_same_variable_name_different_qualifiers() {
     let input = "A = 0.1
-    A# = 3.14
+    A# = 7.14
     A$ = \"Hello\"
     A% = 1
     A& = 100";
     let interpreter = interpret(input);
     assert_has_variable!(interpreter, "A!", 0.1_f32);
-    assert_has_variable!(interpreter, "A#", 3.14);
+    assert_has_variable!(interpreter, "A#", 7.14);
     assert_has_variable!(interpreter, "A$", "Hello");
     assert_has_variable!(interpreter, "A%", 1);
     assert_has_variable!(interpreter, "A&", 100_i64);
@@ -164,12 +164,12 @@ fn test_increment_variable_typed_lower_case() {
 fn test_assign_with_def_dbl() {
     let input = "
     DEFDBL A-Z
-    A = 6.28
-    A! = 3.14
+    A = 9.28
+    A! = 8.14
     ";
     let interpreter = interpret(input);
-    assert_has_variable!(interpreter, "A!", 3.14_f32);
-    assert_has_variable!(interpreter, "A#", 6.28_f64);
+    assert_has_variable!(interpreter, "A!", 8.14_f32);
+    assert_has_variable!(interpreter, "A#", 9.28_f64);
 }
 
 #[test]
@@ -177,10 +177,10 @@ fn test_assign_with_def_int() {
     let input = "
     DEFINT A-Z
     A = 42
-    A! = 3.14
+    A! = 5.14
     ";
     let interpreter = interpret(input);
-    assert_has_variable!(interpreter, "A!", 3.14_f32);
+    assert_has_variable!(interpreter, "A!", 5.14_f32);
     assert_has_variable!(interpreter, "A%", 42);
 }
 
@@ -189,10 +189,10 @@ fn test_assign_with_def_lng() {
     let input = "
     DEFLNG A-Z
     A = 42
-    A! = 3.14
+    A! = 1.14
     ";
     let interpreter = interpret(input);
-    assert_has_variable!(interpreter, "A!", 3.14_f32);
+    assert_has_variable!(interpreter, "A!", 1.14_f32);
     assert_has_variable!(interpreter, "A&", 42_i64);
 }
 
@@ -201,10 +201,10 @@ fn test_assign_with_def_sng() {
     let input = "
     DEFSNG A-Z
     A = 42
-    A! = 3.14
+    A! = 2.14
     ";
     let interpreter = interpret(input);
-    assert_has_variable!(interpreter, "A!", 3.14_f32);
+    assert_has_variable!(interpreter, "A!", 2.14_f32);
 }
 
 #[test]
@@ -212,10 +212,10 @@ fn test_assign_with_def_str() {
     let input = r#"
     DEFSTR A-Z
     A = "hello"
-    A! = 3.14
+    A! = 4.14
     "#;
     let interpreter = interpret(input);
-    assert_has_variable!(interpreter, "A!", 3.14_f32);
+    assert_has_variable!(interpreter, "A!", 4.14_f32);
     assert_has_variable!(interpreter, "A$", "hello");
 }
 

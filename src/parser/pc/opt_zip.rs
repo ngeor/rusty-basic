@@ -12,17 +12,11 @@ pub enum ZipValue<L, R> {
 
 impl<L, R> ZipValue<L, R> {
     pub fn has_left(&self) -> bool {
-        match self {
-            Self::Left(_) | Self::Both(_, _) => true,
-            _ => false,
-        }
+        matches!(self, Self::Left(_) | Self::Both(_, _))
     }
 
     pub fn has_right(&self) -> bool {
-        match self {
-            Self::Right(_) | Self::Both(_, _) => true,
-            _ => false,
-        }
+        matches!(self, Self::Right(_) | Self::Both(_, _))
     }
 
     pub fn left(self) -> Option<L> {

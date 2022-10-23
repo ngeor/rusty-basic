@@ -174,10 +174,7 @@ impl Expression {
     }
 
     pub fn is_parenthesis(&self) -> bool {
-        match self {
-            Self::Parenthesis(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Parenthesis(_))
     }
 
     pub fn is_by_ref(&self) -> bool {

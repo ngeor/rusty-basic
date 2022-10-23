@@ -58,7 +58,7 @@ mod tests {
         // act
         interpret(input);
         // assert
-        let contents = std::fs::read_to_string("TEST4.NEW").unwrap_or("".to_string());
+        let contents = std::fs::read_to_string("TEST4.NEW").unwrap_or_default();
         std::fs::remove_file("TEST4.OLD").unwrap_or(());
         std::fs::remove_file("TEST4.NEW").unwrap_or(());
         assert_eq!(contents, "hi");
@@ -74,7 +74,7 @@ mod tests {
         // act
         interpret(input);
         // assert
-        let contents = std::fs::read_to_string("TEST5.NEW").unwrap_or("".to_string());
+        let contents = std::fs::read_to_string("TEST5.NEW").unwrap_or_default();
         std::fs::remove_file("TEST5.OLD").unwrap_or(());
         std::fs::remove_file("TEST5.NEW").unwrap_or(());
         assert_eq!(contents, "hi");

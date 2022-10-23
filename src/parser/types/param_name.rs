@@ -61,17 +61,13 @@ impl VarTypeToUserDefinedRecursively for ParamType {
     }
 }
 
-// Custom implementation of PartialEq because we want to compare the parameter types are equal,
+// TODO remove this Custom implementation of PartialEq because we want to compare the parameter types are equal,
 // regardless of the location of the UserDefinedName node. This is used in subprogram_context (pre-linter).
 impl PartialEq<ParamType> for ParamType {
     fn eq(&self, other: &ParamType) -> bool {
         match self {
             Self::Bare => {
-                if let Self::Bare = other {
-                    true
-                } else {
-                    false
-                }
+                matches!(other, Self::Bare)
             }
             Self::BuiltIn(q, _) => {
                 if let Self::BuiltIn(q_other, _) = other {

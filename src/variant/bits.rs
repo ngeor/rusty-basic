@@ -26,6 +26,10 @@ impl BitVec {
         self.v.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.v.is_empty()
+    }
+
     pub fn push_hex(&mut self, u: u8) {
         // msb -> lsb
         self.v.push(u & 8 == 8);
@@ -710,7 +714,7 @@ mod tests {
     #[test]
     fn test_bytes_to_f64_ints() {
         // let's try some integers
-        for i in -MIN_INTEGER..MAX_INTEGER + 1 {
+        for i in -100..=100 {
             let source: f64 = i as f64;
             let bytes = f64_to_bytes(source);
             let converted = bytes_to_f64(&bytes);
@@ -720,7 +724,7 @@ mod tests {
 
     #[test]
     fn test_bytes_to_f64_double() {
-        for i in -100..100 {
+        for i in -100..=100 {
             let source: f64 = i as f64 * 0.1;
             let bytes = f64_to_bytes(source);
             let converted = bytes_to_f64(&bytes);

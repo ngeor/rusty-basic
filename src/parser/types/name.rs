@@ -39,10 +39,7 @@ impl Name {
     }
 
     pub fn is_bare(&self) -> bool {
-        match self {
-            Self::Bare(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Bare(_))
     }
 
     pub fn is_bare_or_of_type(&self, qualifier: TypeQualifier) -> bool {

@@ -120,7 +120,7 @@ mod single_or_double_literal {
             .and_then(|((opt_integer_digits, frac_digits), opt_pound)| {
                 let left = opt_integer_digits
                     .map(|token| token.text)
-                    .unwrap_or("0".to_owned());
+                    .unwrap_or_else(|| "0".to_owned());
                 let s = format!("{}.{}", left, frac_digits.text);
                 if opt_pound.is_some() {
                     match s.parse::<f64>() {
@@ -540,10 +540,10 @@ mod binary_expression {
             )
             .and_then(move |(leading_ws, loc_op)| {
                 let had_whitespace = leading_ws.is_some();
-                let needs_whitespace = match loc_op.as_ref() {
-                    Operator::Modulo | Operator::And | Operator::Or => true,
-                    _ => false,
-                };
+                let needs_whitespace = matches!(
+                    loc_op.as_ref(),
+                    Operator::Modulo | Operator::And | Operator::Or
+                );
                 if had_whitespace || is_paren || !needs_whitespace {
                     Ok(loc_op)
                 } else {
@@ -701,11 +701,8 @@ pub mod guard {
 
     impl Undo for Guard {
         fn undo(self, tokenizer: &mut impl Tokenizer) {
-            match self {
-                Self::Whitespace(token) => {
-                    tokenizer.unread(token);
-                }
-                _ => {}
+            if let Self::Whitespace(token) = self {
+                tokenizer.unread(token);
             }
         }
     }

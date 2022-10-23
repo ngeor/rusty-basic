@@ -75,7 +75,7 @@ pub trait PostConversionLinter {
         }
     }
 
-    fn visit_comment(&mut self, _comment: &String) -> Result<(), QErrorNode> {
+    fn visit_comment(&mut self, _comment: &str) -> Result<(), QErrorNode> {
         Ok(())
     }
 

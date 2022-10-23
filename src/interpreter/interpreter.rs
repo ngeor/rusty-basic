@@ -598,11 +598,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
         match printer_type {
             PrinterType::Print => &self.stdout,
             PrinterType::LPrint => &self.lpt1,
-            PrinterType::File =>
-                self.file_manager
-                    .try_get_file_info_output(&file_handle)
-                    .expect("File not found"),
-
+            PrinterType::File => self
+                .file_manager
+                .try_get_file_info_output(&file_handle)
+                .expect("File not found"),
         }
     }
 

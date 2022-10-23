@@ -312,7 +312,7 @@ mod tests {
 
         #[test]
         fn test_input_explicit_positive() {
-            assert_input("+3.14", "N", "N!", 3.14_f32);
+            assert_input("+9.14", "N", "N!", 9.14_f32);
         }
 
         #[test]

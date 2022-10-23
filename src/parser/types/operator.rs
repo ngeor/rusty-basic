@@ -20,42 +20,33 @@ pub enum Operator {
 
 impl Operator {
     pub fn is_relational(&self) -> bool {
-        match self {
+        matches!(
+            self,
             Self::Less
-            | Self::LessOrEqual
-            | Self::Equal
-            | Self::GreaterOrEqual
-            | Self::Greater
-            | Self::NotEqual => true,
-            _ => false,
-        }
+                | Self::LessOrEqual
+                | Self::Equal
+                | Self::GreaterOrEqual
+                | Self::Greater
+                | Self::NotEqual
+        )
     }
 
     pub fn is_arithmetic(&self) -> bool {
-        match self {
-            Self::Plus | Self::Minus | Self::Multiply | Self::Divide | Self::Modulo => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Self::Plus | Self::Minus | Self::Multiply | Self::Divide | Self::Modulo
+        )
     }
 
     pub fn is_binary(&self) -> bool {
-        match self {
-            Self::And | Self::Or => true,
-            _ => false,
-        }
+        matches!(self, Self::And | Self::Or)
     }
 
     pub fn is_plus_or_minus(&self) -> bool {
-        match self {
-            Self::Plus | Self::Minus => true,
-            _ => false,
-        }
+        matches!(self, Self::Plus | Self::Minus)
     }
 
     pub fn is_multiply_or_divide(&self) -> bool {
-        match self {
-            Self::Multiply | Self::Divide => true,
-            _ => false,
-        }
+        matches!(self, Self::Multiply | Self::Divide)
     }
 }

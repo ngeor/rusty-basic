@@ -6,9 +6,8 @@ pub fn convert(
     name: Name,
     args: ExpressionNodes,
 ) -> Result<Expression, QErrorNode> {
-    let mut rules: Vec<Box<dyn FuncResolve>> = vec![];
-    // these go first because they're allowed to have no arguments
-    rules.push(Box::new(ExistingArrayWithParenthesis::default()));
+    // ExistingArrayWithParenthesis goes first because they're allowed to have no arguments
+    let rules: Vec<Box<dyn FuncResolve>> = vec![Box::new(ExistingArrayWithParenthesis::default())];
     for mut rule in rules {
         if rule.can_handle(ctx, &name) {
             return rule.resolve(ctx, name, args);

@@ -92,8 +92,7 @@ impl<R: CharReader> TokenizerImpl<R> {
             match self.reader.read()? {
                 Some(ch) => {
                     buffer.push(ch);
-                    let mut i: usize = 0;
-                    for (_, recognizer) in &self.recognizers {
+                    for (i, (_, recognizer)) in self.recognizers.iter().enumerate() {
                         let last_response = recognizer_responses.get_last_response(i);
                         if last_response != Recognition::Negative {
                             let recognition = recognizer.recognize(&buffer);
@@ -108,7 +107,6 @@ impl<R: CharReader> TokenizerImpl<R> {
                                 sizes[i] = 0;
                             }
                         }
-                        i += 1;
                     }
                     no_match_or_eof = recognizer_responses
                         .count_by_recognition(Recognition::Negative)
@@ -123,10 +121,10 @@ impl<R: CharReader> TokenizerImpl<R> {
         // find the longest win
         let mut max_positive_size: usize = 0;
         let mut token_type: Option<TokenKind> = None;
-        for i in 0..self.recognizers.len() {
+        for (i, (kind, _)) in self.recognizers.iter().enumerate() {
             if sizes[i] > max_positive_size {
                 max_positive_size = sizes[i];
-                token_type = Some(self.recognizers[i].0);
+                token_type = Some(*kind);
             }
         }
 
@@ -136,7 +134,7 @@ impl<R: CharReader> TokenizerImpl<R> {
             self.reader.unread(last_char);
         }
 
-        if token_type.is_some() {
+        if let Some(kind) = token_type {
             let begin: Location = self.pos;
             let mut previous_char: char = ' ';
             for ch in buffer.chars() {
@@ -154,7 +152,7 @@ impl<R: CharReader> TokenizerImpl<R> {
                 previous_char = ch;
             }
             Ok(Some(Token {
-                kind: token_type.unwrap(),
+                kind,
                 text: buffer,
                 pos: begin,
             }))

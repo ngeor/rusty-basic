@@ -23,7 +23,7 @@ pub fn on_dim_type<'a, 'b>(
         }
         DimType::UserDefined(u) => user_defined_to_dim_type(ctx, bare_name, u).with_err_no_pos(),
         DimType::Array(array_dimensions, element_type) => {
-            array_to_dim_type(ctx, bare_name, array_dimensions, element_type)
+            array_to_dim_type(ctx, bare_name, array_dimensions, *element_type)
         }
     }
 }
@@ -106,7 +106,7 @@ fn array_to_dim_type<'a, 'b>(
     ctx: &mut DimNameState<'a, 'b>,
     bare_name: &BareName,
     array_dimensions: ArrayDimensions,
-    element_type: Box<DimType>,
+    element_type: DimType,
 ) -> Result<DimType, QErrorNode> {
     debug_assert!(match ctx.dim_context() {
         DimContext::Default => {
@@ -115,7 +115,7 @@ fn array_to_dim_type<'a, 'b>(
         _ => true,
     });
     let converted_array_dimensions: ArrayDimensions = array_dimensions.convert(ctx)?;
-    let resolved_element_dim_type = on_dim_type(*element_type, bare_name, ctx)?;
+    let resolved_element_dim_type = on_dim_type(element_type, bare_name, ctx)?;
     Ok(DimType::Array(
         converted_array_dimensions,
         Box::new(resolved_element_dim_type),

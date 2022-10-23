@@ -104,20 +104,20 @@ macro_rules! div {
 }
 
 impl Variant {
-    pub fn cmp(&self, other: &Self) -> Result<Ordering, QError> {
+    pub fn try_cmp(&self, other: &Self) -> Result<Ordering, QError> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => Ok(ApproximateCmp::cmp(f_left, f_right)),
                 Variant::VDouble(d_right) => Ok(ApproximateCmp::cmp(&(*f_left as f64), d_right)),
                 Variant::VInteger(i_right) => Ok(ApproximateCmp::cmp(f_left, &(*i_right as f32))),
                 Variant::VLong(l_right) => Ok(ApproximateCmp::cmp(f_left, &(*l_right as f32))),
-                _ => other.cmp(self).map(|x| x.reverse()),
+                _ => other.try_cmp(self).map(|x| x.reverse()),
             },
             Variant::VDouble(d_left) => match other {
                 Variant::VDouble(d_right) => Ok(ApproximateCmp::cmp(d_left, d_right)),
                 Variant::VInteger(i_right) => Ok(ApproximateCmp::cmp(d_left, &(*i_right as f64))),
                 Variant::VLong(l_right) => Ok(ApproximateCmp::cmp(d_left, &(*l_right as f64))),
-                _ => other.cmp(self).map(|x| x.reverse()),
+                _ => other.try_cmp(self).map(|x| x.reverse()),
             },
             Variant::VString(s_left) => match other {
                 Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
@@ -126,11 +126,11 @@ impl Variant {
             Variant::VInteger(i_left) => match other {
                 Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
                 Variant::VLong(l_right) => Ok((*i_left as i64).cmp(l_right)),
-                _ => other.cmp(self).map(|x| x.reverse()),
+                _ => other.try_cmp(self).map(|x| x.reverse()),
             },
             Variant::VLong(l_left) => match other {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
-                _ => other.cmp(self).map(|x| x.reverse()),
+                _ => other.try_cmp(self).map(|x| x.reverse()),
             },
             _ => Err(QError::TypeMismatch),
         }
@@ -375,10 +375,7 @@ impl Variant {
     }
 
     pub fn is_array(&self) -> bool {
-        match self {
-            Self::VArray(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::VArray(_))
     }
 
     pub fn peek_non_array(&self, address: usize) -> Result<u8, QError> {
@@ -1613,19 +1610,19 @@ mod tests {
         use super::*;
 
         fn assert_less(left: Variant, right: Variant) {
-            assert_eq!(left.cmp(&right).unwrap(), Ordering::Less);
+            assert_eq!(left.try_cmp(&right).unwrap(), Ordering::Less);
         }
 
         fn assert_equal(left: Variant, right: Variant) {
-            assert_eq!(left.cmp(&right).unwrap(), Ordering::Equal);
+            assert_eq!(left.try_cmp(&right).unwrap(), Ordering::Equal);
         }
 
         fn assert_greater(left: Variant, right: Variant) {
-            assert_eq!(left.cmp(&right).unwrap(), Ordering::Greater);
+            assert_eq!(left.try_cmp(&right).unwrap(), Ordering::Greater);
         }
 
         fn assert_err(left: Variant, right: Variant) {
-            left.cmp(&right).expect_err("cannot compare");
+            left.try_cmp(&right).expect_err("cannot compare");
         }
 
         #[test]

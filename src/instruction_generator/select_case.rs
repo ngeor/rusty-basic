@@ -32,9 +32,8 @@ impl InstructionGenerator {
         has_else: bool,
         pos: Location,
     ) {
-        let mut case_block_index: usize = 0;
         let case_blocks_len = case_blocks.len();
-        for case_block in case_blocks {
+        for (case_block_index, case_block) in case_blocks.into_iter().enumerate() {
             // mark the beginning of this case block
             self.label(labels::case_block(case_block_index), pos);
             // where to jump out from here if the case block isn't matching
@@ -56,7 +55,6 @@ impl InstructionGenerator {
             self.visit(case_block.statements);
             // jump out of SELECT
             self.jump(labels::end_select(), pos);
-            case_block_index += 1;
         }
     }
 
@@ -77,8 +75,7 @@ impl InstructionGenerator {
         let expressions_len = case_expressions.len();
         if expressions_len > 1 {
             // multi expr
-            let mut case_expr_index: usize = 0;
-            for case_expr in case_expressions {
+            for (case_expr_index, case_expr) in case_expressions.into_iter().enumerate() {
                 let is_last = case_expr_index + 1 == expressions_len;
                 if case_expr_index > 0 {
                     // mark the beginning of the evaluation of this CASE expr,
@@ -98,7 +95,6 @@ impl InstructionGenerator {
                     // if this expression matched, jump directly into the CASE block statements and do not evaluate the rest
                     self.jump(labels::case_statements(case_block_index), pos);
                 }
-                case_expr_index += 1;
             }
         } else {
             // single expr is simpler

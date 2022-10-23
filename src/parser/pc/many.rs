@@ -15,15 +15,8 @@ where
     type Output = Vec<P::Output>;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut result: Vec<P::Output> = Vec::new();
-        loop {
-            match self.parser.parse_opt(tokenizer)? {
-                Some(value) => {
-                    result.push(value);
-                }
-                None => {
-                    break;
-                }
-            }
+        while let Some(value) = self.parser.parse_opt(tokenizer)? {
+            result.push(value);
         }
         if result.is_empty() {
             Err(QError::Incomplete)

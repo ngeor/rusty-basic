@@ -148,11 +148,11 @@ impl Expression {
             }
             Self::BinaryExpression(op, left, right, old_expression_type) => Self::BinaryExpression(
                 op,
-                Self::simplify_boxed_node(left),
-                Self::simplify_boxed_node(right),
+                Self::simplify_unary_minus_node(*left),
+                Self::simplify_unary_minus_node(*right),
                 old_expression_type,
             ),
-            Self::Parenthesis(child) => Self::Parenthesis(Self::simplify_boxed_node(child)),
+            Self::Parenthesis(child) => Self::Parenthesis(Self::simplify_unary_minus_node(*child)),
             Self::FunctionCall(name, args) => Self::FunctionCall(
                 name,
                 args.into_iter()
@@ -161,10 +161,6 @@ impl Expression {
             ),
             _ => self,
         }
-    }
-
-    fn simplify_boxed_node(child: Box<ExpressionNode>) -> Box<ExpressionNode> {
-        Self::simplify_unary_minus_node(*child)
     }
 
     fn simplify_unary_minus_node(child: ExpressionNode) -> Box<ExpressionNode> {
@@ -178,12 +174,12 @@ impl Expression {
     }
 
     pub fn is_by_ref(&self) -> bool {
-        match self {
+        matches!(
+            self,
             Expression::Variable(_, _)
-            | Expression::ArrayElement(_, _, _)
-            | Expression::Property(_, _, _) => true,
-            _ => false,
-        }
+                | Expression::ArrayElement(_, _, _)
+                | Expression::Property(_, _, _)
+        )
     }
 
     /// Returns the name of this `Variable` or `Property` expression.

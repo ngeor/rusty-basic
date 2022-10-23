@@ -66,27 +66,27 @@ where
                 let v_right = self.resolve_const(element).patch_err_pos(*pos)?;
                 match *op {
                     Operator::Less => {
-                        let order = v_left.cmp(&v_right).with_err_at(*pos)?;
+                        let order = v_left.try_cmp(&v_right).with_err_at(*pos)?;
                         Ok((order == Ordering::Less).into())
                     }
                     Operator::LessOrEqual => {
-                        let order = v_left.cmp(&v_right).with_err_at(*pos)?;
+                        let order = v_left.try_cmp(&v_right).with_err_at(*pos)?;
                         Ok((order == Ordering::Less || order == Ordering::Equal).into())
                     }
                     Operator::Equal => {
-                        let order = v_left.cmp(&v_right).with_err_at(*pos)?;
+                        let order = v_left.try_cmp(&v_right).with_err_at(*pos)?;
                         Ok((order == Ordering::Equal).into())
                     }
                     Operator::GreaterOrEqual => {
-                        let order = v_left.cmp(&v_right).with_err_at(*pos)?;
+                        let order = v_left.try_cmp(&v_right).with_err_at(*pos)?;
                         Ok((order == Ordering::Greater || order == Ordering::Equal).into())
                     }
                     Operator::Greater => {
-                        let order = v_left.cmp(&v_right).with_err_at(*pos)?;
+                        let order = v_left.try_cmp(&v_right).with_err_at(*pos)?;
                         Ok((order == Ordering::Greater).into())
                     }
                     Operator::NotEqual => {
-                        let order = v_left.cmp(&v_right).with_err_at(*pos)?;
+                        let order = v_left.try_cmp(&v_right).with_err_at(*pos)?;
                         Ok((order == Ordering::Less || order == Ordering::Greater).into())
                     }
                     Operator::Plus => v_left.plus(v_right).with_err_at(*pos),

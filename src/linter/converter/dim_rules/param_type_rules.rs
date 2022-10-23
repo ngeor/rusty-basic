@@ -17,15 +17,15 @@ pub fn on_param_type<'a>(
         ParamType::UserDefined(u) => {
             dim_type_rules::user_defined_to_dim_type(ctx, bare_name, u).with_err_no_pos()
         }
-        ParamType::Array(element_type) => param_array_to_param_type(ctx, bare_name, element_type),
+        ParamType::Array(element_type) => param_array_to_param_type(ctx, bare_name, *element_type),
     }
 }
 
 fn param_array_to_param_type<'a>(
     ctx: &mut PosContext<'a>,
     bare_name: &BareName,
-    element_type: Box<ParamType>,
+    element_type: ParamType,
 ) -> Result<ParamType, QErrorNode> {
-    let resolved_element_dim_type = on_param_type(*element_type, bare_name, ctx)?;
+    let resolved_element_dim_type = on_param_type(element_type, bare_name, ctx)?;
     Ok(ParamType::Array(Box::new(resolved_element_dim_type)))
 }

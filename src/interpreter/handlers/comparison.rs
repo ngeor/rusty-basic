@@ -36,7 +36,7 @@ fn cmp<T: InterpreterTrait, F: FnOnce(Ordering) -> bool>(
 ) -> Result<(), QError> {
     let a = interpreter.registers().get_a();
     let b = interpreter.registers().get_b();
-    let order = a.cmp(&b)?;
+    let order = a.try_cmp(&b)?;
     let is_true = predicate(order);
     interpreter.registers_mut().set_a(is_true.into());
     Ok(())

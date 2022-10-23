@@ -92,7 +92,7 @@ impl InstructionGenerator {
 
     fn generate_push_named_args_instructions(
         &mut self,
-        param_names: &Vec<ParamName>,
+        param_names: &[ParamName],
         args: &ExpressionNodes,
         pos: Location,
     ) {
@@ -111,13 +111,6 @@ impl InstructionGenerator {
         for Locatable { element: arg, pos } in args {
             if arg.is_by_ref() {
                 self.generate_expression_instructions_optionally_by_ref(arg.clone().at(pos), false);
-                debug_assert!(if let Instruction::PopVarPath =
-                    self.instructions.last().unwrap().element
-                {
-                    false
-                } else {
-                    true
-                });
                 self.push(Instruction::PushUnnamedByRef, *pos);
             } else {
                 self.generate_expression_instructions(arg.clone().at(pos));
@@ -127,13 +120,10 @@ impl InstructionGenerator {
     }
 
     fn generate_stash_by_ref_args(&mut self, args: &ExpressionNodes) {
-        let mut idx: usize = 0;
-        for Locatable { element: arg, pos } in args {
+        for (idx, Locatable { element: arg, pos }) in args.iter().enumerate() {
             if arg.is_by_ref() {
                 self.push(Instruction::EnqueueToReturnStack(idx), *pos);
             }
-
-            idx += 1;
         }
     }
 

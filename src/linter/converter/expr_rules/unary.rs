@@ -3,10 +3,10 @@ use crate::linter::converter::expr_rules::*;
 pub fn convert(
     ctx: &mut PosExprState,
     unary_operator: UnaryOperator,
-    box_child: Box<ExpressionNode>,
+    child: ExpressionNode,
 ) -> Result<Expression, QErrorNode> {
     // convert child (recursion)
-    let converted_child = (*box_child).convert(ctx)?;
+    let converted_child = child.convert(ctx)?;
     // ensure operator applies to converted expr
     let converted_expr_type = converted_child.as_ref().expression_type();
     if is_applicable_to_expr_type(&converted_expr_type) {
@@ -18,11 +18,11 @@ pub fn convert(
 }
 
 fn is_applicable_to_expr_type(expr_type: &ExpressionType) -> bool {
-    match expr_type {
+    matches!(
+        expr_type,
         ExpressionType::BuiltIn(TypeQualifier::BangSingle)
-        | ExpressionType::BuiltIn(TypeQualifier::HashDouble)
-        | ExpressionType::BuiltIn(TypeQualifier::PercentInteger)
-        | ExpressionType::BuiltIn(TypeQualifier::AmpersandLong) => true,
-        _ => false,
-    }
+            | ExpressionType::BuiltIn(TypeQualifier::HashDouble)
+            | ExpressionType::BuiltIn(TypeQualifier::PercentInteger)
+            | ExpressionType::BuiltIn(TypeQualifier::AmpersandLong)
+    )
 }

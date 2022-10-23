@@ -53,13 +53,11 @@ impl InstructionGenerator {
             self.jump("end-if", pos);
         }
 
-        match else_block {
-            Some(e) => {
-                self.label("else", pos);
-                self.visit(e);
-            }
-            None => (),
+        if let Some(e) = else_block {
+            self.label("else", pos);
+            self.visit(e);
         }
+
         self.label("end-if", pos);
     }
 }

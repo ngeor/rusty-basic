@@ -39,7 +39,7 @@ impl<S> MockInterpreterTrait for S where
 fn mock_interpreter_for_user_defined_types<U: HasUserDefinedTypes>(
     user_defined_types_holder: U,
 ) -> impl MockInterpreterTrait {
-    let stdlib = MockStdlib::new();
+    let stdlib = MockStdlib::default();
     mock_interpreter_for_user_defined_types_stdlib(user_defined_types_holder, stdlib)
 }
 
@@ -68,7 +68,7 @@ fn mock_interpreter_for_user_defined_types_stdlib<U: HasUserDefinedTypes>(
             stdin,
             stdout,
             lpt1,
-            CrossTermScreen::new(),
+            CrossTermScreen::default(),
             user_defined_types_holder,
         )
     }
@@ -180,10 +180,12 @@ where
         .map(|_| interpreter)
 }
 
+#[derive(Default)]
 pub struct MockStdlib {
     pub env: HashMap<String, String>,
 }
 
+#[derive(Default)]
 pub struct MockStdin {
     pub stdin: Vec<u8>,
 }
@@ -204,14 +206,6 @@ impl Read for MockStdin {
             n += 1;
         }
         Ok(n)
-    }
-}
-
-impl MockStdlib {
-    pub fn new() -> MockStdlib {
-        MockStdlib {
-            env: HashMap::new(),
-        }
     }
 }
 
@@ -282,9 +276,9 @@ macro_rules! assert_interpreter_err {
     ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {
         assert_eq!(
             $crate::interpreter::test_utils::interpret_err($program),
-            crate::common::ErrorEnvelope::Pos(
+            $crate::common::ErrorEnvelope::Pos(
                 $expected_err,
-                crate::common::Location::new($expected_row, $expected_col)
+                $crate::common::Location::new($expected_row, $expected_col)
             )
         );
     };

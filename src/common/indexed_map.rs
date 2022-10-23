@@ -86,6 +86,16 @@ where
     pub fn len(&self) -> usize {
         self.values.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+}
+
+impl<K: Eq + Hash, V> Default for IndexedMap<K, V> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 struct KeysIterator<'a, K, V>

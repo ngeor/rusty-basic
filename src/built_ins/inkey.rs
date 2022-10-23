@@ -86,7 +86,7 @@ pub mod interpreter {
 
         #[test]
         fn test_mapping_lowercase_letters() {
-            for ch in 'a'..'z' {
+            for ch in 'a'..='z' {
                 assert_eq!(
                     handle_key(KeyCode::Char(ch), KeyModifiers::NONE),
                     String::from(ch)
@@ -96,7 +96,7 @@ pub mod interpreter {
 
         #[test]
         fn test_mapping_uppercase_letters() {
-            for ch in 'A'..'Z' {
+            for ch in 'A'..='Z' {
                 assert_eq!(
                     handle_key(KeyCode::Char(ch), KeyModifiers::SHIFT),
                     String::from(ch)

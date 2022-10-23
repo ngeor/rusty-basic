@@ -40,11 +40,8 @@ impl<T: BufRead> CharReader for CharReaderImpl<T> {
                 let mut line = String::new();
                 let bytes_read = self.buf_read.read_line(&mut line)?;
                 if bytes_read > 0 {
-                    loop {
-                        match line.pop() {
-                            Some(ch) => self.buffer.push_front(ch),
-                            None => break,
-                        }
+                    while let Some(ch) = line.pop() {
+                        self.buffer.push_front(ch);
                     }
                     Ok(self.buffer.pop_front())
                 } else {

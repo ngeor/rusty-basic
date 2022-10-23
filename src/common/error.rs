@@ -258,10 +258,7 @@ pub trait ParserErrorTrait {
 
 impl ParserErrorTrait for QError {
     fn is_incomplete(&self) -> bool {
-        match self {
-            Self::Incomplete | Self::Expected(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Incomplete | Self::Expected(_))
     }
 
     fn no_incomplete(self) -> Self {
@@ -275,10 +272,7 @@ impl ParserErrorTrait for QError {
 
 impl<T, E: ParserErrorTrait> ParserErrorTrait for Result<T, E> {
     fn is_incomplete(&self) -> bool {
-        match self {
-            Err(err) if err.is_incomplete() => true,
-            _ => false,
-        }
+        matches!(self, Err(err) if err.is_incomplete())
     }
 
     fn no_incomplete(self) -> Self {

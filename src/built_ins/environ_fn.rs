@@ -38,7 +38,7 @@ mod tests {
         X$ = ENVIRON$("abc")
         Y$ = ENVIRON$("def")
         "#;
-        let mut stdlib = MockStdlib::new();
+        let mut stdlib = MockStdlib::default();
         stdlib.set_env_var("abc".to_string(), "foo".to_string());
         let interpreter = interpret_with_env(program, stdlib);
         assert_has_variable!(interpreter, "X$", "foo");

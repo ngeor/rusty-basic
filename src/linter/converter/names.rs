@@ -268,13 +268,7 @@ impl Names {
         set.extend(
             self.map
                 .drain()
-                .filter(|(_, v)| {
-                    if let NameInfo::Extended(_) = v {
-                        true
-                    } else {
-                        false
-                    }
-                })
+                .filter(|(_, name_info)| matches!(name_info, NameInfo::Extended(_)))
                 .map(|(k, _)| k),
         );
     }

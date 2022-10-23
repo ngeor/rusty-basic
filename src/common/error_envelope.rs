@@ -36,14 +36,13 @@ impl<T> ErrorEnvelope<T> {
         }
     }
 
-    pub fn patch_stacktrace(self, s: &Vec<Location>) -> Self {
+    pub fn patch_stacktrace(self, v_new: &mut Vec<Location>) -> Self {
         let mut v_old: Vec<Location> = match &self {
             Self::NoPos(_) => vec![],
             Self::Pos(_, p) => vec![*p],
             Self::Stacktrace(_, v) => v.clone(),
         };
-        let mut v_new: Vec<Location> = s.clone();
-        v_old.append(&mut v_new);
+        v_old.append(v_new);
         let body = self.into_err();
         if v_old.is_empty() {
             Self::NoPos(body)

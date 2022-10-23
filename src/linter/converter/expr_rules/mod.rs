@@ -170,11 +170,11 @@ impl<'a, 'b> Convertible<PosExprState<'a, 'b>> for Expression {
             }
             // unary
             Expression::UnaryExpression(unary_operator, box_child) => {
-                unary::convert(ctx, unary_operator, box_child)
+                unary::convert(ctx, unary_operator, *box_child)
             }
             // binary
             Expression::BinaryExpression(binary_operator, left, right, _expr_type) => {
-                binary::convert(ctx, binary_operator, left, right)
+                binary::convert(ctx, binary_operator, *left, *right)
             }
             // variables
             Expression::Variable(name, variable_info) => {

@@ -4,7 +4,7 @@ use crate::variant::Variant;
 use std::slice::Iter;
 use std::vec::IntoIter;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Arguments {
     v: Vec<ArgumentInfo>,
 }
@@ -17,10 +17,6 @@ pub struct ArgumentInfo {
 }
 
 impl Arguments {
-    pub fn new() -> Self {
-        Self { v: vec![] }
-    }
-
     pub fn push_unnamed_by_val(&mut self, arg: Variant) {
         self.v.push(ArgumentInfo {
             value: arg,

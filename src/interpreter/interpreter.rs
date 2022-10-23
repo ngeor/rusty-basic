@@ -228,7 +228,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                             i = ctx.nearest_statement_finder.find_next(i);
                         }
                         ErrorHandler::None => {
-                            return Err(e.patch_stacktrace(&self.stacktrace));
+                            return Err(e.patch_stacktrace(&mut self.stacktrace));
                         }
                     }
                 }
@@ -249,11 +249,11 @@ pub type DefaultInterpreter<U> = Interpreter<
 pub fn new_default_interpreter<U: HasUserDefinedTypes>(
     user_defined_types: U,
 ) -> DefaultInterpreter<U> {
-    let stdlib = DefaultStdlib::new();
+    let stdlib = DefaultStdlib;
     let stdin = ReadInputSource::new(std::io::stdin());
     let stdout = WritePrinter::new(std::io::stdout());
     let lpt1 = WritePrinter::new(Lpt1Write {});
-    let screen = CrossTermScreen::new();
+    let screen = CrossTermScreen::default();
     Interpreter::new(stdlib, stdin, stdout, lpt1, screen, user_defined_types)
 }
 
@@ -288,7 +288,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
             last_error_address: None,
             last_error_code: None,
             print_interpreter: Rc::new(RefCell::new(PrintInterpreter::new())),
-            data_segment: DataSegment::new(),
+            data_segment: DataSegment::default(),
             def_seg: None,
         }
     }

@@ -217,11 +217,8 @@ pub trait PostConversionLinter {
             None => {}
         };
         for print_arg in &print_node.args {
-            match print_arg {
-                PrintArg::Expression(e) => {
-                    self.visit_expression(e)?;
-                }
-                _ => {}
+            if let PrintArg::Expression(e) = print_arg {
+                self.visit_expression(e)?;
             }
         }
         Ok(())

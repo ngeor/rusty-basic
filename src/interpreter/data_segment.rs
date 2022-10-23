@@ -1,16 +1,13 @@
 use crate::common::QError;
 use crate::variant::Variant;
 
+#[derive(Default)]
 pub struct DataSegment {
     v: Vec<Variant>,
     idx: usize,
 }
 
 impl DataSegment {
-    pub fn new() -> Self {
-        Self { v: vec![], idx: 0 }
-    }
-
     pub fn push(&mut self, v: Variant) {
         self.v.push(v);
     }

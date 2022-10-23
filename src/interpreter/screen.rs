@@ -65,14 +65,9 @@ impl Screen for HeadlessScreen {
 }
 
 /// Implements the `Screen` trait using the "crossterm" crate.
+#[derive(Default)]
 pub struct CrossTermScreen {
     view_print: Option<(usize, usize)>,
-}
-
-impl CrossTermScreen {
-    pub fn new() -> Self {
-        Self { view_print: None }
-    }
 }
 
 impl Screen for CrossTermScreen {

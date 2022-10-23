@@ -84,10 +84,8 @@ impl FileInfo {
     }
 
     pub fn get_record(&mut self, record_number: usize) -> Result<Vec<u8>, QError> {
+        debug_assert!(record_number > 0);
         self.ensure_random()?;
-        if record_number <= 0 {
-            return Err(QError::BadRecordNumber);
-        }
         let offset = ((record_number - 1) * self.rec_len) as u64;
         let file = self.random.as_mut().expect("Should have file");
         file.seek(SeekFrom::Start(offset))?;
@@ -103,28 +101,27 @@ impl FileInfo {
     }
 
     pub fn put_record(&mut self, record_number: usize, bytes: &[u8]) -> Result<(), QError> {
+        debug_assert!(record_number > 0);
         self.ensure_random()?;
-        if record_number <= 0 {
-            return Err(QError::BadRecordNumber);
-        }
         let offset = ((record_number - 1) * self.rec_len) as u64;
         let file = self.random.as_mut().expect("Should have file");
         file.seek(SeekFrom::Start(offset))?;
-        file.write(bytes)?;
+        file.write_all(bytes)?;
         Ok(())
     }
 
     fn ensure_random(&self) -> Result<(), QError> {
         if self.random.is_none() {
             Err(QError::BadFileMode)
-        } else if self.rec_len <= 0 {
-            Err(QError::BadRecordLength)
-        } else {
+        } else if self.rec_len > 0 {
             Ok(())
+        } else {
+            Err(QError::BadRecordLength)
         }
     }
 }
 
+#[derive(Default)]
 pub struct FileManager {
     handle_map: HashMap<FileHandle, FileInfo>,
 }

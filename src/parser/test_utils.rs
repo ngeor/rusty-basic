@@ -201,9 +201,9 @@ macro_rules! assert_sub_call {
     ($actual_statement: expr, $expected_name: expr, $($arg: expr),+) => {
         match $actual_statement {
             Statement::SubCall(actual_bare_name, actual_args) => {
-                let expected_bare_name: crate::parser::types::BareName = $expected_name.into();
+                let expected_bare_name: $crate::parser::types::BareName = $expected_name.into();
                 assert_eq!(actual_bare_name, expected_bare_name, "SubCall name mismatch");
-                let actual_args_no_loc: Vec<crate::parser::Expression> = crate::common::Locatable::strip_location(actual_args);
+                let actual_args_no_loc: Vec<$crate::parser::Expression> = $crate::common::Locatable::strip_location(actual_args);
                 assert_eq!(actual_args_no_loc, vec![$($arg),+]);
             }
             _ => panic!("Expected SubCall")
@@ -229,7 +229,7 @@ macro_rules! assert_built_in_sub_call {
         match result {
             Statement::BuiltInSubCall(actual_name, actual_args) => {
                 assert_eq!(actual_name, $expected_name);
-                let actual_args_no_loc: Vec<$crate::parser::Expression> = crate::common::Locatable::strip_location(actual_args);
+                let actual_args_no_loc: Vec<$crate::parser::Expression> = $crate::common::Locatable::strip_location(actual_args);
                 assert_eq!(actual_args_no_loc, vec![$($arg),+]);
             }
             _ => panic!("Expected built-in sub call {:?}", $expected_name)
@@ -245,11 +245,11 @@ macro_rules! assert_expression {
     };
 
     (var $input:expr) => {
-        crate::assert_expression!($input, Expression::var_unresolved($input));
+        $crate::assert_expression!($input, Expression::var_unresolved($input));
     };
 
     (fn $input:expr) => {
-        crate::assert_expression!(
+        $crate::assert_expression!(
             $input,
             Expression::FunctionCall(
                 Name::from($input.split('(').next().unwrap()),
@@ -265,7 +265,7 @@ macro_rules! assert_expression {
 #[macro_export]
 macro_rules! assert_literal_expression {
     ($left:expr, $right:expr) => {
-        $crate::assert_expression!($left, crate::parser::types::Expression::from($right));
+        $crate::assert_expression!($left, $crate::parser::types::Expression::from($right));
     };
 }
 
@@ -277,13 +277,13 @@ macro_rules! assert_parser_err {
     };
 
     ($input:expr, $expected_err:expr) => {
-        assert_eq!(crate::parser::test_utils::parse_err($input), $expected_err);
+        assert_eq!($crate::parser::test_utils::parse_err($input), $expected_err);
     };
 
     ($input:expr, $expected_err:expr, $row:expr, $col:expr) => {
         assert_eq!(
-            crate::parser::test_utils::parse_err_node($input),
-            QErrorNode::Pos($expected_err, crate::common::Location::new($row, $col))
+            $crate::parser::test_utils::parse_err_node($input),
+            QErrorNode::Pos($expected_err, $crate::common::Location::new($row, $col))
         );
     };
 }
@@ -361,13 +361,13 @@ macro_rules! assert_parse_dim_extended_built_in {
         let p = parse(input).demand_single_statement();
         assert_eq!(
             p,
-            $crate::parser::Statement::Dim(crate::parser::DimList {
+            $crate::parser::Statement::Dim($crate::parser::DimList {
                 shared: false,
-                variables: vec![crate::parser::DimNameBuilder::new()
+                variables: vec![$crate::parser::DimNameBuilder::new()
                     .bare_name($name)
-                    .dim_type(crate::parser::DimType::BuiltIn(
+                    .dim_type($crate::parser::DimType::BuiltIn(
                         TypeQualifier::$qualifier,
-                        crate::parser::BuiltInStyle::Extended
+                        $crate::parser::BuiltInStyle::Extended
                     ))
                     .build()
                     .at_rc(1, 5)]
@@ -477,7 +477,7 @@ macro_rules! expr {
 
     (prop($first: literal, $second: literal, $third: literal)) => {
         Expression::Property(
-            Box::new(crate::expr!(prop($first.$second))),
+            Box::new($crate::expr!(prop($first.$second))),
             Name::from($third),
             ExpressionType::Unresolved,
         )

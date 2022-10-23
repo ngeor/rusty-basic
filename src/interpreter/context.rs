@@ -417,6 +417,12 @@ impl std::ops::IndexMut<usize> for Context {
     }
 }
 
+impl Default for Context {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug)]
 struct State {
     memory_block_index: usize,
@@ -428,7 +434,7 @@ impl State {
         Self {
             memory_block_index,
             arguments: if collecting_arguments {
-                Some(Arguments::new())
+                Some(Arguments::default())
             } else {
                 None
             },

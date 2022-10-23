@@ -1,12 +1,6 @@
 use crate::interpreter::Stdlib;
 
-pub struct DefaultStdlib {}
-
-impl DefaultStdlib {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
+pub struct DefaultStdlib;
 
 impl Stdlib for DefaultStdlib {
     fn system(&self) {

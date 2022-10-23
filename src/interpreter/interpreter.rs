@@ -592,17 +592,17 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
         Ok(())
     }
 
-    fn choose_printer(&self) -> Box<&dyn Printer> {
+    fn choose_printer(&self) -> &dyn Printer {
         let printer_type = self.print_interpreter.borrow().get_printer_type();
         let file_handle = self.print_interpreter.borrow().get_file_handle();
         match printer_type {
-            PrinterType::Print => Box::new(&self.stdout),
-            PrinterType::LPrint => Box::new(&self.lpt1),
-            PrinterType::File => Box::new(
+            PrinterType::Print => &self.stdout,
+            PrinterType::LPrint => &self.lpt1,
+            PrinterType::File =>
                 self.file_manager
                     .try_get_file_info_output(&file_handle)
                     .expect("File not found"),
-            ),
+
         }
     }
 

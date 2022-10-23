@@ -53,7 +53,7 @@ impl PrintInterpreter {
         self.format_string = format_string;
     }
 
-    pub fn print_comma(&mut self, printer: Box<&dyn Printer>) -> std::io::Result<usize> {
+    pub fn print_comma(&mut self, printer: &dyn Printer) -> std::io::Result<usize> {
         self.should_skip_new_line = true;
         printer.move_to_next_print_zone()
     }
@@ -62,7 +62,7 @@ impl PrintInterpreter {
         self.should_skip_new_line = true;
     }
 
-    pub fn print_value(&mut self, printer: Box<&dyn Printer>, v: Variant) -> Result<(), QError> {
+    pub fn print_value(&mut self, printer: &dyn Printer, v: Variant) -> Result<(), QError> {
         self.should_skip_new_line = false;
         if self.format_string.is_some() {
             self.print_value_with_format_string(printer, v)
@@ -73,9 +73,9 @@ impl PrintInterpreter {
         }
     }
 
-    pub fn print_end(&mut self, printer: Box<&dyn Printer>) -> Result<(), QError> {
+    pub fn print_end(&mut self, printer: &dyn Printer) -> Result<(), QError> {
         if self.format_string.is_some() {
-            self.print_remaining_chars(&printer)?;
+            self.print_remaining_chars(printer)?;
         }
         if self.should_skip_new_line {
             self.should_skip_new_line = false;
@@ -85,7 +85,7 @@ impl PrintInterpreter {
         }
     }
 
-    fn print_remaining_chars(&mut self, printer: &Box<&dyn Printer>) -> Result<(), QError> {
+    fn print_remaining_chars(&mut self, printer: &dyn Printer) -> Result<(), QError> {
         let format_string_chars: Vec<char> = self.format_string.as_ref().unwrap().chars().collect();
         print_remaining_non_formatting_chars(
             printer,
@@ -96,7 +96,7 @@ impl PrintInterpreter {
 
     fn print_value_with_format_string(
         &mut self,
-        printer: Box<&dyn Printer>,
+        printer: &dyn Printer,
         v: Variant,
     ) -> Result<(), QError> {
         let format_string_chars: Vec<char> = self.format_string.as_ref().unwrap().chars().collect();
@@ -109,7 +109,7 @@ impl PrintInterpreter {
 
         // copy from format_string until we hit a formatting character
         print_non_formatting_chars(
-            &printer,
+            printer,
             format_string_chars.as_slice(),
             &mut self.format_string_idx,
         )?;
@@ -125,7 +125,7 @@ impl PrintInterpreter {
 
     fn print_value_without_format_string(
         &mut self,
-        printer: Box<&dyn Printer>,
+        printer: &dyn Printer,
         v: Variant,
     ) -> std::io::Result<usize> {
         printer.print_variant(&v)
@@ -133,7 +133,7 @@ impl PrintInterpreter {
 }
 
 fn print_non_formatting_chars(
-    printer: &Box<&dyn Printer>,
+    printer: &dyn Printer,
     format_string_chars: &[char],
     idx: &mut usize,
 ) -> Result<(), QError> {
@@ -159,7 +159,7 @@ fn is_formatting_char(ch: char) -> bool {
 }
 
 fn print_remaining_non_formatting_chars(
-    printer: &Box<&dyn Printer>,
+    printer: &dyn Printer,
     format_string_chars: &[char],
     idx: &mut usize,
 ) -> Result<(), QError> {
@@ -177,7 +177,7 @@ fn print_remaining_non_formatting_chars(
 }
 
 fn print_formatting_chars(
-    printer: Box<&dyn Printer>,
+    printer: &dyn Printer,
     format_string_chars: &[char],
     idx: &mut usize,
     v: Variant,
@@ -203,7 +203,7 @@ mod numeric_formatting {
     use crate::variant::Variant;
 
     pub fn print_digit_formatting_chars(
-        printer: Box<&dyn Printer>,
+        printer: &dyn Printer,
         format_string_chars: &[char],
         idx: &mut usize,
         v: Variant,
@@ -323,7 +323,7 @@ mod numeric_formatting {
 }
 
 fn print_string_formatting_chars(
-    printer: Box<&dyn Printer>,
+    printer: &dyn Printer,
     format_string_chars: &[char],
     idx: &mut usize,
     v: Variant,
@@ -353,7 +353,7 @@ fn print_string_formatting_chars(
     }
 }
 fn print_first_char_formatting_chars(
-    printer: Box<&dyn Printer>,
+    printer: &dyn Printer,
     format_string_chars: &[char],
     idx: &mut usize,
     v: Variant,

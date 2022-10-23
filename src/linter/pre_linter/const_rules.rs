@@ -38,6 +38,5 @@ fn global_const(
     })
     .map(|casted| {
         global_constants.insert(bare_name.clone(), casted);
-        ()
     })
 }

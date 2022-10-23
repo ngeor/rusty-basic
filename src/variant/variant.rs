@@ -1476,7 +1476,7 @@ mod tests {
                     .divide(Variant::VSingle(13.0))
                     .unwrap()
                 {
-                    Variant::VSingle(result) => assert_eq!(result, 2.38461538461538),
+                    Variant::VSingle(result) => assert_eq!(result, 2.384_615_4),
                     _ => panic!("assertion failed"),
                 }
             }

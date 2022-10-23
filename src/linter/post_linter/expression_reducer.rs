@@ -43,7 +43,7 @@ pub trait ExpressionReducer {
                 .map(|x| Some(TopLevelToken::SubImplementation(x))),
             TopLevelToken::Statement(s) => self
                 .visit_filter_statement(s)
-                .map(|opt_statement| opt_statement.map(|x| TopLevelToken::Statement(x))),
+                .map(|opt_statement| opt_statement.map(TopLevelToken::Statement)),
             _ => Ok(None),
         }
     }
@@ -97,7 +97,7 @@ pub trait ExpressionReducer {
     }
 
     fn visit_filter_statement(&mut self, s: Statement) -> Result<Option<Statement>, QErrorNode> {
-        self.visit_map_statement(s).map(|s| Some(s))
+        self.visit_map_statement(s).map(Some)
     }
 
     fn visit_map_statement(&mut self, s: Statement) -> Result<Statement, QErrorNode> {
@@ -236,9 +236,7 @@ pub trait ExpressionReducer {
 
     fn visit_case_expression(&mut self, s: CaseExpression) -> Result<CaseExpression, QErrorNode> {
         match s {
-            CaseExpression::Simple(e) => self
-                .visit_expression_node(e)
-                .map(|x| CaseExpression::Simple(x)),
+            CaseExpression::Simple(e) => self.visit_expression_node(e).map(CaseExpression::Simple),
             CaseExpression::Is(op, e) => self
                 .visit_expression_node(e)
                 .map(|x| CaseExpression::Is(op, x)),
@@ -296,7 +294,7 @@ pub trait ExpressionReducer {
             file_number: print_node.file_number,
             lpt1: print_node.lpt1,
             format_string: match print_node.format_string {
-                Some(f) => self.visit_expression_node(f).map(|e| Some(e))?,
+                Some(f) => self.visit_expression_node(f).map(Some)?,
                 _ => None,
             },
             args: self.visit_print_args(print_node.args)?,
@@ -312,9 +310,7 @@ pub trait ExpressionReducer {
 
     fn visit_print_arg(&mut self, print_arg: PrintArg) -> Result<PrintArg, QErrorNode> {
         match print_arg {
-            PrintArg::Expression(e) => self
-                .visit_expression_node(e)
-                .map(|converted_expr_node| PrintArg::Expression(converted_expr_node)),
+            PrintArg::Expression(e) => self.visit_expression_node(e).map(PrintArg::Expression),
             _ => Ok(print_arg),
         }
     }

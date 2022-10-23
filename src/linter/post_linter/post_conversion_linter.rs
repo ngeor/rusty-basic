@@ -13,8 +13,7 @@ use crate::parser::*;
 pub trait PostConversionLinter {
     fn visit_program(&mut self, p: &ProgramNode) -> Result<(), QErrorNode> {
         p.iter()
-            .map(|t| self.visit_top_level_token_node(t))
-            .collect()
+            .try_for_each(|t| self.visit_top_level_token_node(t))
     }
 
     fn visit_top_level_token_node(&mut self, t: &TopLevelTokenNode) -> Result<(), QErrorNode> {
@@ -42,7 +41,7 @@ pub trait PostConversionLinter {
     }
 
     fn visit_statement_nodes(&mut self, s: &StatementNodes) -> Result<(), QErrorNode> {
-        s.iter().map(|x| self.visit_statement_node(x)).collect()
+        s.iter().try_for_each(|x| self.visit_statement_node(x))
     }
 
     fn visit_statement_node(&mut self, t: &StatementNode) -> Result<(), QErrorNode> {
@@ -209,7 +208,7 @@ pub trait PostConversionLinter {
     }
 
     fn visit_expressions(&mut self, args: &ExpressionNodes) -> Result<(), QErrorNode> {
-        args.iter().map(|e| self.visit_expression(e)).collect()
+        args.iter().try_for_each(|e| self.visit_expression(e))
     }
 
     fn visit_print_node(&mut self, print_node: &PrintNode) -> Result<(), QErrorNode> {

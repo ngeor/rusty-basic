@@ -12,7 +12,7 @@ pub struct VariableInfo {
     pub redim_info: Option<RedimInfo>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RedimInfo {
     pub dimension_count: usize,
 }

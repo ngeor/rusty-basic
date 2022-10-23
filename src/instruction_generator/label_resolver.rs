@@ -35,7 +35,7 @@ impl LabelResolver {
                 *instruction = Instruction::JumpIfFalse(AddressOrLabel::Resolved(
                     *label_to_address
                         .get(x)
-                        .expect(&format!("Label {} not found", x)),
+                        .unwrap_or_else(|| panic!("Label {} not found", x)),
                 ));
             }
             Instruction::OnErrorGoTo(AddressOrLabel::Unresolved(x)) => {

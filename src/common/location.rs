@@ -43,7 +43,7 @@ impl Location {
 /// Bundles an element (typically a parsed token) together with its location
 /// within the file it was read from.
 // TODO make fields private (breaks pattern matching)
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Locatable<T> {
     pub element: T,
     pub pos: Location,

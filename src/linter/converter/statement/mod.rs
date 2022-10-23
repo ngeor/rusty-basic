@@ -40,14 +40,13 @@ impl<'a> Convertible<PosContext<'a>, Option<Statement>> for Statement {
                 let converted_args = args.convert_in(ctx, ExprContext::Argument)?;
                 Ok(Statement::BuiltInSubCall(built_in_sub, converted_args)).map(Some)
             }
-            Statement::IfBlock(i) => i.convert(ctx).map(|i| Statement::IfBlock(i)).map(Some),
-            Statement::SelectCase(s) => s.convert(ctx).map(|s| Statement::SelectCase(s)).map(Some),
-            Statement::ForLoop(f) => f.convert(ctx).map(|f| Statement::ForLoop(f)).map(Some),
-            Statement::While(c) => c.convert(ctx).map(|c| Statement::While(c)).map(Some),
-            Statement::DoLoop(do_loop_node) => do_loop_node
-                .convert(ctx)
-                .map(|d| Statement::DoLoop(d))
-                .map(Some),
+            Statement::IfBlock(i) => i.convert(ctx).map(Statement::IfBlock).map(Some),
+            Statement::SelectCase(s) => s.convert(ctx).map(Statement::SelectCase).map(Some),
+            Statement::ForLoop(f) => f.convert(ctx).map(Statement::ForLoop).map(Some),
+            Statement::While(c) => c.convert(ctx).map(Statement::While).map(Some),
+            Statement::DoLoop(do_loop_node) => {
+                do_loop_node.convert(ctx).map(Statement::DoLoop).map(Some)
+            }
             Statement::Return(opt_label) => {
                 if opt_label.is_some() && ctx.is_in_subprogram() {
                     // cannot have RETURN with explicit label inside subprogram

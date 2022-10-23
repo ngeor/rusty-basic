@@ -47,7 +47,7 @@ where
 #[macro_export]
 macro_rules! assert_linter_err {
     ($program:expr, $expected_err:expr) => {
-        match crate::linter::test_utils::linter_err($program, "") {
+        match $crate::linter::test_utils::linter_err($program, "") {
             crate::common::QErrorNode::Pos(actual_err, _) => {
                 assert_eq!(actual_err, $expected_err);
             }
@@ -85,7 +85,7 @@ macro_rules! assert_linter_err {
 #[macro_export]
 macro_rules! assert_linter_ok_top_level_statements {
     ($program:expr, $($statement: expr),+) => {
-        let top_level_token_nodes: Vec<crate::parser::TopLevelTokenNode> = crate::linter::test_utils::linter_ok($program);
+        let top_level_token_nodes: Vec<$crate::parser::TopLevelTokenNode> = crate::linter::test_utils::linter_ok($program);
         let top_level_statements: Vec<crate::parser::Statement> = top_level_token_nodes.into_iter()
             .map(|crate::common::Locatable { element, .. }| match element {
                 crate::parser::TopLevelToken::Statement(s) => s,

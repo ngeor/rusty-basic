@@ -169,11 +169,11 @@ pub fn many_letters_recognizer() -> impl Recognizer {
 }
 
 pub fn is_letter(ch: char) -> bool {
-    (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
+    ('a'..='z').contains(&ch) || ('A'..='Z').contains(&ch)
 }
 
 pub fn is_digit(ch: char) -> bool {
-    ch >= '0' && ch <= '9'
+    ('0'..='9').contains(&ch)
 }
 
 #[cfg(test)]

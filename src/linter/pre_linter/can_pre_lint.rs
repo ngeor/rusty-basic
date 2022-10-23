@@ -33,6 +33,6 @@ where
     type Context = T::Context;
 
     fn pre_lint(&self, context: &Self::Context) -> Result<(), QErrorNode> {
-        self.iter().map(|item| item.pre_lint(context)).collect()
+        self.iter().try_for_each(|item| item.pre_lint(context))
     }
 }

@@ -26,7 +26,7 @@ pub mod interpreter {
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let address: usize = interpreter.context()[0].to_non_negative_int()?;
         let value: i32 = interpreter.context()[1].try_cast()?;
-        if value >= 0 && value < 256 {
+        if (0..256).contains(&value) {
             let b: u8 = value as u8;
             let seg = interpreter.get_def_seg_or_default();
             if seg == 0 {

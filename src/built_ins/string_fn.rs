@@ -67,7 +67,7 @@ pub mod interpreter {
     }
 
     fn run_with_ascii_code_argument(count: usize, ascii: i32) -> Result<String, QError> {
-        if ascii >= 0 && ascii <= 255 {
+        if (0..=255).contains(&ascii) {
             let u: u8 = ascii as u8;
             run_with_char(count, u as char)
         } else {

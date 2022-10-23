@@ -4,7 +4,7 @@ use crate::parser::{BareName, BareNameNode, ExpressionType, HasExpressionType, T
 ///
 /// This is an abstraction to address the similarities between [DimName]
 /// and [ParamName].
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VarName<T> {
     // TODO make fields private
     pub bare_name: BareName,

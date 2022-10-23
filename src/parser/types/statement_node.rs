@@ -135,14 +135,14 @@ pub enum ExitObject {
     Sub,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ResumeOption {
     Bare,
     Next,
     Label(CaseInsensitiveString),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OnErrorOption {
     Next,
     Label(CaseInsensitiveString),

@@ -27,8 +27,8 @@ impl From<OctOrHex> for char {
 impl OctOrHex {
     fn is_digit(&self, ch: char) -> bool {
         match self {
-            Self::Oct => ch >= '0' && ch <= '7',
-            Self::Hex => is_digit(ch) || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'),
+            Self::Oct => ('0'..='7').contains(&ch),
+            Self::Hex => is_digit(ch) || ('a'..='f').contains(&ch) || ('A'..='F').contains(&ch),
         }
     }
 }

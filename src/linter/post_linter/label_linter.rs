@@ -29,8 +29,7 @@ impl Default for LabelOwner {
 impl LabelLinter {
     fn do_visit_program(&mut self, p: &ProgramNode) -> Result<(), QErrorNode> {
         p.iter()
-            .map(|t| self.visit_top_level_token_node(t))
-            .collect()
+            .try_for_each(|t| self.visit_top_level_token_node(t))
     }
 
     fn contains_label_in_any_scope(&self, label: &CaseInsensitiveString) -> bool {

@@ -16,8 +16,7 @@ pub fn lint_call_args(args: &ExpressionNodes, param_types: &ParamTypes) -> Resul
 
     args.iter()
         .zip(param_types.iter())
-        .map(|(a, p)| lint_call_arg(a, p))
-        .collect()
+        .try_for_each(|(a, p)| lint_call_arg(a, p))
 }
 
 fn lint_call_arg(arg_node: &ExpressionNode, param_type: &ParamType) -> Result<(), QErrorNode> {

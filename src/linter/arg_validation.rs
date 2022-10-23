@@ -157,9 +157,7 @@ impl ArgValidation for ExpressionNodes {
                 ExpressionType::BuiltIn(_) | ExpressionType::FixedLengthString(_) => Ok(()),
                 _ => Err(QError::ArgumentTypeMismatch).with_err_at(&self[idx]),
             },
-            _ => {
-                return Err(QError::VariableRequired).with_err_at(&self[idx]);
-            }
+            _ => Err(QError::VariableRequired).with_err_at(&self[idx]),
         }
     }
 

@@ -36,22 +36,21 @@ pub mod interpreter {
         let mut state: u8 = STATE_INITIAL;
 
         for c in s.chars() {
-            if c >= '0' && c <= '9' {
+            if ('0'..='9').contains(&c) {
                 if state == STATE_INITIAL || state == STATE_SIGN {
                     state = STATE_INT;
                 } else if state == STATE_DOT {
                     state = STATE_FRACTION;
                 }
                 if state == STATE_INT {
-                    value = value * 10.0 + ((c as u8) - ('0' as u8)) as f64;
+                    value = value * 10.0 + ((c as u8) - b'0') as f64;
                 } else {
                     if fraction_power <= MAX_INTEGER {
                         fraction_power += 1;
                     } else {
                         return Err(QError::Overflow);
                     }
-                    value = (value * 10.0_f64.powi(fraction_power)
-                        + ((c as u8) - ('0' as u8)) as f64)
+                    value = (value * 10.0_f64.powi(fraction_power) + ((c as u8) - b'0') as f64)
                         / 10.0_f64.powi(fraction_power);
                 }
             } else if c == ' ' {

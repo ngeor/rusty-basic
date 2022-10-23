@@ -10,7 +10,7 @@ pub fn resolve_string_length(
 ) -> Result<u16, QErrorNode> {
     let v = ctx.names.resolve_const(length_expression)?;
     let i: i32 = v.try_cast().with_err_at(length_expression)?;
-    if i >= 1 && i < MAX_INTEGER {
+    if (1..MAX_INTEGER).contains(&i) {
         Ok(i as u16)
     } else {
         Err(QError::OutOfStringSpace).with_err_at(length_expression)

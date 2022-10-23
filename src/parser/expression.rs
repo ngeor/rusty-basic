@@ -160,7 +160,7 @@ mod string_literal {
     fn inside_string() -> impl Parser<Output = TokenList> + NonOptParser {
         any_token()
             .filter(|token| {
-                !TokenType::DoubleQuote.matches(&token) && !TokenType::Eol.matches(&token)
+                !TokenType::DoubleQuote.matches(token) && !TokenType::Eol.matches(token)
             })
             .zero_or_more()
     }
@@ -182,9 +182,9 @@ mod integer_or_long_literal {
     }
 
     fn is_allowed_token(token: &Token) -> bool {
-        TokenType::Digits.matches(&token)
-            || TokenType::HexDigits.matches(&token)
-            || TokenType::OctDigits.matches(&token)
+        TokenType::Digits.matches(token)
+            || TokenType::HexDigits.matches(token)
+            || TokenType::OctDigits.matches(token)
     }
 
     fn process_token(token: Token) -> Result<Expression, QError> {
@@ -232,11 +232,11 @@ mod integer_or_long_literal {
 
     fn convert_hex_digit(ch: char) -> u8 {
         if is_digit(ch) {
-            (ch as u8) - ('0' as u8)
-        } else if ch >= 'a' && ch <= 'f' {
-            (ch as u8) - ('a' as u8) + 10
-        } else if ch >= 'A' && ch <= 'F' {
-            (ch as u8) - ('A' as u8) + 10
+            (ch as u8) - b'0'
+        } else if ('a'..='f').contains(&ch) {
+            (ch as u8) - b'a' + 10
+        } else if ('A'..='F').contains(&ch) {
+            (ch as u8) - b'A' + 10
         } else {
             panic!("Unexpected hex digit: {}", ch)
         }
@@ -261,8 +261,8 @@ mod integer_or_long_literal {
     }
 
     fn convert_oct_digit(ch: char) -> u8 {
-        if ch >= '0' && ch <= '7' {
-            (ch as u8) - ('0' as u8)
+        if ('0'..='7').contains(&ch) {
+            (ch as u8) - b'0'
         } else {
             panic!("Unexpected oct digit: {}", ch)
         }
@@ -556,7 +556,7 @@ mod binary_expression {
         }
 
         fn map_token_to_operator(token: &Token) -> Option<Operator> {
-            match TokenType::from_token(&token) {
+            match TokenType::from_token(token) {
                 TokenType::Less => Some(Operator::Less),
                 TokenType::LessEquals => Some(Operator::LessOrEqual),
                 TokenType::Equals => Some(Operator::Equal),

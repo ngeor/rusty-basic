@@ -155,7 +155,7 @@ mod case_expression_parser {
 
     fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
         any_token()
-            .filter_map(|token| match TokenType::from_token(&token) {
+            .filter_map(|token| match TokenType::from_token(token) {
                 TokenType::LessEquals => Some(Operator::LessOrEqual),
                 TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
                 TokenType::NotEquals => Some(Operator::NotEqual),

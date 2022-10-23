@@ -85,7 +85,7 @@ fn test_possible_property_folded_back_to_variable() {
             DimName::new_compact_local("A.B", TypeQualifier::BangSingle).into_list_rc(1, 1)
         ),
         Statement::Assignment(
-            Expression::var_resolved("A.B!".into()),
+            Expression::var_resolved("A.B!"),
             Expression::IntegerLiteral(12).at_rc(1, 7),
         )
     );

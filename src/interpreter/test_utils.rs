@@ -272,7 +272,7 @@ macro_rules! assert_has_variable {
     ($int:expr, $name:expr, $expected_value:expr) => {
         assert_eq!(
             $int.get_variable_str($name),
-            crate::variant::Variant::from($expected_value)
+            $crate::variant::Variant::from($expected_value)
         );
     };
 }
@@ -281,7 +281,7 @@ macro_rules! assert_has_variable {
 macro_rules! assert_interpreter_err {
     ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {
         assert_eq!(
-            crate::interpreter::test_utils::interpret_err($program),
+            $crate::interpreter::test_utils::interpret_err($program),
             crate::common::ErrorEnvelope::Pos(
                 $expected_err,
                 crate::common::Location::new($expected_row, $expected_col)
@@ -293,7 +293,7 @@ macro_rules! assert_interpreter_err {
 #[macro_export]
 macro_rules! assert_prints_nothing {
     ($program:expr) => {
-        let mut interpreter = crate::interpreter::test_utils::interpret($program);
+        let mut interpreter = $crate::interpreter::test_utils::interpret($program);
         assert_eq!(interpreter.stdout().output_exact(), "");
     };
 }
@@ -301,7 +301,7 @@ macro_rules! assert_prints_nothing {
 #[macro_export]
 macro_rules! assert_prints {
     ($program:expr, $($x:expr),+) => (
-        let mut interpreter = crate::interpreter::test_utils::interpret($program);
+        let mut interpreter = $crate::interpreter::test_utils::interpret($program);
         assert_eq!(interpreter.stdout().output_lines(), vec![$($x),+]);
     );
 }
@@ -309,7 +309,7 @@ macro_rules! assert_prints {
 #[macro_export]
 macro_rules! assert_prints_exact {
     ($program:expr, $($x:expr),+) => (
-        let mut interpreter = crate::interpreter::test_utils::interpret($program);
+        let mut interpreter = $crate::interpreter::test_utils::interpret($program);
         assert_eq!(interpreter.stdout().output_lines_exact(), vec![$($x),+]);
     );
 }
@@ -317,7 +317,7 @@ macro_rules! assert_prints_exact {
 #[macro_export]
 macro_rules! assert_lprints_exact {
     ($program:expr, $($x:expr),+) => (
-        let mut interpreter = crate::interpreter::test_utils::interpret($program);
+        let mut interpreter = $crate::interpreter::test_utils::interpret($program);
         assert_eq!(interpreter.lpt1().output_lines_exact(), vec![$($x),+]);
     );
 }

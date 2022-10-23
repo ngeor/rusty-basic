@@ -19,7 +19,7 @@ where
 {
     fn resolve_const(&self, item: &CaseInsensitiveString) -> Result<Variant, QError> {
         self.get_resolved_constant(item)
-            .map(|v| v.clone())
+            .cloned()
             .ok_or(QError::InvalidConstant)
     }
 }
@@ -51,7 +51,7 @@ where
                         }
                     };
                     if v_q == qualifier {
-                        Ok(v.clone())
+                        Ok(v)
                     } else {
                         Err(QError::TypeMismatch).with_err_no_pos()
                     }

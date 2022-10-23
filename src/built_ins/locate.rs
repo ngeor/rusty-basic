@@ -69,13 +69,11 @@ pub mod interpreter {
             } else {
                 interpreter.screen().move_to((row - 1) as u16, 0)
             }
+        } else if col.is_some() {
+            // cannot move to a col because the current row is unknown
+            Err(QError::IllegalFunctionCall)
         } else {
-            if col.is_some() {
-                // cannot move to a col because the current row is unknown
-                Err(QError::IllegalFunctionCall)
-            } else {
-                Ok(())
-            }
+            Ok(())
         }
     }
 

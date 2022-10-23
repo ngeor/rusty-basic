@@ -28,7 +28,7 @@ impl<'a> NoDotNamesCheck<SubImplementation, QErrorNode> for DotsLinter<'a> {
 
 impl<'a> NoDotNamesCheck<Vec<Locatable<ParamName>>, QErrorNode> for DotsLinter<'a> {
     fn ensure_no_dots(&self, x: &Vec<Locatable<ParamName>>) -> Result<(), QErrorNode> {
-        x.into_iter().map(|x| self.ensure_no_dots(x)).collect()
+        x.iter().try_for_each(|x| self.ensure_no_dots(x))
     }
 }
 
@@ -96,7 +96,7 @@ impl<'a> NoDotNamesCheck<BareName, QError> for DotsLinter<'a> {
 
 impl<'a> NoDotNamesCheck<ExpressionNodes, QErrorNode> for DotsLinter<'a> {
     fn ensure_no_dots(&self, x: &ExpressionNodes) -> Result<(), QErrorNode> {
-        x.into_iter().map(|x| self.ensure_no_dots(x)).collect()
+        x.iter().try_for_each(|x| self.ensure_no_dots(x))
     }
 }
 
@@ -150,8 +150,7 @@ impl<'a> PostConversionLinter for DotsLinter<'a> {
         dim_list
             .variables
             .iter()
-            .map(|dim_name_node| self.ensure_no_dots(dim_name_node))
-            .collect()
+            .try_for_each(|dim_name_node| self.ensure_no_dots(dim_name_node))
     }
 
     fn visit_assignment(

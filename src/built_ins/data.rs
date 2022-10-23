@@ -21,7 +21,7 @@ pub mod linter {
 
     pub fn lint(args: &ExpressionNodes, name_context: NameContext) -> Result<(), QErrorNode> {
         if name_context == NameContext::Global {
-            args.iter().map(require_constant).collect()
+            args.iter().try_for_each(require_constant)
         } else {
             Err(QError::IllegalInSubFunction).with_err_no_pos()
         }

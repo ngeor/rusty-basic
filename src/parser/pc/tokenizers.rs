@@ -158,15 +158,13 @@ impl<R: CharReader> TokenizerImpl<R> {
                 text: buffer,
                 pos: begin,
             }))
+        } else if buffer.is_empty() {
+            Ok(None)
         } else {
-            if buffer.is_empty() {
-                Ok(None)
-            } else {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Could not recognize token!",
-                ))
-            }
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Could not recognize token!",
+            ))
         }
     }
 }

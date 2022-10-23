@@ -2,7 +2,7 @@ use super::ErrorEnvelope;
 
 /// Represents QBasic errors.
 /// Note that for convenience this enum also holds a few custom errors.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum QError {
     // 1
     NextWithoutFor,
@@ -221,7 +221,7 @@ pub enum QError {
 
 impl QError {
     pub fn syntax_error<S: AsRef<str>>(msg: S) -> Self {
-        QError::SyntaxError(format!("{}", msg.as_ref()))
+        QError::SyntaxError(msg.as_ref().to_string())
     }
 
     pub fn expected(msg: &str) -> Self {

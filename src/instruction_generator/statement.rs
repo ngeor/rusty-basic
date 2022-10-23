@@ -81,7 +81,7 @@ impl Visitor<StatementNode> for InstructionGenerator {
             },
             Statement::Return(opt_label) => {
                 self.push(
-                    Instruction::Return(opt_label.map(|label| AddressOrLabel::Unresolved(label))),
+                    Instruction::Return(opt_label.map(AddressOrLabel::Unresolved)),
                     pos,
                 );
             }

@@ -110,7 +110,7 @@ fn array_to_dim_type<'a, 'b>(
 ) -> Result<DimType, QErrorNode> {
     debug_assert!(match ctx.dim_context() {
         DimContext::Default => {
-            array_dimensions.len() > 0
+            !array_dimensions.is_empty()
         }
         _ => true,
     });

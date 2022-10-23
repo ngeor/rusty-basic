@@ -97,7 +97,7 @@ impl Name {
 
     pub fn bare_name(&self) -> &BareName {
         match self {
-            Name::Bare(bare_name) | Name::Qualified(bare_name, _) => &bare_name,
+            Name::Bare(bare_name) | Name::Qualified(bare_name, _) => bare_name,
         }
     }
 }

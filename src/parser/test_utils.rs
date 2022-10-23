@@ -15,7 +15,7 @@ pub fn parse_something_completely<P>(input: &str, parser: impl Parser<Output = P
     let mut tokenizer = create_string_tokenizer(input);
     let result = parser
         .parse(&mut tokenizer)
-        .expect(&format!("Should have succeeded for {}", input));
+        .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
     assert!(
         tokenizer.read().expect("Should read EOF token").is_none(),
         "Should have parsed {} completely",
@@ -190,7 +190,7 @@ macro_rules! assert_sub_call {
     ($actual_statement: expr, $expected_name: expr) => {
         match $actual_statement {
             Statement::SubCall(actual_bare_name, actual_args) => {
-                let expected_bare_name: crate::parser::types::BareName = $expected_name.into();
+                let expected_bare_name: $crate::parser::types::BareName = $expected_name.into();
                 assert_eq!(actual_bare_name, expected_bare_name, "SubCall name mismatch");
                 assert!(actual_args.is_empty(), "Expected no args in SubCall");
             }
@@ -229,7 +229,7 @@ macro_rules! assert_built_in_sub_call {
         match result {
             Statement::BuiltInSubCall(actual_name, actual_args) => {
                 assert_eq!(actual_name, $expected_name);
-                let actual_args_no_loc: Vec<crate::parser::Expression> = crate::common::Locatable::strip_location(actual_args);
+                let actual_args_no_loc: Vec<$crate::parser::Expression> = crate::common::Locatable::strip_location(actual_args);
                 assert_eq!(actual_args_no_loc, vec![$($arg),+]);
             }
             _ => panic!("Expected built-in sub call {:?}", $expected_name)
@@ -241,7 +241,7 @@ macro_rules! assert_built_in_sub_call {
 macro_rules! assert_expression {
     ($left:expr, $right:expr) => {
         let program = parse(format!("Flint {}", $left)).demand_single_statement();
-        crate::assert_sub_call!(program, "Flint", $right);
+        $crate::assert_sub_call!(program, "Flint", $right);
     };
 
     (var $input:expr) => {
@@ -265,7 +265,7 @@ macro_rules! assert_expression {
 #[macro_export]
 macro_rules! assert_literal_expression {
     ($left:expr, $right:expr) => {
-        crate::assert_expression!($left, crate::parser::types::Expression::from($right));
+        $crate::assert_expression!($left, crate::parser::types::Expression::from($right));
     };
 }
 
@@ -273,7 +273,7 @@ macro_rules! assert_literal_expression {
 macro_rules! assert_parser_err {
     // TODO use this more for syntax errors
     ($input:expr, $expected_err:literal) => {
-        crate::assert_parser_err!($input, QError::syntax_error($expected_err));
+        $crate::assert_parser_err!($input, QError::syntax_error($expected_err));
     };
 
     ($input:expr, $expected_err:expr) => {
@@ -300,7 +300,7 @@ macro_rules! assert_top_level_assignment {
     };
     ($input:expr, $name:expr, $value:expr) => {
         match parse($input).demand_single_statement() {
-            Statement::Assignment(n, crate::common::Locatable { element: v, .. }) => {
+            Statement::Assignment(n, $crate::common::Locatable { element: v, .. }) => {
                 assert_eq!(n, Expression::var_unresolved($name));
                 assert_eq!(v, Expression::IntegerLiteral($value));
             }
@@ -361,7 +361,7 @@ macro_rules! assert_parse_dim_extended_built_in {
         let p = parse(input).demand_single_statement();
         assert_eq!(
             p,
-            crate::parser::Statement::Dim(crate::parser::DimList {
+            $crate::parser::Statement::Dim(crate::parser::DimList {
                 shared: false,
                 variables: vec![crate::parser::DimNameBuilder::new()
                     .bare_name($name)
@@ -469,7 +469,7 @@ macro_rules! expr {
 
     (prop($first: literal.$second: literal)) => {
         Expression::Property(
-            Box::new(crate::expr!(var($first))),
+            Box::new($crate::expr!(var($first))),
             Name::from($second),
             ExpressionType::Unresolved,
         )

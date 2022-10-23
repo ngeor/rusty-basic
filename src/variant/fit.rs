@@ -7,7 +7,7 @@ trait IsInRange {
 
 impl IsInRange for i32 {
     fn is_in_integer_range(self) -> bool {
-        self >= MIN_INTEGER && self <= MAX_INTEGER
+        (MIN_INTEGER..=MAX_INTEGER).contains(&self)
     }
 
     fn is_in_long_range(self) -> bool {
@@ -21,7 +21,7 @@ impl IsInRange for i64 {
     }
 
     fn is_in_long_range(self) -> bool {
-        self >= MIN_LONG && self <= MAX_LONG
+        (MIN_LONG..=MAX_LONG).contains(&self)
     }
 }
 

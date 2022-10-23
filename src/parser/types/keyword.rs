@@ -195,7 +195,7 @@ keyword_enum!(pub enum Keyword SORTED_KEYWORDS SORTED_KEYWORDS_STR {
 
 impl PartialEq<Token> for Keyword {
     fn eq(&self, other: &Token) -> bool {
-        TokenType::Keyword.matches(&other) && other.text.eq_ignore_ascii_case(self.as_str())
+        TokenType::Keyword.matches(other) && other.text.eq_ignore_ascii_case(self.as_str())
     }
 }
 

@@ -11,7 +11,7 @@ const DOUBLE_EXPONENT_BITS: usize = 11;
 const DOUBLE_SIGNIFICANT_BITS: usize = 52;
 const DOUBLE_BIAS: i32 = 1023;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct BitVec {
     // msb -> lsb
     v: Vec<bool>,
@@ -93,7 +93,7 @@ impl From<i32> for BitVec {
             while x > 0 && idx > 0 {
                 idx -= 1;
                 result[idx] = (x & 1) == 1;
-                x = x >> 1;
+                x >>= 1;
             }
         } else if x < 0 {
             x = -x - 1;
@@ -101,7 +101,7 @@ impl From<i32> for BitVec {
             while x > 0 && idx > 0 {
                 idx -= 1;
                 result[idx] = (x & 1) == 0;
-                x = x >> 1;
+                x >>= 1;
             }
         }
         Self { v: result.into() }
@@ -117,9 +117,9 @@ macro_rules! bits_to_integer_type {
             let sign = bits[0];
             let mut idx = 1;
             while idx < bits.len() {
-                x = x << 1;
+                x <<= 1;
                 if bits[idx] != sign {
-                    x = x | 1;
+                    x |= 1;
                 }
                 idx += 1;
             }
@@ -179,7 +179,7 @@ impl std::ops::BitAnd for BitVec {
         for i in 0..self.len() {
             result.v.push(self[i] && rhs[i]);
         }
-        result.into()
+        result
     }
 }
 
@@ -194,7 +194,7 @@ impl std::ops::BitOr for BitVec {
         for i in 0..self.len() {
             result.v.push(self[i] || rhs[i]);
         }
-        result.into()
+        result
     }
 }
 
@@ -286,7 +286,7 @@ macro_rules! int_to_bits_vec {
         while temp > 0 {
             let remainder = temp % 2;
             $bits.insert($bit_index, remainder == 1);
-            temp = temp / 2;
+            temp /= 2;
         }
     }};
 }
@@ -356,7 +356,7 @@ fn f64_fractional_bits(absolute_value: f64) -> Vec<bool> {
             fraction_value = fraction_value * 2.0 - 1.0;
         } else {
             fraction_bits.push(false);
-            fraction_value = fraction_value * 2.0;
+            fraction_value *= 2.0;
         }
     }
     fraction_bits
@@ -366,7 +366,7 @@ fn f64_abs_normalize_value(value: f64) -> Option<(f64, usize)> {
     let mut absolute_value = value.abs();
     let mut exponent: usize = 0;
     while absolute_value < 1.0 && exponent < (DOUBLE_BIAS as usize) {
-        absolute_value = absolute_value * 2.0;
+        absolute_value *= 2.0;
         exponent += 1;
     }
 

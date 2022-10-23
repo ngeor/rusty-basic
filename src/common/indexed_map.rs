@@ -46,7 +46,7 @@ where
     }
 
     fn get_index_of_key(&self, key: &K) -> Option<usize> {
-        self.keys_to_indices.get(key).map(|x| *x)
+        self.keys_to_indices.get(key).copied()
     }
 
     pub fn get_by_index(&self, idx: usize) -> Option<&V> {

@@ -18,7 +18,7 @@ impl InstructionGenerator {
         self.generate_expression_instructions(if_block.condition);
 
         // if false, jump to next one (first else-if or else or end-if)
-        let next_label = if else_if_blocks.len() > 0 {
+        let next_label = if !else_if_blocks.is_empty() {
             "else-if-0"
         } else if else_block.is_some() {
             "else"
@@ -42,9 +42,9 @@ impl InstructionGenerator {
             let next_label = if i + 1 < else_if_blocks.len() {
                 format!("else-if-{}", i + 1)
             } else if else_block.is_some() {
-                format!("else")
+                "else".to_string()
             } else {
-                format!("end-if")
+                "end-if".to_string()
             };
             self.jump_if_false(next_label, pos);
 

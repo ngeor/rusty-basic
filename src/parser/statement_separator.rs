@@ -101,9 +101,9 @@ pub fn peek_eof_or_statement_separator() -> impl Parser<Output = ()> {
         .allow_none()
         .filter(|opt_token| match opt_token {
             Some(token) => {
-                TokenType::Colon.matches(&token)
-                    || TokenType::SingleQuote.matches(&token)
-                    || TokenType::Eol.matches(&token)
+                TokenType::Colon.matches(token)
+                    || TokenType::SingleQuote.matches(token)
+                    || TokenType::Eol.matches(token)
             }
             None => true,
         })

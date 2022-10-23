@@ -49,7 +49,7 @@ impl VArray {
             }
 
             index += (arg - lbound) * multiplier;
-            multiplier = multiplier * (ubound - lbound + 1);
+            multiplier *= ubound - lbound + 1;
             i -= 1;
         }
         Ok(index as usize)
@@ -114,7 +114,7 @@ impl AsciiSize for VArray {
 fn dimensions_to_array_length(dimensions: &[(i32, i32)]) -> usize {
     let mut len: usize = 1;
     for (lbound, ubound) in dimensions {
-        len = len * ((*ubound - *lbound + 1) as usize);
+        len *= (*ubound - *lbound + 1) as usize;
     }
     len
 }

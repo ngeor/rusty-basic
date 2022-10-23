@@ -329,7 +329,7 @@ impl Context {
     }
 
     pub fn peek(&self, seg: usize, address: usize) -> Result<u8, QError> {
-        if seg < VAR_SEG_BASE || seg >= 65_536 {
+        if !(VAR_SEG_BASE..65_536).contains(&seg) {
             return Err(QError::SubscriptOutOfRange);
         }
         if seg == VAR_SEG_BASE {
@@ -364,7 +364,7 @@ impl Context {
     }
 
     pub fn poke(&mut self, seg: usize, address: usize, byte_value: u8) -> Result<(), QError> {
-        if seg < VAR_SEG_BASE || seg >= 65_536 {
+        if !(VAR_SEG_BASE..65_536).contains(&seg) {
             return Err(QError::SubscriptOutOfRange);
         }
         if seg == VAR_SEG_BASE {

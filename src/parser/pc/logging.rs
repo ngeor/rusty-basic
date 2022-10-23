@@ -73,11 +73,7 @@ fn peek_token(tokenizer: &mut impl Tokenizer) -> String {
             tokenizer.unread(token);
             result
         }
-        Ok(None) => {
-            format!("[None]")
-        }
-        Err(_) => {
-            format!("[ERR!]")
-        }
+        Ok(None) => "[None]".to_string(),
+        Err(_) => "[ERR!]".to_string(),
     }
 }

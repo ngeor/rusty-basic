@@ -48,7 +48,7 @@ pub mod interpreter {
             Ok(())
         } else {
             let address: i64 = interpreter.context()[0].try_cast()?;
-            if address >= 0 && address <= 65535 {
+            if (0..=65535).contains(&address) {
                 interpreter.set_def_seg(Some(address as usize));
                 Ok(())
             } else {

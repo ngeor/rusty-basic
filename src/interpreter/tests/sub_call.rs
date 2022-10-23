@@ -14,7 +14,7 @@ fn test_interpret_sub_call_user_defined_no_args() {
     END SUB
     "#;
     let interpreter = interpret(program);
-    assert_eq!(interpreter.stdlib().get_env_var(&"FOO".to_string()), "BAR");
+    assert_eq!(interpreter.stdlib().get_env_var("FOO"), "BAR");
 }
 
 #[test]
@@ -27,7 +27,7 @@ fn test_interpret_sub_call_user_defined_two_args() {
     END SUB
     "#;
     let interpreter = interpret(program);
-    assert_eq!(interpreter.stdlib().get_env_var(&"FOO".to_string()), "BAR");
+    assert_eq!(interpreter.stdlib().get_env_var("FOO"), "BAR");
 }
 
 #[test]

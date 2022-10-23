@@ -14,7 +14,6 @@ where
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         self.parser.parse(tokenizer).map(|item| {
             item.undo(tokenizer);
-            ()
         })
     }
 }

@@ -73,7 +73,7 @@ impl InstructionGenerator {
         args: ExpressionNodes,
     ) {
         let Locatable { element: name, pos } = name_node;
-        let subprogram_name = SubprogramName::Sub(name.clone());
+        let subprogram_name = SubprogramName::Sub(name);
         // cloning to fight the borrow checker
         let sub_impl_parameters: Vec<ParamName> = self
             .subprogram_info_repository

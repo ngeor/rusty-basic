@@ -1,7 +1,7 @@
 use super::{LetterRange, TypeQualifier};
 
 /// Represents a definition of default type, such as DEFINT A-Z.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DefType {
     qualifier: TypeQualifier,
     ranges: Vec<LetterRange>,

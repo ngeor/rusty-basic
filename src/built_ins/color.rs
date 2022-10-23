@@ -46,15 +46,13 @@ pub mod interpreter {
                 // only set foreground color
                 interpreter.screen().foreground_color(foreground_color)
             }
+        } else if is_background_present {
+            // only set background color
+            let background_color: i32 = interpreter.context()[1].try_cast()?;
+            interpreter.screen().background_color(background_color)
         } else {
-            if is_background_present {
-                // only set background color
-                let background_color: i32 = interpreter.context()[1].try_cast()?;
-                interpreter.screen().background_color(background_color)
-            } else {
-                // should not happen
-                Ok(())
-            }
+            // should not happen
+            Ok(())
         }
     }
 }

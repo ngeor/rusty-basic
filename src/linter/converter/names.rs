@@ -303,10 +303,7 @@ impl Names {
     }
 
     pub fn pop_parent(self) -> Option<Self> {
-        match self.parent {
-            Some(boxed_parent) => Some(*boxed_parent),
-            _ => None,
-        }
+        self.parent.map(|boxed_parent| *boxed_parent)
     }
 
     pub fn names_iterator<'a>(

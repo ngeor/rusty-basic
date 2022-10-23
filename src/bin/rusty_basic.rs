@@ -85,7 +85,7 @@ struct RunOptions {
 impl RunOptions {
     pub fn open_file(&self) -> File {
         File::open(&self.filename)
-            .expect(format!("Could not find program {}", &self.filename).as_ref())
+            .unwrap_or_else(|_| panic!("Could not find program {}", &self.filename))
     }
 
     pub fn set_current_dir_if_apache(&self) {

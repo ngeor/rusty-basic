@@ -15,7 +15,7 @@ pub mod interpreter {
 
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let s: &str = interpreter.context()[0].to_str_unchecked();
-        let parts: Vec<&str> = s.split("=").collect();
+        let parts: Vec<&str> = s.split('=').collect();
         if parts.len() != 2 {
             Err(QError::from("Invalid expression. Must be name=value."))
         } else {
@@ -39,7 +39,7 @@ mod tests {
         ENVIRON "FOO=BAR"
         "#;
         let interpreter = interpret(program);
-        assert_eq!(interpreter.stdlib().get_env_var(&"FOO".to_string()), "BAR");
+        assert_eq!(interpreter.stdlib().get_env_var("FOO"), "BAR");
     }
 
     #[test]
@@ -49,9 +49,6 @@ mod tests {
         ENVIRON A$
         "#;
         let interpreter = interpret(program);
-        assert_eq!(
-            interpreter.stdlib().get_env_var(&"FOO1".to_string()),
-            "BAR2"
-        );
+        assert_eq!(interpreter.stdlib().get_env_var("FOO1"), "BAR2");
     }
 }

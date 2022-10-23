@@ -48,7 +48,7 @@ impl StringUtils for str {
             self.to_owned()
         } else {
             // prepend spaces
-            let mut result: String = std::iter::repeat(' ').take(len - self.len()).collect();
+            let mut result: String = " ".repeat(len - self.len());
             result.push_str(self);
             result
         }

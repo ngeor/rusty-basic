@@ -105,7 +105,7 @@ impl PrintInterpreter {
         }
 
         // ensure we are in the range of chars
-        self.format_string_idx = self.format_string_idx % format_string_chars.len();
+        self.format_string_idx %= format_string_chars.len();
 
         // copy from format_string until we hit a formatting character
         print_non_formatting_chars(

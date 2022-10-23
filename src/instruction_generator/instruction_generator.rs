@@ -45,7 +45,7 @@ pub enum Path {
     Property(Box<Path>, BareName),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RootPath {
     /// The name of the root variable
     pub name: Name,
@@ -218,7 +218,7 @@ pub enum Instruction {
 
 pub type InstructionNode = Locatable<Instruction>;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AddressOrLabel {
     Resolved(usize),
     Unresolved(CaseInsensitiveString),
@@ -372,7 +372,7 @@ impl InstructionGenerator {
             body,
             ..
         } = sub_implementation;
-        self.mark_current_subprogram(SubprogramName::Sub(name.clone()), pos);
+        self.mark_current_subprogram(SubprogramName::Sub(name), pos);
         self.subprogram_body(body, pos);
     }
 

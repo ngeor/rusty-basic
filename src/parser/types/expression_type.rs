@@ -56,17 +56,17 @@ impl ExpressionType {
             ExpressionType::BuiltIn(q_left) => match right {
                 ExpressionType::BuiltIn(q_right) => q_left
                     .cast_binary_op(q_right, op)
-                    .map(|q_result| ExpressionType::BuiltIn(q_result)),
+                    .map(ExpressionType::BuiltIn),
                 ExpressionType::FixedLengthString(_) => q_left
                     .cast_binary_op(TypeQualifier::DollarString, op)
-                    .map(|q_result| ExpressionType::BuiltIn(q_result)),
+                    .map(ExpressionType::BuiltIn),
                 _ => None,
             },
             ExpressionType::FixedLengthString(_) => match right {
                 ExpressionType::BuiltIn(TypeQualifier::DollarString)
                 | ExpressionType::FixedLengthString(_) => TypeQualifier::DollarString
                     .cast_binary_op(TypeQualifier::DollarString, op)
-                    .map(|q_result| ExpressionType::BuiltIn(q_result)),
+                    .map(ExpressionType::BuiltIn),
                 _ => None,
             },
             _ => None,

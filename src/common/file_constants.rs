@@ -105,7 +105,7 @@ impl TryFrom<i32> for FileHandle {
     type Error = QError;
 
     fn try_from(i: i32) -> Result<Self, Self::Error> {
-        if i >= 1 && i <= 255 {
+        if (1..=255).contains(&i) {
             Ok((i as u8).into())
         } else {
             Err(QError::BadFileNameOrNumber)

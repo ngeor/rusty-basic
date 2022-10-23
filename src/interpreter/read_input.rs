@@ -24,7 +24,7 @@ impl<T: Read> ReadInputSource<T> {
         if self.fill_buffer()? == 0 {
             Ok(None)
         } else {
-            Ok(self.buffer.borrow().get(0).map(|x| *x))
+            Ok(self.buffer.borrow().first().copied())
         }
     }
 

@@ -3,13 +3,102 @@ use crate::common::*;
 use crate::linter::pre_linter::context::MainContextWithPos;
 use crate::linter::pre_linter::convertible::Convertible;
 use crate::linter::type_resolver::{IntoTypeQualifier, TypeResolver};
-use crate::linter::{FunctionSignature, ParamTypes, SubSignature};
-use crate::parser::{BareName, Name, ParamNameNodes};
+use crate::parser::{BareName, Name, ParamNameNodes, ParamType, TypeQualifier};
 use std::collections::HashMap;
 
 pub struct SubprogramContext<T> {
     declarations: HashMap<CaseInsensitiveString, Locatable<T>>,
     implementations: HashMap<CaseInsensitiveString, Locatable<T>>,
+}
+
+pub type ParamTypes = Vec<ParamType>;
+
+pub struct FunctionSignature {
+    q: TypeQualifier,
+    param_types: ParamTypes,
+}
+
+impl FunctionSignature {
+    pub fn new(q: TypeQualifier, param_types: ParamTypes) -> Self {
+        Self { q, param_types }
+    }
+
+    pub fn qualifier(&self) -> TypeQualifier {
+        self.q
+    }
+
+    pub fn param_types(&self) -> &ParamTypes {
+        &self.param_types
+    }
+}
+
+impl PartialEq for FunctionSignature {
+    fn eq(&self, other: &Self) -> bool {
+        self.q == other.q && are_eq_ignore_location(self.param_types(), other.param_types())
+    }
+}
+
+pub struct SubSignature {
+    param_types: ParamTypes,
+}
+
+impl SubSignature {
+    pub fn new(param_types: ParamTypes) -> Self {
+        Self { param_types }
+    }
+
+    pub fn param_types(&self) -> &ParamTypes {
+        &self.param_types
+    }
+}
+
+impl PartialEq for SubSignature {
+    fn eq(&self, other: &Self) -> bool {
+        are_eq_ignore_location(self.param_types(), other.param_types())
+    }
+}
+
+fn are_eq_ignore_location(first: &ParamTypes, second: &ParamTypes) -> bool {
+    first.len() == second.len()
+        && first
+            .iter()
+            .zip(second.iter())
+            .all(|(l, r)| is_eq_ignore_location(l, r))
+}
+
+// Compare if parameter types are equal,
+// regardless of the location of the UserDefinedName node.
+fn is_eq_ignore_location(first: &ParamType, second: &ParamType) -> bool {
+    match first {
+        ParamType::Bare => {
+            matches!(second, ParamType::Bare)
+        }
+        ParamType::BuiltIn(q, _) => {
+            if let ParamType::BuiltIn(q_other, _) = second {
+                q == q_other
+            } else {
+                false
+            }
+        }
+        ParamType::UserDefined(Locatable { element, .. }) => {
+            if let ParamType::UserDefined(Locatable {
+                element: other_name,
+                ..
+            }) = second
+            {
+                element == other_name
+            } else {
+                false
+            }
+        }
+        ParamType::Array(boxed) => {
+            if let ParamType::Array(boxed_other) = second {
+                is_eq_ignore_location(boxed, boxed_other)
+            } else {
+                false
+            }
+        }
+    }
 }
 
 pub type FunctionContext = SubprogramContext<FunctionSignature>;
@@ -62,7 +151,7 @@ impl ToSignature for BareName {
         _resolver: &impl TypeResolver,
         qualified_params: ParamTypes,
     ) -> Self::Signature {
-        qualified_params
+        SubSignature::new(qualified_params)
     }
 }
 
@@ -75,7 +164,7 @@ impl ToSignature for Name {
         qualified_params: ParamTypes,
     ) -> Self::Signature {
         let q = self.qualify(resolver);
-        (q, qualified_params)
+        FunctionSignature::new(q, qualified_params)
     }
 }
 

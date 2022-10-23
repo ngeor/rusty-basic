@@ -1,6 +1,6 @@
 use crate::common::*;
+use crate::linter::pre_linter::ParamTypes;
 use crate::linter::HasFunctions;
-use crate::linter::ParamTypes;
 use crate::parser::*;
 
 use super::post_conversion_linter::PostConversionLinter;
@@ -150,14 +150,11 @@ where
     fn visit_function(&self, name: &Name, args: &ExpressionNodes) -> Result<(), QErrorNode> {
         if let Name::Qualified(bare_name, qualifier) = name {
             match self.context.functions().get(bare_name) {
-                Some(Locatable {
-                    element: (return_type, param_types),
-                    ..
-                }) => {
-                    if return_type != qualifier {
+                Some(function_signature_node) => {
+                    if function_signature_node.as_ref().qualifier() != *qualifier {
                         err_no_pos(QError::TypeMismatch)
                     } else {
-                        lint_call_args(args, param_types)
+                        lint_call_args(args, function_signature_node.as_ref().param_types())
                     }
                 }
                 None => self.handle_undefined_function(args),

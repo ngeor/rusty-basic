@@ -1,11 +1,13 @@
 use crate::common::{Locatable, QErrorNode};
 use crate::linter::converter::convert;
 use crate::linter::post_linter::post_linter;
-use crate::linter::pre_linter::pre_lint_program;
+use crate::linter::pre_linter::{pre_lint_program, FunctionSignature, SubSignature};
 use crate::linter::HasUserDefinedTypes;
-use crate::parser::{BareName, ParamType, ProgramNode, QualifiedName, TypeQualifier};
+use crate::parser::{BareName, ProgramNode, QualifiedName};
 use std::collections::HashMap;
 use std::rc::Rc;
+
+// TODO remove all uses of Rc and RefCell in the codebase
 
 pub fn lint(program: ProgramNode) -> Result<(ProgramNode, impl HasUserDefinedTypes), QErrorNode> {
     // first pass, get user defined types and functions/subs
@@ -17,15 +19,8 @@ pub fn lint(program: ProgramNode) -> Result<(ProgramNode, impl HasUserDefinedTyp
         .map(|program_node| (program_node, pre_linter_result))
 }
 
-pub type ParamTypes = Vec<ParamType>;
-
-pub type SubSignature = ParamTypes;
-pub type SubSignatureNode = Locatable<SubSignature>;
-pub type SubMap = HashMap<BareName, SubSignatureNode>;
-
-pub type FunctionSignature = (TypeQualifier, ParamTypes);
-pub type FunctionSignatureNode = Locatable<FunctionSignature>;
-pub type FunctionMap = HashMap<BareName, FunctionSignatureNode>;
+pub type SubMap = HashMap<BareName, Locatable<SubSignature>>;
+pub type FunctionMap = HashMap<BareName, Locatable<FunctionSignature>>;
 
 /// Holds the resolved name of a subprogram.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

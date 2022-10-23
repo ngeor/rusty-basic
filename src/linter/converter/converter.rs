@@ -141,11 +141,9 @@ impl Context {
     /// Gets the function qualifier of the function identified by the given bare name.
     /// If no such function exists, returns `None`.
     pub fn function_qualifier(&self, bare_name: &BareName) -> Option<TypeQualifier> {
-        self.functions().get(bare_name).map(
-            |Locatable {
-                 element: (q, _), ..
-             }| *q,
-        )
+        self.functions()
+            .get(bare_name)
+            .map(|function_signature_node| function_signature_node.as_ref().qualifier())
     }
 
     // A statement can be expanded into multiple statements to convert implicitly

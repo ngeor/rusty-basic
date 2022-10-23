@@ -18,10 +18,9 @@ where
         args: &ExpressionNodes,
     ) -> Result<(), QErrorNode> {
         match self.context.subs().get(name) {
-            Some(Locatable {
-                element: param_types,
-                ..
-            }) => lint_call_args(args, param_types),
+            Some(sub_signature_node) => {
+                lint_call_args(args, sub_signature_node.as_ref().param_types())
+            }
             None => err_no_pos(QError::SubprogramNotDefined),
         }
     }

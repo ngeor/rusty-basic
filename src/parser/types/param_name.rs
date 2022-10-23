@@ -7,7 +7,7 @@ pub type ParamNameNode = Locatable<ParamName>;
 pub type ParamNameNodes = Vec<ParamNameNode>;
 
 // same as dim minus the "x as string * 5" and the array dimensions
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ParamType {
     Bare,
     BuiltIn(TypeQualifier, BuiltInStyle),
@@ -57,43 +57,6 @@ impl VarTypeToUserDefinedRecursively for ParamType {
             Self::UserDefined(n) => Some(n),
             Self::Array(e) => e.as_user_defined_recursively(),
             _ => None,
-        }
-    }
-}
-
-// TODO remove this Custom implementation of PartialEq because we want to compare the parameter types are equal,
-// regardless of the location of the UserDefinedName node. This is used in subprogram_context (pre-linter).
-impl PartialEq<ParamType> for ParamType {
-    fn eq(&self, other: &ParamType) -> bool {
-        match self {
-            Self::Bare => {
-                matches!(other, Self::Bare)
-            }
-            Self::BuiltIn(q, _) => {
-                if let Self::BuiltIn(q_other, _) = other {
-                    q == q_other
-                } else {
-                    false
-                }
-            }
-            Self::UserDefined(Locatable { element, .. }) => {
-                if let Self::UserDefined(Locatable {
-                    element: other_name,
-                    ..
-                }) = other
-                {
-                    element == other_name
-                } else {
-                    false
-                }
-            }
-            Self::Array(boxed) => {
-                if let Self::Array(boxed_other) = other {
-                    boxed.as_ref() == boxed_other.as_ref()
-                } else {
-                    false
-                }
-            }
         }
     }
 }

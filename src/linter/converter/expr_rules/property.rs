@@ -3,6 +3,7 @@ use crate::linter::converter::expr_rules::variable::{
     VarAsUserDefinedFunctionCall, VarResolve,
 };
 use crate::linter::converter::expr_rules::*;
+use crate::linter::converter::types::ExprContext;
 use crate::linter::HasUserDefinedTypes;
 
 pub fn convert(

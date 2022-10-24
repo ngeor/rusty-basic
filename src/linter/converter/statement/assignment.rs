@@ -1,8 +1,8 @@
 use crate::common::*;
 use crate::linter::converter::converter::Context;
-use crate::linter::converter::expr_rules::ExprContext;
 use crate::linter::converter::pos_context::PosContext;
 use crate::linter::converter::traits::Convertible;
+use crate::linter::converter::types::ExprContext;
 use crate::parser::{Expression, ExpressionNode, Statement};
 
 pub fn on_assignment(

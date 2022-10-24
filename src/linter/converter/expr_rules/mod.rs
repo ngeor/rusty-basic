@@ -1,3 +1,10 @@
+mod binary;
+mod built_in_function;
+mod function;
+mod property;
+mod unary;
+mod variable;
+
 use crate::built_ins::BuiltInFunction;
 use crate::common::*;
 use crate::linter::converter::converter::Context;
@@ -8,39 +15,10 @@ use expr_state::ExprState;
 use pos_expr_state::PosExprState;
 use std::convert::TryFrom;
 
-mod binary;
-mod built_in_function;
-mod function;
-mod property;
-mod unary;
-mod variable;
-
-/// Indicates the context in which an expression is being resolved.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum ExprContext {
-    /// Default context (typically r-side expression)
-    Default,
-
-    /// Assignment (typically l-side expression)
-    Assignment,
-
-    /// Function or sub argument
-    Argument,
-
-    /// Used in resolving left-side of property expressions
-    ResolvingPropertyOwner,
-}
-
-impl Default for ExprContext {
-    fn default() -> Self {
-        Self::Default
-    }
-}
-
 mod expr_state {
     use crate::linter::converter::converter::Context;
-    use crate::linter::converter::expr_rules::ExprContext;
     use crate::linter::converter::traits::FromParentContext;
+    use crate::linter::converter::types::ExprContext;
     use std::ops::{Deref, DerefMut};
 
     /// A context that is used when converting an [ExpressionNode].

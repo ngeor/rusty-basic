@@ -1,6 +1,6 @@
 use crate::linter::converter::converter::Context;
 use crate::linter::converter::traits::FromParentContext;
-use crate::linter::DimContext;
+use crate::linter::converter::types::DimContext;
 use std::ops::{Deref, DerefMut};
 
 pub struct DimListState<'a> {

@@ -1,6 +1,7 @@
 use crate::common::*;
 use crate::linter::converter::names::Names;
 use crate::linter::converter::traits::Convertible;
+use crate::linter::converter::types::Implicits;
 use crate::linter::pre_linter::PreLinterResult;
 use crate::linter::type_resolver::{IntoQualified, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
@@ -19,10 +20,6 @@ pub fn convert(
     let names_without_dot = converter.consume();
     Ok((result, names_without_dot))
 }
-
-/// Alias for the implicit variables collected during evaluating something.
-/// e.g. `INPUT N` is a statement implicitly defining variable `N`.
-pub type Implicits = Vec<QualifiedNameNode>;
 
 /*
 

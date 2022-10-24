@@ -1,8 +1,8 @@
 use crate::built_ins::BuiltInSub;
 use crate::common::QErrorNode;
 use crate::linter::converter::converter::Context;
-use crate::linter::converter::expr_rules::ExprContext;
 use crate::linter::converter::traits::Convertible;
+use crate::linter::converter::types::ExprContext;
 use crate::parser::{BareName, ExpressionNodes, Statement};
 
 impl Context {

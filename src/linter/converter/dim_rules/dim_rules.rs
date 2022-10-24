@@ -5,7 +5,7 @@ use crate::linter::converter::dim_rules::dim_type_rules::on_dim_type;
 use crate::linter::converter::dim_rules::redim::on_redim_type;
 use crate::linter::converter::dim_rules::validation;
 use crate::linter::converter::traits::Convertible;
-use crate::linter::DimContext;
+use crate::linter::converter::types::DimContext;
 use crate::parser::*;
 
 impl<'a> Convertible<DimListState<'a>> for DimList {

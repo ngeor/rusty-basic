@@ -9,6 +9,6 @@ mod pos_context;
 mod statement;
 mod sub_implementation;
 mod traits;
+mod types;
 
 pub use converter::convert;
-pub use dim_rules::DimContext;

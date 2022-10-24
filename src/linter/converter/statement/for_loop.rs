@@ -1,7 +1,7 @@
 use crate::common::*;
 use crate::linter::converter::converter::Context;
-use crate::linter::converter::expr_rules::ExprContext;
 use crate::linter::converter::traits::Convertible;
+use crate::linter::converter::types::ExprContext;
 use crate::parser::ForLoopNode;
 
 impl Convertible for ForLoopNode {

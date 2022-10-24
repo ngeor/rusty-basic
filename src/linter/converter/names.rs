@@ -1,6 +1,6 @@
 use crate::common::CaseInsensitiveString;
 use crate::linter::const_value_resolver::ConstLookup;
-use crate::linter::converter::converter::Implicits;
+use crate::linter::converter::types::Implicits;
 use crate::linter::NameContext;
 use crate::parser::{
     BareName, BuiltInStyle, HasExpressionType, QualifiedNameNode, RedimInfo, TypeQualifier,

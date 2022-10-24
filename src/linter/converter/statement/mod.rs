@@ -9,10 +9,10 @@ mod sub_call;
 
 use crate::common::*;
 use crate::linter::converter::converter::Context;
-use crate::linter::converter::expr_rules::ExprContext;
 use crate::linter::converter::pos_context::PosContext;
 use crate::linter::converter::traits::Convertible;
-use crate::linter::{DimContext, NameContext};
+use crate::linter::converter::types::{DimContext, ExprContext};
+use crate::linter::NameContext;
 use crate::parser::{ExitObject, Statement, StatementNode, StatementNodes};
 
 impl Convertible<Context, Option<StatementNode>> for StatementNode {

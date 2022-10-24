@@ -10,6 +10,26 @@ use crate::variant::Variant;
 use std::collections::hash_map::Values;
 use std::collections::{HashMap, HashSet};
 
+/*
+
+Naming rules
+
+1. It is possible to have multiple compact variables
+
+e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
+
+2. A constant can be referenced either bare or by its correct qualifier
+
+2b. A constant cannot co-exist with other symbols of the same name
+
+3. A bare constant gets its qualifier from the expression and not from the type resolver
+
+4. A constant in a subprogram can override a global constant
+
+5. An extended variable can be referenced either bare or by its correct qualifier
+5b. An extended variable cannot co-exist with other symbols of the same name
+*/
+
 pub struct Names {
     map: HashMap<BareName, NameInfo>,
     current_function_name: Option<BareName>,

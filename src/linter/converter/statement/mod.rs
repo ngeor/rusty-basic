@@ -8,7 +8,7 @@ mod select_case;
 mod sub_call;
 
 use crate::common::*;
-use crate::linter::converter::converter::Context;
+use crate::linter::converter::context::Context;
 use crate::linter::converter::pos_context::PosContext;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::converter::types::{DimContext, ExprContext};
@@ -62,7 +62,7 @@ impl<'a> Convertible<PosContext<'a>, Option<Statement>> for Statement {
                     Ok(Statement::Resume(resume_option)).map(Some)
                 }
             }
-            Statement::Exit(exit_object) => match ctx.get_name_context() {
+            Statement::Exit(exit_object) => match ctx.names.get_name_context() {
                 NameContext::Global => {
                     Err(QError::syntax_error("Illegal outside of subprogram")).with_err_no_pos()
                 }

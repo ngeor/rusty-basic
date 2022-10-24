@@ -1,6 +1,6 @@
 use crate::common::*;
 use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::converter::converter::Context;
+use crate::linter::converter::context::Context;
 use crate::linter::{HasFunctions, HasSubs};
 use crate::parser::*;
 use std::convert::TryFrom;

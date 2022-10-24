@@ -1,5 +1,5 @@
 use crate::common::QErrorNode;
-use crate::linter::converter::converter::Context;
+use crate::linter::converter::context::Context;
 
 pub trait Convertible<C = Context, O = Self>: Sized {
     fn convert(self, ctx: &mut C) -> Result<O, QErrorNode>;

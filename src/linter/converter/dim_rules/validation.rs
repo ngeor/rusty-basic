@@ -1,5 +1,5 @@
 use crate::common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
-use crate::linter::converter::converter::Context;
+use crate::linter::converter::context::Context;
 use crate::linter::type_resolver::IntoTypeQualifier;
 use crate::linter::{HasFunctions, HasSubs, HasUserDefinedTypes};
 use crate::parser::{

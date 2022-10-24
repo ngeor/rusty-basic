@@ -1,4 +1,4 @@
-use crate::linter::converter::converter::Context;
+use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::FromParentContext;
 use crate::linter::converter::types::DimContext;
 use std::ops::{Deref, DerefMut};

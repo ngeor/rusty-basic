@@ -7,7 +7,7 @@ mod variable;
 
 use crate::built_ins::BuiltInFunction;
 use crate::common::*;
-use crate::linter::converter::converter::Context;
+use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::Convertible;
 use crate::parser::*;
 use crate::variant::Variant;
@@ -16,7 +16,7 @@ use pos_expr_state::PosExprState;
 use std::convert::TryFrom;
 
 mod expr_state {
-    use crate::linter::converter::converter::Context;
+    use crate::linter::converter::context::Context;
     use crate::linter::converter::traits::FromParentContext;
     use crate::linter::converter::types::ExprContext;
     use std::ops::{Deref, DerefMut};

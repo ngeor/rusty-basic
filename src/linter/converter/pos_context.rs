@@ -1,5 +1,5 @@
 use crate::common::{HasLocation, Location};
-use crate::linter::converter::converter::Context;
+use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::FromParentContext;
 use std::ops::{Deref, DerefMut};
 

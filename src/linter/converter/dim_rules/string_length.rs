@@ -1,6 +1,6 @@
 use crate::common::{QError, QErrorNode, ToLocatableError};
 use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::converter::converter::Context;
+use crate::linter::converter::context::Context;
 use crate::parser::ExpressionNode;
 use crate::variant::{QBNumberCast, MAX_INTEGER};
 

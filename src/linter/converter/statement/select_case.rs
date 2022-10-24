@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::linter::converter::converter::Context;
+use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::Convertible;
 use crate::parser::{CaseBlockNode, CaseExpression, SelectCaseNode};
 

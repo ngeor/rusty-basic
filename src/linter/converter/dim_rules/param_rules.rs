@@ -1,5 +1,5 @@
 use crate::common::{AtLocation, PatchErrPos, QErrorNode};
-use crate::linter::converter::converter::Context;
+use crate::linter::converter::context::Context;
 use crate::linter::converter::dim_rules::param_type_rules::on_param_type;
 use crate::linter::converter::dim_rules::validation;
 use crate::linter::converter::pos_context::PosContext;

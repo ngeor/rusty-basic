@@ -1,5 +1,5 @@
 use crate::common::*;
-use crate::linter::converter::converter::*;
+use crate::linter::converter::context::*;
 use crate::linter::converter::dim_rules::dim_name_state::DimNameState;
 use crate::linter::converter::dim_rules::string_length::resolve_string_length;
 use crate::linter::converter::traits::Convertible;

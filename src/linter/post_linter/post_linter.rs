@@ -1,4 +1,4 @@
-use crate::common::{CaseInsensitiveString, QErrorNode};
+use crate::common::QErrorNode;
 use crate::linter::post_linter::expression_reducer::ExpressionReducer;
 use crate::linter::post_linter::post_conversion_linter::PostConversionLinter;
 use crate::linter::post_linter::{
@@ -8,15 +8,13 @@ use crate::linter::post_linter::{
 };
 use crate::linter::{HasFunctions, HasSubs};
 use crate::parser::ProgramNode;
-use std::collections::HashSet;
 
 pub fn post_linter(
     result: ProgramNode,
     pre_linter_result: &(impl HasFunctions + HasSubs),
-    names_without_dot: &HashSet<CaseInsensitiveString>,
 ) -> Result<ProgramNode, QErrorNode> {
     // lint
-    apply_linters(&result, pre_linter_result, names_without_dot)?;
+    apply_linters(&result, pre_linter_result)?;
     // reduce
     let mut reducer = undefined_function_reducer::UndefinedFunctionReducer {
         context: pre_linter_result,
@@ -27,12 +25,11 @@ pub fn post_linter(
 fn apply_linters(
     result: &ProgramNode,
     pre_linter_result: &(impl HasFunctions + HasSubs),
-    names_without_dot: &HashSet<CaseInsensitiveString>,
 ) -> Result<(), QErrorNode> {
     let mut linter = for_next_counter_match_linter::ForNextCounterMatch {};
     linter.visit_program(result)?;
 
-    let mut linter = dots_linter::DotsLinter { names_without_dot };
+    let mut linter = dots_linter::DotsLinter::default();
     linter.visit_program(result)?;
 
     let mut linter = built_in_linter::BuiltInLinter::new();

@@ -12,6 +12,11 @@ use crate::parser::*;
 /// Err() to indicate a problem.
 pub trait PostConversionLinter {
     fn visit_program(&mut self, p: &ProgramNode) -> Result<(), QErrorNode> {
+        // in case of overriding visit_program, use visit_top_level_token_nodes to call the default functionality
+        self.visit_top_level_token_nodes(p)
+    }
+
+    fn visit_top_level_token_nodes(&mut self, p: &ProgramNode) -> Result<(), QErrorNode> {
         p.iter()
             .try_for_each(|t| self.visit_top_level_token_node(t))
     }

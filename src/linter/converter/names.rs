@@ -7,8 +7,7 @@ use crate::parser::{
     VarTypeIsExtended, VariableInfo,
 };
 use crate::variant::Variant;
-use std::collections::hash_map::Values;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /*
 
@@ -34,13 +33,8 @@ pub struct Names {
     map: HashMap<BareName, NameInfo>,
     current_function_name: Option<BareName>,
     parent: Option<Box<Names>>,
+    // TODO implicits has nothing to do with Names, it's only here because of the convenience of pushing/popping a Names context
     implicits: Implicits,
-}
-
-pub enum NameInfo {
-    Constant(Variant),
-    Compact(HashMap<TypeQualifier, VariableInfo>),
-    Extended(VariableInfo),
 }
 
 impl Names {
@@ -63,17 +57,6 @@ impl Names {
 
     pub fn get_implicits(&mut self) -> &mut Implicits {
         &mut self.implicits
-    }
-
-    pub fn visit_names<F, T, E>(&self, bare_name: &BareName, f: F) -> Result<T, E>
-    where
-        F: Fn(BuiltInStyle, &VariableInfo) -> Result<T, E>,
-        T: Default,
-    {
-        for (built_in_style, variable_info) in self.names_iterator(bare_name) {
-            f(built_in_style, variable_info)?;
-        }
-        Ok(T::default())
     }
 
     /// Returns true if this name is a constant, or an extended variable,
@@ -105,7 +88,7 @@ impl Names {
         qualifier: TypeQualifier,
     ) -> Option<&VariableInfo> {
         match self.map.get(bare_name) {
-            Some(NameInfo::Compact(qualifiers)) => qualifiers.get(&qualifier),
+            Some(NameInfo::Compacts(qualifiers)) => qualifiers.get(&qualifier),
             _ => None,
         }
     }
@@ -237,7 +220,7 @@ impl Names {
             .opt_qualifier()
             .expect("Should be resolved");
         match self.map.get_mut(&bare_name) {
-            Some(NameInfo::Compact(compacts)) => {
+            Some(NameInfo::Compacts(compacts)) => {
                 Self::insert_in_compacts(compacts, q, variable_info);
             }
             Some(_) => {
@@ -249,7 +232,7 @@ impl Names {
             None => {
                 let mut map: HashMap<TypeQualifier, VariableInfo> = HashMap::new();
                 Self::insert_in_compacts(&mut map, q, variable_info);
-                self.map.insert(bare_name, NameInfo::Compact(map));
+                self.map.insert(bare_name, NameInfo::Compacts(map));
             }
         }
     }
@@ -284,15 +267,6 @@ impl Names {
             .insert(bare_name, NameInfo::Extended(variable_context));
     }
 
-    pub fn drain_extended_names_into(&mut self, set: &mut HashSet<BareName>) {
-        set.extend(
-            self.map
-                .drain()
-                .filter(|(_, name_info)| matches!(name_info, NameInfo::Extended(_)))
-                .map(|(k, _)| k),
-        );
-    }
-
     pub fn is_in_function(&self, function_name: &BareName) -> bool {
         match &self.current_function_name {
             Some(f) => f == function_name,
@@ -320,11 +294,46 @@ impl Names {
         self.parent.map(|boxed_parent| *boxed_parent)
     }
 
-    pub fn names_iterator<'a>(
-        &'a self,
-        bare_name: &'a BareName,
-    ) -> impl Iterator<Item = (BuiltInStyle, &'a VariableInfo)> {
-        NamesIterator::new(self, bare_name)
+    pub fn find_name_or_shared_in_parent(
+        &self,
+        bare_name: &BareName,
+    ) -> Vec<(BuiltInStyle, &VariableInfo)> {
+        self.find_name(bare_name, false)
+    }
+
+    fn find_name(
+        &self,
+        bare_name: &BareName,
+        only_shared: bool,
+    ) -> Vec<(BuiltInStyle, &VariableInfo)> {
+        let mut result = Vec::<(BuiltInStyle, &VariableInfo)>::new();
+        if let Some(name_info) = self.map.get(bare_name) {
+            match name_info {
+                NameInfo::Compacts(map) => {
+                    result.extend(
+                        map.values()
+                            .filter(|v| v.shared || !only_shared)
+                            .map(|v| (BuiltInStyle::Compact, v)),
+                    );
+                }
+                NameInfo::Extended(v) => {
+                    result.extend(
+                        std::iter::once(v)
+                            .filter(|v| v.shared || !only_shared)
+                            .map(|v| (BuiltInStyle::Extended, v)),
+                    );
+                }
+                NameInfo::Constant(_) => {
+                    if !only_shared {
+                        panic!("Should have detected for constants before calling this method");
+                    }
+                }
+            }
+        }
+        if let Some(boxed_parent) = &self.parent {
+            result.extend(boxed_parent.find_name(bare_name, true).into_iter());
+        }
+        result
     }
 }
 
@@ -340,101 +349,8 @@ impl ConstLookup for Names {
     }
 }
 
-struct NamesIterator<'a> {
-    names: &'a Names,
-    bare_name: &'a BareName,
-    state: NamesIteratorState,
-    compacts: Option<Values<'a, TypeQualifier, VariableInfo>>,
-    only_shared: bool,
-}
-
-enum NamesIteratorState {
-    NotStarted,
-    Compacts,
-    FinishedCurrent,
-    Finished,
-}
-
-impl<'a> NamesIterator<'a> {
-    pub fn new(names: &'a Names, bare_name: &'a BareName) -> Self {
-        Self {
-            names,
-            bare_name,
-            state: NamesIteratorState::NotStarted,
-            compacts: None,
-            only_shared: false,
-        }
-    }
-
-    fn on_not_started(&mut self) -> Option<<Self as Iterator>::Item> {
-        match self.names.map.get(self.bare_name) {
-            Some(NameInfo::Compact(m)) => {
-                self.compacts = Some(m.values());
-                self.state = NamesIteratorState::Compacts;
-                self.on_compacts()
-            }
-            Some(NameInfo::Extended(v)) => {
-                self.state = NamesIteratorState::FinishedCurrent;
-                if !self.only_shared || v.shared {
-                    Some((BuiltInStyle::Extended, v))
-                } else {
-                    self.on_finished_current()
-                }
-            }
-            Some(NameInfo::Constant(_)) => {
-                if self.only_shared {
-                    self.on_finished_current()
-                } else {
-                    panic!("Should have detected for constants before calling this method");
-                }
-            }
-            _ => self.on_finished_current(),
-        }
-    }
-
-    fn on_compacts(&mut self) -> Option<<Self as Iterator>::Item> {
-        let v = self.compacts.as_mut().unwrap().next();
-        match v {
-            Some(v) => {
-                if v.shared || !self.only_shared {
-                    Some((BuiltInStyle::Compact, v))
-                } else {
-                    self.on_compacts()
-                }
-            }
-            _ => {
-                self.state = NamesIteratorState::FinishedCurrent;
-                self.on_finished_current()
-            }
-        }
-    }
-
-    fn on_finished_current(&mut self) -> Option<<Self as Iterator>::Item> {
-        // go to parent, but only shared
-        self.only_shared = true;
-        match &self.names.parent {
-            Some(parent_names) => {
-                self.names = parent_names.as_ref();
-                self.state = NamesIteratorState::NotStarted;
-                self.on_not_started()
-            }
-            None => {
-                self.state = NamesIteratorState::Finished;
-                None
-            }
-        }
-    }
-}
-
-impl<'a> Iterator for NamesIterator<'a> {
-    type Item = (BuiltInStyle, &'a VariableInfo);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.state {
-            NamesIteratorState::NotStarted => self.on_not_started(),
-            NamesIteratorState::Compacts => self.on_compacts(),
-            NamesIteratorState::FinishedCurrent => self.on_finished_current(),
-            NamesIteratorState::Finished => None,
-        }
-    }
+enum NameInfo {
+    Constant(Variant),
+    Compacts(HashMap<TypeQualifier, VariableInfo>),
+    Extended(VariableInfo),
 }

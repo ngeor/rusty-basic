@@ -14,17 +14,13 @@ use crate::common::QErrorNode;
 use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::pre_linter::PreLinterResult;
-use crate::parser::{BareName, ProgramNode};
-use std::collections::HashSet;
+use crate::parser::ProgramNode;
 use std::rc::Rc;
 
 pub fn convert(
     program: ProgramNode,
     pre_linter_result: Rc<PreLinterResult>,
-) -> Result<(ProgramNode, HashSet<BareName>), QErrorNode> {
+) -> Result<ProgramNode, QErrorNode> {
     let mut context = Context::new(pre_linter_result);
-    let result = program.convert(&mut context)?;
-    // consume
-    let names_without_dot = context.consume();
-    Ok((result, names_without_dot))
+    program.convert(&mut context)
 }

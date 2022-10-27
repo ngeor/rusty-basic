@@ -27,11 +27,6 @@ impl Default for LabelOwner {
 }
 
 impl LabelLinter {
-    fn do_visit_program(&mut self, p: &ProgramNode) -> Result<(), QErrorNode> {
-        p.iter()
-            .try_for_each(|t| self.visit_top_level_token_node(t))
-    }
-
     fn contains_label_in_any_scope(&self, label: &CaseInsensitiveString) -> bool {
         for v in self.labels.values() {
             if v.contains(label) {
@@ -69,11 +64,12 @@ impl LabelLinter {
 
 impl PostConversionLinter for LabelLinter {
     fn visit_program(&mut self, p: &ProgramNode) -> Result<(), QErrorNode> {
+        // TODO break down to two types and remove the collecting variable
         self.labels.insert(LabelOwner::Global, HashSet::new());
         self.collecting = true;
-        self.do_visit_program(p)?;
+        self.visit_top_level_token_nodes(p)?;
         self.collecting = false;
-        self.do_visit_program(p)
+        self.visit_top_level_token_nodes(p)
     }
 
     fn visit_function_implementation(

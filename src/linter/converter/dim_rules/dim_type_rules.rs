@@ -43,7 +43,9 @@ fn require_compact_can_be_defined(
     q: TypeQualifier,
 ) -> Result<(), QError> {
     ctx.names
-        .visit_names(bare_name, |built_in_style, variable_info| {
+        .find_name_or_shared_in_parent(bare_name)
+        .into_iter()
+        .try_for_each(|(built_in_style, variable_info)| {
             if built_in_style == BuiltInStyle::Extended {
                 Err(QError::DuplicateDefinition)
             } else {
@@ -77,7 +79,9 @@ pub fn built_in_to_dim_type<T: VarTypeNewBuiltInCompact + VarTypeNewBuiltInExten
 
 fn require_extended_can_be_defined(ctx: &Context, bare_name: &BareName) -> Result<(), QError> {
     ctx.names
-        .visit_names(bare_name, |_, _| Err(QError::DuplicateDefinition))
+        .find_name_or_shared_in_parent(bare_name)
+        .into_iter()
+        .try_for_each(|_| Err(QError::DuplicateDefinition))
 }
 
 fn fixed_length_string_to_dim_type(

@@ -7,14 +7,12 @@ use crate::linter::type_resolver::{IntoQualified, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, SubMap};
 use crate::parser::*;
-use std::collections::HashSet;
 use std::rc::Rc;
 
 pub struct Context {
     pre_linter_result: Rc<PreLinterResult>,
     pub resolver: TypeResolverImpl,
     pub names: Names,
-    names_without_dot: HashSet<BareName>,
 }
 
 impl TypeResolver for Context {
@@ -47,7 +45,6 @@ impl Context {
             pre_linter_result,
             resolver: TypeResolverImpl::new(),
             names: Names::new_root(),
-            names_without_dot: HashSet::new(),
         }
     }
 
@@ -78,8 +75,6 @@ impl Context {
         let temp_dummy = Names::new_root();
         // take current "self.names" and store into "current"
         let mut current = std::mem::replace(&mut self.names, temp_dummy);
-        // collect extended names of sub-program, as they can't be combined with dots anywhere in the program
-        current.drain_extended_names_into(&mut self.names_without_dot);
         // collect implicits
         let mut implicits = Implicits::new();
         implicits.append(current.get_implicits());
@@ -92,21 +87,11 @@ impl Context {
         self.names.is_in_subprogram()
     }
 
-    pub fn names_without_dot(mut self) -> HashSet<BareName> {
-        self.names
-            .drain_extended_names_into(&mut self.names_without_dot);
-        self.names_without_dot
-    }
-
     /// Gets the function qualifier of the function identified by the given bare name.
     /// If no such function exists, returns `None`.
     pub fn function_qualifier(&self, bare_name: &BareName) -> Option<TypeQualifier> {
         self.functions()
             .get(bare_name)
             .map(|function_signature_node| function_signature_node.as_ref().qualifier())
-    }
-
-    pub fn consume(self) -> HashSet<BareName> {
-        self.names_without_dot()
     }
 }

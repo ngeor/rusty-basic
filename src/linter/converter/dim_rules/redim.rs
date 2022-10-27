@@ -60,7 +60,7 @@ fn bare_to_dim_type<'a, 'b>(
 ) -> Result<DimType, QError> {
     let mut found: Option<(BuiltInStyle, &VariableInfo)> = None;
     let q = bare_name.qualify(ctx);
-    for (built_in_style, variable_info) in ctx.names.names_iterator(bare_name) {
+    for (built_in_style, variable_info) in ctx.names.find_name_or_shared_in_parent(bare_name) {
         match &variable_info.redim_info {
             Some(r) => {
                 if r.dimension_count != array_dimensions.len() {
@@ -118,28 +118,30 @@ fn built_in_to_dim_type(
     q: TypeQualifier,
     built_in_style: BuiltInStyle,
 ) -> Result<DimType, QError> {
+    let mut it = ctx
+        .names
+        .find_name_or_shared_in_parent(bare_name)
+        .into_iter();
     if built_in_style == BuiltInStyle::Compact {
-        ctx.names
-            .visit_names(bare_name, |built_in_style, variable_info| {
-                if built_in_style == BuiltInStyle::Extended {
-                    return Err(QError::DuplicateDefinition);
-                }
-                let opt_q = variable_info.expression_type.opt_qualifier();
-                if opt_q.expect("Should be qualified") == q {
-                    // other compact arrays of the same name are allowed to co-exist, hence no else block here
-                    require_dimension_count(variable_info, array_dimensions.len())?;
-                }
-                Ok(())
-            })?;
+        it.try_for_each(|(built_in_style, variable_info)| {
+            if built_in_style == BuiltInStyle::Extended {
+                return Err(QError::DuplicateDefinition);
+            }
+            let opt_q = variable_info.expression_type.opt_qualifier();
+            if opt_q.expect("Should be qualified") == q {
+                // other compact arrays of the same name are allowed to co-exist, hence no else block here
+                require_dimension_count(variable_info, array_dimensions.len())?;
+            }
+            Ok(())
+        })?;
     } else {
-        ctx.names
-            .visit_names(bare_name, |built_in_style, variable_info| {
-                if built_in_style == BuiltInStyle::Compact {
-                    return Err(QError::DuplicateDefinition);
-                }
-                require_built_in_array(variable_info, q)?;
-                require_dimension_count(variable_info, array_dimensions.len())
-            })?;
+        it.try_for_each(|(built_in_style, variable_info)| {
+            if built_in_style == BuiltInStyle::Compact {
+                return Err(QError::DuplicateDefinition);
+            }
+            require_built_in_array(variable_info, q)?;
+            require_dimension_count(variable_info, array_dimensions.len())
+        })?;
     }
     Ok(DimType::BuiltIn(q, built_in_style))
 }
@@ -163,7 +165,9 @@ fn fixed_length_string_to_dim_type<'a, 'b>(
 ) -> Result<DimType, QErrorNode> {
     let string_length: u16 = resolve_string_length(ctx, length_expression)?;
     ctx.names
-        .visit_names(bare_name, |built_in_style, variable_info| {
+        .find_name_or_shared_in_parent(bare_name)
+        .into_iter()
+        .try_for_each(|(built_in_style, variable_info)| {
             if built_in_style == BuiltInStyle::Compact {
                 Err(QError::DuplicateDefinition)
             } else {
@@ -193,7 +197,9 @@ fn user_defined_type_to_dim_type(
     user_defined_type: BareNameNode,
 ) -> Result<DimType, QError> {
     ctx.names
-        .visit_names(bare_name, |built_in_style, variable_info| {
+        .find_name_or_shared_in_parent(bare_name)
+        .into_iter()
+        .try_for_each(|(built_in_style, variable_info)| {
             if built_in_style == BuiltInStyle::Compact {
                 Err(QError::DuplicateDefinition)
             } else {

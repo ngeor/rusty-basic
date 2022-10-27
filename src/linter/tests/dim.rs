@@ -339,6 +339,40 @@ fn test_dim_array_extended_user_defined() {
     );
 }
 
+mod dot_clash {
+    use super::*;
+
+    #[test]
+    fn test_clash_with_user_defined_type() {
+        let input = r#"
+        TYPE Card
+            Value AS INTEGER
+        END TYPE
+        DIM A AS Card
+        DIM A.B
+        "#;
+        assert_linter_err!(input, QError::DotClash, 6, 13);
+    }
+
+    #[test]
+    fn test_no_clash_with_built_in_extended() {
+        let input = r#"
+        DIM A AS INTEGER
+        DIM A.B
+        "#;
+        linter_ok(input);
+    }
+
+    #[test]
+    fn test_no_clash_with_string_length() {
+        let input = r#"
+        DIM A AS STRING * 5
+        DIM A.B
+        "#;
+        linter_ok(input);
+    }
+}
+
 mod dim_shared {
     use super::*;
 

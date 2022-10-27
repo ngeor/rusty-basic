@@ -12,8 +12,7 @@ pub fn lint(program: ProgramNode) -> Result<(ProgramNode, impl HasUserDefinedTyp
     // first pass, get user defined types and functions/subs
     let pre_linter_result = Rc::new(pre_lint_program(&program)?);
     // convert to fully typed
-    let (result, names_without_dot) = convert(program, Rc::clone(&pre_linter_result))?;
+    let program = convert(program, Rc::clone(&pre_linter_result))?;
     // lint and reduce
-    post_linter(result, &pre_linter_result, &names_without_dot)
-        .map(|program_node| (program_node, pre_linter_result))
+    post_linter(program, &pre_linter_result).map(|program_node| (program_node, pre_linter_result))
 }

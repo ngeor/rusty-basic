@@ -1,6 +1,6 @@
 use crate::common::*;
-use crate::linter::pre_linter::ParamTypes;
-use crate::linter::HasFunctions;
+use crate::linter::pre_linter::ResolvedParamTypes;
+use crate::linter::{HasFunctions, ResolvedParamType};
 use crate::parser::*;
 
 use super::post_conversion_linter::PostConversionLinter;
@@ -9,7 +9,7 @@ pub struct UserDefinedFunctionLinter<'a, R> {
     pub context: &'a R,
 }
 
-pub fn lint_call_args(args: &ExpressionNodes, param_types: &ParamTypes) -> Result<(), QErrorNode> {
+pub fn lint_call_args(args: &ExpressionNodes, param_types: &ResolvedParamTypes) -> Result<(), QErrorNode> {
     if args.len() != param_types.len() {
         return err_no_pos(QError::ArgumentCountMismatch);
     }
@@ -19,7 +19,10 @@ pub fn lint_call_args(args: &ExpressionNodes, param_types: &ParamTypes) -> Resul
         .try_for_each(|(a, p)| lint_call_arg(a, p))
 }
 
-fn lint_call_arg(arg_node: &ExpressionNode, param_type: &ParamType) -> Result<(), QErrorNode> {
+fn lint_call_arg(
+    arg_node: &ExpressionNode,
+    param_type: &ResolvedParamType,
+) -> Result<(), QErrorNode> {
     let arg = arg_node.as_ref();
     match arg {
         Expression::Variable(_, _)
@@ -29,19 +32,18 @@ fn lint_call_arg(arg_node: &ExpressionNode, param_type: &ParamType) -> Result<()
     }
 }
 
-fn lint_by_ref_arg(arg_node: &ExpressionNode, param_type: &ParamType) -> Result<(), QErrorNode> {
+fn lint_by_ref_arg(
+    arg_node: &ExpressionNode,
+    param_type: &ResolvedParamType,
+) -> Result<(), QErrorNode> {
     match param_type {
-        ParamType::Bare => panic!("Unresolved param {:?} {:?}", arg_node, param_type),
-        ParamType::BuiltIn(q, _) => {
+        ResolvedParamType::BuiltIn(q, _) => {
             lint_arg_node(arg_node, |e| expr_type_matches_type_qualifier_by_ref(e, *q))
         }
-        ParamType::UserDefined(Locatable {
-            element: user_defined_type_name,
-            ..
-        }) => lint_arg_node(arg_node, |e| {
+        ResolvedParamType::UserDefined(user_defined_type_name) => lint_arg_node(arg_node, |e| {
             expr_type_is_user_defined(e, user_defined_type_name)
         }),
-        ParamType::Array(boxed_element_type) => {
+        ResolvedParamType::Array(boxed_element_type) => {
             // we can only pass an array by using the array name followed by parenthesis e.g. `Menu choice$()`
             match arg_node.as_ref() {
                 Expression::ArrayElement(
@@ -86,9 +88,12 @@ fn expr_type_is_user_defined(
     }
 }
 
-fn lint_by_val_arg(arg_node: &ExpressionNode, param_type: &ParamType) -> Result<(), QErrorNode> {
+fn lint_by_val_arg(
+    arg_node: &ExpressionNode,
+    param_type: &ResolvedParamType,
+) -> Result<(), QErrorNode> {
     // it's by val, casting is allowed
-    if arg_node.as_ref().can_cast_to(param_type) {
+    if arg_node.as_ref().expression_type().can_cast_to(param_type) {
         Ok(())
     } else {
         Err(QError::ArgumentTypeMismatch).with_err_at(arg_node)

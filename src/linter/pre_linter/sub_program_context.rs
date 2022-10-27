@@ -3,7 +3,8 @@ use crate::common::*;
 use crate::linter::pre_linter::context::MainContextWithPos;
 use crate::linter::pre_linter::convertible::Convertible;
 use crate::linter::type_resolver::{IntoTypeQualifier, TypeResolver};
-use crate::parser::{BareName, Name, ParamNameNodes, ParamType, TypeQualifier};
+use crate::linter::ResolvedParamType;
+use crate::parser::{BareName, Name, ParamNameNodes, TypeQualifier};
 use std::collections::HashMap;
 
 pub struct SubprogramContext<T> {
@@ -11,15 +12,16 @@ pub struct SubprogramContext<T> {
     implementations: HashMap<CaseInsensitiveString, Locatable<T>>,
 }
 
-pub type ParamTypes = Vec<ParamType>;
+pub type ResolvedParamTypes = Vec<ResolvedParamType>;
 
+#[derive(Eq, PartialEq)]
 pub struct FunctionSignature {
     q: TypeQualifier,
-    param_types: ParamTypes,
+    param_types: ResolvedParamTypes,
 }
 
 impl FunctionSignature {
-    pub fn new(q: TypeQualifier, param_types: ParamTypes) -> Self {
+    pub fn new(q: TypeQualifier, param_types: ResolvedParamTypes) -> Self {
         Self { q, param_types }
     }
 
@@ -27,77 +29,23 @@ impl FunctionSignature {
         self.q
     }
 
-    pub fn param_types(&self) -> &ParamTypes {
+    pub fn param_types(&self) -> &ResolvedParamTypes {
         &self.param_types
     }
 }
 
-impl PartialEq for FunctionSignature {
-    fn eq(&self, other: &Self) -> bool {
-        self.q == other.q && are_eq_ignore_location(self.param_types(), other.param_types())
-    }
-}
-
+#[derive(Eq, PartialEq)]
 pub struct SubSignature {
-    param_types: ParamTypes,
+    param_types: ResolvedParamTypes,
 }
 
 impl SubSignature {
-    pub fn new(param_types: ParamTypes) -> Self {
+    pub fn new(param_types: ResolvedParamTypes) -> Self {
         Self { param_types }
     }
 
-    pub fn param_types(&self) -> &ParamTypes {
+    pub fn param_types(&self) -> &ResolvedParamTypes {
         &self.param_types
-    }
-}
-
-impl PartialEq for SubSignature {
-    fn eq(&self, other: &Self) -> bool {
-        are_eq_ignore_location(self.param_types(), other.param_types())
-    }
-}
-
-fn are_eq_ignore_location(first: &ParamTypes, second: &ParamTypes) -> bool {
-    first.len() == second.len()
-        && first
-            .iter()
-            .zip(second.iter())
-            .all(|(l, r)| is_eq_ignore_location(l, r))
-}
-
-// Compare if parameter types are equal,
-// regardless of the location of the UserDefinedName node.
-fn is_eq_ignore_location(first: &ParamType, second: &ParamType) -> bool {
-    match first {
-        ParamType::Bare => {
-            matches!(second, ParamType::Bare)
-        }
-        ParamType::BuiltIn(q, _) => {
-            if let ParamType::BuiltIn(q_other, _) = second {
-                q == q_other
-            } else {
-                false
-            }
-        }
-        ParamType::UserDefined(Locatable { element, .. }) => {
-            if let ParamType::UserDefined(Locatable {
-                element: other_name,
-                ..
-            }) = second
-            {
-                element == other_name
-            } else {
-                false
-            }
-        }
-        ParamType::Array(boxed) => {
-            if let ParamType::Array(boxed_other) = second {
-                is_eq_ignore_location(boxed, boxed_other)
-            } else {
-                false
-            }
-        }
     }
 }
 
@@ -139,7 +87,7 @@ pub trait ToSignature {
     fn to_signature(
         &self,
         resolver: &impl TypeResolver,
-        qualified_params: ParamTypes,
+        qualified_params: ResolvedParamTypes,
     ) -> Self::Signature;
 }
 
@@ -149,7 +97,7 @@ impl ToSignature for BareName {
     fn to_signature(
         &self,
         _resolver: &impl TypeResolver,
-        qualified_params: ParamTypes,
+        qualified_params: ResolvedParamTypes,
     ) -> Self::Signature {
         SubSignature::new(qualified_params)
     }
@@ -161,7 +109,7 @@ impl ToSignature for Name {
     fn to_signature(
         &self,
         resolver: &impl TypeResolver,
-        qualified_params: ParamTypes,
+        qualified_params: ResolvedParamTypes,
     ) -> Self::Signature {
         let q = self.qualify(resolver);
         FunctionSignature::new(q, qualified_params)
@@ -192,7 +140,7 @@ where
         let Locatable { element: name, pos } = name_node;
         // name does not have to be unique (duplicate identical declarations okay)
         // conflicting declarations to previous declaration or implementation not okay
-        let param_types: ParamTypes = param_name_nodes.convert(context)?;
+        let param_types: ResolvedParamTypes = param_name_nodes.convert(context)?;
         let bare_name: &BareName = name.as_ref();
         let signature = name.to_signature(context, param_types);
         self.implementations
@@ -225,7 +173,7 @@ where
         // param count must match declaration
         // param types must match declaration
         // name needs to be unique
-        let param_types: ParamTypes = param_name_nodes.convert(context)?;
+        let param_types: ResolvedParamTypes = param_name_nodes.convert(context)?;
         let bare_name: &BareName = name.as_ref();
         let signature = name.to_signature(context, param_types);
         match self.implementations.get(bare_name) {
@@ -298,11 +246,12 @@ mod params {
     use crate::linter::pre_linter::context::MainContext;
     use crate::linter::pre_linter::convertible::Convertible;
     use crate::linter::type_resolver::IntoTypeQualifier;
+    use crate::linter::ResolvedParamType;
     use crate::parser::*;
 
     impl Convertible for ParamNameNode {
         type Context = MainContext;
-        type Output = ParamType;
+        type Output = ResolvedParamType;
         type Error = QErrorNode;
 
         fn convert(&self, context: &Self::Context) -> Result<Self::Output, Self::Error> {
@@ -316,7 +265,7 @@ mod params {
 
     impl Convertible for ParamName {
         type Context = MainContext;
-        type Output = ParamType;
+        type Output = ResolvedParamType;
         type Error = QError;
 
         fn convert(&self, context: &Self::Context) -> Result<Self::Output, Self::Error> {
@@ -324,15 +273,15 @@ mod params {
             match &self.var_type {
                 ParamType::Bare => {
                     let q = bare_name.qualify(context);
-                    Ok(ParamType::BuiltIn(q, BuiltInStyle::Compact))
+                    Ok(ResolvedParamType::BuiltIn(q, BuiltInStyle::Compact))
                 }
                 ParamType::BuiltIn(q, built_in_style) => {
-                    Ok(ParamType::BuiltIn(*q, *built_in_style))
+                    Ok(ResolvedParamType::BuiltIn(*q, *built_in_style))
                 }
                 ParamType::UserDefined(u) => {
                     let type_name: &BareName = u.as_ref();
                     if context.user_defined_types().contains_key(type_name) {
-                        Ok(ParamType::UserDefined(u.clone()))
+                        Ok(ResolvedParamType::UserDefined(type_name.clone()))
                     } else {
                         Err(QError::TypeNotDefined)
                     }
@@ -341,7 +290,7 @@ mod params {
                     let dummy_element_param =
                         ParamName::new(bare_name.clone(), element_type.as_ref().clone());
                     let element_param_type = dummy_element_param.convert(context)?;
-                    Ok(ParamType::Array(Box::new(element_param_type)))
+                    Ok(ResolvedParamType::Array(Box::new(element_param_type)))
                 }
             }
         }

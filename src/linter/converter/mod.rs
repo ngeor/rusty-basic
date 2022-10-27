@@ -15,12 +15,13 @@ use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::pre_linter::PreLinterResult;
 use crate::parser::ProgramNode;
-use std::rc::Rc;
 
 pub fn convert(
     program: ProgramNode,
-    pre_linter_result: Rc<PreLinterResult>,
-) -> Result<ProgramNode, QErrorNode> {
+    pre_linter_result: PreLinterResult,
+) -> Result<(PreLinterResult, ProgramNode), QErrorNode> {
     let mut context = Context::new(pre_linter_result);
-    program.convert(&mut context)
+    program
+        .convert(&mut context)
+        .map(|p| (context.pre_linter_result(), p))
 }

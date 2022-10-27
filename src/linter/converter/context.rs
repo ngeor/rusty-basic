@@ -7,10 +7,9 @@ use crate::linter::type_resolver::{IntoQualified, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, SubMap};
 use crate::parser::*;
-use std::rc::Rc;
 
 pub struct Context {
-    pre_linter_result: Rc<PreLinterResult>,
+    pre_linter_result: PreLinterResult,
     pub resolver: TypeResolverImpl,
     pub names: Names,
 }
@@ -40,7 +39,7 @@ impl HasUserDefinedTypes for Context {
 }
 
 impl Context {
-    pub fn new(pre_linter_result: Rc<PreLinterResult>) -> Self {
+    pub fn new(pre_linter_result: PreLinterResult) -> Self {
         Self {
             pre_linter_result,
             resolver: TypeResolverImpl::new(),
@@ -93,5 +92,9 @@ impl Context {
         self.functions()
             .get(bare_name)
             .map(|function_signature_node| function_signature_node.as_ref().qualifier())
+    }
+
+    pub fn pre_linter_result(self) -> PreLinterResult {
+        self.pre_linter_result
     }
 }

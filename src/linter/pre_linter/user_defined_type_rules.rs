@@ -1,5 +1,5 @@
 use crate::common::{
-    AtLocation, Locatable, Location, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError,
+    AtLocation, Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError,
 };
 use crate::linter::pre_linter::can_pre_lint::CanPreLint;
 use crate::linter::pre_linter::context::MainContextWithPos;
@@ -15,14 +15,12 @@ impl CanPreLint for UserDefinedType {
     type Context = MainContextWithPos;
     fn pre_lint(&self, context: &Self::Context) -> Result<(), QErrorNode> {
         let Locatable {
-            element: context,
-            pos,
+            element: context, ..
         } = context;
         user_defined_type(
             &mut context.user_defined_types_mut(),
             &context.global_constants(),
             self,
-            *pos,
         )
     }
 }
@@ -31,9 +29,8 @@ fn user_defined_type(
     user_defined_types: &mut UserDefinedTypes,
     global_constants: &ConstantMap,
     user_defined_type: &UserDefinedType,
-    pos: Location,
 ) -> Result<(), QErrorNode> {
-    let type_name: &BareName = user_defined_type.as_ref();
+    let type_name: &BareName = user_defined_type.bare_name();
     if user_defined_types.contains_key(type_name) {
         // duplicate type definition
         Err(QError::DuplicateDefinition).with_err_no_pos()
@@ -89,7 +86,7 @@ fn user_defined_type(
         }
         user_defined_types.insert(
             type_name.clone(),
-            UserDefinedType::new(type_name.clone().at(pos), vec![], elements),
+            UserDefinedType::new(type_name.clone(), vec![], elements),
         );
         Ok(())
     }

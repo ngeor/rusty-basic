@@ -55,9 +55,7 @@ use crate::parser::types::{
 pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
     seq5(
         keyword_followed_by_whitespace_p(Keyword::Type),
-        bare_name_without_dots()
-            .with_pos()
-            .or_syntax_error("Expected: name after TYPE"),
+        bare_name_without_dots().or_syntax_error("Expected: name after TYPE"),
         comments_and_whitespace_p(),
         element_nodes_p(),
         keyword_pair(Keyword::End, Keyword::Type).no_incomplete(),
@@ -142,7 +140,7 @@ mod tests {
         assert_eq!(
             parse(input).demand_single(),
             TopLevelToken::UserDefinedType(UserDefinedType::new(
-                BareName::from("Card").at_rc(2, 14),
+                BareName::from("Card"),
                 vec![],
                 vec![
                     Element::new(
@@ -169,7 +167,7 @@ mod tests {
         assert_eq!(
             parse(input).demand_single(),
             TopLevelToken::UserDefinedType(UserDefinedType::new(
-                BareName::from("Card").at_rc(2, 14),
+                BareName::from("Card"),
                 vec![String::from(" A card").at_rc(2, 19)],
                 vec![
                     Element::new(

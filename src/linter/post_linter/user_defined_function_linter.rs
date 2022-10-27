@@ -9,7 +9,10 @@ pub struct UserDefinedFunctionLinter<'a, R> {
     pub context: &'a R,
 }
 
-pub fn lint_call_args(args: &ExpressionNodes, param_types: &ResolvedParamTypes) -> Result<(), QErrorNode> {
+pub fn lint_call_args(
+    args: &ExpressionNodes,
+    param_types: &ResolvedParamTypes,
+) -> Result<(), QErrorNode> {
     if args.len() != param_types.len() {
         return err_no_pos(QError::ArgumentCountMismatch);
     }

@@ -10,7 +10,7 @@ use crate::variant::{UserDefinedTypeValue, Variant};
 #[derive(Clone, Debug, PartialEq)]
 pub struct UserDefinedType {
     /// The name of the type
-    name_node: BareNameNode,
+    name: BareName,
     /// Comments between the type name and the first element
     comments: Vec<Locatable<String>>,
     /// The elements
@@ -21,15 +21,19 @@ pub type UserDefinedTypes = HashMap<BareName, UserDefinedType>;
 
 impl UserDefinedType {
     pub fn new(
-        name_node: BareNameNode,
+        name: BareName,
         comments: Vec<Locatable<String>>,
         elements: Vec<ElementNode>,
     ) -> Self {
         Self {
-            name_node,
+            name,
             comments,
             elements,
         }
+    }
+
+    pub fn bare_name(&self) -> &BareName {
+        &self.name
     }
 
     pub fn elements(&self) -> Iter<'_, ElementNode> {
@@ -53,12 +57,6 @@ impl UserDefinedType {
         } else {
             Err(QError::TypeMismatch)
         }
-    }
-}
-
-impl AsRef<BareName> for UserDefinedType {
-    fn as_ref(&self) -> &BareName {
-        self.name_node.as_ref()
     }
 }
 

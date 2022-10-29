@@ -1,0 +1,13 @@
+use crate::linter::converter::context::Context;
+use crate::linter::converter::traits::Convertible;
+use crate::parser::ArrayDimension;
+use rusty_common::QErrorNode;
+
+impl Convertible for ArrayDimension {
+    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
+        Ok(Self {
+            lbound: self.lbound.convert_in_default(ctx)?,
+            ubound: self.ubound.convert_in_default(ctx)?,
+        })
+    }
+}

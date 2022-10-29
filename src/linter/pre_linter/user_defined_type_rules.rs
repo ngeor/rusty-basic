@@ -1,8 +1,6 @@
 use crate::common::{
     AtLocation, Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError,
 };
-use crate::linter::pre_linter::can_pre_lint::CanPreLint;
-use crate::linter::pre_linter::context::MainContextWithPos;
 use crate::linter::pre_linter::ConstantMap;
 use crate::parser::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, TypeQualifier,
@@ -11,21 +9,7 @@ use crate::parser::{
 use crate::variant::Variant;
 use std::collections::HashMap;
 
-impl CanPreLint for UserDefinedType {
-    type Context = MainContextWithPos;
-    fn pre_lint(&self, context: &Self::Context) -> Result<(), QErrorNode> {
-        let Locatable {
-            element: context, ..
-        } = context;
-        user_defined_type(
-            &mut context.user_defined_types_mut(),
-            &context.global_constants(),
-            self,
-        )
-    }
-}
-
-fn user_defined_type(
+pub fn user_defined_type(
     user_defined_types: &mut UserDefinedTypes,
     global_constants: &ConstantMap,
     user_defined_type: &UserDefinedType,

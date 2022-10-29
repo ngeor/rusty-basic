@@ -1,26 +1,10 @@
 use crate::common::{Locatable, QError, QErrorNode, ToLocatableError};
 use crate::linter::const_value_resolver::ConstValueResolver;
-use crate::linter::pre_linter::can_pre_lint::CanPreLint;
-use crate::linter::pre_linter::context::MainContextWithPos;
 use crate::linter::pre_linter::ConstantMap;
-use crate::parser::{BareName, ExpressionNode, Name, NameNode, Statement};
-
-impl CanPreLint for Statement {
-    type Context = MainContextWithPos;
-    fn pre_lint(&self, context: &Self::Context) -> Result<(), QErrorNode> {
-        match self {
-            Self::Const(name_node, expression_node) => global_const(
-                &mut context.as_ref().global_constants_mut(),
-                name_node,
-                expression_node,
-            ),
-            _ => Ok(()),
-        }
-    }
-}
+use crate::parser::{BareName, ExpressionNode, Name, NameNode};
 
 // calculate global constant values
-fn global_const(
+pub fn global_const(
     global_constants: &mut ConstantMap,
     name_node: &NameNode,
     expression_node: &ExpressionNode,

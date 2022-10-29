@@ -28,7 +28,7 @@ pub mod interpreter {
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let handle: FileHandle = interpreter.context()[0].to_file_handle()?;
         let record_number: usize = interpreter.context()[1].to_record_number()?;
-        let file_info = interpreter.file_manager().try_get_file_info_mut(&handle)?;
+        let file_info = interpreter.file_manager().try_get_file_info(&handle)?;
         let mut record_contents: Vec<u8> = vec![];
         // get the current field list
         let field_list = file_info
@@ -47,7 +47,7 @@ pub mod interpreter {
             fix_length(&mut bytes, width);
             record_contents.append(&mut bytes);
         }
-        let file_info = interpreter.file_manager().try_get_file_info_mut(&handle)?;
+        let file_info = interpreter.file_manager().try_get_file_info(&handle)?;
         file_info.put_record(record_number, &record_contents)?;
         Ok(())
     }

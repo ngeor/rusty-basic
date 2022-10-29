@@ -6,7 +6,7 @@ use std::fmt::Display;
 
 /// Handles the PRINT and LPRINT statements.
 #[derive(Debug)]
-pub struct PrintInterpreter {
+pub struct PrintState {
     printer_type: PrinterType,
     file_handle: FileHandle,
     format_string: Option<String>,
@@ -14,7 +14,7 @@ pub struct PrintInterpreter {
     format_string_idx: usize,
 }
 
-impl PrintInterpreter {
+impl PrintState {
     pub fn new() -> Self {
         Self {
             printer_type: PrinterType::Print,
@@ -53,52 +53,51 @@ impl PrintInterpreter {
         self.format_string = format_string;
     }
 
-    pub fn print_comma(&mut self, printer: &dyn Printer) -> std::io::Result<usize> {
+    pub fn on_print_comma(&mut self) {
         self.should_skip_new_line = true;
-        printer.move_to_next_print_zone()
     }
 
     pub fn print_semicolon(&mut self) {
         self.should_skip_new_line = true;
     }
 
-    pub fn print_value(&mut self, printer: &dyn Printer, v: Variant) -> Result<(), QError> {
+    pub fn print_value_from_a(
+        &mut self,
+        v: Variant,
+    ) -> Result<(Option<String>, Option<Variant>), QError> {
         self.should_skip_new_line = false;
         if self.format_string.is_some() {
-            self.print_value_with_format_string(printer, v)
+            let s = self.print_value_with_format_string(v)?;
+            Ok((Some(s), None))
         } else {
-            self.print_value_without_format_string(printer, v)
-                .map(|_| ())
-                .map_err(QError::from)
+            Ok((None, Some(v)))
         }
     }
 
-    pub fn print_end(&mut self, printer: &dyn Printer) -> Result<(), QError> {
-        if self.format_string.is_some() {
-            self.print_remaining_chars(printer)?;
-        }
-        if self.should_skip_new_line {
+    pub fn print_end(&mut self) -> Result<(Option<String>, bool), QError> {
+        let opt_remaining = if self.format_string.is_some() {
+            Some(self.print_remaining_chars()?)
+        } else {
+            None
+        };
+        let should_print_new_line = if self.should_skip_new_line {
             self.should_skip_new_line = false;
-            Ok(())
+            false
         } else {
-            printer.println().map(|_| ()).map_err(QError::from)
-        }
+            true
+        };
+        Ok((opt_remaining, should_print_new_line))
     }
 
-    fn print_remaining_chars(&mut self, printer: &dyn Printer) -> Result<(), QError> {
+    fn print_remaining_chars(&mut self) -> Result<String, QError> {
         let format_string_chars: Vec<char> = self.format_string.as_ref().unwrap().chars().collect();
         print_remaining_non_formatting_chars(
-            printer,
             format_string_chars.as_slice(),
             &mut self.format_string_idx,
         )
     }
 
-    fn print_value_with_format_string(
-        &mut self,
-        printer: &dyn Printer,
-        v: Variant,
-    ) -> Result<(), QError> {
+    fn print_value_with_format_string(&mut self, v: Variant) -> Result<String, QError> {
         let format_string_chars: Vec<char> = self.format_string.as_ref().unwrap().chars().collect();
         if format_string_chars.is_empty() {
             return Err(QError::IllegalFunctionCall);
@@ -108,35 +107,27 @@ impl PrintInterpreter {
         self.format_string_idx %= format_string_chars.len();
 
         // copy from format_string until we hit a formatting character
-        print_non_formatting_chars(
-            printer,
+        let mut result = print_non_formatting_chars(
             format_string_chars.as_slice(),
             &mut self.format_string_idx,
         )?;
 
         // format the argument using the formatting character
-        print_formatting_chars(
-            printer,
+        let second_part = print_formatting_chars(
             format_string_chars.as_slice(),
             &mut self.format_string_idx,
             v,
-        )
-    }
+        )?;
+        result.push_str(&second_part);
 
-    fn print_value_without_format_string(
-        &mut self,
-        printer: &dyn Printer,
-        v: Variant,
-    ) -> std::io::Result<usize> {
-        printer.print_variant(&v)
+        Ok(result)
     }
 }
 
 fn print_non_formatting_chars(
-    printer: &dyn Printer,
     format_string_chars: &[char],
     idx: &mut usize,
-) -> Result<(), QError> {
+) -> Result<String, QError> {
     // copy from format_string until we hit a formatting character
     let mut buf: String = String::new();
     let starting_index = *idx;
@@ -149,9 +140,8 @@ fn print_non_formatting_chars(
             return Err(QError::IllegalFunctionCall);
         }
     }
-    printer.print(buf.as_str())?;
     *idx = i;
-    Ok(())
+    Ok(buf)
 }
 
 fn is_formatting_char(ch: char) -> bool {
@@ -159,10 +149,9 @@ fn is_formatting_char(ch: char) -> bool {
 }
 
 fn print_remaining_non_formatting_chars(
-    printer: &dyn Printer,
     format_string_chars: &[char],
     idx: &mut usize,
-) -> Result<(), QError> {
+) -> Result<String, QError> {
     // copy from format_string until we hit a formatting character
     let mut buf: String = String::new();
     let starting_index = *idx;
@@ -171,23 +160,19 @@ fn print_remaining_non_formatting_chars(
         buf.push(format_string_chars[i]);
         i += 1;
     }
-    printer.print(buf.as_str())?;
     *idx = i;
-    Ok(())
+    Ok(buf)
 }
 
 fn print_formatting_chars(
-    printer: &dyn Printer,
     format_string_chars: &[char],
     idx: &mut usize,
     v: Variant,
-) -> Result<(), QError> {
+) -> Result<String, QError> {
     match format_string_chars[*idx] {
-        '#' => {
-            numeric_formatting::print_digit_formatting_chars(printer, format_string_chars, idx, v)
-        }
-        '\\' => print_string_formatting_chars(printer, format_string_chars, idx, v),
-        '!' => print_first_char_formatting_chars(printer, format_string_chars, idx, v),
+        '#' => numeric_formatting::print_digit_formatting_chars(format_string_chars, idx, v),
+        '\\' => print_string_formatting_chars(format_string_chars, idx, v),
+        '!' => print_first_char_formatting_chars(format_string_chars, idx, v),
         _ => Err(QError::InternalError(format!(
             "Not a formatting character: {}",
             format_string_chars[*idx]
@@ -199,15 +184,13 @@ mod numeric_formatting {
     //! Handles formatting of numbers.
 
     use crate::common::QError;
-    use crate::interpreter::io::Printer;
     use crate::variant::Variant;
 
     pub fn print_digit_formatting_chars(
-        printer: &dyn Printer,
         format_string_chars: &[char],
         idx: &mut usize,
         v: Variant,
-    ) -> Result<(), QError> {
+    ) -> Result<String, QError> {
         debug_assert_eq!(format_string_chars[*idx], '#');
         // collect just the formatting chars e.g. ###,###.##
         let number_format_chars: &[char] = format_string_chars[*idx..]
@@ -234,8 +217,7 @@ mod numeric_formatting {
             }
             _ => fmt_without_fractional_part(integer_part, v),
         })
-        .and_then(|s| printer.print(s.as_str()).map_err(QError::from))
-        .map(|_| ())
+        .map_err(QError::from)
     }
 
     fn fmt_with_fractional_part(
@@ -323,11 +305,10 @@ mod numeric_formatting {
 }
 
 fn print_string_formatting_chars(
-    printer: &dyn Printer,
     format_string_chars: &[char],
     idx: &mut usize,
     v: Variant,
-) -> Result<(), QError> {
+) -> Result<String, QError> {
     debug_assert_eq!(format_string_chars[*idx], '\\');
     *idx += 1;
     let mut counter: usize = 2;
@@ -342,8 +323,7 @@ fn print_string_formatting_chars(
     if *idx < format_string_chars.len() {
         *idx += 1;
         if let Variant::VString(s) = v {
-            printer.print(s.fix_length(counter).as_str())?;
-            Ok(())
+            Ok(s.fix_length(counter))
         } else {
             Err(QError::TypeMismatch)
         }
@@ -352,31 +332,39 @@ fn print_string_formatting_chars(
         Err(QError::IllegalFunctionCall)
     }
 }
+
 fn print_first_char_formatting_chars(
-    printer: &dyn Printer,
     format_string_chars: &[char],
     idx: &mut usize,
     v: Variant,
-) -> Result<(), QError> {
+) -> Result<String, QError> {
     debug_assert_eq!(format_string_chars[*idx], '!');
     if let Variant::VString(s) = v {
         let ch = s.chars().next().ok_or(QError::IllegalFunctionCall)?;
-        printer.print(String::from(ch).as_str())?;
+        let result = String::from(ch);
         *idx += 1;
-        Ok(())
+        Ok(result)
     } else {
         Err(QError::TypeMismatch)
     }
 }
 
-trait PrintHelper {
-    fn print_number<V: Display>(&self, number: V, leading_space: bool) -> std::io::Result<usize>;
+pub trait PrintHelper {
+    fn print_number<V: Display>(
+        &mut self,
+        number: V,
+        leading_space: bool,
+    ) -> std::io::Result<usize>;
 
-    fn print_variant(&self, v: &Variant) -> std::io::Result<usize>;
+    fn print_variant(&mut self, v: &Variant) -> std::io::Result<usize>;
 }
 
 impl<T: Printer + ?Sized> PrintHelper for T {
-    fn print_number<V: Display>(&self, number: V, leading_space: bool) -> std::io::Result<usize> {
+    fn print_number<V: Display>(
+        &mut self,
+        number: V,
+        leading_space: bool,
+    ) -> std::io::Result<usize> {
         let s: String = if leading_space {
             format!(" {} ", number)
         } else {
@@ -385,7 +373,7 @@ impl<T: Printer + ?Sized> PrintHelper for T {
         self.print(s.as_str())
     }
 
-    fn print_variant(&self, v: &Variant) -> std::io::Result<usize> {
+    fn print_variant(&mut self, v: &Variant) -> std::io::Result<usize> {
         match v {
             Variant::VSingle(f) => self.print_number(f, *f >= 0.0),
             Variant::VDouble(d) => self.print_number(d, *d >= 0.0),

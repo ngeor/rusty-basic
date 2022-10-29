@@ -1,39 +1,34 @@
 use crate::interpreter::io::Printer;
-use std::cell::RefCell;
 use std::io::Write;
 
 pub struct WritePrinter<T: Write> {
-    writer: RefCell<T>,
-    last_column: RefCell<usize>,
+    writer: T,
+    last_column: usize,
 }
 
 impl<T: Write> WritePrinter<T> {
     pub fn new(writer: T) -> Self {
         Self {
-            writer: RefCell::new(writer),
-            last_column: RefCell::new(0),
+            writer,
+            last_column: 0,
         }
     }
 
     #[cfg(test)]
-    pub fn inner(&self) -> T
-    where
-        T: Clone,
-    {
-        (*self.writer.borrow()).clone()
+    pub fn inner(&self) -> &T {
+        &self.writer
     }
 
-    fn print_as_is(&self, s: &str) -> std::io::Result<usize> {
-        let bytes_written = self.writer.borrow_mut().write(s.as_bytes())?;
-        self.writer.borrow_mut().flush()?;
-        let old_column: usize = *self.last_column.borrow();
-        *self.last_column.borrow_mut() = old_column + s.len();
+    fn print_as_is(&mut self, s: &str) -> std::io::Result<usize> {
+        let bytes_written = self.writer.write(s.as_bytes())?;
+        self.writer.flush()?;
+        self.last_column += s.len();
         Ok(bytes_written)
     }
 }
 
 impl<T: Write> Printer for WritePrinter<T> {
-    fn print(&self, s: &str) -> std::io::Result<usize> {
+    fn print(&mut self, s: &str) -> std::io::Result<usize> {
         // This isn't a bug: it seems QBasic does not split on CRLF,
         // but separately on CR and LF for this particular case.
         // Might be a bug on QBasic side arguably.
@@ -51,13 +46,13 @@ impl<T: Write> Printer for WritePrinter<T> {
         Ok(bytes_written)
     }
 
-    fn println(&self) -> std::io::Result<usize> {
-        *self.last_column.borrow_mut() = 0;
-        self.writer.borrow_mut().write("\r\n".as_bytes())
+    fn println(&mut self) -> std::io::Result<usize> {
+        self.last_column = 0;
+        self.writer.write("\r\n".as_bytes())
     }
 
-    fn move_to_next_print_zone(&self) -> std::io::Result<usize> {
-        let col: usize = *self.last_column.borrow();
+    fn move_to_next_print_zone(&mut self) -> std::io::Result<usize> {
+        let col: usize = self.last_column;
         let len = 14 - col % 14;
         let s: String = (0..len).map(|_| ' ').collect();
         self.print(s.as_str())

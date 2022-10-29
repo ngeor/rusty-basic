@@ -58,7 +58,7 @@ pub mod interpreter {
     pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
         let handle: FileHandle = interpreter.context()[0].to_file_handle()?;
         let record_number: usize = interpreter.context()[1].to_record_number()?;
-        let file_info = interpreter.file_manager().try_get_file_info_mut(&handle)?;
+        let file_info = interpreter.file_manager().try_get_file_info(&handle)?;
         let field_lists: Vec<Vec<Field>> = file_info.get_field_lists().clone(); // TODO fighting the borrow checker
         let bytes = file_info.get_record(record_number)?;
         for fields in field_lists {

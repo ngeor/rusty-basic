@@ -212,7 +212,7 @@ impl Read for MockStdin {
 impl MockStdout {
     /// Gets the captured output of stdout as-is, without trimming or removing CRLF
     pub fn output_exact(&self) -> String {
-        let bytes: Vec<u8> = self.inner();
+        let bytes: Vec<u8> = self.inner().clone();
         String::from_utf8(bytes).unwrap()
     }
 

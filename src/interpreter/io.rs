@@ -14,11 +14,11 @@ pub trait Input {
 }
 
 pub trait Printer {
-    fn print(&self, s: &str) -> std::io::Result<usize>;
+    fn print(&mut self, s: &str) -> std::io::Result<usize>;
 
-    fn println(&self) -> std::io::Result<usize>;
+    fn println(&mut self) -> std::io::Result<usize>;
 
-    fn move_to_next_print_zone(&self) -> std::io::Result<usize>;
+    fn move_to_next_print_zone(&mut self) -> std::io::Result<usize>;
 }
 
 pub type FileInfoInput = ReadInputSource<BufReader<File>>;
@@ -182,11 +182,7 @@ impl FileManager {
         Ok(())
     }
 
-    pub fn try_get_file_info(&self, handle: &FileHandle) -> Result<&FileInfo, QError> {
-        self.handle_map.get(handle).ok_or(QError::FileNotFound)
-    }
-
-    pub fn try_get_file_info_mut(&mut self, handle: &FileHandle) -> Result<&mut FileInfo, QError> {
+    pub fn try_get_file_info(&mut self, handle: &FileHandle) -> Result<&mut FileInfo, QError> {
         self.handle_map.get_mut(handle).ok_or(QError::FileNotFound)
     }
 
@@ -194,18 +190,21 @@ impl FileManager {
         &mut self,
         handle: &FileHandle,
     ) -> Result<&mut FileInfoInput, QError> {
-        let file_info = self.try_get_file_info_mut(handle)?;
+        let file_info = self.try_get_file_info(handle)?;
         file_info.input.as_mut().ok_or(QError::BadFileMode)
     }
 
-    pub fn try_get_file_info_output(&self, handle: &FileHandle) -> Result<&FileInfoOutput, QError> {
+    pub fn try_get_file_info_output(
+        &mut self,
+        handle: &FileHandle,
+    ) -> Result<&mut FileInfoOutput, QError> {
         let file_info = self.try_get_file_info(handle)?;
-        file_info.output.as_ref().ok_or(QError::BadFileMode)
+        file_info.output.as_mut().ok_or(QError::BadFileMode)
     }
 
     pub fn add_field_list(&mut self, handle: FileHandle, fields: Vec<Field>) -> Result<(), QError> {
         // TODO if sum(field width) > rec_len, throw error
-        let file_info = self.try_get_file_info_mut(&handle)?;
+        let file_info = self.try_get_file_info(&handle)?;
         file_info.add_field_list(fields);
         Ok(())
     }

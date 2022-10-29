@@ -9,7 +9,7 @@ use crate::interpreter::default_stdlib::DefaultStdlib;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::{FileManager, Input, Printer};
 use crate::interpreter::lpt1_write::Lpt1Write;
-use crate::interpreter::print::PrintInterpreter;
+use crate::interpreter::print::{PrintHelper, PrintState};
 use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::screen::{CrossTermScreen, Screen};
@@ -18,12 +18,7 @@ use crate::interpreter::Stdlib;
 use crate::linter::HasUserDefinedTypes;
 use crate::parser::UserDefinedTypes;
 use crate::variant::{QBNumberCast, Variant};
-use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::rc::Rc;
-
-// TODO make linter types hold references instead of copying parser objects
-// TODO make interpreter types hold references instead of copying parser objects
 
 pub struct Interpreter<
     TStdlib: Stdlib,
@@ -81,7 +76,7 @@ pub struct Interpreter<
 
     last_error_code: Option<i32>,
 
-    print_interpreter: Rc<RefCell<PrintInterpreter>>,
+    print_state: PrintState,
 
     data_segment: DataSegment,
 
@@ -287,7 +282,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
             value_stack: vec![],
             last_error_address: None,
             last_error_code: None,
-            print_interpreter: Rc::new(RefCell::new(PrintInterpreter::new())),
+            print_state: PrintState::new(),
             data_segment: DataSegment::default(),
             def_seg: None,
         }
@@ -534,49 +529,30 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                 self.registers_mut().set_a(v);
             }
             Instruction::PrintSetPrinterType(printer_type) => {
-                self.print_interpreter
-                    .borrow_mut()
-                    .set_printer_type(*printer_type);
+                self.print_state.set_printer_type(*printer_type);
             }
             Instruction::PrintSetFileHandle(file_handle) => {
-                self.print_interpreter
-                    .borrow_mut()
-                    .set_file_handle(*file_handle);
+                self.print_state.set_file_handle(*file_handle);
             }
             Instruction::PrintSetFormatStringFromA => {
                 let encoded_format_string = self.registers().get_a();
-                self.print_interpreter.borrow_mut().set_format_string(
-                    match encoded_format_string {
+                self.print_state
+                    .set_format_string(match encoded_format_string {
                         Variant::VString(s) => Some(s),
                         _ => None,
-                    },
-                );
+                    });
             }
             Instruction::PrintComma => {
-                let printer = self.choose_printer();
-                self.print_interpreter
-                    .borrow_mut()
-                    .print_comma(printer)
-                    .map_err(QError::from)
-                    .with_err_at(pos)?;
+                self.print_comma().map_err(QError::from).with_err_at(pos)?;
             }
             Instruction::PrintSemicolon => {
-                self.print_interpreter.borrow_mut().print_semicolon();
+                self.print_state.print_semicolon();
             }
             Instruction::PrintValueFromA => {
-                let v = self.registers().get_a();
-                let printer = self.choose_printer();
-                self.print_interpreter
-                    .borrow_mut()
-                    .print_value(printer, v)
-                    .with_err_at(pos)?;
+                self.print_value_from_a().with_err_at(pos)?;
             }
             Instruction::PrintEnd => {
-                let printer = self.choose_printer();
-                self.print_interpreter
-                    .borrow_mut()
-                    .print_end(printer)
-                    .with_err_at(pos)?;
+                self.print_end().with_err_at(pos)?;
             }
             Instruction::IsVariableDefined(dim_name) => {
                 debug_assert_ne!(
@@ -592,17 +568,51 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
         Ok(())
     }
 
-    fn choose_printer(&self) -> &dyn Printer {
-        let printer_type = self.print_interpreter.borrow().get_printer_type();
-        let file_handle = self.print_interpreter.borrow().get_file_handle();
+    fn choose_printer(&mut self) -> &mut dyn Printer {
+        let printer_type = self.print_state.get_printer_type();
+        let file_handle = self.print_state.get_file_handle();
         match printer_type {
-            PrinterType::Print => &self.stdout,
-            PrinterType::LPrint => &self.lpt1,
+            PrinterType::Print => &mut self.stdout,
+            PrinterType::LPrint => &mut self.lpt1,
             PrinterType::File => self
                 .file_manager
                 .try_get_file_info_output(&file_handle)
                 .expect("File not found"),
         }
+    }
+
+    fn print_comma(&mut self) -> std::io::Result<usize> {
+        self.print_state.on_print_comma();
+        let printer = self.choose_printer();
+        printer.move_to_next_print_zone()
+    }
+
+    fn print_value_from_a(&mut self) -> Result<(), QError> {
+        let v = self.registers().get_a();
+        match self.print_state.print_value_from_a(v)? {
+            (Some(s), _) => {
+                let printer = self.choose_printer();
+                printer.print(&s)?;
+            }
+            (_, Some(v)) => {
+                let printer = self.choose_printer();
+                printer.print_variant(&v)?;
+            }
+            _ => panic!("print_value_from_a should return either a string or a variant"),
+        }
+        Ok(())
+    }
+
+    fn print_end(&mut self) -> Result<(), QError> {
+        let (opt_remaining, should_print_new_line) = self.print_state.print_end()?;
+        let printer = self.choose_printer();
+        if let Some(remaining) = opt_remaining {
+            printer.print(&remaining)?;
+        }
+        if should_print_new_line {
+            printer.println()?;
+        }
+        Ok(())
     }
 
     /// Gets the instruction address where the most recent error occurred.

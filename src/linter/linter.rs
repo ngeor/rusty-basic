@@ -5,8 +5,6 @@ use crate::linter::pre_linter::pre_lint_program;
 use crate::linter::HasUserDefinedTypes;
 use crate::parser::ProgramNode;
 
-// TODO remove all uses of Rc and RefCell in the codebase
-
 pub fn lint(program: ProgramNode) -> Result<(ProgramNode, impl HasUserDefinedTypes), QErrorNode> {
     // first pass, get user defined types and functions/subs
     let pre_linter_result = pre_lint_program(&program)?;

@@ -203,12 +203,19 @@ pub enum Instruction {
 
     AllocateUserDefined(BareName),
 
+    // TODO #[deprecated]
     PrintSetPrinterType(PrinterType),
+    // TODO #[deprecated]
     PrintSetFileHandle(FileHandle),
+    // TODO #[deprecated]
     PrintSetFormatStringFromA,
+    // TODO #[deprecated]
     PrintComma,
+    // TODO #[deprecated]
     PrintSemicolon,
+    // TODO #[deprecated]
     PrintValueFromA,
+    // TODO #[deprecated]
     PrintEnd,
 
     /// Checks if a variable is defined (used to prevent re-allocation of variables in STATIC functions/subs).

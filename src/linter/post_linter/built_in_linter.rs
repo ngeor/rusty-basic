@@ -1,9 +1,10 @@
 use super::post_conversion_linter::PostConversionLinter;
-use crate::built_ins::{linter, BuiltInSub};
 use crate::common::*;
+use crate::linter::built_ins::{lint_function_call, lint_sub_call};
 use crate::linter::NameContext;
 use crate::parser::{
-    Expression, ExpressionNode, ExpressionNodes, FunctionImplementation, SubImplementation,
+    BuiltInSub, Expression, ExpressionNode, ExpressionNodes, FunctionImplementation,
+    SubImplementation,
 };
 
 /// Lints built-in functions and subs.
@@ -43,7 +44,7 @@ impl PostConversionLinter for BuiltInLinter {
         args: &ExpressionNodes,
     ) -> Result<(), QErrorNode> {
         self.visit_expressions(args)?;
-        linter::lint_sub_call(built_in_sub, args, self.name_context)
+        lint_sub_call(built_in_sub, args, self.name_context)
     }
 
     fn visit_expression(&mut self, expr_node: &ExpressionNode) -> Result<(), QErrorNode> {
@@ -54,7 +55,7 @@ impl PostConversionLinter for BuiltInLinter {
                 for x in args {
                     self.visit_expression(x)?;
                 }
-                linter::lint_function_call(built_in_function, args).patch_err_pos(pos)
+                lint_function_call(built_in_function, args).patch_err_pos(pos)
             }
             Expression::BinaryExpression(_, left, right, _) => {
                 self.visit_expression(left)?;

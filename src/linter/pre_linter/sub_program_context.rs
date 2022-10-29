@@ -1,8 +1,7 @@
-use crate::built_ins::{BuiltInFunction, BuiltInSub};
 use crate::common::*;
 use crate::linter::pre_linter::{FunctionSignature, ResolvedParamTypes, SubSignature};
 use crate::linter::type_resolver::{IntoTypeQualifier, TypeResolver};
-use crate::parser::{BareName, Name};
+use crate::parser::{BareName, BuiltInFunction, BuiltInSub, Name};
 use std::collections::HashMap;
 
 pub struct SubprogramContext<T> {

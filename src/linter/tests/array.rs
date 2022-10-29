@@ -1,5 +1,4 @@
 use crate::assert_linter_err;
-use crate::built_ins::BuiltInFunction;
 use crate::common::{AtRowCol, QError};
 use crate::linter::test_utils::linter_ok;
 use crate::parser::test_utils::ExpressionNodeLiteralFactory;

@@ -32,10 +32,10 @@ pub fn program_parser(reader: &mut impl Tokenizer) -> Result<ProgramNode, QError
 
 #[cfg(test)]
 mod tests {
-    use crate::built_ins::BuiltInSub;
     use crate::common::*;
     use crate::parser::test_utils::*;
     use crate::parser::types::*;
+    use crate::parser::BuiltInSub;
 
     #[test]
     fn test_parse_fixture_fib() {

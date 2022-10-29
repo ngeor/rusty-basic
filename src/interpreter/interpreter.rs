@@ -432,11 +432,11 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
             }
             Instruction::BuiltInSub(s) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                crate::built_ins::interpreter::run_sub(s, self).with_err_no_pos()?;
+                super::built_ins::run_sub(s, self).with_err_no_pos()?;
             }
             Instruction::BuiltInFunction(f) => {
                 // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                crate::built_ins::interpreter::run_function(f, self).with_err_no_pos()?;
+                super::built_ins::run_function(f, self).with_err_no_pos()?;
             }
             Instruction::Label(_) => (), // no-op
             Instruction::Halt => {

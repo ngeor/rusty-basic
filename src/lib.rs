@@ -1,4 +1,3 @@
-pub mod built_ins;
 pub mod common;
 pub mod instruction_generator;
 pub mod interpreter;

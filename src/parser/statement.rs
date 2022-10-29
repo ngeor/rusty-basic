@@ -36,7 +36,7 @@ lazy_parser!(pub fn single_line_non_comment_statement_p<Output = Statement> ; st
     dim::dim_p(),
     dim::redim_p(),
     constant::constant_p(),
-    crate::built_ins::parser::parse(),
+    super::built_ins::parse(),
     print::parse_print_p(),
     print::parse_lprint_p(),
     sub_call::sub_call_or_assignment_p(),

@@ -1,4 +1,5 @@
 mod assignment;
+mod built_ins;
 mod char_reader;
 mod comment;
 mod constant;
@@ -35,5 +36,6 @@ mod while_wend;
 #[cfg(test)]
 pub mod test_utils;
 
+pub use built_ins::{BuiltInFunction, BuiltInSub};
 pub use main::*;
 pub use types::*;

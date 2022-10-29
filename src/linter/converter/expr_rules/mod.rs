@@ -5,7 +5,6 @@ mod property;
 mod unary;
 mod variable;
 
-use crate::built_ins::BuiltInFunction;
 use crate::common::*;
 use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::Convertible;

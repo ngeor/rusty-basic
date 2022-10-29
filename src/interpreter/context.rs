@@ -1,10 +1,9 @@
-use crate::built_ins::BuiltInFunction;
 use crate::common::QError;
 use crate::instruction_generator::{Path, RootPath};
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::variables::Variables;
 use crate::linter::SubprogramName;
-use crate::parser::{BareName, TypeQualifier};
+use crate::parser::{BareName, BuiltInFunction, TypeQualifier};
 use crate::variant::{AsciiSize, QBNumberCast, Variant};
 use std::collections::HashMap;
 

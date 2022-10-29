@@ -455,7 +455,7 @@ pub mod property {
 }
 
 mod built_in_function_call {
-    use crate::built_ins::parser::built_in_function_call_p;
+    use crate::parser::built_ins::built_in_function_call_p;
     use crate::parser::pc::Parser;
     use crate::parser::pc_specific::SpecificTrait;
     use crate::parser::ExpressionNode;

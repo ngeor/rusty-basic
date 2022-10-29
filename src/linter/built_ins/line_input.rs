@@ -1,4 +1,3 @@
-
 use crate::common::*;
 use crate::linter::arg_validation::ArgValidation;
 use crate::parser::{Expression, ExpressionNodes};

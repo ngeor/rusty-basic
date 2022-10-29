@@ -58,24 +58,6 @@ where
 impl<P, L, R> NonOptParser for KeepLeftMapper<P> where P: NonOptParser<Output = (L, R)> {}
 
 //
-// Keep Middle
-//
-
-parser_declaration!(pub struct KeepMiddleMapper);
-
-impl<P, L, M, R> Parser for KeepMiddleMapper<P>
-where
-    P: Parser<Output = ((L, M), R)>,
-{
-    type Output = M;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
-        self.parser.parse(tokenizer).map(|((_, m), _)| m)
-    }
-}
-
-impl<P, L, M, R> NonOptParser for KeepMiddleMapper<P> where P: NonOptParser<Output = ((L, M), R)> {}
-
-//
 // Keep Right
 //
 

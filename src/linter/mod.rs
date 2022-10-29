@@ -1,4 +1,4 @@
-pub mod arg_validation;
+mod arg_validation;
 mod built_ins;
 mod const_value_resolver;
 mod converter;
@@ -11,7 +11,7 @@ mod type_resolver_impl;
 mod types;
 
 #[cfg(test)]
-pub mod test_utils;
+mod test_utils;
 #[cfg(test)]
 mod tests;
 

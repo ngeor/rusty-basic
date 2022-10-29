@@ -1,4 +1,3 @@
-
 use crate::common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
 use crate::parser::{
     Expression, ExpressionNodes, ExpressionType, HasExpressionType, TypeQualifier,

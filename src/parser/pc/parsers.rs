@@ -1,7 +1,7 @@
 use crate::common::QError;
 use crate::parser::pc::and_opt::AndOptPC;
 use crate::parser::pc::many::OneOrMoreParser;
-use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepMiddleMapper, KeepRightMapper};
+use crate::parser::pc::mappers::{FnMapper, KeepLeftMapper, KeepRightMapper};
 use crate::parser::pc::{
     AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, Alt2, AndPC, AndThen, ChainParser,
     FilterMapParser, FilterParser, GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser,
@@ -104,13 +104,6 @@ pub trait Parser {
         Self: Sized + Parser<Output = (L, R)>,
     {
         KeepLeftMapper::new(self)
-    }
-
-    fn keep_middle<L, M, R>(self) -> KeepMiddleMapper<Self>
-    where
-        Self: Sized + Parser<Output = ((L, M), R)>,
-    {
-        KeepMiddleMapper::new(self)
     }
 
     fn keep_right<L, R>(self) -> KeepRightMapper<Self>

@@ -1,4 +1,3 @@
-
 use crate::common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
 use crate::linter::arg_validation::ArgValidation;
 use crate::parser::ExpressionNodes;

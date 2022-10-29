@@ -2,8 +2,7 @@ use std::env;
 use std::fs::File;
 
 use rusty_basic::instruction_generator;
-use rusty_basic::interpreter::interpreter::new_default_interpreter;
-use rusty_basic::interpreter::interpreter_trait::InterpreterTrait;
+use rusty_basic::interpreter::{new_default_interpreter, InterpreterTrait};
 use rusty_basic::linter;
 use rusty_basic::linter::HasUserDefinedTypes;
 use rusty_basic::parser;

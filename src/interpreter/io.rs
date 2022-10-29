@@ -6,11 +6,11 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, SeekFrom, Write};
 
 pub trait Input {
-    fn eof(&self) -> std::io::Result<bool>;
+    fn eof(&mut self) -> std::io::Result<bool>;
 
-    fn input(&self) -> std::io::Result<String>;
+    fn input(&mut self) -> std::io::Result<String>;
 
-    fn line_input(&self) -> std::io::Result<String>;
+    fn line_input(&mut self) -> std::io::Result<String>;
 }
 
 pub trait Printer {
@@ -190,9 +190,12 @@ impl FileManager {
         self.handle_map.get_mut(handle).ok_or(QError::FileNotFound)
     }
 
-    pub fn try_get_file_info_input(&self, handle: &FileHandle) -> Result<&FileInfoInput, QError> {
-        let file_info = self.try_get_file_info(handle)?;
-        file_info.input.as_ref().ok_or(QError::BadFileMode)
+    pub fn try_get_file_info_input(
+        &mut self,
+        handle: &FileHandle,
+    ) -> Result<&mut FileInfoInput, QError> {
+        let file_info = self.try_get_file_info_mut(handle)?;
+        file_info.input.as_mut().ok_or(QError::BadFileMode)
     }
 
     pub fn try_get_file_info_output(&self, handle: &FileHandle) -> Result<&FileInfoOutput, QError> {

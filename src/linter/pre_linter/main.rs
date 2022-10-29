@@ -189,7 +189,8 @@ impl MainContext {
                 }
             }
             ParamType::Array(element_type) => {
-                let element_param_type = self.resolve_param_type(bare_name, element_type.as_ref())?;
+                let element_param_type =
+                    self.resolve_param_type(bare_name, element_type.as_ref())?;
                 Ok(ResolvedParamType::Array(Box::new(element_param_type)))
             }
         }

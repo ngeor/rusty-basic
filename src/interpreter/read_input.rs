@@ -1,56 +1,55 @@
 use crate::interpreter::io::Input;
-use std::cell::RefCell;
 use std::io::{ErrorKind, Read};
 
 pub struct ReadInputSource<T: Read> {
-    read: RefCell<T>,
-    buffer: RefCell<Vec<u8>>,
+    read: T,
+    buffer: Vec<u8>,
 }
 
 impl<T: Read> ReadInputSource<T> {
     pub fn new(read: T) -> Self {
         Self {
-            read: RefCell::new(read),
-            buffer: RefCell::new(vec![]),
+            read,
+            buffer: vec![],
         }
     }
 
     #[cfg(test)]
     pub fn inner(&mut self) -> &mut T {
-        self.read.get_mut()
+        &mut self.read
     }
 
-    fn peek(&self) -> std::io::Result<Option<u8>> {
+    fn peek(&mut self) -> std::io::Result<Option<u8>> {
         if self.fill_buffer()? == 0 {
             Ok(None)
         } else {
-            Ok(self.buffer.borrow().first().copied())
+            Ok(self.buffer.first().copied())
         }
     }
 
-    fn read(&self) -> std::io::Result<Option<u8>> {
+    fn read(&mut self) -> std::io::Result<Option<u8>> {
         if self.fill_buffer()? == 0 {
             Ok(None)
         } else {
-            Ok(Some(self.buffer.borrow_mut().remove(0)))
+            Ok(Some(self.buffer.remove(0)))
         }
     }
 
-    fn fill_buffer(&self) -> std::io::Result<usize> {
-        if self.buffer.borrow().is_empty() {
+    fn fill_buffer(&mut self) -> std::io::Result<usize> {
+        if self.buffer.is_empty() {
             let mut buf = [0; 1]; // 1 bytes buffer inefficient
-            let n = self.read.borrow_mut().read(&mut buf[..])?;
+            let n = self.read.read(&mut buf[..])?;
             if n > 0 {
-                self.buffer.borrow_mut().push(buf[0]);
+                self.buffer.push(buf[0]);
             }
 
             Ok(n)
         } else {
-            Ok(self.buffer.borrow().len())
+            Ok(self.buffer.len())
         }
     }
 
-    fn skip_while<F>(&self, predicate: F) -> std::io::Result<String>
+    fn skip_while<F>(&mut self, predicate: F) -> std::io::Result<String>
     where
         F: Fn(char) -> bool,
     {
@@ -69,7 +68,7 @@ impl<T: Read> ReadInputSource<T> {
         Ok(String::from_utf8(buf).unwrap())
     }
 
-    fn read_until<F>(&self, predicate: F) -> std::io::Result<String>
+    fn read_until<F>(&mut self, predicate: F) -> std::io::Result<String>
     where
         F: Fn(char) -> bool,
     {
@@ -98,11 +97,11 @@ impl<T: Read> ReadInputSource<T> {
 }
 
 impl<T: Read> Input for ReadInputSource<T> {
-    fn eof(&self) -> std::io::Result<bool> {
+    fn eof(&mut self) -> std::io::Result<bool> {
         self.peek().map(|ch| ch.is_none())
     }
 
-    fn input(&self) -> std::io::Result<String> {
+    fn input(&mut self) -> std::io::Result<String> {
         if self.eof()? {
             return Err(std::io::Error::from(ErrorKind::UnexpectedEof));
         }
@@ -114,7 +113,7 @@ impl<T: Read> Input for ReadInputSource<T> {
             .map(|s| s.trim().to_owned())
     }
 
-    fn line_input(&self) -> std::io::Result<String> {
+    fn line_input(&mut self) -> std::io::Result<String> {
         if self.eof()? {
             return Err(std::io::Error::from(ErrorKind::UnexpectedEof));
         }

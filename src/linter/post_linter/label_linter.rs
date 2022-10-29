@@ -1,14 +1,16 @@
 use super::post_conversion_linter::*;
 use crate::common::*;
-use crate::parser::{
-    BareName, FunctionImplementation, OnErrorOption, ProgramNode, QualifiedName, ResumeOption,
-    SubImplementation,
-};
+use crate::parser::*;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]
 pub struct LabelLinter {
-    collecting: bool,
+    labels: HashMap<LabelOwner, HashSet<CaseInsensitiveString>>,
+    current_label_owner: LabelOwner,
+}
+
+#[derive(Default)]
+struct LabelCollector {
     labels: HashMap<LabelOwner, HashSet<CaseInsensitiveString>>,
     current_label_owner: LabelOwner,
 }
@@ -16,6 +18,7 @@ pub struct LabelLinter {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 enum LabelOwner {
     Global,
+    // TODO prevent clone, store a reference here
     Sub(BareName),
     Function(QualifiedName),
 }
@@ -27,30 +30,17 @@ impl Default for LabelOwner {
 }
 
 impl LabelLinter {
-    fn contains_label_in_any_scope(&self, label: &CaseInsensitiveString) -> bool {
-        for v in self.labels.values() {
-            if v.contains(label) {
-                return true;
-            }
-        }
-        false
-    }
-
     fn ensure_label_is_defined(
         &self,
         label: &CaseInsensitiveString,
         label_owner: &LabelOwner,
     ) -> Result<(), QErrorNode> {
-        if self.collecting {
-            return Ok(());
-        }
-
-        let labels = self.labels.get(label_owner).unwrap();
-        if labels.contains(label) {
-            Ok(())
-        } else {
-            err_no_pos(QError::LabelNotDefined)
-        }
+        self.labels
+            .get(label_owner)
+            .and_then(|set| set.get(label))
+            .map(|_| ())
+            .ok_or_else(|| QError::LabelNotDefined)
+            .with_err_no_pos()
     }
 
     fn ensure_is_global_label(&self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
@@ -64,11 +54,9 @@ impl LabelLinter {
 
 impl PostConversionLinter for LabelLinter {
     fn visit_program(&mut self, p: &ProgramNode) -> Result<(), QErrorNode> {
-        // TODO break down to two types and remove the collecting variable
-        self.labels.insert(LabelOwner::Global, HashSet::new());
-        self.collecting = true;
-        self.visit_top_level_token_nodes(p)?;
-        self.collecting = false;
+        let mut collector = LabelCollector::default();
+        collector.visit_program(p)?;
+        self.labels = collector.labels;
         self.visit_top_level_token_nodes(p)
     }
 
@@ -76,49 +64,17 @@ impl PostConversionLinter for LabelLinter {
         &mut self,
         f: &FunctionImplementation,
     ) -> Result<(), QErrorNode> {
-        let Locatable {
-            element: function_name,
-            ..
-        } = f.name.clone();
-        self.current_label_owner = LabelOwner::Function(function_name.demand_qualified());
-        if self.collecting {
-            self.labels
-                .insert(self.current_label_owner.clone(), HashSet::new());
-        }
-        let result = self.visit_statement_nodes(&f.body);
-        self.current_label_owner = LabelOwner::Global;
-        result
+        self.on_function(f)
     }
 
     fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorNode> {
-        self.current_label_owner = LabelOwner::Sub(s.name.element.clone());
-        if self.collecting {
-            self.labels
-                .insert(self.current_label_owner.clone(), HashSet::new());
-        }
-        let result = self.visit_statement_nodes(&s.body);
-        self.current_label_owner = LabelOwner::Global;
-        result
+        self.on_sub(s)
     }
 
     fn visit_on_error(&mut self, on_error_option: &OnErrorOption) -> Result<(), QErrorNode> {
         match on_error_option {
             OnErrorOption::Label(label) => self.ensure_is_global_label(label),
             _ => Ok(()),
-        }
-    }
-
-    fn visit_label(&mut self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
-        if !self.collecting {
-            return Ok(());
-        }
-
-        if self.contains_label_in_any_scope(label) {
-            err_no_pos(QError::DuplicateLabel)
-        } else {
-            let labels = self.labels.get_mut(&self.current_label_owner).unwrap();
-            labels.insert(label.clone());
-            Ok(())
         }
     }
 
@@ -146,5 +102,66 @@ impl PostConversionLinter for LabelLinter {
             Some(label) => self.ensure_is_current_label(label),
             _ => Ok(()),
         }
+    }
+}
+
+impl PostConversionLinter for LabelCollector {
+    fn visit_function_implementation(
+        &mut self,
+        f: &FunctionImplementation,
+    ) -> Result<(), QErrorNode> {
+        self.on_function(f)
+    }
+
+    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorNode> {
+        self.on_sub(s)
+    }
+
+    fn visit_label(&mut self, label: &CaseInsensitiveString) -> Result<(), QErrorNode> {
+        if self.labels.values().any(|s| s.contains(label)) {
+            // labels need to be unique across all scopes
+            Err(QError::DuplicateLabel).with_err_no_pos()
+        } else {
+            // TODO prevent clone for key and value?
+            self.labels
+                .entry(self.current_label_owner.clone())
+                .or_insert_with(HashSet::new)
+                .insert(label.clone());
+            Ok(())
+        }
+    }
+}
+
+trait LabelOwnerHolder: PostConversionLinter {
+    fn set_label_owner(&mut self, label_owner: LabelOwner);
+
+    fn on_function(&mut self, f: &FunctionImplementation) -> Result<(), QErrorNode> {
+        let Locatable {
+            element: function_name,
+            ..
+        } = f.name.clone();
+        self.set_label_owner(LabelOwner::Function(function_name.demand_qualified()));
+        self.visit_statement_nodes(&f.body)?;
+        self.set_label_owner(LabelOwner::Global);
+        Ok(())
+    }
+
+    fn on_sub(&mut self, s: &SubImplementation) -> Result<(), QErrorNode> {
+        self.set_label_owner(LabelOwner::Sub(s.name.as_ref().clone()));
+        self.visit_statement_nodes(&s.body)?;
+        self.set_label_owner(LabelOwner::Global);
+        Ok(())
+    }
+}
+
+impl LabelOwnerHolder for LabelLinter {
+    fn set_label_owner(&mut self, label_owner: LabelOwner) {
+        self.current_label_owner = label_owner;
+    }
+}
+
+impl LabelOwnerHolder for LabelCollector {
+    fn set_label_owner(&mut self, label_owner: LabelOwner) {
+        self.current_label_owner = label_owner;
     }
 }

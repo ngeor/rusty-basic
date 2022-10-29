@@ -111,11 +111,3 @@ impl<T, E> PatchErrPos<Location, Result<T, ErrorEnvelope<E>>> for Result<T, Erro
         self.map_err(|e| e.patch_pos(pos))
     }
 }
-
-//
-// shorthand functions
-//
-
-pub fn err_no_pos<T, E>(body: E) -> Result<T, ErrorEnvelope<E>> {
-    Err(ErrorEnvelope::NoPos(body))
-}

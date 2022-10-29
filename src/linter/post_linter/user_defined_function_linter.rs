@@ -14,7 +14,7 @@ pub fn lint_call_args(
     param_types: &ResolvedParamTypes,
 ) -> Result<(), QErrorNode> {
     if args.len() != param_types.len() {
-        return err_no_pos(QError::ArgumentCountMismatch);
+        return Err(QError::ArgumentCountMismatch).with_err_no_pos();
     }
 
     args.iter()
@@ -160,7 +160,7 @@ where
             match self.context.functions().get(bare_name) {
                 Some(function_signature_node) => {
                     if function_signature_node.as_ref().qualifier() != *qualifier {
-                        err_no_pos(QError::TypeMismatch)
+                        Err(QError::TypeMismatch).with_err_at(function_signature_node)
                     } else {
                         lint_call_args(args, function_signature_node.as_ref().param_types())
                     }

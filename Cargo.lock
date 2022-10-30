@@ -120,6 +120,7 @@ version = "0.8.0"
 dependencies = [
  "crossterm",
  "rusty_common",
+ "rusty_linter",
  "rusty_parser",
  "winapi",
 ]
@@ -127,6 +128,14 @@ dependencies = [
 [[package]]
 name = "rusty_common"
 version = "0.1.0"
+
+[[package]]
+name = "rusty_linter"
+version = "0.1.0"
+dependencies = [
+ "rusty_common",
+ "rusty_parser",
+]
 
 [[package]]
 name = "rusty_parser"

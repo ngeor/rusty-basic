@@ -6,9 +6,9 @@ use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::screen::{CrossTermScreen, HeadlessScreen};
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
-use crate::linter;
-use crate::linter::HasUserDefinedTypes;
 use rusty_common::*;
+use rusty_linter;
+use rusty_linter::{lint, HasUserDefinedTypes};
 use rusty_parser::variant::Variant;
 use rusty_parser::{parse_main_file, Name};
 use std::collections::HashMap;
@@ -151,7 +151,7 @@ where
     let file_path = format!("../fixtures/{}", filename.as_ref());
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
-    let (linted_program, user_defined_types) = linter::lint(program).unwrap();
+    let (linted_program, user_defined_types) = lint(program).unwrap();
     let instruction_generator_result = generate_instructions(linted_program);
     let mut interpreter = mock_interpreter_for_user_defined_types(user_defined_types);
     interpreter
@@ -169,7 +169,7 @@ where
     let file_path = format!("../fixtures/{}", filename.as_ref());
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
-    let (linted_program, user_defined_types) = linter::lint(program).unwrap();
+    let (linted_program, user_defined_types) = lint(program).unwrap();
     let instruction_generator_result = generate_instructions(linted_program);
     let mut interpreter = mock_interpreter_for_user_defined_types(user_defined_types);
     if !raw_input.is_empty() {

@@ -1,8 +1,8 @@
 use crate::instruction_generator::{Path, RootPath};
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::variables::Variables;
-use crate::linter::SubprogramName;
 use rusty_common::*;
+use rusty_linter::SubprogramName;
 use rusty_parser::variant::{AsciiSize, QBNumberCast, Variant};
 use rusty_parser::{BareName, BuiltInFunction, TypeQualifier};
 use std::collections::HashMap;

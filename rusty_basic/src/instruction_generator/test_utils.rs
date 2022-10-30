@@ -1,8 +1,8 @@
 use crate::instruction_generator::{
     generate_instructions, Instruction, InstructionGeneratorResult, InstructionNode,
 };
-use crate::linter::{lint, HasUserDefinedTypes};
 use rusty_common::Locatable;
+use rusty_linter::{lint, HasUserDefinedTypes};
 use rusty_parser::test_utils::parse;
 
 pub fn generate_instructions_str_with_types<T>(

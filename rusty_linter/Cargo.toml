@@ -1,0 +1,16 @@
+[package]
+name = "rusty_linter"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rusty_common = { path = "../rusty_common" }
+rusty_parser = { path = "../rusty_parser" }
+
+[dev-dependencies]
+rusty_parser = { path = "../rusty_parser", features = ["test_utils"]}
+
+[features]
+test_utils = []

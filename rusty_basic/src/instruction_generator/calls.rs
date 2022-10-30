@@ -1,6 +1,6 @@
 use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionGenerator};
-use crate::linter::SubprogramName;
 use rusty_common::{AtLocation, Locatable, Location};
+use rusty_linter::SubprogramName;
 use rusty_parser::*;
 
 impl InstructionGenerator {

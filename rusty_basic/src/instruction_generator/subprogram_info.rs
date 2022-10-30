@@ -1,5 +1,5 @@
-use crate::linter::SubprogramName;
 use rusty_common::Locatable;
+use rusty_linter::SubprogramName;
 use rusty_parser::*;
 use std::collections::HashMap;
 

@@ -5,8 +5,8 @@ use crate::interpreter::io::{FileManager, Input, Printer};
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::screen::Screen;
 use crate::interpreter::Stdlib;
-use crate::linter::HasUserDefinedTypes;
 use rusty_common::QErrorNode;
+use rusty_linter::HasUserDefinedTypes;
 use rusty_parser::variant::Variant;
 use std::collections::VecDeque;
 

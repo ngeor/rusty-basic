@@ -3,8 +3,7 @@ use std::fs::File;
 
 use rusty_basic::instruction_generator;
 use rusty_basic::interpreter::{new_default_interpreter, InterpreterTrait};
-use rusty_basic::linter;
-use rusty_basic::linter::HasUserDefinedTypes;
+use rusty_linter::{lint, HasUserDefinedTypes};
 use rusty_parser::{parse_main_file, ProgramNode};
 
 fn main() {
@@ -26,7 +25,7 @@ fn main() {
 }
 
 fn on_parsed(program: ProgramNode, run_options: RunOptions) {
-    match linter::lint(program) {
+    match lint(program) {
         Ok((linted_program, user_defined_types_holder)) => {
             on_linted(linted_program, user_defined_types_holder, run_options)
         }

@@ -25,12 +25,12 @@ impl DimName {
         }
     }
 
-    #[cfg(any(test, feature = "test_utils"))]
+    // TODO #[cfg(test)]
     pub fn into_list_rc(self, row: u32, col: u32) -> DimList {
         self.into_list(Location::new(row, col))
     }
 
-    #[cfg(any(test, feature = "test_utils"))]
+    // TODO #[cfg(test)]
     pub fn parse(s: &str) -> Self {
         let qualified_name = QualifiedName::try_from(s).unwrap();
         Self::from(qualified_name)
@@ -80,7 +80,7 @@ impl DimNameBuilder {
         }
     }
 
-    #[cfg(any(test, feature = "test_utils"))]
+    // TODO #[cfg(test)]
     pub fn build_list_rc(self, row: u32, col: u32) -> DimList {
         self.build_list(Location::new(row, col))
     }

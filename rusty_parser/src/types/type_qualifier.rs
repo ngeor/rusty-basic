@@ -1,6 +1,6 @@
 use super::Operator;
 use rusty_common::*;
-#[cfg(any(test, feature = "test_utils"))]
+// TODO #[cfg(test)]
 use std::convert::TryFrom;
 use std::fmt::Display;
 
@@ -109,7 +109,7 @@ impl TypeQualifier {
 
 // char -> TypeQualifier
 
-#[cfg(any(test, feature = "test_utils"))]
+// TODO #[cfg(test)]
 impl TryFrom<char> for TypeQualifier {
     type Error = QError;
 

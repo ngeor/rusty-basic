@@ -8,9 +8,3 @@ edition = "2021"
 [dependencies]
 rusty_common = { path = "../rusty_common" }
 rusty_parser = { path = "../rusty_parser" }
-
-[dev-dependencies]
-rusty_parser = { path = "../rusty_parser", features = ["test_utils"]}
-
-[features]
-test_utils = []

@@ -152,7 +152,7 @@ pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
     create_tokenizer(file_char_reader(input), create_recognizers())
 }
 
-#[cfg(any(test, feature = "test_utils"))]
+// TODO #[cfg(test)]
 pub mod test_helper {
     use crate::char_reader::test_helper::string_char_reader;
     use crate::pc::{create_tokenizer, Tokenizer};

@@ -12,9 +12,5 @@ rusty_common = { path = "../rusty_common" }
 rusty_parser = { path = "../rusty_parser" }
 rusty_linter = { path = "../rusty_linter" }
 
-[dev-dependencies]
-rusty_parser = { path = "../rusty_parser", features = ["test_utils"]}
-rusty_linter = { path = "../rusty_linter", features = ["test_utils"]}
-
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["winuser"] }

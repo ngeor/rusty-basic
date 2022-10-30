@@ -10,7 +10,7 @@ mod type_resolver;
 mod type_resolver_impl;
 mod types;
 
-#[cfg(any(test, feature = "test_utils"))]
+// TODO #[cfg(test)]
 mod test_utils;
 #[cfg(test)]
 mod tests;

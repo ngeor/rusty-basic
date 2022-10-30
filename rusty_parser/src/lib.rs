@@ -33,7 +33,7 @@ mod var_name;
 pub mod variant;
 mod while_wend;
 
-#[cfg(any(test, feature = "test_utils"))]
+// TODO #[cfg(test)]
 pub mod test_utils;
 
 pub use built_ins::{BuiltInFunction, BuiltInSub};

@@ -56,7 +56,7 @@ impl<T: BufRead> CharReader for CharReaderImpl<T> {
     }
 }
 
-#[cfg(any(test, feature = "test_utils"))]
+// TODO #[cfg(test)]
 pub mod test_helper {
     use crate::char_reader::{CharReader, CharReaderImpl};
     use std::io::{BufReader, Cursor};

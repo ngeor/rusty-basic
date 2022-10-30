@@ -1,6 +1,6 @@
 use crate::types::{BareName, Name, TypeQualifier};
 use rusty_common::*;
-#[cfg(any(test, feature = "test_utils"))]
+// TODO #[cfg(test)]
 use std::convert::TryFrom;
 
 /// A qualified name is a bare name followed by a built-in type qualifier.
@@ -30,7 +30,7 @@ impl From<QualifiedName> for Name {
     }
 }
 
-#[cfg(any(test, feature = "test_utils"))]
+// TODO #[cfg(test)]
 impl TryFrom<&str> for QualifiedName {
     type Error = QError;
     fn try_from(s: &str) -> Result<QualifiedName, QError> {

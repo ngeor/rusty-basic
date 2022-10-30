@@ -11,6 +11,7 @@ pub enum ZipValue<L, R> {
 }
 
 impl<L, R> ZipValue<L, R> {
+    #[allow(dead_code)]
     pub fn has_left(&self) -> bool {
         matches!(self, Self::Left(_) | Self::Both(_, _))
     }

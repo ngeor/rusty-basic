@@ -7,6 +7,3 @@ edition = "2021"
 
 [dependencies]
 rusty_common = { path = "../rusty_common" }
-
-[features]
-test_utils = []

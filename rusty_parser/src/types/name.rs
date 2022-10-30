@@ -105,7 +105,7 @@ impl From<Name> for BareName {
     }
 }
 
-#[cfg(any(test, feature = "test_utils"))]
+// TODO #[cfg(test)]
 impl From<&str> for Name {
     fn from(s: &str) -> Self {
         let mut buf = s.to_string();

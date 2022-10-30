@@ -224,20 +224,20 @@ impl Expression {
         }
     }
 
-    #[cfg(any(test, feature = "test_utils"))]
+    // TODO #[cfg(test)]
     pub fn var_unresolved(s: &str) -> Self {
         let name: Name = s.into();
         Expression::Variable(name, VariableInfo::unresolved())
     }
 
-    #[cfg(any(test, feature = "test_utils"))]
+    // TODO #[cfg(test)]
     pub fn var_resolved(s: &str) -> Self {
         let name: Name = s.into();
         let expression_type = name.expression_type();
         Expression::Variable(name, VariableInfo::new_local(expression_type))
     }
 
-    #[cfg(any(test, feature = "test_utils"))]
+    // TODO #[cfg(test)]
     pub fn var_user_defined(name: &str, type_name: &str) -> Self {
         Expression::Variable(
             name.into(),

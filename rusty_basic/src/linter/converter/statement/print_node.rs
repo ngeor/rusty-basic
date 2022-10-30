@@ -1,7 +1,7 @@
 use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::Convertible;
-use crate::parser::{PrintArg, PrintNode};
 use rusty_common::*;
+use rusty_parser::{PrintArg, PrintNode};
 
 impl Convertible for PrintNode {
     fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {

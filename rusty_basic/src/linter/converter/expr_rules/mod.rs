@@ -7,11 +7,11 @@ mod variable;
 
 use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::Convertible;
-use crate::parser::*;
-use crate::variant::Variant;
 use expr_state::ExprState;
 use pos_expr_state::PosExprState;
 use rusty_common::*;
+use rusty_parser::variant::Variant;
+use rusty_parser::*;
 use std::convert::TryFrom;
 
 mod expr_state {

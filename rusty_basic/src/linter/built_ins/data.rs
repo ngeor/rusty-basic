@@ -1,6 +1,6 @@
 use crate::linter::NameContext;
-use crate::parser::{Expression, ExpressionNode, ExpressionNodes};
 use rusty_common::{QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use rusty_parser::{Expression, ExpressionNode, ExpressionNodes};
 
 pub fn lint(args: &ExpressionNodes, name_context: NameContext) -> Result<(), QErrorNode> {
     if name_context == NameContext::Global {

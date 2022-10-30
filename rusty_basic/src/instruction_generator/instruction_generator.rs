@@ -3,9 +3,9 @@ use crate::instruction_generator::subprogram_info::{
     SubprogramInfoCollector, SubprogramInfoRepository,
 };
 use crate::linter::SubprogramName;
-use crate::parser::*;
-use crate::variant::Variant;
 use rusty_common::{AtLocation, CaseInsensitiveString, FileHandle, Locatable, Location, QError};
+use rusty_parser::variant::Variant;
+use rusty_parser::*;
 
 /// Generates instructions for the given program.
 pub fn generate_instructions(program: ProgramNode) -> InstructionGeneratorResult {

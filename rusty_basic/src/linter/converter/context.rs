@@ -5,8 +5,8 @@ use crate::linter::pre_linter::PreLinterResult;
 use crate::linter::type_resolver::{IntoQualified, TypeResolver};
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, SubMap};
-use crate::parser::*;
 use rusty_common::*;
+use rusty_parser::*;
 
 pub struct Context {
     pre_linter_result: PreLinterResult,

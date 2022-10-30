@@ -1,6 +1,6 @@
 use super::{Instruction, InstructionGenerator, RootPath};
-use crate::parser::*;
 use rusty_common::*;
+use rusty_parser::*;
 
 impl InstructionGenerator {
     pub fn visit_dim_list(&mut self, item: DimList) {

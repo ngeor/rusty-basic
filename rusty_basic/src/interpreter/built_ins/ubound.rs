@@ -1,8 +1,8 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::utils::VariantCasts;
-use crate::parser::BuiltInFunction;
-use crate::variant::Variant;
 use rusty_common::*;
+use rusty_parser::variant::Variant;
+use rusty_parser::BuiltInFunction;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let v: Variant = interpreter.context()[0].clone();

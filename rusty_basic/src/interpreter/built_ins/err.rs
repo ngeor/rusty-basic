@@ -1,6 +1,6 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::parser::BuiltInFunction;
 use rusty_common::*;
+use rusty_parser::BuiltInFunction;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let error_code: i32 = interpreter.get_last_error_code().unwrap_or_default();

@@ -1,6 +1,6 @@
 use super::post_conversion_linter::PostConversionLinter;
-use crate::parser::{ExpressionType, HasExpressionType, PrintArg, PrintNode, TypeQualifier};
 use rusty_common::*;
+use rusty_parser::{ExpressionType, HasExpressionType, PrintArg, PrintNode, TypeQualifier};
 
 pub struct PrintLinter;
 

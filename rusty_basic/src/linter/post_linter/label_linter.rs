@@ -1,6 +1,6 @@
 use super::post_conversion_linter::*;
-use crate::parser::*;
 use rusty_common::*;
+use rusty_parser::*;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]

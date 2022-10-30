@@ -1,8 +1,8 @@
 use crate::assert_linter_err;
 use crate::linter::test_utils::linter_ok;
-use crate::parser::test_utils::ExpressionNodeLiteralFactory;
-use crate::parser::*;
 use rusty_common::*;
+use rusty_parser::test_utils::ExpressionNodeLiteralFactory;
+use rusty_parser::*;
 
 #[test]
 fn test_passing_array_parameter_without_parenthesis() {

@@ -1,8 +1,8 @@
-use crate::parser::{
+use rusty_common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use rusty_parser::{
     Expression, ExpressionNode, ExpressionNodes, ExpressionType, HasExpressionType, TypeQualifier,
     VariableInfo,
 };
-use rusty_common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
 
 pub trait ArgValidation {
     fn require_integer_argument(&self, idx: usize) -> Result<(), QErrorNode>;

@@ -1,6 +1,6 @@
 use super::post_conversion_linter::PostConversionLinter;
-use crate::parser::{CaseExpression, ExpressionNode};
 use rusty_common::*;
+use rusty_parser::{CaseExpression, ExpressionNode};
 
 pub struct SelectCaseLinter;
 

@@ -1,0 +1,124 @@
+mod built_in_function;
+mod built_in_sub;
+mod close;
+mod cls;
+mod color;
+mod data;
+mod def_seg;
+mod field;
+mod get;
+mod input;
+mod len;
+mod line_input;
+mod locate;
+mod lset;
+mod name;
+mod open;
+mod put;
+mod read;
+mod string_fn;
+mod view_print;
+mod width;
+
+pub use self::built_in_function::BuiltInFunction;
+pub use self::built_in_sub::BuiltInSub;
+
+use crate::expression::expression_node_p;
+use crate::expression::file_handle::file_handle_p;
+use crate::lazy_parser;
+use crate::pc::*;
+use crate::pc_specific::*;
+use crate::{Expression, ExpressionNode, ExpressionNodes, Keyword, Statement};
+use rusty_common::{AtLocation, FileHandle, Locatable, Location, QError};
+
+// Parses built-in subs which have a special syntax.
+lazy_parser!(pub fn parse<Output=Statement> ; struct LazyParser ; Alt16::new(
+    close::parse(),
+    color::parse(),
+    data::parse(),
+    def_seg::parse(),
+    field::parse(),
+    get::parse(),
+    input::parse(),
+    line_input::parse(),
+    locate::parse(),
+    lset::parse(),
+    name::parse(),
+    open::parse(),
+    put::parse(),
+    read::parse(),
+    view_print::parse(),
+    width::parse(),
+));
+
+// needed for built-in functions that are also keywords (e.g. LEN), so they
+// cannot be parsed by the `word` module.
+pub fn built_in_function_call_p() -> impl Parser<Output = Expression> {
+    len::parse().or(string_fn::parse())
+}
+
+/// Parses built-in subs with optional arguments.
+/// Used only by `COLOR` and `LOCATE`.
+fn parse_built_in_sub_with_opt_args(
+    k: Keyword,
+    built_in_sub: BuiltInSub,
+) -> impl Parser<Output = Statement> {
+    seq3(
+        keyword(k),
+        whitespace().no_incomplete(),
+        csv_allow_missing(),
+        move |_, _, opt_args| {
+            Statement::BuiltInSubCall(built_in_sub, map_opt_args_to_flags(opt_args))
+        },
+    )
+}
+
+/// Maps optional arguments to arguments, inserting a dummy first argument indicating
+/// which arguments were present in the form of a bit mask.
+fn map_opt_args_to_flags(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {
+    let mut result: ExpressionNodes = vec![];
+    let mut mask = 1;
+    let mut flags = 0;
+    for arg in args {
+        if let Some(arg) = arg {
+            flags |= mask;
+            result.push(arg);
+        }
+        mask <<= 1;
+    }
+    result.insert(0, Expression::IntegerLiteral(flags).at(Location::start()));
+    result
+}
+
+/// Comma separated list of items, allowing items to be missing between commas.
+fn csv_allow_missing() -> impl Parser<Output = Vec<Option<ExpressionNode>>> + NonOptParser {
+    parse_delimited_to_items(
+        opt_zip(expression_node_p(), comma()),
+        trailing_comma_error(),
+    )
+    .allow_default()
+}
+
+/// Used in `INPUT` and `LINE INPUT`, parsing an optional file number.
+fn opt_file_handle_comma_p() -> impl Parser<Output = Option<Locatable<FileHandle>>> + NonOptParser {
+    seq2(file_handle_p(), comma().no_incomplete(), |l, _| l).allow_none()
+}
+
+/// Used in `INPUT` and `LINE INPUT`, converts an optional file-number into arguments.
+fn encode_opt_file_handle_arg(
+    opt_file_number_node: Option<Locatable<FileHandle>>,
+) -> ExpressionNodes {
+    match opt_file_number_node {
+        Some(file_number_node) => {
+            vec![
+                // 1 == present
+                Expression::IntegerLiteral(1).at(Location::start()),
+                file_number_node.map(Expression::from),
+            ]
+        }
+        None => {
+            // 0 == absent
+            vec![Expression::IntegerLiteral(0).at(Location::start())]
+        }
+    }
+}

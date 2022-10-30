@@ -1,5 +1,5 @@
 use crate::linter::{FunctionMap, SubMap};
-use crate::parser::UserDefinedTypes;
+use rusty_parser::UserDefinedTypes;
 
 pub trait HasFunctions {
     fn functions(&self) -> &FunctionMap;

@@ -1,7 +1,7 @@
 use crate::linter::pre_linter::ResolvedParamTypes;
 use crate::linter::{HasFunctions, ResolvedParamType};
-use crate::parser::*;
 use rusty_common::*;
+use rusty_parser::*;
 
 use super::post_conversion_linter::PostConversionLinter;
 

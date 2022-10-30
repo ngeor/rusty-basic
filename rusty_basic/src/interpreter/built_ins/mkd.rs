@@ -1,7 +1,7 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::parser::BuiltInFunction;
-use crate::variant::{f64_to_bytes, QBNumberCast};
 use rusty_common::{QError, ToAsciiString};
+use rusty_parser::variant::{f64_to_bytes, QBNumberCast};
+use rusty_parser::BuiltInFunction;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let f: f64 = interpreter.context()[0].try_cast()?;

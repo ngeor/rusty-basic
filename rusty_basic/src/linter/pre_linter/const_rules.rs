@@ -1,7 +1,7 @@
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::pre_linter::ConstantMap;
-use crate::parser::{BareName, ExpressionNode, Name, NameNode};
 use rusty_common::{Locatable, QError, QErrorNode, ToLocatableError};
+use rusty_parser::{BareName, ExpressionNode, Name, NameNode};
 
 // calculate global constant values
 pub fn global_const(

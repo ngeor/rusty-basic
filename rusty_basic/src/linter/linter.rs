@@ -2,8 +2,8 @@ use crate::linter::converter::convert;
 use crate::linter::post_linter::post_linter;
 use crate::linter::pre_linter::pre_lint_program;
 use crate::linter::HasUserDefinedTypes;
-use crate::parser::ProgramNode;
 use rusty_common::QErrorNode;
+use rusty_parser::ProgramNode;
 
 pub fn lint(program: ProgramNode) -> Result<(ProgramNode, impl HasUserDefinedTypes), QErrorNode> {
     // first pass, get user defined types and functions/subs

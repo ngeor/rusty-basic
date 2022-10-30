@@ -1,8 +1,8 @@
 use crate::linter::const_value_resolver::ConstLookup;
 use crate::linter::ResolvedParamType;
-use crate::parser::{BareName, TypeQualifier};
-use crate::variant::Variant;
 use rusty_common::CaseInsensitiveString;
+use rusty_parser::variant::Variant;
+use rusty_parser::{BareName, TypeQualifier};
 use std::collections::HashMap;
 
 pub type ConstantMap = HashMap<BareName, Variant>;

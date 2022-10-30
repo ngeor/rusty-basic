@@ -1,12 +1,12 @@
 use crate::linter::const_value_resolver::ConstLookup;
 use crate::linter::converter::types::Implicits;
 use crate::linter::NameContext;
-use crate::parser::{
+use rusty_common::CaseInsensitiveString;
+use rusty_parser::variant::Variant;
+use rusty_parser::{
     BareName, BuiltInStyle, HasExpressionType, QualifiedNameNode, RedimInfo, TypeQualifier,
     VarTypeIsExtended, VariableInfo,
 };
-use crate::variant::Variant;
-use rusty_common::CaseInsensitiveString;
 use std::collections::HashMap;
 
 /*

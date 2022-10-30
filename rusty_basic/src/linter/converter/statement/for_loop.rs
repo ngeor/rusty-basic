@@ -1,8 +1,8 @@
 use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::converter::types::ExprContext;
-use crate::parser::ForLoopNode;
 use rusty_common::*;
+use rusty_parser::ForLoopNode;
 
 impl Convertible for ForLoopNode {
     fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {

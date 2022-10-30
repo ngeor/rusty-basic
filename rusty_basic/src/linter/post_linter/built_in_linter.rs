@@ -1,11 +1,11 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::linter::built_ins::{lint_function_call, lint_sub_call};
 use crate::linter::NameContext;
-use crate::parser::{
+use rusty_common::*;
+use rusty_parser::{
     BuiltInSub, Expression, ExpressionNode, ExpressionNodes, FunctionImplementation,
     SubImplementation,
 };
-use rusty_common::*;
 
 /// Lints built-in functions and subs.
 pub struct BuiltInLinter {

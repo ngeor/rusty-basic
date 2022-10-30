@@ -1,6 +1,6 @@
-use crate::parser::{Expression, ExpressionNode, Operator, TypeQualifier, UnaryOperator};
-use crate::variant::Variant;
 use rusty_common::*;
+use rusty_parser::variant::Variant;
+use rusty_parser::{Expression, ExpressionNode, Operator, TypeQualifier, UnaryOperator};
 use std::cmp::Ordering;
 
 pub trait ConstLookup {

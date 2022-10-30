@@ -1,7 +1,7 @@
 use crate::linter::converter::dim_rules::dim_type_rules;
 use crate::linter::converter::pos_context::PosContext;
-use crate::parser::{BareName, ParamType};
 use rusty_common::{QErrorNode, ToErrorEnvelopeNoPos};
+use rusty_parser::{BareName, ParamType};
 
 pub fn on_param_type<'a>(
     dim_type: ParamType,

@@ -1,6 +1,6 @@
 //! Contains simple types and type aliases.
 
-use crate::parser::QualifiedNameNode;
+use rusty_parser::QualifiedNameNode;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DimContext {

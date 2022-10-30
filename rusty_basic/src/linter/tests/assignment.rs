@@ -1,7 +1,7 @@
 use crate::assert_linter_err;
 use crate::assert_linter_ok_top_level_statements;
-use crate::parser::{DimName, Expression, ExpressionType, Operator, Statement, TypeQualifier};
 use rusty_common::*;
+use rusty_parser::{DimName, Expression, ExpressionType, Operator, Statement, TypeQualifier};
 
 #[test]
 fn name_clashes_with_other_sub_name() {

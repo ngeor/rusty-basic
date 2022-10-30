@@ -1,7 +1,7 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Input;
-use crate::variant::Variant;
 use rusty_common::{FileHandle, QError};
+use rusty_parser::variant::Variant;
 use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {

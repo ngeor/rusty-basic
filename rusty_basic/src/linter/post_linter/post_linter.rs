@@ -6,8 +6,8 @@ use crate::linter::post_linter::{
     user_defined_function_linter, user_defined_sub_linter,
 };
 use crate::linter::{HasFunctions, HasSubs};
-use crate::parser::ProgramNode;
 use rusty_common::QErrorNode;
+use rusty_parser::ProgramNode;
 
 pub fn post_linter(
     result: ProgramNode,

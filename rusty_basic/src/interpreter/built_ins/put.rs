@@ -1,8 +1,8 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Field;
 use crate::interpreter::utils::VariantCasts;
-use crate::parser::{BareName, TypeQualifier};
 use rusty_common::{FileHandle, QError, ToAsciiBytes};
+use rusty_parser::{BareName, TypeQualifier};
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let handle: FileHandle = interpreter.context()[0].to_file_handle()?;

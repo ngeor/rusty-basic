@@ -5,8 +5,8 @@ use crate::linter::converter::dim_rules::redim::on_redim_type;
 use crate::linter::converter::dim_rules::validation;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::converter::types::DimContext;
-use crate::parser::*;
 use rusty_common::*;
+use rusty_parser::*;
 
 impl<'a> Convertible<DimListState<'a>> for DimList {
     fn convert(self, ctx: &mut DimListState<'a>) -> Result<Self, QErrorNode> {

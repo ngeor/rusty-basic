@@ -1,6 +1,6 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::variant::Variant;
 use rusty_common::*;
+use rusty_parser::variant::Variant;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let variables: Vec<Variant> = interpreter

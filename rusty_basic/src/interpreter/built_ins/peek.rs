@@ -1,8 +1,8 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::keyboard::get_indicator_keys;
 use crate::interpreter::utils::VariantCasts;
-use crate::parser::BuiltInFunction;
 use rusty_common::*;
+use rusty_parser::BuiltInFunction;
 
 pub const INDICATOR_KEYS_ADDRESS: usize = 1047;
 

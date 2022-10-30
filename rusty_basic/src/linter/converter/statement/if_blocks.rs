@@ -1,7 +1,7 @@
 use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::Convertible;
-use crate::parser::{ConditionalBlockNode, IfBlockNode};
 use rusty_common::*;
+use rusty_parser::{ConditionalBlockNode, IfBlockNode};
 
 impl Convertible for ConditionalBlockNode {
     fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {

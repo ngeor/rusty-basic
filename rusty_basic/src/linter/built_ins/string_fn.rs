@@ -1,6 +1,6 @@
 use crate::linter::arg_validation::ArgValidation;
-use crate::parser::{ExpressionNodes, TypeQualifier};
 use rusty_common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use rusty_parser::{ExpressionNodes, TypeQualifier};
 
 pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
     if args.len() != 2 {

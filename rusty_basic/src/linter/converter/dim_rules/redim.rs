@@ -3,8 +3,8 @@ use crate::linter::converter::dim_rules::dim_name_state::DimNameState;
 use crate::linter::converter::dim_rules::string_length::resolve_string_length;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::type_resolver::IntoTypeQualifier;
-use crate::parser::*;
 use rusty_common::*;
+use rusty_parser::*;
 
 pub fn on_redim_type<'a, 'b>(
     var_type: DimType,

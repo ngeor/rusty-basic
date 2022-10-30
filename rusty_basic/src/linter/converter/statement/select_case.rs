@@ -1,7 +1,7 @@
 use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::Convertible;
-use crate::parser::{CaseBlockNode, CaseExpression, SelectCaseNode};
 use rusty_common::*;
+use rusty_parser::{CaseBlockNode, CaseExpression, SelectCaseNode};
 
 impl Convertible for SelectCaseNode {
     fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {

@@ -2,8 +2,8 @@ use crate::linter::converter::context::Context;
 use crate::linter::converter::pos_context::PosContext;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::converter::types::ExprContext;
-use crate::parser::{Expression, ExpressionNode, Statement};
 use rusty_common::*;
+use rusty_parser::{Expression, ExpressionNode, Statement};
 
 pub fn on_assignment(
     left: Expression,
@@ -23,7 +23,7 @@ pub fn on_assignment(
 
 mod assignment_pre_conversion_validation_rules {
     use super::*;
-    use crate::parser::Expression;
+    use rusty_parser::Expression;
 
     pub fn validate(ctx: &mut Context, left_side: &Expression) -> Result<(), QErrorNode> {
         cannot_assign_to_const(ctx, left_side)

@@ -46,8 +46,8 @@ mod view_print;
 mod width;
 
 use crate::linter::NameContext;
-use crate::parser::{BuiltInFunction, BuiltInSub, ExpressionNodes};
 use rusty_common::QErrorNode;
+use rusty_parser::{BuiltInFunction, BuiltInSub, ExpressionNodes};
 
 pub fn lint_sub_call(
     built_in_sub: &BuiltInSub,

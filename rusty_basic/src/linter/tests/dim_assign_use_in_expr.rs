@@ -2,11 +2,11 @@ use crate::assert_linter_err;
 use crate::assert_linter_ok_top_level_statements;
 use crate::linter::test_utils::*;
 use crate::linter::HasUserDefinedTypes;
-use crate::parser::{
+use rusty_common::*;
+use rusty_parser::{
     BareName, BuiltInStyle, DimName, DimType, Element, ElementType, Expression, ExpressionType,
     PrintNode, Statement, TopLevelToken, TypeQualifier,
 };
-use rusty_common::*;
 
 /// Three step tests:
 /// 1. DIM a new variable

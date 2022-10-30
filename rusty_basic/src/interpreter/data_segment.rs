@@ -1,5 +1,5 @@
-use crate::variant::Variant;
 use rusty_common::*;
+use rusty_parser::variant::Variant;
 
 #[derive(Default)]
 pub struct DataSegment {

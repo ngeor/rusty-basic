@@ -1,5 +1,5 @@
-use crate::parser::*;
 use rusty_common::*;
+use rusty_parser::*;
 
 /// Visits the converted program and transforms it into a different program.
 ///

@@ -1,9 +1,9 @@
 use crate::linter::post_linter::post_conversion_linter::PostConversionLinter;
-use crate::parser::{
+use rusty_common::{QError, QErrorNode, ToLocatableError};
+use rusty_parser::{
     ConditionalBlockNode, DoLoopNode, ExpressionNode, ExpressionType, HasExpressionType,
     TypeQualifier,
 };
-use rusty_common::{QError, QErrorNode, ToLocatableError};
 
 /// Ensures that expressions appearing in logical conditions are numeric.
 pub struct ConditionTypeLinter {}

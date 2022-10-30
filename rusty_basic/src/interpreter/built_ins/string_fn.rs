@@ -1,8 +1,8 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::utils::VariantCasts;
-use crate::parser::BuiltInFunction;
-use crate::variant::{QBNumberCast, Variant};
 use rusty_common::*;
+use rusty_parser::variant::{QBNumberCast, Variant};
+use rusty_parser::BuiltInFunction;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let count: usize = interpreter.context()[0].to_non_negative_int()?;

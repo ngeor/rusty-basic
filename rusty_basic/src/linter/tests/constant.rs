@@ -1,11 +1,11 @@
 use crate::assert_linter_err;
 use crate::assert_linter_ok_top_level_statements;
 use crate::linter::test_utils::linter_ok;
-use crate::parser::{
+use rusty_common::*;
+use rusty_parser::{
     BareName, BuiltInStyle, Expression, ParamName, ParamType, PrintNode, Statement,
     SubImplementation, TopLevelToken, TypeQualifier,
 };
-use rusty_common::*;
 
 #[test]
 fn function_call_not_allowed() {

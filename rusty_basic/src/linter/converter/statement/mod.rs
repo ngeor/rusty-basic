@@ -12,8 +12,8 @@ use crate::linter::converter::pos_context::PosContext;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::converter::types::{DimContext, ExprContext};
 use crate::linter::NameContext;
-use crate::parser::{ExitObject, Statement, StatementNode, StatementNodes};
 use rusty_common::*;
+use rusty_parser::{ExitObject, Statement, StatementNode, StatementNodes};
 
 impl Convertible<Context, Option<StatementNode>> for StatementNode {
     fn convert(self, ctx: &mut Context) -> Result<Option<StatementNode>, QErrorNode> {

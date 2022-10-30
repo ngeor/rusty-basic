@@ -1,7 +1,5 @@
-use crate::parser::{
-    Expression, ExpressionNodes, ExpressionType, HasExpressionType, TypeQualifier,
-};
 use rusty_common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use rusty_parser::{Expression, ExpressionNodes, ExpressionType, HasExpressionType, TypeQualifier};
 
 pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
     if args.len() != 1 {

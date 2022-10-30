@@ -1,10 +1,10 @@
 use crate::assert_linter_err;
 use crate::linter::test_utils::linter_ok;
-use crate::parser::{
+use rusty_common::*;
+use rusty_parser::{
     ArrayDimension, BareName, BuiltInStyle, DimName, DimNameBuilder, DimType, Expression,
     Statement, TopLevelToken, TypeQualifier,
 };
-use rusty_common::*;
 
 #[test]
 fn test_dim_duplicate_definition_same_builtin_type() {

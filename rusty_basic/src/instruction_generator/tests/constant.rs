@@ -1,6 +1,6 @@
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{Instruction, PrinterType};
-use crate::variant::Variant;
+use rusty_parser::variant::Variant;
 
 #[test]
 fn test_constant_definition_and_usage_in_print() {

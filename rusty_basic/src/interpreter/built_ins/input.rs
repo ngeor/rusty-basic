@@ -1,8 +1,8 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Input;
-use crate::parser::TypeQualifier;
-use crate::variant::Variant;
 use rusty_common::{FileHandle, QError};
+use rusty_parser::variant::Variant;
+use rusty_parser::TypeQualifier;
 use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
@@ -95,8 +95,8 @@ mod tests {
     use crate::interpreter::test_utils::{
         interpret, interpret_with_raw_input, MockInterpreterTrait,
     };
-    use crate::variant::Variant;
     use rusty_common::*;
+    use rusty_parser::variant::Variant;
 
     fn assert_input<T>(
         raw_input: &str,

@@ -1,8 +1,8 @@
 use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::converter::types::ExprContext;
-use crate::parser::{BareName, BuiltInSub, ExpressionNodes, Statement};
 use rusty_common::QErrorNode;
+use rusty_parser::{BareName, BuiltInSub, ExpressionNodes, Statement};
 
 impl Context {
     pub fn sub_call(

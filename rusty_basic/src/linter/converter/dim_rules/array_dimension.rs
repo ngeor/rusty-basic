@@ -1,7 +1,7 @@
 use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::Convertible;
-use crate::parser::ArrayDimension;
 use rusty_common::QErrorNode;
+use rusty_parser::ArrayDimension;
 
 impl Convertible for ArrayDimension {
     fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {

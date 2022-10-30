@@ -1,7 +1,7 @@
 use crate::linter::pre_linter::{FunctionSignature, ResolvedParamTypes, SubSignature};
 use crate::linter::type_resolver::{IntoTypeQualifier, TypeResolver};
-use crate::parser::{BareName, BuiltInFunction, BuiltInSub, Name};
 use rusty_common::*;
+use rusty_parser::{BareName, BuiltInFunction, BuiltInSub, Name};
 use std::collections::HashMap;
 
 pub struct SubprogramContext<T> {

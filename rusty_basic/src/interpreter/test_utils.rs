@@ -8,9 +8,9 @@ use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
 use crate::linter;
 use crate::linter::HasUserDefinedTypes;
-use crate::parser::{parse_main_file, Name};
-use crate::variant::Variant;
 use rusty_common::*;
+use rusty_parser::variant::Variant;
+use rusty_parser::{parse_main_file, Name};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -148,7 +148,7 @@ pub fn interpret_file<S>(filename: S) -> Result<impl MockInterpreterTrait, QErro
 where
     S: AsRef<str>,
 {
-    let file_path = format!("fixtures/{}", filename.as_ref());
+    let file_path = format!("../fixtures/{}", filename.as_ref());
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
     let (linted_program, user_defined_types) = linter::lint(program).unwrap();
@@ -166,7 +166,7 @@ pub fn interpret_file_with_raw_input<S>(
 where
     S: AsRef<str>,
 {
-    let file_path = format!("fixtures/{}", filename.as_ref());
+    let file_path = format!("../fixtures/{}", filename.as_ref());
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
     let (linted_program, user_defined_types) = linter::lint(program).unwrap();
@@ -266,7 +266,7 @@ macro_rules! assert_has_variable {
     ($int:expr, $name:expr, $expected_value:expr) => {
         assert_eq!(
             $int.get_variable_str($name),
-            $crate::variant::Variant::from($expected_value)
+            rusty_parser::variant::Variant::from($expected_value)
         );
     };
 }

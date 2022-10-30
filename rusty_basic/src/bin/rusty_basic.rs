@@ -5,8 +5,7 @@ use rusty_basic::instruction_generator;
 use rusty_basic::interpreter::{new_default_interpreter, InterpreterTrait};
 use rusty_basic::linter;
 use rusty_basic::linter::HasUserDefinedTypes;
-use rusty_basic::parser;
-use rusty_basic::parser::ProgramNode;
+use rusty_parser::{parse_main_file, ProgramNode};
 
 fn main() {
     let is_running_in_apache = is_running_in_apache();
@@ -20,7 +19,7 @@ fn main() {
         filename,
     };
     let f = run_options.open_file();
-    match parser::parse_main_file(f) {
+    match parse_main_file(f) {
         Ok(program) => on_parsed(program, run_options),
         Err(e) => eprintln!("Could not parse program. {:?}", e),
     }

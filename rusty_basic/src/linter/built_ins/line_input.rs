@@ -1,6 +1,6 @@
 use crate::linter::arg_validation::ArgValidation;
-use crate::parser::{Expression, ExpressionNodes};
 use rusty_common::*;
+use rusty_parser::{Expression, ExpressionNodes};
 
 pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
     // the first one or two arguments stand for the file number

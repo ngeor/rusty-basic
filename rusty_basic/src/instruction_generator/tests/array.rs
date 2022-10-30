@@ -1,8 +1,8 @@
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{AddressOrLabel, Instruction, PrinterType, RootPath};
-use crate::parser::{BuiltInStyle, ExpressionType, ParamName, ParamType, TypeQualifier};
-use crate::variant::Variant;
 use rusty_common::AtRowCol;
+use rusty_parser::variant::Variant;
+use rusty_parser::{BuiltInStyle, ExpressionType, ParamName, ParamType, TypeQualifier};
 
 #[test]
 fn test_declaration() {

@@ -1,6 +1,6 @@
 use crate::linter::arg_validation::ArgValidation;
-use crate::parser::ExpressionNodes;
 use rusty_common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
+use rusty_parser::ExpressionNodes;
 
 pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
     // 1 or 2 arguments (row, col) but they're duplicated because they're optional

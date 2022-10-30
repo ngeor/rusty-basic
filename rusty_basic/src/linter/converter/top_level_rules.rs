@@ -2,11 +2,11 @@ use crate::linter::converter::context::Context;
 use crate::linter::converter::pos_context::PosContext;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::converter::types::Implicits;
-use crate::parser::{
+use rusty_common::{AtLocation, HasLocation, Locatable, QErrorNode};
+use rusty_parser::{
     DimName, FunctionImplementation, ProgramNode, Statement, StatementNodes, SubImplementation,
     TopLevelToken, TopLevelTokenNode,
 };
-use rusty_common::{AtLocation, HasLocation, Locatable, QErrorNode};
 
 impl Convertible for ProgramNode {
     fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {

@@ -46,8 +46,8 @@ mod view_print;
 mod width;
 
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::parser::{BuiltInFunction, BuiltInSub};
 use rusty_common::*;
+use rusty_parser::{BuiltInFunction, BuiltInSub};
 
 pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Result<(), QError> {
     match s {

@@ -1,7 +1,7 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::parser::BuiltInFunction;
-use crate::variant::bytes_to_f64;
 use rusty_common::{QError, ToAsciiBytes};
+use rusty_parser::variant::bytes_to_f64;
+use rusty_parser::BuiltInFunction;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let s = interpreter.context()[0].to_str_unchecked();

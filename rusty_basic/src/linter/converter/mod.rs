@@ -13,8 +13,8 @@ mod types;
 use crate::linter::converter::context::Context;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::pre_linter::PreLinterResult;
-use crate::parser::ProgramNode;
 use rusty_common::QErrorNode;
+use rusty_parser::ProgramNode;
 
 pub fn convert(
     program: ProgramNode,

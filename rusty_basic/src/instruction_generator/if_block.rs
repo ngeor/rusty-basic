@@ -1,6 +1,6 @@
 use super::{InstructionGenerator, Visitor};
-use crate::parser::IfBlockNode;
 use rusty_common::*;
+use rusty_parser::IfBlockNode;
 
 impl InstructionGenerator {
     pub fn generate_if_block_instructions(

@@ -1,6 +1,6 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::variant::Variant;
 use rusty_common::*;
+use rusty_parser::variant::Variant;
 
 pub fn plus<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
     reduce_a_b_into_a(interpreter, |a, b| a.plus(b))

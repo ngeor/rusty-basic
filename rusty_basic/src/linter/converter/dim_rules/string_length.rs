@@ -1,8 +1,8 @@
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::context::Context;
-use crate::parser::ExpressionNode;
-use crate::variant::{QBNumberCast, MAX_INTEGER};
 use rusty_common::{QError, QErrorNode, ToLocatableError};
+use rusty_parser::variant::{QBNumberCast, MAX_INTEGER};
+use rusty_parser::ExpressionNode;
 
 pub fn resolve_string_length(
     ctx: &Context,

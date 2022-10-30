@@ -1,7 +1,7 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::utils::VariantCasts;
-use crate::parser::BuiltInFunction;
 use rusty_common::*;
+use rusty_parser::BuiltInFunction;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let s: &str = interpreter.context()[0].to_str_unchecked();

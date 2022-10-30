@@ -2,9 +2,9 @@ use crate::instruction_generator::{Path, RootPath};
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::variables::Variables;
 use crate::linter::SubprogramName;
-use crate::parser::{BareName, BuiltInFunction, TypeQualifier};
-use crate::variant::{AsciiSize, QBNumberCast, Variant};
 use rusty_common::*;
+use rusty_parser::variant::{AsciiSize, QBNumberCast, Variant};
+use rusty_parser::{BareName, BuiltInFunction, TypeQualifier};
 use std::collections::HashMap;
 
 // This is an arbitrary value, not what QBasic is doing
@@ -159,7 +159,7 @@ impl Context {
     }
 
     #[cfg(test)]
-    pub fn get_by_name(&self, name: &crate::parser::Name) -> Variant {
+    pub fn get_by_name(&self, name: &rusty_parser::Name) -> Variant {
         self.variables()
             .get_by_name(name)
             .map(Clone::clone)

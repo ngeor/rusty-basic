@@ -1,6 +1,6 @@
 use crate::linter::SubprogramName;
-use crate::parser::*;
 use rusty_common::Locatable;
+use rusty_parser::*;
 use std::collections::HashMap;
 
 /// Holds information about a subprogram that is needed at runtime.

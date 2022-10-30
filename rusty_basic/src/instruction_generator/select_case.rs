@@ -1,8 +1,8 @@
 use super::{Instruction, InstructionGenerator, Visitor};
-use crate::parser::{
+use rusty_common::*;
+use rusty_parser::{
     CaseBlockNode, CaseExpression, ExpressionNode, Operator, SelectCaseNode, StatementNodes,
 };
-use rusty_common::*;
 
 impl InstructionGenerator {
     pub fn generate_select_case_instructions(&mut self, s: SelectCaseNode, pos: Location) {

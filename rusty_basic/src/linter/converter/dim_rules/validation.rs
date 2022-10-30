@@ -1,11 +1,11 @@
 use crate::linter::converter::context::Context;
 use crate::linter::type_resolver::IntoTypeQualifier;
 use crate::linter::{HasFunctions, HasSubs, HasUserDefinedTypes};
-use crate::parser::{
+use rusty_common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use rusty_parser::{
     DimName, ParamName, VarName, VarTypeIsExtended, VarTypeQualifier,
     VarTypeToUserDefinedRecursively,
 };
-use rusty_common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
 
 pub fn validate<T>(var_name: &VarName<T>, ctx: &Context) -> Result<(), QErrorNode>
 where

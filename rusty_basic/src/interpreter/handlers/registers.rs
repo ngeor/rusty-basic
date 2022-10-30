@@ -1,6 +1,6 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::registers::Registers;
-use crate::variant::Variant;
+use rusty_parser::variant::Variant;
 
 pub fn push_registers<T: InterpreterTrait>(interpreter: &mut T) {
     interpreter.register_stack().push(Registers::new());

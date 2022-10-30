@@ -1,7 +1,7 @@
 use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionGenerator};
 use crate::linter::SubprogramName;
-use crate::parser::*;
 use rusty_common::{AtLocation, Locatable, Location};
+use rusty_parser::*;
 
 impl InstructionGenerator {
     pub fn generate_built_in_function_call_instructions(

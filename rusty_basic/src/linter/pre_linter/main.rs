@@ -4,8 +4,8 @@ use crate::linter::pre_linter::{ConstantMap, PreLinterResult, ResolvedParamTypes
 use crate::linter::type_resolver::IntoTypeQualifier;
 use crate::linter::type_resolver_impl::TypeResolverImpl;
 use crate::linter::ResolvedParamType;
-use crate::parser::*;
 use rusty_common::*;
+use rusty_parser::*;
 
 pub struct MainContext {
     resolver: TypeResolverImpl,

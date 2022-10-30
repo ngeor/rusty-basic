@@ -1,6 +1,6 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::variant::QBNumberCast;
 use rusty_common::*;
+use rusty_parser::variant::QBNumberCast;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     if interpreter.context().variables().len() == 0 {

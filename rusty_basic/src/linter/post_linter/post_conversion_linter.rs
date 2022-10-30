@@ -1,5 +1,5 @@
-use crate::parser::*;
 use rusty_common::*;
+use rusty_parser::*;
 
 /// Invoked after the conversion to fully typed program.
 /// The default implementation of the trait simply visits all program elements.

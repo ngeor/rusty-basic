@@ -1,5 +1,5 @@
-use crate::variant::{QBNumberCast, Variant};
 use rusty_common::{FileHandle, QError};
+use rusty_parser::variant::{QBNumberCast, Variant};
 use std::convert::TryFrom;
 
 pub trait VariantCasts {

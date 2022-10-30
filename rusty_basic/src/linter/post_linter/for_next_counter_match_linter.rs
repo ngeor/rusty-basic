@@ -1,5 +1,5 @@
-use crate::parser::{Expression, ExpressionType, ForLoopNode, TypeQualifier, VariableInfo};
 use rusty_common::*;
+use rusty_parser::{Expression, ExpressionType, ForLoopNode, TypeQualifier, VariableInfo};
 
 use super::post_conversion_linter::*;
 

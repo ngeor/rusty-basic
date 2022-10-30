@@ -1,6 +1,6 @@
 use crate::instruction_generator::{Instruction, InstructionGenerator, PrinterType};
-use crate::parser::{PrintArg, PrintNode};
 use rusty_common::{AtLocation, Locatable, Location};
+use rusty_parser::{PrintArg, PrintNode};
 
 impl InstructionGenerator {
     pub fn generate_print_instructions(&mut self, print_node: PrintNode, pos: Location) {

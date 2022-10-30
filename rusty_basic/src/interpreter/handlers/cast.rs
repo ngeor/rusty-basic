@@ -1,7 +1,7 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::parser::TypeQualifier;
-use crate::variant::Variant;
 use rusty_common::{QError, StringUtils};
+use rusty_parser::variant::Variant;
+use rusty_parser::TypeQualifier;
 
 pub fn cast<T: InterpreterTrait>(interpreter: &mut T, q: &TypeQualifier) -> Result<(), QError> {
     let v = interpreter.registers().get_a();

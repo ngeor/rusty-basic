@@ -1,7 +1,7 @@
 use crate::linter::{lint, HasUserDefinedTypes};
-use crate::parser::test_utils::parse;
-use crate::parser::ProgramNode;
 use rusty_common::QErrorNode;
+use rusty_parser::test_utils::parse;
+use rusty_parser::ProgramNode;
 
 /// Lints the given string and returns the results.
 ///
@@ -82,10 +82,10 @@ macro_rules! assert_linter_err {
 #[macro_export]
 macro_rules! assert_linter_ok_top_level_statements {
     ($program:expr, $($statement: expr),+) => {
-        let top_level_token_nodes: Vec<$crate::parser::TopLevelTokenNode> = $crate::linter::test_utils::linter_ok($program);
-        let top_level_statements: Vec<$crate::parser::Statement> = top_level_token_nodes.into_iter()
+        let top_level_token_nodes: Vec<rusty_parser::TopLevelTokenNode> = $crate::linter::test_utils::linter_ok($program);
+        let top_level_statements: Vec<rusty_parser::Statement> = top_level_token_nodes.into_iter()
             .map(|Locatable { element, .. }| match element {
-                $crate::parser::TopLevelToken::Statement(s) => s,
+                rusty_parser::TopLevelToken::Statement(s) => s,
                 _ => {panic!("Expected only top level statements, found {:?}", element);}
             } )
             .collect();

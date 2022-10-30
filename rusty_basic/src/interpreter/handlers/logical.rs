@@ -1,6 +1,6 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::parser::TypeQualifier;
 use rusty_common::*;
+use rusty_parser::TypeQualifier;
 
 pub fn and<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
     let a = interpreter

@@ -4,8 +4,8 @@ use crate::linter::converter::dim_rules::string_length::resolve_string_length;
 use crate::linter::converter::traits::Convertible;
 use crate::linter::converter::types::DimContext;
 use crate::linter::type_resolver::IntoTypeQualifier;
-use crate::parser::*;
 use rusty_common::*;
+use rusty_parser::*;
 
 pub fn on_dim_type<'a, 'b>(
     dim_type: DimType,

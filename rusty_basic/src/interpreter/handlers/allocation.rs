@@ -1,8 +1,8 @@
 use crate::interpreter::arguments::ArgumentInfo;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::parser::{BareName, ExpressionType, TypeQualifier, UserDefinedTypes};
-use crate::variant::{QBNumberCast, UserDefinedTypeValue, VArray, Variant};
 use rusty_common::{QError, StringUtils};
+use rusty_parser::variant::{QBNumberCast, UserDefinedTypeValue, VArray, Variant};
+use rusty_parser::{BareName, ExpressionType, TypeQualifier, UserDefinedTypes};
 
 pub fn allocate_built_in<T: InterpreterTrait>(
     interpreter: &mut T,

@@ -1,8 +1,8 @@
 use crate::instruction_generator::Path;
 use crate::interpreter::arguments::{ArgumentInfo, Arguments};
-use crate::parser::{BareName, DimName, DimType, Name, ParamName, ParamType, TypeQualifier};
-use crate::variant::{AsciiSize, Variant, V_FALSE};
 use rusty_common::{IndexedMap, QError};
+use rusty_parser::variant::{AsciiSize, Variant, V_FALSE};
+use rusty_parser::{BareName, DimName, DimType, Name, ParamName, ParamType, TypeQualifier};
 
 #[derive(Debug)]
 pub struct Variables {

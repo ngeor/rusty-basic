@@ -1,7 +1,7 @@
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{Instruction, RootPath};
-use crate::parser::{BuiltInFunction, QualifiedName, TypeQualifier};
 use rusty_common::AtRowCol;
+use rusty_parser::{BuiltInFunction, QualifiedName, TypeQualifier};
 use std::convert::TryFrom;
 
 #[test]

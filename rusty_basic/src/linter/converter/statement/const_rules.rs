@@ -1,8 +1,8 @@
 use crate::linter::const_value_resolver::ConstValueResolver;
 use crate::linter::converter::context::Context;
 use crate::linter::{HasFunctions, HasSubs};
-use crate::parser::*;
 use rusty_common::*;
+use rusty_parser::*;
 use std::convert::TryFrom;
 
 pub fn on_const(

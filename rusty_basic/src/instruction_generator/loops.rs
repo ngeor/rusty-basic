@@ -1,9 +1,9 @@
 use super::{Instruction, InstructionGenerator, Visitor};
-use crate::parser::{
+use rusty_common::*;
+use rusty_parser::{
     ConditionalBlockNode, DoLoopConditionKind, DoLoopConditionPosition, DoLoopNode, Expression,
     ExpressionNode, ForLoopNode, HasExpressionType, StatementNodes,
 };
-use rusty_common::*;
 
 impl InstructionGenerator {
     pub fn generate_while_instructions(&mut self, w: ConditionalBlockNode, pos: Location) {

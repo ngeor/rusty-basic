@@ -8,10 +8,10 @@ use rusty_common::*;
 macro_rules! assert_assign_ok {
     ($program:expr, $expected_variable_name:expr, $expected_value:expr) => {
         let interpreter = interpret($program);
-        let name = crate::parser::Name::from($expected_variable_name);
+        let name = rusty_parser::Name::from($expected_variable_name);
         assert_eq!(
             interpreter.context().get_by_name(&name),
-            crate::variant::Variant::from($expected_value)
+            rusty_parser::variant::Variant::from($expected_value)
         );
     };
 }

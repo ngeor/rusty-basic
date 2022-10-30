@@ -1,6 +1,6 @@
 use super::{AddressOrLabel, Instruction, InstructionGenerator, Visitor};
-use crate::parser::{OnErrorOption, ResumeOption, Statement, StatementNode, StatementNodes};
 use rusty_common::*;
+use rusty_parser::{OnErrorOption, ResumeOption, Statement, StatementNode, StatementNodes};
 
 impl Visitor<StatementNodes> for InstructionGenerator {
     fn visit(&mut self, block: StatementNodes) {

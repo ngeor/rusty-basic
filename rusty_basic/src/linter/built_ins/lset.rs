@@ -1,6 +1,6 @@
 use crate::linter::arg_validation::ArgValidation;
-use crate::parser::ExpressionNodes;
 use rusty_common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
+use rusty_parser::ExpressionNodes;
 
 pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
     // the parser should produce 3 arguments:

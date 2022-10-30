@@ -1,8 +1,8 @@
 use super::post_conversion_linter::PostConversionLinter;
 use super::user_defined_function_linter::lint_call_args;
 use crate::linter::HasSubs;
-use crate::parser::ExpressionNodes;
 use rusty_common::*;
+use rusty_parser::ExpressionNodes;
 
 pub struct UserDefinedSubLinter<'a, R> {
     pub context: &'a R,

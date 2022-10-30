@@ -2,7 +2,7 @@
 //! For bare names, the type comes from their first character, according to
 //! the `DEFINT` etc statements.
 
-use crate::parser::{BareName, Name, TypeQualifier};
+use rusty_parser::{BareName, Name, TypeQualifier};
 
 /// Finds the [TypeQualifier] that corresponds to the given character,
 /// based on the `DEFINT` etc statements.

@@ -15,9 +15,9 @@ use crate::interpreter::screen::{CrossTermScreen, Screen};
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
 use crate::linter::HasUserDefinedTypes;
-use crate::parser::UserDefinedTypes;
-use crate::variant::{QBNumberCast, Variant};
 use rusty_common::*;
+use rusty_parser::variant::{QBNumberCast, Variant};
+use rusty_parser::UserDefinedTypes;
 use std::collections::VecDeque;
 
 pub struct Interpreter<

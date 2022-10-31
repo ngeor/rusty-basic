@@ -1,9 +1,9 @@
 use std::fs::File;
 
 use crate::pc::{Parser, Tokenizer};
-use crate::pc_specific::test_helper::create_string_tokenizer;
+use crate::pc_specific::create_string_tokenizer;
 use crate::types::*;
-use crate::{parse_main_file, program_parser};
+use crate::{parse, parse_main_file, parse_main_str};
 use rusty_common::*;
 
 pub fn parse_something<P>(input: &str, parser: impl Parser<Output = P>) -> Result<P, QError> {
@@ -24,21 +24,7 @@ pub fn parse_something_completely<P>(input: &str, parser: impl Parser<Output = P
     result
 }
 
-fn parse_main_str<T: AsRef<[u8]> + 'static>(s: T) -> Result<ProgramNode, QErrorNode> {
-    let mut reader = create_string_tokenizer(s);
-    program_parser(&mut reader)
-}
-
-/// Parses the given string and demands success.
-///
-/// # Panics
-///
-/// If the parser has an error.
-pub fn parse<T: AsRef<[u8]> + 'static>(input: T) -> ProgramNode {
-    parse_main_str(input).expect("Could not parse program")
-}
-
-pub fn parse_str_no_location<T: AsRef<[u8]> + 'static>(input: T) -> Vec<TopLevelToken> {
+pub fn parse_str_no_location(input: &str) -> Vec<TopLevelToken> {
     Locatable::strip_location(parse(input))
 }
 
@@ -47,13 +33,13 @@ pub fn parse_str_no_location<T: AsRef<[u8]> + 'static>(input: T) -> Vec<TopLevel
 /// # Panics
 ///
 /// If the files does not exist or if the parser has an error.
-pub fn parse_file<S: AsRef<str>>(filename: S) -> ProgramNode {
-    let file_path = format!("../fixtures/{}", filename.as_ref());
+pub fn parse_file(filename: &str) -> ProgramNode {
+    let file_path = format!("../fixtures/{}", filename);
     let f = File::open(file_path).expect("Could not read bas file");
     parse_main_file(f).expect("Could not parse program")
 }
 
-pub fn parse_file_no_location<S: AsRef<str>>(filename: S) -> Vec<TopLevelToken> {
+pub fn parse_file_no_location(filename: &str) -> Vec<TopLevelToken> {
     Locatable::strip_location(parse_file(filename))
 }
 
@@ -63,7 +49,7 @@ pub fn parse_file_no_location<S: AsRef<str>>(filename: S) -> Vec<TopLevelToken> 
 /// # Panics
 ///
 /// If the parser does not have an error.
-pub fn parse_err_node<T: AsRef<[u8]> + 'static>(input: T) -> QErrorNode {
+pub fn parse_err_node(input: &str) -> QErrorNode {
     parse_main_str(input).expect_err("Parser should have failed")
 }
 
@@ -73,7 +59,7 @@ pub fn parse_err_node<T: AsRef<[u8]> + 'static>(input: T) -> QErrorNode {
 /// # Panics
 ///
 /// If the parser does not have an error.
-pub fn parse_err<T: AsRef<[u8]> + 'static>(input: T) -> QError {
+pub fn parse_err(input: &str) -> QError {
     parse_err_node(input).into_err()
 }
 
@@ -240,7 +226,7 @@ macro_rules! assert_built_in_sub_call {
 #[macro_export]
 macro_rules! assert_expression {
     ($left:expr, $right:expr) => {
-        let program = parse(format!("Flint {}", $left)).demand_single_statement();
+        let program = parse(&format!("Flint {}", $left)).demand_single_statement();
         $crate::assert_sub_call!(program, "Flint", $right);
     };
 
@@ -291,7 +277,7 @@ macro_rules! assert_parser_err {
 #[macro_export]
 macro_rules! assert_top_level_assignment {
     ($input:expr, $name_expr:expr) => {
-        match parse($input).demand_single_statement() {
+        match $crate::parse($input).demand_single_statement() {
             Statement::Assignment(n, _) => {
                 assert_eq!(n, $name_expr);
             }
@@ -299,7 +285,7 @@ macro_rules! assert_top_level_assignment {
         }
     };
     ($input:expr, $name:expr, $value:expr) => {
-        match parse($input).demand_single_statement() {
+        match $crate::parse($input).demand_single_statement() {
             Statement::Assignment(n, Locatable { element: v, .. }) => {
                 assert_eq!(n, Expression::var_unresolved($name));
                 assert_eq!(v, Expression::IntegerLiteral($value));
@@ -312,7 +298,7 @@ macro_rules! assert_top_level_assignment {
 #[macro_export]
 macro_rules! assert_function_declaration {
     ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
-        match parse($input).demand_single().element() {
+        match $crate::parse($input).demand_single().element() {
             TopLevelToken::FunctionDeclaration(name, parameters) => {
                 assert_eq!(
                     name.element(),
@@ -343,7 +329,7 @@ macro_rules! assert_function_declaration {
 #[macro_export]
 macro_rules! assert_def_type {
     ($input:expr, $expected_qualifier:expr, $expected_ranges:expr) => {
-        match parse($input).demand_single().element() {
+        match $crate::parse($input).demand_single().element() {
             TopLevelToken::DefType(def_type) => {
                 let def_type_qualifier = def_type.qualifier();
                 assert_eq!(def_type_qualifier, $expected_qualifier);
@@ -358,7 +344,7 @@ macro_rules! assert_def_type {
 macro_rules! assert_parse_dim_extended_built_in {
     ($name: literal, $keyword: literal, $qualifier: ident) => {
         let input = format!("DIM {} AS {}", $name, $keyword);
-        let p = parse(input).demand_single_statement();
+        let p = $crate::parse(&input).demand_single_statement();
         assert_eq!(
             p,
             $crate::Statement::Dim($crate::DimList {
@@ -380,7 +366,7 @@ macro_rules! assert_parse_dim_extended_built_in {
 macro_rules! assert_parse_dim_compact {
     ($name: literal) => {
         let input = format!("DIM {}", $name);
-        let p = parse(input).demand_single_statement();
+        let p = $crate::parse(&input).demand_single_statement();
         assert_eq!(
             p,
             Statement::Dim(
@@ -394,7 +380,7 @@ macro_rules! assert_parse_dim_compact {
 
     ($name: literal, $keyword: literal, $qualifier: ident) => {
         let input = format!("DIM {}{}", $name, $keyword);
-        let p = parse(input).demand_single_statement();
+        let p = $crate::parse(&input).demand_single_statement();
         assert_eq!(
             p,
             Statement::Dim(
@@ -407,7 +393,7 @@ macro_rules! assert_parse_dim_compact {
 #[macro_export]
 macro_rules! assert_file_handle {
     ($input:expr, $expected_file_handle:expr) => {
-        let result: Statement = parse($input).demand_single_statement();
+        let result: Statement = $crate::parse($input).demand_single_statement();
         match result {
             Statement::BuiltInSubCall(_, args) => {
                 assert_eq!(

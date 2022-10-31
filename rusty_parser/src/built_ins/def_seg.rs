@@ -21,7 +21,7 @@ fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::{parse, DemandSingleStatement, ExpressionNodeLiteralFactory};
+    use crate::test_utils::{DemandSingleStatement, ExpressionNodeLiteralFactory};
     use crate::*;
 
     #[test]

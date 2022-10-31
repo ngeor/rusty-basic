@@ -13,7 +13,7 @@ pub fn parse() -> impl Parser<Output = Statement> {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::{parse, DemandSingleStatement, ExpressionNodeLiteralFactory};
+    use crate::test_utils::{DemandSingleStatement, ExpressionNodeLiteralFactory};
     use crate::*;
 
     #[test]

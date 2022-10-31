@@ -115,14 +115,10 @@ fn else_block_p() -> impl Parser<Output = StatementNodes> {
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
-    use crate::{
-        ConditionalBlockNode, Expression, ExpressionType, IfBlockNode, Operator, Statement,
-        TopLevelToken,
-    };
-    use rusty_common::*;
-
     use super::super::test_utils::*;
+    use crate::assert_parser_err;
+    use crate::*;
+    use rusty_common::*;
 
     #[test]
     fn test_if() {

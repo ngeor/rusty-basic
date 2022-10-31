@@ -217,9 +217,13 @@ macro_rules! recognizers {
 
 #[cfg(test)]
 mod tests {
-    use crate::char_reader::test_helper::string_char_reader;
+    use crate::char_reader::string_char_reader;
     use crate::pc::tokenizers::{TokenizerImpl, UndoTokenizerImpl};
     use crate::pc::*;
+
+    fn many_letters_recognizer() -> impl Recognizer {
+        all_chars_are(is_letter)
+    }
 
     #[test]
     fn test_digits() {

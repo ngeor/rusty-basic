@@ -54,11 +54,11 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_parser_err;
     use crate::test_utils::*;
+    use crate::*;
     use rusty_common::*;
-
-    use super::*;
 
     #[test]
     fn test_function_implementation() {

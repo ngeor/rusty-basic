@@ -141,19 +141,19 @@ fn cannot_use_in_binary_expression() {
     for op in &ops {
         let input = format!(
             "
-                    TYPE Card
-                        Value AS INTEGER
-                    END TYPE
+            TYPE Card
+                Value AS INTEGER
+            END TYPE
 
-                    DIM a AS CARD
-                    DIM b AS CARD
+            DIM a AS CARD
+            DIM b AS CARD
 
-                    IF a {} b THEN
-                    END IF",
+            IF a {} b THEN
+            END IF",
             op
         );
         // QBasic uses the right side expr for the location
-        assert_linter_err!(input, QError::TypeMismatch, 9, 26 + (op.len() as u32) + 1);
+        assert_linter_err!(&input, QError::TypeMismatch, 9, 18 + (op.len() as u32) + 1);
     }
 }
 
@@ -173,6 +173,6 @@ fn cannot_use_in_unary_expression() {
             b = {}A",
             op
         );
-        assert_linter_err!(input, QError::TypeMismatch);
+        assert_linter_err!(&input, QError::TypeMismatch);
     }
 }

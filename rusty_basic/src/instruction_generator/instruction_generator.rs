@@ -416,31 +416,27 @@ impl InstructionGenerator {
         self.push(Instruction::PushUnnamedByVal, pos);
     }
 
-    pub fn jump_if_false<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {
+    pub fn jump_if_false(&mut self, prefix: &str, pos: Location) {
         self.push(
             Instruction::JumpIfFalse(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
-                format!("_{}_{:?}", prefix.as_ref(), pos),
+                format!("_{}_{:?}", prefix, pos),
             ))),
             pos,
         );
     }
 
-    pub fn jump<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {
+    pub fn jump(&mut self, prefix: &str, pos: Location) {
         self.push(
             Instruction::Jump(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
-                format!("_{}_{:?}", prefix.as_ref(), pos),
+                format!("_{}_{:?}", prefix, pos),
             ))),
             pos,
         );
     }
 
-    pub fn label<S: AsRef<str>>(&mut self, prefix: S, pos: Location) {
+    pub fn label(&mut self, prefix: &str, pos: Location) {
         self.push(
-            Instruction::Label(CaseInsensitiveString::new(format!(
-                "_{}_{:?}",
-                prefix.as_ref(),
-                pos
-            ))),
+            Instruction::Label(CaseInsensitiveString::new(format!("_{}_{:?}", prefix, pos))),
             pos,
         );
     }

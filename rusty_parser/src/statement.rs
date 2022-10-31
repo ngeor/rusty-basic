@@ -180,10 +180,9 @@ mod system {
 
 #[cfg(test)]
 mod tests {
-    use crate::{PrintNode, Statement, TopLevelToken};
+    use crate::test_utils::*;
+    use crate::*;
     use rusty_common::*;
-
-    use super::super::test_utils::*;
 
     #[test]
     fn test_top_level_comment() {

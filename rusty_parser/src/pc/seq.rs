@@ -8,7 +8,7 @@ use rusty_common::*;
 // When in non-opt-parser: all parts must succeed.
 
 macro_rules! seq_pc {
-    (pub struct $name:ident<$first_type:tt, $($generic_type:tt),+ > ; fn $map_fn_name:ident ; fn $map_fn_name_non_opt:ident) => {
+    (pub struct $name:ident<$first_type:tt, $($generic_type:tt),+ > ; fn $map_fn_name:ident) => {
         #[allow(non_snake_case)]
         pub struct $name <$first_type, $($generic_type),+> {
             // holds the first parser object (might be opt-parser or non-opt parser)
@@ -76,6 +76,10 @@ macro_rules! seq_pc {
                 move |($first_type, $($generic_type),+)| mapper($first_type, $($generic_type),+)
             )
         }
+    };
+
+    (pub struct $name:ident<$first_type:tt, $($generic_type:tt),+ > ; fn $map_fn_name:ident ; fn $map_fn_name_non_opt:ident) => {
+        seq_pc!(pub struct $name<$first_type, $($generic_type),+> ; fn $map_fn_name);
 
         #[allow(non_snake_case)]
         pub fn $map_fn_name_non_opt<$first_type, $($generic_type),+, _F, _O>(
@@ -96,8 +100,8 @@ macro_rules! seq_pc {
     };
 }
 
-seq_pc!(pub struct Seq2<A, B> ; fn seq2; fn seq2_non_opt);
-seq_pc!(pub struct Seq3<A, B, C> ; fn seq3; fn seq3_non_opt);
-seq_pc!(pub struct Seq4<A, B, C, D> ; fn seq4; fn seq4_non_opt);
+seq_pc!(pub struct Seq2<A, B> ; fn seq2);
+seq_pc!(pub struct Seq3<A, B, C> ; fn seq3);
+seq_pc!(pub struct Seq4<A, B, C, D> ; fn seq4);
 seq_pc!(pub struct Seq5<A, B, C, D, E> ; fn seq5; fn seq5_non_opt);
-seq_pc!(pub struct Seq6<A, B, C, D, E, F> ; fn seq6; fn seq6_non_opt);
+seq_pc!(pub struct Seq6<A, B, C, D, E, F> ; fn seq6);

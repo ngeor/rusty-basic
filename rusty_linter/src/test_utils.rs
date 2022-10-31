@@ -1,17 +1,13 @@
 use crate::{lint, HasUserDefinedTypes};
 use rusty_common::QErrorNode;
-use rusty_parser::test_utils::parse;
-use rusty_parser::ProgramNode;
+use rusty_parser::{parse, ProgramNode};
 
 /// Lints the given string and returns the results.
 ///
 /// # Panics
 ///
 /// Panics if the parser or the linter have an error.
-pub fn linter_ok_with_types<T>(input: T) -> (ProgramNode, impl HasUserDefinedTypes)
-where
-    T: AsRef<[u8]> + 'static,
-{
+pub fn linter_ok_with_types(input: &str) -> (ProgramNode, impl HasUserDefinedTypes) {
     let program = parse(input);
     lint(program).unwrap()
 }
@@ -21,10 +17,7 @@ where
 /// # Panics
 ///
 /// Panics if the parser or the linter have an error.
-pub fn linter_ok<T>(input: T) -> ProgramNode
-where
-    T: AsRef<[u8]> + 'static,
-{
+pub fn linter_ok(input: &str) -> ProgramNode {
     linter_ok_with_types(input).0
 }
 
@@ -33,10 +26,7 @@ where
 /// # Panics
 ///
 /// If the parser has an error or if the linter did not have an error.
-pub fn linter_err<T>(input: T, msg: &str) -> QErrorNode
-where
-    T: AsRef<[u8]> + 'static,
-{
+pub fn linter_err(input: &str, msg: &str) -> QErrorNode {
     let program = parse(input);
     match lint(program) {
         Ok(_) => panic!("Linter should fail {}", msg),

@@ -4,7 +4,7 @@
 
 #[macro_export]
 macro_rules! parser_declaration {
-    ($vis:vis struct $name: ident $(<$($generic_var_name: tt: $generic_type:tt),*>)?$({
+    ($(#[$($attrss:tt)*])*$vis:vis struct $name: ident $(<$($generic_var_name: tt: $generic_type:tt),*>)?$({
         $($field_name: tt: $field_type: tt),*$(,)?
     })?) => {
         $vis struct $name<P$(, $($generic_type),*)?> {
@@ -13,6 +13,7 @@ macro_rules! parser_declaration {
             $($field_name: $field_type),*)?
         }
 
+        $(#[$($attrss)*])*
         impl<P$(, $($generic_type),*)?> $name<P$(, $($generic_type),*)?> {
             pub fn new(parser: P$(, $($generic_var_name: $generic_type),*)?$(, $($field_name: $field_type),*)?) -> Self {
                 Self {

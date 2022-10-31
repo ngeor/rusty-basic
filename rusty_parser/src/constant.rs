@@ -20,7 +20,7 @@ pub fn constant_p() -> impl Parser<Output = Statement> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use crate::{Expression, Name, Statement, TopLevelToken};
+    use crate::*;
     use rusty_common::*;
 
     #[test]
@@ -52,7 +52,7 @@ mod tests {
         for name in &names {
             for value in &values {
                 let input = format!("CONST {} = {}", name, value);
-                let statement = parse(input).demand_single_statement();
+                let statement = parse(&input).demand_single_statement();
                 match statement {
                     Statement::Const(
                         Locatable { element: left, .. },

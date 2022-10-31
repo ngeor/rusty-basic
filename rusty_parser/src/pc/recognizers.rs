@@ -164,10 +164,6 @@ pub fn many_white_space_recognizer() -> impl Recognizer {
     all_chars_are(|ch| ch == ' ' || ch == '\t')
 }
 
-pub fn many_letters_recognizer() -> impl Recognizer {
-    all_chars_are(is_letter)
-}
-
 pub fn is_letter(ch: char) -> bool {
     ('a'..='z').contains(&ch) || ('A'..='Z').contains(&ch)
 }

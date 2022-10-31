@@ -74,12 +74,9 @@ fn mock_interpreter_for_user_defined_types_stdlib<U: HasUserDefinedTypes>(
     }
 }
 
-pub fn mock_interpreter_for_input<T>(
-    input: T,
-) -> (InstructionGeneratorResult, impl MockInterpreterTrait)
-where
-    T: AsRef<[u8]> + 'static,
-{
+pub fn mock_interpreter_for_input(
+    input: &str,
+) -> (InstructionGeneratorResult, impl MockInterpreterTrait) {
     let (instruction_generator_result, user_defined_types_holder) =
         generate_instructions_str_with_types(input);
     // println!("{:#?}", instruction_generator_result.instructions);
@@ -89,10 +86,7 @@ where
     )
 }
 
-pub fn interpret<T>(input: T) -> impl MockInterpreterTrait
-where
-    T: AsRef<[u8]> + 'static,
-{
+pub fn interpret(input: &str) -> impl MockInterpreterTrait {
     let (instruction_generator_result, mut interpreter) = mock_interpreter_for_input(input);
     interpreter
         .interpret(instruction_generator_result)
@@ -100,20 +94,14 @@ where
         .unwrap()
 }
 
-pub fn interpret_err<T>(input: T) -> QErrorNode
-where
-    T: AsRef<[u8]> + 'static,
-{
+pub fn interpret_err(input: &str) -> QErrorNode {
     let (instruction_generator_result, mut interpreter) = mock_interpreter_for_input(input);
     interpreter
         .interpret(instruction_generator_result)
         .unwrap_err()
 }
 
-pub fn interpret_with_raw_input<T>(input: T, raw_input: &str) -> impl MockInterpreterTrait
-where
-    T: AsRef<[u8]> + 'static,
-{
+pub fn interpret_with_raw_input(input: &str, raw_input: &str) -> impl MockInterpreterTrait {
     let (instruction_generator_result, user_defined_types_holder) =
         generate_instructions_str_with_types(input);
     // for i in instructions.iter() {
@@ -129,10 +117,7 @@ where
         .unwrap()
 }
 
-pub fn interpret_with_env<T>(input: T, stdlib: MockStdlib) -> impl MockInterpreterTrait
-where
-    T: AsRef<[u8]> + 'static,
-{
+pub fn interpret_with_env(input: &str, stdlib: MockStdlib) -> impl MockInterpreterTrait {
     let (instruction_generator_result, user_defined_types_holder) =
         generate_instructions_str_with_types(input);
     // println!("{:#?}", instructions);
@@ -144,11 +129,8 @@ where
         .unwrap()
 }
 
-pub fn interpret_file<S>(filename: S) -> Result<impl MockInterpreterTrait, QErrorNode>
-where
-    S: AsRef<str>,
-{
-    let file_path = format!("../fixtures/{}", filename.as_ref());
+pub fn interpret_file(filename: &str) -> Result<impl MockInterpreterTrait, QErrorNode> {
+    let file_path = format!("../fixtures/{}", filename);
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
     let (linted_program, user_defined_types) = lint(program).unwrap();
@@ -159,14 +141,11 @@ where
         .map(|_| interpreter)
 }
 
-pub fn interpret_file_with_raw_input<S>(
-    filename: S,
+pub fn interpret_file_with_raw_input(
+    filename: &str,
     raw_input: &str,
-) -> Result<impl MockInterpreterTrait, QErrorNode>
-where
-    S: AsRef<str>,
-{
-    let file_path = format!("../fixtures/{}", filename.as_ref());
+) -> Result<impl MockInterpreterTrait, QErrorNode> {
+    let file_path = format!("../fixtures/{}", filename);
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
     let (linted_program, user_defined_types) = lint(program).unwrap();
@@ -191,10 +170,8 @@ pub struct MockStdin {
 }
 
 impl ReadInputSource<MockStdin> {
-    pub fn add_next_input<S: AsRef<str>>(&mut self, value: S) {
-        self.inner()
-            .stdin
-            .extend_from_slice(value.as_ref().as_bytes());
+    pub fn add_next_input(&mut self, value: &str) {
+        self.inner().stdin.extend_from_slice(value.as_bytes());
     }
 }
 

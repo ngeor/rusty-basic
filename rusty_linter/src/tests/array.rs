@@ -1,7 +1,6 @@
 use crate::assert_linter_err;
 use crate::test_utils::linter_ok;
 use rusty_common::*;
-use rusty_parser::test_utils::ExpressionNodeLiteralFactory;
 use rusty_parser::*;
 
 #[test]
@@ -137,7 +136,7 @@ fn test_passing_array_parameter_with_parenthesis() {
                         Expression::var_resolved("X$"),
                         Expression::ArrayElement(
                             "choice$".into(),
-                            vec![1.as_lit_expr(7, 22)],
+                            vec![Expression::IntegerLiteral(1).at_rc(7, 22)],
                             VariableInfo {
                                 expression_type: ExpressionType::BuiltIn(
                                     TypeQualifier::DollarString
@@ -176,8 +175,8 @@ fn test_passing_array_without_parenthesis() {
                     .bare_name("choice")
                     .dim_type(DimType::Array(
                         vec![ArrayDimension {
-                            lbound: Some(1.as_lit_expr(2, 17)),
-                            ubound: 3.as_lit_expr(2, 22)
+                            lbound: Some(Expression::IntegerLiteral(1).at_rc(2, 17)),
+                            ubound: Expression::IntegerLiteral(3).at_rc(2, 22)
                         }],
                         Box::new(DimType::BuiltIn(
                             TypeQualifier::DollarString,

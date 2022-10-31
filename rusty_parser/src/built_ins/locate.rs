@@ -10,8 +10,8 @@ pub fn parse() -> impl Parser<Output = Statement> {
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
-    use crate::test_utils::{parse, DemandSingleStatement, ExpressionNodeLiteralFactory};
-    use crate::{BuiltInSub, Statement};
+    use crate::test_utils::{DemandSingleStatement, ExpressionNodeLiteralFactory};
+    use crate::{parse, BuiltInSub, Statement};
     use rusty_common::*;
 
     #[test]

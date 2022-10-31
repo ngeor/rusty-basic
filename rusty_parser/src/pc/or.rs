@@ -76,37 +76,13 @@ alt_pc!(
     Alt3 ; A, B, C
 );
 alt_pc!(
-    Alt4 ; A, B, C, D
-);
-alt_pc!(
     Alt5 ; A, B, C, D, E
-);
-alt_pc!(
-    Alt6 ; A, B, C, D, E, F
 );
 alt_pc!(
     Alt7 ; A, B, C, D, E, F, G
 );
 alt_pc!(
     Alt8 ; A, B, C, D, E, F, G, H
-);
-alt_pc!(
-    Alt9 ; A, B, C, D, E, F, G, H, I
-);
-alt_pc!(
-    Alt10 ; A, B, C, D, E, F, G, H, I, J
-);
-alt_pc!(
-    Alt11 ; A, B, C, D, E, F, G, H, I, J, K
-);
-alt_pc!(
-    Alt12 ; A, B, C, D, E, F, G, H, I, J, K, L
-);
-alt_pc!(
-    Alt13 ; A, B, C, D, E, F, G, H, I, J, K, L, M
-);
-alt_pc!(
-    Alt14 ; A, B, C, D, E, F, G, H, I, J, K, L, M, N
 );
 alt_pc!(
     Alt15 ; A, B, C, D, E, F, G, H, I, J, K, L, M, N, O

@@ -10,7 +10,7 @@ mod type_resolver;
 mod type_resolver_impl;
 mod types;
 
-// TODO #[cfg(test)]
+#[cfg(test)]
 mod test_utils;
 #[cfg(test)]
 mod tests;

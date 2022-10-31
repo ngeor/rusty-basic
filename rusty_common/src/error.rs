@@ -220,8 +220,8 @@ pub enum QError {
 }
 
 impl QError {
-    pub fn syntax_error<S: AsRef<str>>(msg: S) -> Self {
-        QError::SyntaxError(msg.as_ref().to_string())
+    pub fn syntax_error(msg: &str) -> Self {
+        QError::SyntaxError(msg.to_string())
     }
 
     pub fn expected(msg: &str) -> Self {

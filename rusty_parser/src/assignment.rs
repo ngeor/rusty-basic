@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
     use crate::assert_parser_err;
     use crate::assert_top_level_assignment;
-    use crate::types::*;
+    use crate::test_utils::*;
+    use crate::*;
     use rusty_common::*;
 
     mod unqualified {
@@ -22,10 +22,10 @@ mod tests {
             fn test_whitespace_around_equals_is_optional() {
                 let var_name = "A";
                 let value = 42;
-                assert_top_level_assignment!(format!("{} = {}", var_name, value), var_name, value);
-                assert_top_level_assignment!(format!("{}={}", var_name, value), var_name, value);
-                assert_top_level_assignment!(format!("{}= {}", var_name, value), var_name, value);
-                assert_top_level_assignment!(format!("{} ={}", var_name, value), var_name, value);
+                assert_top_level_assignment!(&format!("{} = {}", var_name, value), var_name, value);
+                assert_top_level_assignment!(&format!("{}={}", var_name, value), var_name, value);
+                assert_top_level_assignment!(&format!("{}= {}", var_name, value), var_name, value);
+                assert_top_level_assignment!(&format!("{} ={}", var_name, value), var_name, value);
             }
 
             #[test]
@@ -162,10 +162,10 @@ mod tests {
         let values = [1, -1, 0, 42];
         for name in &names {
             for value in &values {
-                assert_top_level_assignment!(format!("{} = {}", name, value), *name, *value);
-                assert_top_level_assignment!(format!("{}={}", name, value), *name, *value);
-                assert_top_level_assignment!(format!("{} ={}", name, value), *name, *value);
-                assert_top_level_assignment!(format!("{}= {}", name, value), *name, *value);
+                assert_top_level_assignment!(&format!("{} = {}", name, value), *name, *value);
+                assert_top_level_assignment!(&format!("{}={}", name, value), *name, *value);
+                assert_top_level_assignment!(&format!("{} ={}", name, value), *name, *value);
+                assert_top_level_assignment!(&format!("{}= {}", name, value), *name, *value);
             }
         }
     }
@@ -307,7 +307,7 @@ mod tests {
             let left_sides = ["DIM", "DIM%", "DIM&", "DIM!", "DIM#"];
             for left_side in &left_sides {
                 let input = format!("{} = 42", left_side);
-                assert!(matches!(parse_err(input), QError::SyntaxError(_)));
+                assert!(matches!(parse_err(&input), QError::SyntaxError(_)));
             }
         }
     }

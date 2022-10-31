@@ -466,7 +466,7 @@ mod redim {
                     "#,
                     ch
                 );
-                assert_linter_err!(input, QError::DuplicateDefinition);
+                assert_linter_err!(&input, QError::DuplicateDefinition);
             }
         }
 
@@ -492,7 +492,7 @@ mod redim {
                     "#,
                     s
                 );
-                assert_linter_err!(input, QError::DuplicateDefinition, s);
+                assert_linter_err!(&input, QError::DuplicateDefinition, s);
             }
         }
     }
@@ -523,7 +523,7 @@ mod redim {
                 "#,
                     s
                 );
-                assert_linter_err!(input, QError::DuplicateDefinition, s);
+                assert_linter_err!(&input, QError::DuplicateDefinition, s);
             }
         }
 
@@ -537,7 +537,7 @@ mod redim {
                 "#,
                     ch, ch
                 );
-                assert_linter_err!(input, QError::DuplicateDefinition, ch);
+                assert_linter_err!(&input, QError::DuplicateDefinition, ch);
             }
         }
 
@@ -563,7 +563,7 @@ mod redim {
                     "#,
                         s, ch
                     );
-                    assert_linter_err!(input, QError::DuplicateDefinition);
+                    assert_linter_err!(&input, QError::DuplicateDefinition);
                 }
             }
         }
@@ -590,7 +590,7 @@ mod redim {
                     "#,
                         ch, s
                     );
-                    assert_linter_err!(input, QError::DuplicateDefinition);
+                    assert_linter_err!(&input, QError::DuplicateDefinition);
                 }
             }
         }
@@ -626,7 +626,7 @@ mod redim {
                         s, s2
                     );
                     assert_linter_err!(
-                        input,
+                        &input,
                         QError::DuplicateDefinition,
                         format!("{} -> {}", s, s2)
                     );
@@ -648,7 +648,7 @@ mod redim {
                 "#,
                     ch, ch
                 );
-                assert_linter_err!(input, QError::ArrayAlreadyDimensioned);
+                assert_linter_err!(&input, QError::ArrayAlreadyDimensioned);
             }
         }
 
@@ -673,7 +673,7 @@ mod redim {
                 "#,
                     s, s
                 );
-                assert_linter_err!(input, QError::ArrayAlreadyDimensioned, s);
+                assert_linter_err!(&input, QError::ArrayAlreadyDimensioned, s);
             }
         }
     }
@@ -691,7 +691,7 @@ mod redim {
                 "#,
                     ch, ch
                 );
-                assert_linter_err!(input, QError::WrongNumberOfDimensions);
+                assert_linter_err!(&input, QError::WrongNumberOfDimensions);
             }
         }
 
@@ -716,7 +716,7 @@ mod redim {
                 "#,
                     s, s
                 );
-                assert_linter_err!(input, QError::WrongNumberOfDimensions, s);
+                assert_linter_err!(&input, QError::WrongNumberOfDimensions, s);
             }
         }
     }
@@ -756,7 +756,7 @@ mod redim {
                             a, b
                         );
                         assert_linter_err!(
-                            input,
+                            &input,
                             QError::DuplicateDefinition,
                             format!("REDIM {} to {}", a, b).as_str()
                         );

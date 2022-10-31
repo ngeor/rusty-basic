@@ -37,8 +37,7 @@ impl Parser for CommentAsString {
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
-    use super::*;
+    use crate::*;
 
     #[test]
     fn test_comment_until_eof() {

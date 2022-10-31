@@ -185,7 +185,7 @@ fn case_else() -> impl Parser<Output = StatementNodes> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
-    use crate::types::*;
+    use crate::*;
     use crate::{assert_parser_err, bin_exp, int_lit, paren_exp};
     use rusty_common::*;
 

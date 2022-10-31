@@ -123,10 +123,9 @@ fn demand_string_length_p() -> impl Parser<Output = ExpressionNode> + NonOptPars
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::assert_parser_err;
     use crate::test_utils::*;
-    use crate::types::*;
+    use crate::*;
     use rusty_common::AtRowCol;
 
     #[test]
@@ -210,12 +209,12 @@ mod tests {
         for e in &illegal_expressions {
             let input = format!(
                 "
-            TYPE Invalid
-                ZeroString AS STRING * {}
-            END TYPE",
+                TYPE Invalid
+                    ZeroString AS STRING * {}
+                END TYPE",
                 e
             );
-            assert_parser_err!(input, QError::syntax_error("Illegal string length"));
+            assert_parser_err!(&input, QError::syntax_error("Illegal string length"));
         }
     }
 
@@ -225,12 +224,12 @@ mod tests {
         for e in &illegal_expressions {
             let input = format!(
                 "
-            TYPE Invalid
-                ZeroString AS STRING * {}
-            END TYPE",
+                TYPE Invalid
+                    ZeroString AS STRING * {}
+                END TYPE",
                 e
             );
-            assert_parser_err!(input, QError::syntax_error("String length out of range"));
+            assert_parser_err!(&input, QError::syntax_error("String length out of range"));
         }
     }
 

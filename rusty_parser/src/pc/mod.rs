@@ -13,6 +13,7 @@ mod delimited;
 mod filter;
 mod guard;
 mod iif;
+#[cfg(debug_assertions)]
 mod logging;
 mod loop_while;
 mod macros;

@@ -94,13 +94,9 @@ fn fold_to_bare_name(expr: Expression) -> Result<BareName, QError> {
 #[cfg(test)]
 mod tests {
     use crate::assert_sub_call;
-    use crate::{
-        BuiltInStyle, BuiltInSub, Expression, ExpressionType, Operator, ParamName, ParamType,
-        PrintArg, PrintNode, Statement, SubImplementation, TopLevelToken, TypeQualifier,
-    };
+    use crate::test_utils::*;
+    use crate::*;
     use rusty_common::*;
-
-    use super::super::test_utils::*;
 
     #[test]
     fn test_parse_sub_call_no_args() {

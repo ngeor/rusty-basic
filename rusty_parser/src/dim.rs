@@ -41,7 +41,7 @@ fn opt_shared_keyword() -> impl Parser<Output = Option<(Token, Token)>> + NonOpt
 #[cfg(test)]
 mod tests {
     use crate::test_utils::*;
-    use crate::types::*;
+    use crate::*;
     use crate::{assert_parse_dim_compact, assert_parse_dim_extended_built_in, assert_parser_err};
     use rusty_common::*;
 
@@ -67,7 +67,7 @@ mod tests {
         for var_name in &var_names {
             for var_type in &types {
                 let input = format!("DIM {} AS {}", var_name, var_type);
-                let p = parse(input).demand_single_statement();
+                let p = parse(&input).demand_single_statement();
                 let var_name_bare: BareName = (*var_name).into();
                 let var_type_bare: BareName = (*var_type).into();
                 match p {
@@ -236,7 +236,7 @@ mod tests {
             let left_sides = ["DIM", "DIM%", "DIM&", "DIM!", "DIM#"];
             for left_side in &left_sides {
                 let input = format!("DIM {}", left_side);
-                assert!(matches!(parse_err(input), QError::SyntaxError(_)));
+                assert!(matches!(parse_err(&input), QError::SyntaxError(_)));
             }
         }
     }

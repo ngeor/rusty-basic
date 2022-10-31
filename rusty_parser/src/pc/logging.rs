@@ -4,6 +4,7 @@ use crate::pc::tokenizers::Tokenizer;
 use rusty_common::*;
 
 parser_declaration!(
+    #[allow(dead_code)]
     pub struct LoggingPC {
         tag: String,
     }

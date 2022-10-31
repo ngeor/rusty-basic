@@ -103,21 +103,21 @@ mod tests {
         std::fs::write(filename, "Hello world!!!\r\n").unwrap();
         let input = format!(
             r#"
-        TYPE MyType
-            Greeting AS STRING * 11
-        END TYPE
+            TYPE MyType
+                Greeting AS STRING * 11
+            END TYPE
 
-        DIM A(1 TO 2) AS MyType
+            DIM A(1 TO 2) AS MyType
 
-        OPEN "{}" FOR INPUT AS #1
-        LINE INPUT #1, A(1).Greeting
-        CLOSE
+            OPEN "{}" FOR INPUT AS #1
+            LINE INPUT #1, A(1).Greeting
+            CLOSE
 
-        PRINT A(1).Greeting
-        "#,
+            PRINT A(1).Greeting
+            "#,
             filename
         );
-        assert_prints!(input, "Hello world");
+        assert_prints!(&input, "Hello world");
         std::fs::remove_file(filename).unwrap_or_default();
     }
 }

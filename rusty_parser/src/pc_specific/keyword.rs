@@ -5,12 +5,6 @@ use rusty_common::*;
 
 // TODO review usages of TokenType::Keyword
 
-/// Matches any keyword. Ensures that it is not followed by
-/// the dollar sign, in which case it is a valid identifier.
-pub fn any_keyword() -> impl Parser<Output = Token> {
-    dollar_sign_check(any_token_of(TokenType::Keyword))
-}
-
 fn dollar_sign_check(parser: impl Parser<Output = Token>) -> impl Parser<Output = Token> {
     parser.and(dollar_sign().peek().negate()).keep_left()
 }

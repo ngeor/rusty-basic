@@ -3,14 +3,11 @@ use crate::instruction_generator::{
 };
 use rusty_common::Locatable;
 use rusty_linter::{lint, HasUserDefinedTypes};
-use rusty_parser::test_utils::parse;
+use rusty_parser::parse;
 
-pub fn generate_instructions_str_with_types<T>(
-    input: T,
-) -> (InstructionGeneratorResult, impl HasUserDefinedTypes)
-where
-    T: AsRef<[u8]> + 'static,
-{
+pub fn generate_instructions_str_with_types(
+    input: &str,
+) -> (InstructionGeneratorResult, impl HasUserDefinedTypes) {
     let program = parse(input);
     let (linted_program, user_defined_types_holder) = lint(program).expect("Linter should succeed");
     (
@@ -19,17 +16,11 @@ where
     )
 }
 
-pub fn generate_instructions_str<T>(input: T) -> Vec<InstructionNode>
-where
-    T: AsRef<[u8]> + 'static,
-{
+pub fn generate_instructions_str(input: &str) -> Vec<InstructionNode> {
     let (instruction_nodes, _) = generate_instructions_str_with_types(input);
     instruction_nodes.instructions
 }
 
-pub fn generate_instructions_str_no_location<T>(input: T) -> Vec<Instruction>
-where
-    T: AsRef<[u8]> + 'static,
-{
+pub fn generate_instructions_str_no_location(input: &str) -> Vec<Instruction> {
     Locatable::strip_location(generate_instructions_str(input))
 }

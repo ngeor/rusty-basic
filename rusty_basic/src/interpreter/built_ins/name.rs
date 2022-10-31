@@ -53,7 +53,7 @@ mod tests {
         std::fs::create_dir(old_dir_name).expect("Should have created directory");
 
         // act
-        interpret(format!(r#"NAME "{}" AS "{}""#, old_dir_name, new_dir_name));
+        interpret(&format!(r#"NAME "{}" AS "{}""#, old_dir_name, new_dir_name));
 
         // assert
         std::fs::metadata(old_dir_name).expect_err("should fail");

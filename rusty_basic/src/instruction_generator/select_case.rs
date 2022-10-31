@@ -35,7 +35,7 @@ impl InstructionGenerator {
         let case_blocks_len = case_blocks.len();
         for (case_block_index, case_block) in case_blocks.into_iter().enumerate() {
             // mark the beginning of this case block
-            self.label(labels::case_block(case_block_index), pos);
+            self.label(&labels::case_block(case_block_index), pos);
             // where to jump out from here if the case block isn't matching
             let next_case_label =
                 labels::next_case_label(case_blocks_len, has_else, case_block_index);
@@ -49,7 +49,7 @@ impl InstructionGenerator {
             // if we have a multi-expr CASE, we need a label marker for the CASE block statements to jump to
             if is_multi_expr {
                 // mark beginning of CASE block statements
-                self.label(labels::case_statements(case_block_index), pos);
+                self.label(&labels::case_statements(case_block_index), pos);
             }
             // run matched CASE block statements
             self.visit(case_block.statements);
@@ -81,7 +81,7 @@ impl InstructionGenerator {
                     // mark the beginning of the evaluation of this CASE expr,
                     // which will be where we jump to if the previous is false
                     let inner_label = labels::case_expr(case_block_index, case_expr_index);
-                    self.label(inner_label, pos);
+                    self.label(&inner_label, pos);
                 }
                 let next_label = if is_last {
                     // if this is the last expr, we jump to the next case label
@@ -93,7 +93,7 @@ impl InstructionGenerator {
                 self.generate_case_expression(case_expr, &next_label, pos);
                 if !is_last {
                     // if this expression matched, jump directly into the CASE block statements and do not evaluate the rest
-                    self.jump(labels::case_statements(case_block_index), pos);
+                    self.jump(&labels::case_statements(case_block_index), pos);
                 }
             }
         } else {
@@ -196,12 +196,12 @@ mod labels {
         format!("case-statements{}", case_block_index)
     }
 
-    pub fn case_else() -> String {
-        "case-else".to_string()
+    pub fn case_else() -> &'static str {
+        "case-else"
     }
 
-    pub fn end_select() -> String {
-        "end-select".to_string()
+    pub fn end_select() -> &'static str {
+        "end-select"
     }
 
     pub fn next_case_label(
@@ -212,9 +212,9 @@ mod labels {
         if case_block_index + 1 < case_blocks_len {
             case_block(case_block_index + 1)
         } else if has_else_block {
-            case_else()
+            case_else().to_owned()
         } else {
-            end_select()
+            end_select().to_owned()
         }
     }
 }

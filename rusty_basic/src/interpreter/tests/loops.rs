@@ -18,7 +18,7 @@ fn test_simple_for_loop() {
             ",
             name, name
         );
-        assert_prints!(input, "1", "2", "3", "4", "5");
+        assert_prints!(&input, "1", "2", "3", "4", "5");
     }
 }
 

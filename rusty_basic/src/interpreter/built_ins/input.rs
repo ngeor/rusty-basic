@@ -107,7 +107,7 @@ mod tests {
         Variant: From<T>,
     {
         let input = format!("INPUT {}", variable_literal);
-        let interpreter = interpret_with_raw_input(input, raw_input);
+        let interpreter = interpret_with_raw_input(&input, raw_input);
         assert_has_variable!(interpreter, qualified_variable, expected_value);
     }
 

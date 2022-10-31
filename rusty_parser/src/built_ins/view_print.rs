@@ -20,8 +20,8 @@ fn parse_args() -> impl Parser<Output = ExpressionNodes> {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::{parse, DemandSingleStatement, ExpressionNodeLiteralFactory};
-    use crate::{BuiltInSub, Statement};
+    use crate::test_utils::{DemandSingleStatement, ExpressionNodeLiteralFactory};
+    use crate::{parse, BuiltInSub, Statement};
 
     #[test]
     fn parse_no_args() {

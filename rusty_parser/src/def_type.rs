@@ -63,7 +63,7 @@ fn token_to_char(token: Token) -> char {
 mod tests {
     use super::*;
     use crate::test_utils::*;
-    use crate::types::{Statement, TopLevelToken};
+    use crate::*;
     use crate::{assert_def_type, assert_parser_err};
 
     #[test]

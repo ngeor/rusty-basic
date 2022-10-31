@@ -534,7 +534,7 @@ mod tests {
         let output = ["42", " 2", "-1", " 3", " 3", " 4", "62", "16777215"];
         for i in 0..input.len() {
             let program = format!("PRINT USING \"##\"; {};", input[i]);
-            assert_prints_exact!(program, output[i]);
+            assert_prints_exact!(&program, output[i]);
         }
     }
 
@@ -561,7 +561,7 @@ mod tests {
         ];
         for i in 0..input.len() {
             let program = format!("PRINT USING \"##.##\"; {};", input[i]);
-            assert_prints_exact!(program, output[i]);
+            assert_prints_exact!(&program, output[i]);
         }
     }
 

@@ -33,7 +33,7 @@ mod var_name;
 pub mod variant;
 mod while_wend;
 
-// TODO #[cfg(test)]
+#[cfg(test)]
 pub mod test_utils;
 
 pub use built_ins::{BuiltInFunction, BuiltInSub};
@@ -42,7 +42,7 @@ pub use types::*;
 use std::fs::File;
 
 use crate::pc::*;
-use crate::pc_specific::create_file_tokenizer;
+use crate::pc_specific::{create_file_tokenizer, create_string_tokenizer};
 use crate::top_level_token::TopLevelTokensParser;
 use rusty_common::*;
 
@@ -68,6 +68,20 @@ pub fn program_parser(reader: &mut impl Tokenizer) -> Result<ProgramNode, QError
         Ok(opt_program) => Ok(opt_program),
         Err(err) => Err(ErrorEnvelope::Pos(err, reader.position())),
     }
+}
+
+/// Parses the given string and demands success.
+///
+/// # Panics
+///
+/// If the parser has an error.
+pub fn parse(input: &str) -> ProgramNode {
+    parse_main_str(input).expect("Could not parse program")
+}
+
+fn parse_main_str(input: &str) -> Result<ProgramNode, QErrorNode> {
+    let mut reader = create_string_tokenizer(input);
+    program_parser(&mut reader)
 }
 
 #[cfg(test)]

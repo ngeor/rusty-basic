@@ -5,13 +5,13 @@ macro_rules! assert_condition_err {
     ($condition:expr) => {
         let program = format!(
             r#"
-                    IF {} THEN
-                        PRINT "hi"
-                    END IF
-                    "#,
+            IF {} THEN
+                PRINT "hi"
+            END IF
+            "#,
             $condition
         );
-        assert_linter_err!(program, QError::TypeMismatch);
+        assert_linter_err!(&program, QError::TypeMismatch);
     };
 }
 

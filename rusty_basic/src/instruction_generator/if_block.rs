@@ -33,7 +33,7 @@ impl InstructionGenerator {
 
         for i in 0..else_if_blocks.len() {
             let else_if_block = else_if_blocks[i].clone();
-            self.label(format!("else-if-{}", i), pos);
+            self.label(&format!("else-if-{}", i), pos);
 
             // evaluate condition into A
             self.generate_expression_instructions(else_if_block.condition);
@@ -46,7 +46,7 @@ impl InstructionGenerator {
             } else {
                 "end-if".to_string()
             };
-            self.jump_if_false(next_label, pos);
+            self.jump_if_false(&next_label, pos);
 
             // if true, run statements and jump out
             self.visit(else_if_block.statements);

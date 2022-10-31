@@ -1,4 +1,4 @@
-use crate::char_reader::file_char_reader;
+use crate::char_reader::{file_char_reader, string_char_reader};
 use crate::pc::*;
 use crate::pc_specific::TokenType;
 use crate::recognizers;
@@ -152,16 +152,6 @@ pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
     create_tokenizer(file_char_reader(input), create_recognizers())
 }
 
-// TODO #[cfg(test)]
-pub mod test_helper {
-    use crate::char_reader::test_helper::string_char_reader;
-    use crate::pc::{create_tokenizer, Tokenizer};
-    use crate::pc_specific::create_recognizers;
-
-    pub fn create_string_tokenizer<T>(input: T) -> impl Tokenizer
-    where
-        T: AsRef<[u8]>,
-    {
-        create_tokenizer(string_char_reader(input), create_recognizers())
-    }
+pub fn create_string_tokenizer(input: &str) -> impl Tokenizer + '_ {
+    create_tokenizer(string_char_reader(input), create_recognizers())
 }

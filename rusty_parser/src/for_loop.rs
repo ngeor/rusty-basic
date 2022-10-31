@@ -70,7 +70,7 @@ fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
 mod tests {
     use super::super::test_utils::*;
     use crate::assert_parser_err;
-    use crate::types::*;
+    use crate::*;
     use rusty_common::*;
 
     #[test]

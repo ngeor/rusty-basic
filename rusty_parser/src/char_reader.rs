@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Cursor};
 
 /// Reads one character at a time.
 ///
@@ -16,6 +16,10 @@ pub trait CharReader {
 
 pub fn file_char_reader(input: File) -> impl CharReader {
     CharReaderImpl::new(BufReader::new(input))
+}
+
+pub fn string_char_reader(input: &str) -> impl CharReader + '_ {
+    CharReaderImpl::new(BufReader::new(Cursor::new(input)))
 }
 
 struct CharReaderImpl<T: BufRead> {
@@ -56,23 +60,9 @@ impl<T: BufRead> CharReader for CharReaderImpl<T> {
     }
 }
 
-// TODO #[cfg(test)]
-pub mod test_helper {
-    use crate::char_reader::{CharReader, CharReaderImpl};
-    use std::io::{BufReader, Cursor};
-
-    pub fn string_char_reader<T>(input: T) -> impl CharReader
-    where
-        T: AsRef<[u8]>,
-    {
-        CharReaderImpl::new(BufReader::new(Cursor::new(input)))
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::char_reader::test_helper::string_char_reader;
-    use crate::char_reader::CharReader;
+    use crate::char_reader::{string_char_reader, CharReader};
 
     #[test]
     fn test() {

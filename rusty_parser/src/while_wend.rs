@@ -27,10 +27,7 @@ pub fn while_wend_p() -> impl Parser<Output = Statement> {
 mod tests {
     use crate::assert_parser_err;
     use crate::test_utils::*;
-    use crate::{
-        BareName, ConditionalBlockNode, Expression, ExpressionType, Operator, Statement,
-        TopLevelToken,
-    };
+    use crate::*;
     use rusty_common::*;
 
     #[test]

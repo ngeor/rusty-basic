@@ -1,4 +1,5 @@
 use super::post_conversion_linter::PostConversionLinter;
+use crate::CanCastTo;
 use rusty_common::*;
 use rusty_parser::{CaseExpression, ExpressionNode};
 
@@ -12,21 +13,21 @@ impl PostConversionLinter for SelectCaseLinter {
     ) -> Result<(), QErrorNode> {
         match case_expr {
             CaseExpression::Simple(expr) => {
-                if !expr.as_ref().can_cast_to(select_expr) {
+                if !expr.can_cast_to(select_expr) {
                     return Err(QError::TypeMismatch).with_err_at(expr);
                 }
             }
             CaseExpression::Range(from, to) => {
-                if !from.as_ref().can_cast_to(select_expr) {
+                if !from.can_cast_to(select_expr) {
                     return Err(QError::TypeMismatch).with_err_at(from);
                 }
 
-                if !to.as_ref().can_cast_to(select_expr) {
+                if !to.can_cast_to(select_expr) {
                     return Err(QError::TypeMismatch).with_err_at(to);
                 }
             }
             CaseExpression::Is(_, expr) => {
-                if !expr.as_ref().can_cast_to(select_expr) {
+                if !expr.can_cast_to(select_expr) {
                     return Err(QError::TypeMismatch).with_err_at(expr);
                 }
             }

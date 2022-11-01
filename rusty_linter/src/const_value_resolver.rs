@@ -60,56 +60,54 @@ where
                 }
             }
             Expression::BinaryExpression(op, left, right, _) => {
-                let Locatable { element, pos } = left.as_ref();
-                let v_left = self.resolve_const(element).patch_err_pos(*pos)?;
-                let Locatable { element, pos } = right.as_ref();
-                let v_right = self.resolve_const(element).patch_err_pos(*pos)?;
-                match *op {
-                    Operator::Less => {
-                        let order = v_left.try_cmp(&v_right).with_err_at(*pos)?;
-                        Ok((order == Ordering::Less).into())
-                    }
-                    Operator::LessOrEqual => {
-                        let order = v_left.try_cmp(&v_right).with_err_at(*pos)?;
-                        Ok((order == Ordering::Less || order == Ordering::Equal).into())
-                    }
-                    Operator::Equal => {
-                        let order = v_left.try_cmp(&v_right).with_err_at(*pos)?;
-                        Ok((order == Ordering::Equal).into())
-                    }
-                    Operator::GreaterOrEqual => {
-                        let order = v_left.try_cmp(&v_right).with_err_at(*pos)?;
-                        Ok((order == Ordering::Greater || order == Ordering::Equal).into())
-                    }
-                    Operator::Greater => {
-                        let order = v_left.try_cmp(&v_right).with_err_at(*pos)?;
-                        Ok((order == Ordering::Greater).into())
-                    }
-                    Operator::NotEqual => {
-                        let order = v_left.try_cmp(&v_right).with_err_at(*pos)?;
-                        Ok((order == Ordering::Less || order == Ordering::Greater).into())
-                    }
-                    Operator::Plus => v_left.plus(v_right).with_err_at(*pos),
-                    Operator::Minus => v_left.minus(v_right).with_err_at(*pos),
-                    Operator::Multiply => v_left.multiply(v_right).with_err_at(*pos),
-                    Operator::Divide => v_left.divide(v_right).with_err_at(*pos),
-                    Operator::Modulo => v_left.modulo(v_right).with_err_at(*pos),
-                    Operator::And => v_left.and(v_right).with_err_at(*pos),
-                    Operator::Or => v_left.or(v_right).with_err_at(*pos),
-                }
+                let v_left = self.resolve_const(left)?;
+                let v_right = self.resolve_const(right)?;
+                (match *op {
+                    Operator::Less => v_left
+                        .try_cmp(&v_right)
+                        .map(|ordering| ordering == Ordering::Less)
+                        .map(Variant::from),
+                    Operator::LessOrEqual => v_left
+                        .try_cmp(&v_right)
+                        .map(|ordering| ordering == Ordering::Less || ordering == Ordering::Equal)
+                        .map(Variant::from),
+                    Operator::Equal => v_left
+                        .try_cmp(&v_right)
+                        .map(|ordering| ordering == Ordering::Equal)
+                        .map(Variant::from),
+                    Operator::GreaterOrEqual => v_left
+                        .try_cmp(&v_right)
+                        .map(|ordering| {
+                            ordering == Ordering::Greater || ordering == Ordering::Equal
+                        })
+                        .map(Variant::from),
+                    Operator::Greater => v_left
+                        .try_cmp(&v_right)
+                        .map(|ordering| ordering == Ordering::Greater)
+                        .map(Variant::from),
+                    Operator::NotEqual => v_left
+                        .try_cmp(&v_right)
+                        .map(|ordering| ordering == Ordering::Less || ordering == Ordering::Greater)
+                        .map(Variant::from),
+                    Operator::Plus => v_left.plus(v_right),
+                    Operator::Minus => v_left.minus(v_right),
+                    Operator::Multiply => v_left.multiply(v_right),
+                    Operator::Divide => v_left.divide(v_right),
+                    Operator::Modulo => v_left.modulo(v_right),
+                    Operator::And => v_left.and(v_right),
+                    Operator::Or => v_left.or(v_right),
+                })
+                .with_err_at(right)
             }
             Expression::UnaryExpression(op, child) => {
-                let Locatable { element, pos } = child.as_ref();
-                let v = self.resolve_const(element).patch_err_pos(*pos)?;
-                match *op {
-                    UnaryOperator::Minus => v.negate().with_err_at(*pos),
-                    UnaryOperator::Not => v.unary_not().with_err_at(*pos),
-                }
+                let v = self.resolve_const(child)?;
+                (match *op {
+                    UnaryOperator::Minus => v.negate(),
+                    UnaryOperator::Not => v.unary_not(),
+                })
+                .with_err_at(child)
             }
-            Expression::Parenthesis(child) => {
-                let Locatable { element, pos } = child.as_ref();
-                self.resolve_const(element).patch_err_pos(*pos)
-            }
+            Expression::Parenthesis(child) => self.resolve_const(child),
             Expression::Property(_, _, _)
             | Expression::FunctionCall(_, _)
             | Expression::ArrayElement(_, _, _)
@@ -125,7 +123,16 @@ where
     S: ConstLookup,
 {
     fn resolve_const(&self, expr_node: &ExpressionNode) -> Result<Variant, QErrorNode> {
-        self.resolve_const(expr_node.as_ref())
+        self.resolve_const(&expr_node.element)
             .patch_err_pos(expr_node)
+    }
+}
+
+impl<S> ConstValueResolver<Box<ExpressionNode>, QErrorNode> for S
+where
+    S: ConstLookup,
+{
+    fn resolve_const(&self, item: &Box<ExpressionNode>) -> Result<Variant, QErrorNode> {
+        self.resolve_const(item.as_ref())
     }
 }

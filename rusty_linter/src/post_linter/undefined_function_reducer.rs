@@ -1,4 +1,5 @@
 use super::expression_reducer::*;
+use crate::casting::binary_cast;
 use crate::HasFunctions;
 use rusty_common::*;
 use rusty_parser::Expression;
@@ -17,7 +18,7 @@ where
             Expression::BinaryExpression(op, left, right, _) => {
                 let mapped_left = self.visit_expression_node(*left)?;
                 let mapped_right = self.visit_expression_node(*right)?;
-                Expression::binary(mapped_left, mapped_right, op)
+                binary_cast(mapped_left, mapped_right, op)
             }
             Expression::UnaryExpression(op, child) => {
                 let mapped_child = self.visit_expression_node(*child)?;

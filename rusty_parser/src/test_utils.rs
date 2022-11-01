@@ -397,8 +397,8 @@ macro_rules! assert_file_handle {
         match result {
             Statement::BuiltInSubCall(_, args) => {
                 assert_eq!(
-                    args[0].as_ref(),
-                    &Expression::IntegerLiteral($expected_file_handle)
+                    args.into_iter().next().unwrap().element,
+                    Expression::IntegerLiteral($expected_file_handle)
                 );
             }
             _ => {

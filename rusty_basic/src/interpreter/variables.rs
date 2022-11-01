@@ -175,7 +175,7 @@ impl Variables {
     }
 
     pub fn get_by_dim_name(&self, dim_name: &DimName) -> Option<&Variant> {
-        self.get_by_dim_name_internal(dim_name.bare_name(), dim_name.var_type())
+        self.get_by_dim_name_internal(&dim_name.bare_name, &dim_name.var_type)
     }
 
     fn get_by_dim_name_internal(

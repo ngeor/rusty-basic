@@ -199,7 +199,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
             nearest_statement_finder: NearestStatementFinder::new(statement_addresses),
         };
         while i < instructions.len() && !ctx.halt {
-            let instruction = instructions[i].as_ref();
+            let instruction = &instructions[i].element;
             let pos = instructions[i].pos();
             match self.interpret_one(i, instruction, pos, &mut ctx) {
                 Ok(_) => match ctx.opt_next_index.take() {

@@ -91,7 +91,7 @@ impl Context {
     pub fn function_qualifier(&self, bare_name: &BareName) -> Option<TypeQualifier> {
         self.functions()
             .get(bare_name)
-            .map(|function_signature_node| function_signature_node.as_ref().qualifier())
+            .map(|function_signature_node| function_signature_node.element.qualifier())
     }
 
     pub fn pre_linter_result(self) -> PreLinterResult {

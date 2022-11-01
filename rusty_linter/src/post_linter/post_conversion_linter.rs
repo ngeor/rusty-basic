@@ -21,7 +21,7 @@ pub trait PostConversionLinter {
     }
 
     fn visit_top_level_token_node(&mut self, t: &TopLevelTokenNode) -> Result<(), QErrorNode> {
-        self.visit_top_level_token(t.as_ref()).patch_err_pos(t)
+        self.visit_top_level_token(&t.element).patch_err_pos(t)
     }
 
     fn visit_top_level_token(&mut self, t: &TopLevelToken) -> Result<(), QErrorNode> {
@@ -49,7 +49,7 @@ pub trait PostConversionLinter {
     }
 
     fn visit_statement_node(&mut self, t: &StatementNode) -> Result<(), QErrorNode> {
-        self.visit_statement(t.as_ref()).patch_err_pos(t)
+        self.visit_statement(&t.element).patch_err_pos(t)
     }
 
     fn visit_statement(&mut self, s: &Statement) -> Result<(), QErrorNode> {

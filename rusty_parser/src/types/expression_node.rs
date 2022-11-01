@@ -2,6 +2,8 @@ use crate::variant::{Variant, MIN_INTEGER, MIN_LONG};
 use crate::*;
 use rusty_common::*;
 
+// TODO move traits and logic that is linter specific to linter (including CanCastTo from common)
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
     SingleLiteral(f32),
@@ -168,19 +170,6 @@ impl Expression {
         Box::new(simplified.at(pos))
     }
 
-    pub fn is_parenthesis(&self) -> bool {
-        matches!(self, Self::Parenthesis(_))
-    }
-
-    pub fn is_by_ref(&self) -> bool {
-        matches!(
-            self,
-            Expression::Variable(_, _)
-                | Expression::ArrayElement(_, _, _)
-                | Expression::Property(_, _, _)
-        )
-    }
-
     /// Returns the name of this `Variable` or `Property` expression.
     /// For properties, this is the concatenated name of all elements in the property path.
     pub fn fold_name(&self) -> Option<Name> {
@@ -204,26 +193,6 @@ impl Expression {
         }
     }
 
-    pub fn binary(
-        left: ExpressionNode,
-        right: ExpressionNode,
-        op: Operator,
-    ) -> Result<Self, QErrorNode> {
-        // get the types
-        let t_left = left.as_ref().expression_type();
-        let t_right = right.as_ref().expression_type();
-        // get the cast type
-        match t_left.cast_binary_op(t_right, op) {
-            Some(type_definition) => Ok(Expression::BinaryExpression(
-                op,
-                Box::new(left),
-                Box::new(right),
-                type_definition,
-            )),
-            None => Err(QError::TypeMismatch).with_err_at(&right),
-        }
-    }
-
     // TODO #[cfg(test)]
     pub fn var_unresolved(s: &str) -> Self {
         let name: Name = s.into();
@@ -243,32 +212,6 @@ impl Expression {
             name.into(),
             VariableInfo::new_local(ExpressionType::UserDefined(type_name.into())),
         )
-    }
-
-    fn should_flip_unary(&self, op: UnaryOperator) -> bool {
-        match self {
-            Expression::BinaryExpression(r_op, _, _, _) => {
-                op == UnaryOperator::Minus || r_op.is_binary()
-            }
-            _ => false,
-        }
-    }
-
-    fn should_flip_binary(&self) -> bool {
-        match self {
-            Expression::BinaryExpression(l_op, _, l_right, _) => match &l_right.element {
-                Expression::BinaryExpression(r_op, _, _, _) => {
-                    l_op.is_arithmetic() && (r_op.is_relational() || r_op.is_binary())
-                        || l_op.is_relational() && r_op.is_binary()
-                        || *l_op == Operator::And && *r_op == Operator::Or
-                        || Self::flip_multiply_plus(l_op, r_op)
-                        || Self::flip_plus_minus(l_op, r_op)
-                        || Self::flip_multiply_divide(l_op, r_op)
-                }
-                _ => false,
-            },
-            _ => false,
-        }
     }
 
     fn flip_multiply_plus(l_op: &Operator, r_op: &Operator) -> bool {
@@ -347,7 +290,7 @@ impl ExpressionNodeTrait for ExpressionNode {
             ExpressionType::Unresolved,
         )
         .at(pos);
-        if result.as_ref().should_flip_binary() {
+        if result.should_flip_binary() {
             result.flip_binary()
         } else {
             result
@@ -358,7 +301,7 @@ impl ExpressionNodeTrait for ExpressionNode {
     ///
     /// `NOT A AND B` would be parsed as `NOT (A AND B)`, needs to flip into `(NOT A) AND B`
     fn apply_unary_priority_order(self, op: UnaryOperator, op_pos: Location) -> Self {
-        if self.as_ref().should_flip_unary(op) {
+        if self.should_flip_unary(op) {
             let Locatable { element, pos } = self;
             match element {
                 Expression::BinaryExpression(r_op, r_left, r_right, _) => {
@@ -410,29 +353,108 @@ impl HasExpressionType for Expression {
                 ExpressionType::BuiltIn(*qualifier)
             }
             Self::BuiltInFunctionCall(f, _) => ExpressionType::BuiltIn(f.into()),
-            Self::UnaryExpression(_, c) | Self::Parenthesis(c) => {
-                c.as_ref().as_ref().expression_type()
-            }
+            Self::UnaryExpression(_, c) | Self::Parenthesis(c) => c.expression_type(),
             Self::FunctionCall(Name::Bare(_), _) => ExpressionType::Unresolved,
         }
     }
 }
 
-impl CanCastTo<TypeQualifier> for Expression {
-    fn can_cast_to(&self, other: TypeQualifier) -> bool {
-        self.expression_type().can_cast_to(other)
+impl HasExpressionType for ExpressionNode {
+    fn expression_type(&self) -> ExpressionType {
+        self.element.expression_type()
     }
 }
 
-impl<T: HasExpressionType> CanCastTo<&T> for Expression {
-    fn can_cast_to(&self, other: &T) -> bool {
-        let other_type_definition = other.expression_type();
-        self.expression_type().can_cast_to(&other_type_definition)
+impl HasExpressionType for Box<ExpressionNode> {
+    fn expression_type(&self) -> ExpressionType {
+        self.as_ref().expression_type()
     }
 }
 
-impl CanCastTo<&ExpressionNode> for Expression {
-    fn can_cast_to(&self, other: &ExpressionNode) -> bool {
-        self.can_cast_to(&other.element)
+pub trait ExpressionTrait {
+    fn is_parenthesis(&self) -> bool;
+
+    fn should_flip_unary(&self, op: UnaryOperator) -> bool;
+
+    fn should_flip_binary(&self) -> bool;
+
+    fn is_by_ref(&self) -> bool;
+}
+
+impl ExpressionTrait for Expression {
+    fn is_parenthesis(&self) -> bool {
+        matches!(self, Self::Parenthesis(_))
+    }
+
+    fn should_flip_unary(&self, op: UnaryOperator) -> bool {
+        match self {
+            Expression::BinaryExpression(r_op, _, _, _) => {
+                op == UnaryOperator::Minus || r_op.is_binary()
+            }
+            _ => false,
+        }
+    }
+
+    fn should_flip_binary(&self) -> bool {
+        match self {
+            Expression::BinaryExpression(l_op, _, l_right, _) => match &l_right.element {
+                Expression::BinaryExpression(r_op, _, _, _) => {
+                    l_op.is_arithmetic() && (r_op.is_relational() || r_op.is_binary())
+                        || l_op.is_relational() && r_op.is_binary()
+                        || *l_op == Operator::And && *r_op == Operator::Or
+                        || Self::flip_multiply_plus(l_op, r_op)
+                        || Self::flip_plus_minus(l_op, r_op)
+                        || Self::flip_multiply_divide(l_op, r_op)
+                }
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    fn is_by_ref(&self) -> bool {
+        matches!(
+            self,
+            Expression::Variable(_, _)
+                | Expression::ArrayElement(_, _, _)
+                | Expression::Property(_, _, _)
+        )
+    }
+}
+
+impl ExpressionTrait for ExpressionNode {
+    // needed by parser
+    fn is_parenthesis(&self) -> bool {
+        self.element.is_parenthesis()
+    }
+
+    fn should_flip_unary(&self, op: UnaryOperator) -> bool {
+        self.element.should_flip_unary(op)
+    }
+
+    fn should_flip_binary(&self) -> bool {
+        self.element.should_flip_binary()
+    }
+
+    fn is_by_ref(&self) -> bool {
+        self.element.is_by_ref()
+    }
+}
+
+impl ExpressionTrait for Box<ExpressionNode> {
+    fn is_parenthesis(&self) -> bool {
+        self.as_ref().is_parenthesis()
+    }
+
+    fn should_flip_unary(&self, op: UnaryOperator) -> bool {
+        self.as_ref().should_flip_unary(op)
+    }
+
+    fn should_flip_binary(&self) -> bool {
+        self.as_ref().should_flip_binary()
+    }
+
+    fn is_by_ref(&self) -> bool {
+        self.as_ref().is_by_ref()
     }
 }

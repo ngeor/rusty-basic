@@ -12,10 +12,10 @@ impl DimName {
     where
         BareName: From<T>,
     {
-        Self {
-            bare_name: BareName::from(bare_name),
-            var_type: DimType::BuiltIn(qualifier, BuiltInStyle::Compact),
-        }
+        Self::new(
+            BareName::from(bare_name),
+            DimType::BuiltIn(qualifier, BuiltInStyle::Compact),
+        )
     }
 
     pub fn into_list(self, pos: Location) -> DimList {

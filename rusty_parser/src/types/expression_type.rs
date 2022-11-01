@@ -1,9 +1,10 @@
-use crate::{BareName, Name, Operator, TypeQualifier};
-use rusty_common::{CanCastTo, QError};
+use crate::{BareName, Name, TypeQualifier};
+use rusty_common::QError;
 
 /// The resolved type of an expression.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExpressionType {
+    // TODO remove this, even if it needs a new linter type
     Unresolved,
     BuiltIn(TypeQualifier),
     FixedLengthString(u16),
@@ -37,70 +38,8 @@ impl ExpressionType {
             _ => None,
         }
     }
-
-    pub fn to_element_type(&self) -> &Self {
-        match self {
-            Self::Array(boxed_element_type) => boxed_element_type.to_element_type(),
-            _ => self,
-        }
-    }
 }
 
 pub trait HasExpressionType {
     fn expression_type(&self) -> ExpressionType;
-}
-
-impl ExpressionType {
-    pub fn cast_binary_op(&self, right: ExpressionType, op: Operator) -> Option<ExpressionType> {
-        match self {
-            ExpressionType::BuiltIn(q_left) => match right {
-                ExpressionType::BuiltIn(q_right) => q_left
-                    .cast_binary_op(q_right, op)
-                    .map(ExpressionType::BuiltIn),
-                ExpressionType::FixedLengthString(_) => q_left
-                    .cast_binary_op(TypeQualifier::DollarString, op)
-                    .map(ExpressionType::BuiltIn),
-                _ => None,
-            },
-            ExpressionType::FixedLengthString(_) => match right {
-                ExpressionType::BuiltIn(TypeQualifier::DollarString)
-                | ExpressionType::FixedLengthString(_) => TypeQualifier::DollarString
-                    .cast_binary_op(TypeQualifier::DollarString, op)
-                    .map(ExpressionType::BuiltIn),
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-}
-
-impl CanCastTo<&ExpressionType> for ExpressionType {
-    fn can_cast_to(&self, other: &Self) -> bool {
-        match self {
-            Self::BuiltIn(q_left) => match other {
-                Self::BuiltIn(q_right) => q_left.can_cast_to(*q_right),
-                Self::FixedLengthString(_) => *q_left == TypeQualifier::DollarString,
-                _ => false,
-            },
-            Self::FixedLengthString(_) => matches!(
-                other,
-                Self::BuiltIn(TypeQualifier::DollarString) | Self::FixedLengthString(_)
-            ),
-            Self::UserDefined(u_left) => match other {
-                Self::UserDefined(u_right) => u_left == u_right,
-                _ => false,
-            },
-            Self::Unresolved | Self::Array(_) => false,
-        }
-    }
-}
-
-impl CanCastTo<TypeQualifier> for ExpressionType {
-    fn can_cast_to(&self, other: TypeQualifier) -> bool {
-        match self {
-            Self::BuiltIn(q_left) => q_left.can_cast_to(other),
-            Self::FixedLengthString(_) => other == TypeQualifier::DollarString,
-            _ => false,
-        }
-    }
 }

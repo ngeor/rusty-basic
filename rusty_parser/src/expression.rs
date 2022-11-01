@@ -88,13 +88,13 @@ fn preceded_by_ws(
 fn followed_by_ws(
     parser: impl Parser<Output = ExpressionNode>,
 ) -> impl Parser<Output = ExpressionNode> {
-    parser.chain(|expr| {
-        let is_paren = expr.as_ref().is_parenthesis();
+    parser.chain(|expr_node| {
+        let is_paren = expr_node.is_parenthesis();
         whitespace()
             .allow_none_if(is_paren)
             .no_incomplete()
             .to_parser_once()
-            .map(|_| expr)
+            .map(|_| expr_node)
     })
 }
 
@@ -400,7 +400,7 @@ pub mod property {
 
     pub fn parser() -> impl Parser<Output = ExpressionNode> {
         Seq2::new(base_expr_node(), dot_properties()).and_then(|(first_expr_node, properties)| {
-            if !properties.is_empty() && is_qualified(first_expr_node.as_ref()) {
+            if !properties.is_empty() && is_qualified(&first_expr_node.element) {
                 // TODO do this check before parsing the properties
                 return Err(QError::syntax_error(
                     "Qualified name cannot have properties",
@@ -473,7 +473,7 @@ mod binary_expression {
     };
     use crate::pc::{any_token, Alt7, OptAndPC, Parser, Token, Tokenizer};
     use crate::pc_specific::{whitespace, SpecificTrait, TokenType};
-    use crate::{ExpressionNode, ExpressionNodeTrait, Keyword, Operator};
+    use crate::{ExpressionNode, ExpressionNodeTrait, ExpressionTrait, Keyword, Operator};
     use rusty_common::{Locatable, ParserErrorTrait, QError};
     use std::str::FromStr;
 
@@ -496,7 +496,7 @@ mod binary_expression {
     impl BinaryExprParser {
         fn do_parse(&self, tokenizer: &mut impl Tokenizer) -> Result<ExpressionNode, QError> {
             let first = Self::non_bin_expr().parse(tokenizer)?;
-            let is_paren = first.as_ref().is_parenthesis();
+            let is_paren = first.is_parenthesis();
             match Self::operator(is_paren).parse(tokenizer) {
                 Ok(Locatable {
                     element: op,
@@ -542,7 +542,7 @@ mod binary_expression {
             .and_then(move |(leading_ws, loc_op)| {
                 let had_whitespace = leading_ws.is_some();
                 let needs_whitespace = matches!(
-                    loc_op.as_ref(),
+                    &loc_op.element,
                     Operator::Modulo | Operator::And | Operator::Or
                 );
                 if had_whitespace || is_paren || !needs_whitespace {

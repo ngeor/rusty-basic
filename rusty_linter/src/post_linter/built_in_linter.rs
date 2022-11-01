@@ -49,8 +49,7 @@ impl PostConversionLinter for BuiltInLinter {
 
     fn visit_expression(&mut self, expr_node: &ExpressionNode) -> Result<(), QErrorNode> {
         let pos = expr_node.pos();
-        let e = expr_node.as_ref();
-        match e {
+        match &expr_node.element {
             Expression::BuiltInFunctionCall(built_in_function, args) => {
                 for x in args {
                     self.visit_expression(x)?;

@@ -82,8 +82,8 @@ impl MainContext {
         params: &ParamNameNodes,
     ) -> Result<(), QErrorNode> {
         let param_types: ResolvedParamTypes = self.on_param_name_nodes(params)?;
-        let bare_name = name.as_ref().bare_name();
-        let signature = name.as_ref().to_signature(&self.resolver, param_types);
+        let bare_name = name.element.bare_name();
+        let signature = name.element.to_signature(&self.resolver, param_types);
         self.functions
             .add_declaration(bare_name, signature, self.declaration_pos)
             .with_err_at(name.pos())
@@ -92,8 +92,8 @@ impl MainContext {
     fn on_function_implementation(&mut self, f: &FunctionImplementation) -> Result<(), QErrorNode> {
         let FunctionImplementation { name, params, .. } = f;
         let param_types: ResolvedParamTypes = self.on_param_name_nodes(params)?;
-        let bare_name = name.as_ref().bare_name();
-        let signature = name.as_ref().to_signature(&self.resolver, param_types);
+        let bare_name = name.element.bare_name();
+        let signature = name.element.to_signature(&self.resolver, param_types);
         self.functions
             .add_implementation(bare_name, signature, self.declaration_pos)
             .with_err_at(name.pos())
@@ -112,8 +112,8 @@ impl MainContext {
         params: &ParamNameNodes,
     ) -> Result<(), QErrorNode> {
         let param_types: ResolvedParamTypes = self.on_param_name_nodes(params)?;
-        let bare_name = name.as_ref();
-        let signature = name.as_ref().to_signature(&self.resolver, param_types);
+        let bare_name = &name.element;
+        let signature = bare_name.to_signature(&self.resolver, param_types);
         self.subs
             .add_declaration(bare_name, signature, self.declaration_pos)
             .with_err_at(name.pos())
@@ -122,8 +122,8 @@ impl MainContext {
     fn on_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorNode> {
         let SubImplementation { name, params, .. } = s;
         let param_types: ResolvedParamTypes = self.on_param_name_nodes(params)?;
-        let bare_name = name.as_ref();
-        let signature = name.as_ref().to_signature(&self.resolver, param_types);
+        let bare_name = &name.element;
+        let signature = bare_name.to_signature(&self.resolver, param_types);
         self.subs
             .add_implementation(bare_name, signature, self.declaration_pos)
             .with_err_at(name.pos())
@@ -158,13 +158,12 @@ impl MainContext {
         &self,
         param_name_node: &ParamNameNode,
     ) -> Result<ResolvedParamType, QErrorNode> {
-        self.on_param_name(param_name_node.as_ref())
+        self.on_param_name(&param_name_node.element)
             .with_err_at(param_name_node)
     }
 
     fn on_param_name(&self, param_name: &ParamName) -> Result<ResolvedParamType, QError> {
-        let bare_name = param_name.bare_name();
-        self.resolve_param_type(bare_name, param_name.var_type())
+        self.resolve_param_type(&param_name.bare_name, &param_name.var_type)
     }
 
     fn resolve_param_type(
@@ -181,7 +180,7 @@ impl MainContext {
                 Ok(ResolvedParamType::BuiltIn(*q, *built_in_style))
             }
             ParamType::UserDefined(u) => {
-                let type_name: &BareName = u.as_ref();
+                let type_name: &BareName = &u.element;
                 if self.user_defined_types.contains_key(type_name) {
                     Ok(ResolvedParamType::UserDefined(type_name.clone()))
                 } else {

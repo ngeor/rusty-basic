@@ -145,7 +145,7 @@ fn user_defined_type() {
     );
     let card_type = opt_card_type.unwrap();
     assert_eq!(card_type.bare_name(), &BareName::from("Card"));
-    let elements: Vec<Element> = card_type.elements().map(|x| x.as_ref().clone()).collect();
+    let elements: Vec<Element> = card_type.elements().map(|x| &x.element).cloned().collect();
     assert_eq!(
         elements,
         vec![

@@ -6,7 +6,6 @@ use crate::{BareName, BareNameNode, ExpressionType, HasExpressionType, TypeQuali
 /// and [ParamName].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VarName<T> {
-    // TODO make fields private
     pub bare_name: BareName,
     pub var_type: T,
 }
@@ -17,14 +16,6 @@ impl<T> VarName<T> {
             bare_name,
             var_type,
         }
-    }
-
-    pub fn bare_name(&self) -> &BareName {
-        &self.bare_name
-    }
-
-    pub fn var_type(&self) -> &T {
-        &self.var_type
     }
 }
 

@@ -147,7 +147,7 @@ trait LabelOwnerHolder: PostConversionLinter {
     }
 
     fn on_sub(&mut self, s: &SubImplementation) -> Result<(), QErrorNode> {
-        self.set_label_owner(LabelOwner::Sub(s.name.as_ref().clone()));
+        self.set_label_owner(LabelOwner::Sub(s.name.element.clone()));
         self.visit_statement_nodes(&s.body)?;
         self.set_label_owner(LabelOwner::Global);
         Ok(())

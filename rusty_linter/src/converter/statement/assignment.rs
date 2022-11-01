@@ -44,9 +44,10 @@ mod assignment_pre_conversion_validation_rules {
 
 mod assignment_post_conversion_validation_rules {
     use super::*;
+    use crate::CanCastTo;
 
     pub fn validate(left_side: &Expression, right_side: &ExpressionNode) -> Result<(), QErrorNode> {
-        if right_side.as_ref().can_cast_to(left_side) {
+        if right_side.can_cast_to(left_side) {
             Ok(())
         } else {
             Err(QError::TypeMismatch).with_err_at(right_side)

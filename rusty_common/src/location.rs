@@ -42,7 +42,6 @@ impl Location {
 
 /// Bundles an element (typically a parsed token) together with its location
 /// within the file it was read from.
-// TODO make fields private (breaks pattern matching)
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Locatable<T> {
     pub element: T,
@@ -73,12 +72,6 @@ impl<T> Locatable<T> {
     // TODO: #[cfg(test)]
     pub fn strip_location(items: Vec<Self>) -> Vec<T> {
         items.into_iter().map(Self::element).collect()
-    }
-}
-
-impl<T> AsRef<T> for Locatable<T> {
-    fn as_ref(&self) -> &T {
-        &self.element
     }
 }
 
@@ -130,5 +123,11 @@ impl<T> HasLocation for Locatable<T> {
 impl HasLocation for Location {
     fn pos(&self) -> Location {
         *self
+    }
+}
+
+impl<T> HasLocation for Box<Locatable<T>> {
+    fn pos(&self) -> Location {
+        self.as_ref().pos()
     }
 }

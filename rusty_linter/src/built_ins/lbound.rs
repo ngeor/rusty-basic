@@ -1,6 +1,5 @@
-use rusty_common::{
-    CanCastTo, Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError,
-};
+use crate::CanCastTo;
+use rusty_common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
 use rusty_parser::{Expression, ExpressionNodes, ExpressionType, TypeQualifier, VariableInfo};
 
 pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
@@ -23,7 +22,7 @@ pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
     ) = first
     {
         if args.len() == 2 {
-            if args[1].as_ref().can_cast_to(TypeQualifier::PercentInteger) {
+            if args[1].can_cast_to(&TypeQualifier::PercentInteger) {
                 Ok(())
             } else {
                 Err(QError::ArgumentTypeMismatch).with_err_at(&args[1])

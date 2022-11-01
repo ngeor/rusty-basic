@@ -64,7 +64,7 @@ impl LabelResolver {
     fn build_label_to_address_map(&self) -> HashMap<CaseInsensitiveString, usize> {
         let mut result: HashMap<CaseInsensitiveString, usize> = HashMap::new();
         for j in 0..self.instructions.len() {
-            if let Instruction::Label(y) = self.instructions[j].as_ref() {
+            if let Instruction::Label(y) = &self.instructions[j].element {
                 result.insert(y.clone(), j);
             }
         }

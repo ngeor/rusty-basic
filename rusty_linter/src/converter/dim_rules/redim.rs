@@ -204,7 +204,7 @@ fn user_defined_type_to_dim_type(
                 Err(QError::DuplicateDefinition)
             } else {
                 require_dimension_count(variable_info, array_dimensions.len()).and_then(|_| {
-                    require_user_defined_array(variable_info, user_defined_type.as_ref())
+                    require_user_defined_array(variable_info, &user_defined_type.element)
                 })
             }
         })?;

@@ -10,7 +10,7 @@ pub struct ConditionTypeLinter {}
 
 impl ConditionTypeLinter {
     fn ensure_expression_is_condition(expr_node: &ExpressionNode) -> Result<(), QErrorNode> {
-        match expr_node.as_ref().expression_type() {
+        match expr_node.expression_type() {
             ExpressionType::BuiltIn(q) => {
                 if q == TypeQualifier::DollarString {
                     Err(QError::TypeMismatch).with_err_at(expr_node)

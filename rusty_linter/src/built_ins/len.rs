@@ -1,22 +1,26 @@
-use rusty_common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
-use rusty_parser::{Expression, ExpressionNodes, ExpressionType, HasExpressionType, TypeQualifier};
+use crate::CanCastTo;
+use rusty_common::{QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use rusty_parser::{
+    ExpressionNode, ExpressionNodes, ExpressionTrait, ExpressionType, HasExpressionType,
+    TypeQualifier,
+};
 
 pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
     if args.len() != 1 {
         Err(QError::ArgumentCountMismatch).with_err_no_pos()
     } else {
-        let arg: &Expression = args[0].as_ref();
+        let arg: &ExpressionNode = &args[0];
         if arg.is_by_ref() {
             match arg.expression_type() {
                 // QBasic actually accepts LEN(A) where A is an array,
                 // but its results don't make much sense
                 ExpressionType::Unresolved | ExpressionType::Array(_) => {
-                    Err(QError::ArgumentTypeMismatch).with_err_at(&args[0])
+                    Err(QError::ArgumentTypeMismatch).with_err_at(arg)
                 }
                 _ => Ok(()),
             }
-        } else if !args[0].as_ref().can_cast_to(TypeQualifier::DollarString) {
-            Err(QError::VariableRequired).with_err_at(&args[0])
+        } else if !arg.can_cast_to(&TypeQualifier::DollarString) {
+            Err(QError::VariableRequired).with_err_at(arg)
         } else {
             Ok(())
         }

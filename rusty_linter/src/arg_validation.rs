@@ -1,7 +1,8 @@
-use rusty_common::{CanCastTo, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use crate::CanCastTo;
+use rusty_common::{QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
 use rusty_parser::{
-    Expression, ExpressionNode, ExpressionNodes, ExpressionType, HasExpressionType, TypeQualifier,
-    VariableInfo,
+    Expression, ExpressionNode, ExpressionNodes, ExpressionTrait, ExpressionType,
+    HasExpressionType, TypeQualifier, VariableInfo,
 };
 
 pub trait ArgValidation {
@@ -54,7 +55,7 @@ pub trait ArgValidation {
     }
 
     fn expr(&self, idx: usize) -> &Expression {
-        self.expr_node(idx).as_ref()
+        &self.expr_node(idx).element
     }
 
     fn expr_node(&self, idx: usize) -> &ExpressionNode;
@@ -73,15 +74,15 @@ pub trait ArgValidation {
 
 impl ArgValidation for ExpressionNodes {
     fn require_integer_argument(&self, idx: usize) -> Result<(), QErrorNode> {
-        self.require_predicate(idx, |expr| expr.can_cast_to(TypeQualifier::PercentInteger))
+        self.require_predicate(idx, |expr| expr.can_cast_to(&TypeQualifier::PercentInteger))
     }
 
     fn require_long_argument(&self, idx: usize) -> Result<(), QErrorNode> {
-        self.require_predicate(idx, |expr| expr.can_cast_to(TypeQualifier::AmpersandLong))
+        self.require_predicate(idx, |expr| expr.can_cast_to(&TypeQualifier::AmpersandLong))
     }
 
     fn require_double_argument(&self, idx: usize) -> Result<(), QErrorNode> {
-        self.require_predicate(idx, |expr| expr.can_cast_to(TypeQualifier::HashDouble))
+        self.require_predicate(idx, |expr| expr.can_cast_to(&TypeQualifier::HashDouble))
     }
 
     fn require_numeric_argument(&self, idx: usize) -> Result<(), QErrorNode> {
@@ -95,7 +96,7 @@ impl ArgValidation for ExpressionNodes {
     }
 
     fn require_string_argument(&self, idx: usize) -> Result<(), QErrorNode> {
-        self.require_predicate(idx, |expr| expr.can_cast_to(TypeQualifier::DollarString))
+        self.require_predicate(idx, |expr| expr.can_cast_to(&TypeQualifier::DollarString))
     }
 
     fn require_string_variable(&self, idx: usize) -> Result<(), QErrorNode> {
@@ -128,7 +129,7 @@ impl ArgValidation for ExpressionNodes {
                 },
             )
             | Expression::Property(_, _, expression_type) => {
-                if expression_type.can_cast_to(TypeQualifier::DollarString) {
+                if expression_type.can_cast_to(&TypeQualifier::DollarString) {
                     Ok(())
                 } else {
                     Err(QError::ArgumentTypeMismatch).with_err_at(&self[idx])

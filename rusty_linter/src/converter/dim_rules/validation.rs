@@ -21,7 +21,7 @@ where
 }
 
 fn cannot_clash_with_subs<T, C: HasSubs>(var_name: &VarName<T>, ctx: &C) -> Result<(), QError> {
-    if ctx.subs().contains_key(var_name.bare_name()) {
+    if ctx.subs().contains_key(&var_name.bare_name) {
         Err(QError::DuplicateDefinition)
     } else {
         Ok(())
@@ -32,7 +32,7 @@ fn cannot_clash_with_local_constants<T>(
     var_name: &VarName<T>,
     ctx: &Context,
 ) -> Result<(), QError> {
-    if ctx.names.contains_const(var_name.bare_name()) {
+    if ctx.names.contains_const(&var_name.bare_name) {
         Err(QError::DuplicateDefinition)
     } else {
         Ok(())
@@ -45,7 +45,7 @@ pub trait CannotClashWithFunctions {
 
 impl CannotClashWithFunctions for DimName {
     fn cannot_clash_with_functions(&self, ctx: &Context) -> Result<(), QError> {
-        if ctx.functions().contains_key(self.bare_name()) {
+        if ctx.functions().contains_key(&self.bare_name) {
             Err(QError::DuplicateDefinition)
         } else {
             Ok(())
@@ -55,15 +55,15 @@ impl CannotClashWithFunctions for DimName {
 
 impl CannotClashWithFunctions for ParamName {
     fn cannot_clash_with_functions(&self, ctx: &Context) -> Result<(), QError> {
-        if let Some(func_qualifier) = ctx.function_qualifier(self.bare_name()) {
-            if self.var_type().is_extended() {
+        if let Some(func_qualifier) = ctx.function_qualifier(&self.bare_name) {
+            if self.var_type.is_extended() {
                 Err(QError::DuplicateDefinition)
             } else {
                 // for some reason you can have a FUNCTION Add(Add)
                 let q = self
-                    .var_type()
+                    .var_type
                     .to_qualifier_recursively()
-                    .unwrap_or_else(|| self.bare_name().qualify(ctx));
+                    .unwrap_or_else(|| self.bare_name.qualify(ctx));
                 if q == func_qualifier {
                     Ok(())
                 } else {
@@ -80,7 +80,7 @@ fn user_defined_type_must_exist<T>(var_name: &VarName<T>, ctx: &Context) -> Resu
 where
     T: VarTypeToUserDefinedRecursively,
 {
-    match var_name.var_type().as_user_defined_recursively() {
+    match var_name.var_type.as_user_defined_recursively() {
         Some(Locatable {
             element: type_name,
             pos,

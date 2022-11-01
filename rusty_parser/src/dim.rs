@@ -77,10 +77,10 @@ mod tests {
                             pos,
                         } = dim_list.variables.pop().unwrap();
                         assert_eq!(pos, Location::new(1, 5));
-                        assert_eq!(dim_name.bare_name().clone(), var_name_bare);
-                        match dim_name.var_type() {
+                        assert_eq!(dim_name.bare_name, var_name_bare);
+                        match dim_name.var_type {
                             DimType::UserDefined(Locatable { element, .. }) => {
-                                assert_eq!(element, &var_type_bare);
+                                assert_eq!(element, var_type_bare);
                             }
                             _ => panic!("Expected user defined type"),
                         }

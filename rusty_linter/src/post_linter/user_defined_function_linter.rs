@@ -1,5 +1,5 @@
 use crate::pre_linter::ResolvedParamTypes;
-use crate::{HasFunctions, ResolvedParamType};
+use crate::{CanCastTo, HasFunctions, ResolvedParamType};
 use rusty_common::*;
 use rusty_parser::*;
 
@@ -26,8 +26,7 @@ fn lint_call_arg(
     arg_node: &ExpressionNode,
     param_type: &ResolvedParamType,
 ) -> Result<(), QErrorNode> {
-    let arg = arg_node.as_ref();
-    match arg {
+    match &arg_node.element {
         Expression::Variable(_, _)
         | Expression::ArrayElement(_, _, _)
         | Expression::Property(_, _, _) => lint_by_ref_arg(arg_node, param_type),
@@ -48,7 +47,7 @@ fn lint_by_ref_arg(
         }),
         ResolvedParamType::Array(boxed_element_type) => {
             // we can only pass an array by using the array name followed by parenthesis e.g. `Menu choice$()`
-            match arg_node.as_ref() {
+            match &arg_node.element {
                 Expression::ArrayElement(
                     name,
                     args,
@@ -96,7 +95,7 @@ fn lint_by_val_arg(
     param_type: &ResolvedParamType,
 ) -> Result<(), QErrorNode> {
     // it's by val, casting is allowed
-    if arg_node.as_ref().expression_type().can_cast_to(param_type) {
+    if arg_node.expression_type().can_cast_to(param_type) {
         Ok(())
     } else {
         Err(QError::ArgumentTypeMismatch).with_err_at(arg_node)
@@ -125,7 +124,7 @@ where
 fn arg_node_to_expr_type_and_opt_args(
     arg_node: &ExpressionNode,
 ) -> Option<(&ExpressionType, Option<&ExpressionNodes>)> {
-    match arg_node.as_ref() {
+    match &arg_node.element {
         Expression::Variable(
             _,
             VariableInfo {
@@ -159,10 +158,10 @@ where
         if let Name::Qualified(bare_name, qualifier) = name {
             match self.context.functions().get(bare_name) {
                 Some(function_signature_node) => {
-                    if function_signature_node.as_ref().qualifier() != *qualifier {
+                    if function_signature_node.element.qualifier() != *qualifier {
                         Err(QError::TypeMismatch).with_err_at(function_signature_node)
                     } else {
-                        lint_call_args(args, function_signature_node.as_ref().param_types())
+                        lint_call_args(args, function_signature_node.element.param_types())
                     }
                 }
                 None => self.handle_undefined_function(args),
@@ -175,7 +174,7 @@ where
     fn handle_undefined_function(&self, args: &ExpressionNodes) -> Result<(), QErrorNode> {
         for i in 0..args.len() {
             let arg_node = args.get(i).unwrap();
-            match arg_node.as_ref().expression_type() {
+            match arg_node.expression_type() {
                 ExpressionType::BuiltIn(q) => {
                     if q == TypeQualifier::DollarString {
                         return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);

@@ -42,8 +42,7 @@ impl NoDotNamesCheck<Locatable<ParamName>, QErrorNode> for DotsLinter {
 
 impl NoDotNamesCheck<ParamName, QError> for DotsLinter {
     fn ensure_no_dots(&self, x: &ParamName) -> Result<(), QError> {
-        let bare_name: &BareName = x.bare_name();
-        self.ensure_no_dots(bare_name)
+        self.ensure_no_dots(&x.bare_name)
     }
 }
 
@@ -56,13 +55,13 @@ impl NoDotNamesCheck<DimNameNode, QErrorNode> for DotsLinter {
 
 impl NoDotNamesCheck<DimName, QError> for DotsLinter {
     fn ensure_no_dots(&self, x: &DimName) -> Result<(), QError> {
-        self.ensure_no_dots(x.bare_name())
+        self.ensure_no_dots(&x.bare_name)
     }
 }
 
 impl NoDotNamesCheck<NameNode, QErrorNode> for DotsLinter {
     fn ensure_no_dots(&self, x: &NameNode) -> Result<(), QErrorNode> {
-        let name = x.as_ref();
+        let name = &x.element;
         self.ensure_no_dots(name).with_err_at(x)
     }
 }
@@ -200,9 +199,9 @@ impl UserDefinedNamesCollector {
         self.user_defined_names.extend(
             params
                 .iter()
-                .map(|dim_name_node| dim_name_node.as_ref())
-                .filter(|dim_name| dim_name.var_type().as_user_defined_recursively().is_some())
-                .map(|dim_name| dim_name.bare_name())
+                .map(|dim_name_node| &dim_name_node.element)
+                .filter(|dim_name| dim_name.var_type.as_user_defined_recursively().is_some())
+                .map(|dim_name| &dim_name.bare_name)
                 .cloned(),
         );
     }

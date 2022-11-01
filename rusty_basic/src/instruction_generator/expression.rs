@@ -8,7 +8,7 @@ impl InstructionGenerator {
         expr_node: ExpressionNode,
         target_type: ExpressionType,
     ) {
-        let expression_type = expr_node.as_ref().expression_type();
+        let expression_type = expr_node.expression_type();
         let pos = expr_node.pos();
         self.generate_expression_instructions(expr_node);
         if expression_type != target_type {

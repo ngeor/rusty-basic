@@ -311,7 +311,7 @@ impl InstructionGenerator {
         let mut data_statements: StatementNodes = vec![];
         let mut other_statements: StatementNodes = vec![];
         for statement in statements {
-            if let Statement::BuiltInSubCall(BuiltInSub::Data, _) = statement.as_ref() {
+            if let Statement::BuiltInSubCall(BuiltInSub::Data, _) = &statement.element {
                 data_statements.push(statement);
             } else {
                 other_statements.push(statement);

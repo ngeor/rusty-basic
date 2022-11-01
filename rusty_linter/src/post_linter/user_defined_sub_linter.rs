@@ -19,7 +19,7 @@ where
     ) -> Result<(), QErrorNode> {
         match self.context.subs().get(name) {
             Some(sub_signature_node) => {
-                lint_call_args(args, sub_signature_node.as_ref().param_types())
+                lint_call_args(args, sub_signature_node.element.param_types())
             }
             None => Err(QError::SubprogramNotDefined).with_err_no_pos(),
         }

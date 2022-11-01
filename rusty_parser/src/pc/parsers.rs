@@ -3,7 +3,7 @@ use crate::pc::many::OneOrMoreParser;
 use crate::pc::mappers::{FnMapper, KeepLeftMapper, KeepRightMapper};
 use crate::pc::{
     AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, Alt2, AndPC, AndThen, ChainParser,
-    FilterMapParser, FilterParser, GuardPC, LoggingPC, LoopWhile, MapIncompleteErrParser,
+    FilterMapParser, FilterParser, GuardPC, LoopWhile, MapIncompleteErrParser,
     NegateParser, NoIncompleteParser, OrFailParser, ParserToParserOnceAdapter, PeekParser,
     Tokenizer, Undo,
 };
@@ -122,11 +122,11 @@ pub trait Parser {
     }
 
     #[cfg(debug_assertions)]
-    fn logging(self, tag: &str) -> LoggingPC<Self>
+    fn logging(self, tag: &str) -> crate::pc::LoggingPC<Self>
     where
         Self: Sized,
     {
-        LoggingPC::new(self, tag.to_owned())
+        crate::pc::LoggingPC::new(self, tag.to_owned())
     }
 
     // TODO #[deprecated]

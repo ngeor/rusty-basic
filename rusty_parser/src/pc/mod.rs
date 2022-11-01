@@ -46,6 +46,7 @@ pub use delimited::*;
 pub use filter::*;
 pub use guard::*;
 pub use iif::*;
+#[cfg(debug_assertions)]
 pub use logging::*;
 pub use loop_while::*;
 pub use map_err::*;

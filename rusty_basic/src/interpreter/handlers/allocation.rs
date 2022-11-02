@@ -1,8 +1,10 @@
 use crate::interpreter::arguments::ArgumentInfo;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use rusty_common::{QError, StringUtils};
+use rusty_common::QError;
 use rusty_parser::variant::{QBNumberCast, UserDefinedTypeValue, VArray, Variant};
-use rusty_parser::{BareName, ExpressionType, TypeQualifier, UserDefinedTypes};
+use rusty_parser::{
+    allocate_string_variant, BareName, ExpressionType, TypeQualifier, UserDefinedTypes,
+};
 
 pub fn allocate_built_in<T: InterpreterTrait>(
     interpreter: &mut T,
@@ -71,7 +73,7 @@ pub fn allocate_user_defined_type<T: InterpreterTrait>(
 fn allocate_array_element(element_type: &ExpressionType, types: &UserDefinedTypes) -> Variant {
     match element_type {
         ExpressionType::BuiltIn(q) => Variant::from(*q),
-        ExpressionType::FixedLengthString(len) => "".fix_length(*len as usize).into(),
+        ExpressionType::FixedLengthString(len) => allocate_string_variant(*len as usize),
         ExpressionType::UserDefined(type_name) => {
             Variant::VUserDefined(Box::new(UserDefinedTypeValue::new(type_name, types)))
         }

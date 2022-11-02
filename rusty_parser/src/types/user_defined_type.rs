@@ -5,7 +5,7 @@ use crate::types::{
     BareName, BareNameNode, ExpressionNode, ExpressionType, HasExpressionType, Name, TypeQualifier,
 };
 use crate::variant::{UserDefinedTypeValue, Variant};
-use rusty_common::{Locatable, QError, StringUtils};
+use rusty_common::{Locatable, QError};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UserDefinedType {
@@ -96,12 +96,28 @@ pub enum ElementType {
     UserDefined(BareNameNode),
 }
 
+// TODO move Variant out of the Parser crate
+
+/// Allocates a new Variant that holds a string.
+/// The string is padded with whitespace of the given length.
+///
+/// # Examples
+/// ```
+/// use rusty_parser::allocate_string_variant;
+/// use rusty_parser::variant::Variant;
+/// assert_eq!(allocate_string_variant(1), Variant::VString(" ".to_owned()));
+/// assert_eq!(allocate_string_variant(2), Variant::VString("  ".to_owned()));
+/// ```
+pub fn allocate_string_variant(len: usize) -> Variant {
+    Variant::VString(std::iter::repeat(' ').take(len).collect())
+}
+
 impl ElementType {
     pub fn default_variant(&self, types: &UserDefinedTypes) -> Variant {
         match self {
             Self::Single => Variant::from(TypeQualifier::BangSingle),
             Self::Double => Variant::from(TypeQualifier::HashDouble),
-            Self::FixedLengthString(_, len) => Variant::VString("".fix_length(*len as usize)),
+            Self::FixedLengthString(_, len) => allocate_string_variant(*len as usize),
             Self::Integer => Variant::from(TypeQualifier::PercentInteger),
             Self::Long => Variant::from(TypeQualifier::AmpersandLong),
             Self::UserDefined(Locatable { element, .. }) => {

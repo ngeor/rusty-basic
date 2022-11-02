@@ -2,10 +2,6 @@ pub trait StringUtils {
     /// Truncates the given string if it exceeds the specified length,
     /// or pads it with spaces if it is not long enough.
     fn fix_length(&self, len: usize) -> String;
-
-    /// Pads the given string with spaces on the left side so that the
-    /// resulting string is of the specified length.
-    fn pad_left(&self, len: usize) -> String;
 }
 
 impl StringUtils for str {
@@ -32,26 +28,6 @@ impl StringUtils for str {
             result.push(' ');
         }
         result
-    }
-
-    /// Pads the given string with spaces on the left side.
-    ///
-    /// # Examples
-    /// ```
-    /// use rusty_common::StringUtils;
-    /// assert_eq!(String::from("abc").pad_left(0), String::from("abc"));
-    /// assert_eq!(String::from("abc").pad_left(3), String::from("abc"));
-    /// assert_eq!(String::from("abc").pad_left(4), String::from(" abc"));
-    /// ```
-    fn pad_left(&self, len: usize) -> String {
-        if len <= self.len() {
-            self.to_owned()
-        } else {
-            // prepend spaces
-            let mut result: String = " ".repeat(len - self.len());
-            result.push_str(self);
-            result
-        }
     }
 }
 

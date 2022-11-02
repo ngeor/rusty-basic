@@ -207,24 +207,6 @@ impl CmpIgnoreAsciiCase for &CaseInsensitiveString {
     }
 }
 
-impl std::ops::Add<char> for CaseInsensitiveString {
-    type Output = Self;
-    fn add(self, other: char) -> Self {
-        let mut s: String = self.into();
-        s.push(other);
-        s.into()
-    }
-}
-
-impl std::ops::Add<CaseInsensitiveString> for CaseInsensitiveString {
-    type Output = Self;
-    fn add(self, other: CaseInsensitiveString) -> Self {
-        let mut s: String = self.into();
-        s.push_str(&other.inner);
-        s.into()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -311,12 +293,5 @@ mod tests {
             CmpIgnoreAsciiCase::compare_ignore_ascii_case("abca", "abc"),
             Ordering::Greater
         );
-    }
-
-    #[test]
-    fn test_add_char() {
-        let x: CaseInsensitiveString = "abc".into();
-        let y: CaseInsensitiveString = x + '.';
-        assert_eq!(y, CaseInsensitiveString::from("abc."));
     }
 }

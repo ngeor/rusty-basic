@@ -3,9 +3,8 @@ use crate::pc::many::OneOrMoreParser;
 use crate::pc::mappers::{FnMapper, KeepLeftMapper, KeepRightMapper};
 use crate::pc::{
     AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, Alt2, AndPC, AndThen, ChainParser,
-    FilterMapParser, FilterParser, GuardPC, LoopWhile, MapIncompleteErrParser,
-    NegateParser, NoIncompleteParser, OrFailParser, ParserToParserOnceAdapter, PeekParser,
-    Tokenizer, Undo,
+    FilterMapParser, FilterParser, GuardPC, LoopWhile, MapIncompleteErrParser, NegateParser,
+    NoIncompleteParser, OrFailParser, ParserToParserOnceAdapter, PeekParser, Tokenizer, Undo,
 };
 use rusty_common::*;
 

@@ -57,13 +57,21 @@ impl Name {
     pub fn try_concat_name(self, right: Self) -> Option<Self> {
         match self {
             Self::Bare(left_name) => match right {
-                Self::Bare(right_bare) => Some(Name::Bare(left_name + '.' + right_bare)),
-                Self::Qualified(right_bare, qualifier) => {
-                    Some(Name::Qualified(left_name + '.' + right_bare, qualifier))
-                }
+                Self::Bare(right_bare) => Some(Name::Bare(Self::dot_concat(left_name, right_bare))),
+                Self::Qualified(right_bare, qualifier) => Some(Name::Qualified(
+                    Self::dot_concat(left_name, right_bare),
+                    qualifier,
+                )),
             },
             _ => None,
         }
+    }
+
+    pub fn dot_concat(left: BareName, right: BareName) -> BareName {
+        let mut buf: String = left.into();
+        buf.push('.');
+        buf.push_str(right.as_ref());
+        buf.into()
     }
 
     /// Tries to convert this name into a qualified name.

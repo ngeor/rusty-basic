@@ -85,7 +85,7 @@ fn fold_to_bare_name(expr: Expression) -> Result<BareName, QError> {
         Expression::Variable(Name::Bare(bare_name), _) => Ok(bare_name),
         Expression::Property(boxed_left_side, Name::Bare(bare_name), _) => {
             let left_side_name = fold_to_bare_name(*boxed_left_side)?;
-            Ok(left_side_name + '.' + bare_name)
+            Ok(Name::dot_concat(left_side_name, bare_name))
         }
         _ => Err(QError::syntax_error("Illegal sub name")),
     }

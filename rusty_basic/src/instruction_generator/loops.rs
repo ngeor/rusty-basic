@@ -4,6 +4,7 @@ use rusty_parser::{
     ConditionalBlockNode, DoLoopConditionKind, DoLoopConditionPosition, DoLoopNode, Expression,
     ExpressionNode, ForLoopNode, HasExpressionType, StatementNodes,
 };
+use rusty_variant::Variant;
 
 impl InstructionGenerator {
     pub fn generate_while_instructions(&mut self, w: ConditionalBlockNode, pos: Location) {
@@ -56,7 +57,7 @@ impl InstructionGenerator {
             Some(s) => {
                 let step_location = s.pos();
                 // load 0 to B
-                self.push_load(0, pos);
+                self.push_load(Variant::VInteger(0), pos);
                 self.push(Instruction::CopyAToB, pos);
                 // load step to A
                 self.generate_expression_instructions(s);
@@ -96,7 +97,7 @@ impl InstructionGenerator {
                 self.label("out-of-for", pos);
             }
             None => {
-                self.push_load(1, pos);
+                self.push_load(Variant::VInteger(1), pos);
                 // A to D (step is in D)
                 self.push(Instruction::CopyAToD, pos);
                 self.generate_for_loop_instructions_positive_or_negative_step(

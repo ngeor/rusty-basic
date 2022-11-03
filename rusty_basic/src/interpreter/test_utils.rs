@@ -9,8 +9,8 @@ use crate::interpreter::Stdlib;
 use rusty_common::*;
 use rusty_linter;
 use rusty_linter::{lint, HasUserDefinedTypes};
-use rusty_parser::variant::Variant;
 use rusty_parser::{parse_main_file, Name};
+use rusty_variant::Variant;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -243,7 +243,7 @@ macro_rules! assert_has_variable {
     ($int:expr, $name:expr, $expected_value:expr) => {
         assert_eq!(
             $int.get_variable_str($name),
-            rusty_parser::variant::Variant::from($expected_value)
+            rusty_variant::Variant::from($expected_value)
         );
     };
 }

@@ -3,7 +3,7 @@ use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::keyboard::set_indicator_keys;
 use crate::interpreter::utils::VariantCasts;
 use rusty_common::*;
-use rusty_parser::variant::QBNumberCast;
+use rusty_linter::QBNumberCast;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let address: usize = interpreter.context()[0].to_non_negative_int()?;

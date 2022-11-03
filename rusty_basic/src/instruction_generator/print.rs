@@ -1,6 +1,7 @@
 use crate::instruction_generator::{Instruction, InstructionGenerator, PrinterType};
 use rusty_common::{AtLocation, Locatable, Location};
 use rusty_parser::{PrintArg, PrintNode};
+use rusty_variant::V_FALSE;
 
 impl InstructionGenerator {
     pub fn generate_print_instructions(&mut self, print_node: PrintNode, pos: Location) {
@@ -37,7 +38,7 @@ impl InstructionGenerator {
                 self.generate_expression_instructions(format_string.clone());
             }
             None => {
-                self.push_load(false, pos);
+                self.push_load(V_FALSE, pos);
             }
         }
         self.push(Instruction::PrintSetFormatStringFromA, pos);

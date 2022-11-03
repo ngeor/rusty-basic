@@ -1,8 +1,9 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Input;
 use rusty_common::{FileHandle, QError};
-use rusty_parser::variant::Variant;
+use rusty_linter::qualifier_of_variant;
 use rusty_parser::TypeQualifier;
+use rusty_variant::Variant;
 use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
@@ -66,7 +67,7 @@ fn raw_input<S: InterpreterTrait>(
 }
 
 fn qualifier<S: InterpreterTrait>(interpreter: &S, idx: usize) -> Result<TypeQualifier, QError> {
-    TypeQualifier::try_from(&interpreter.context()[idx])
+    qualifier_of_variant(&interpreter.context()[idx])
 }
 
 fn parse_single_input(s: String) -> Result<f32, QError> {
@@ -96,7 +97,7 @@ mod tests {
         interpret, interpret_with_raw_input, MockInterpreterTrait,
     };
     use rusty_common::*;
-    use rusty_parser::variant::Variant;
+    use rusty_variant::Variant;
 
     fn assert_input<T>(
         raw_input: &str,

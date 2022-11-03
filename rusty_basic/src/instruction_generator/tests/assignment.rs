@@ -1,8 +1,8 @@
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{Instruction, RootPath};
 use rusty_common::AtRowCol;
-use rusty_parser::variant::Variant;
 use rusty_parser::TypeQualifier;
+use rusty_variant::Variant;
 
 #[test]
 fn test_assignment() {

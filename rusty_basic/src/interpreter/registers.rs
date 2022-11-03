@@ -1,4 +1,4 @@
-use rusty_parser::variant::Variant;
+use rusty_variant::Variant;
 
 #[derive(Debug)]
 pub struct Registers {

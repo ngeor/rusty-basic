@@ -1,5 +1,5 @@
 [package]
-name = "rusty_linter"
+name = "rusty_variant"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,5 +7,3 @@ edition = "2021"
 
 [dependencies]
 rusty_common = { path = "../rusty_common" }
-rusty_parser = { path = "../rusty_parser" }
-rusty_variant = { path = "../rusty_variant" }

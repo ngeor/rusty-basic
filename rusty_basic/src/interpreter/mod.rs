@@ -1,5 +1,6 @@
 mod arguments;
 mod built_ins;
+mod byte_size;
 mod context;
 mod data_segment;
 mod default_stdlib;

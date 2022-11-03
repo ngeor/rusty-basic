@@ -11,6 +11,7 @@ crossterm = "0.25"
 rusty_common = { path = "../rusty_common" }
 rusty_parser = { path = "../rusty_parser" }
 rusty_linter = { path = "../rusty_linter" }
+rusty_variant = { path = "../rusty_variant" }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["winuser"] }

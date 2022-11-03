@@ -1,7 +1,7 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use rusty_common::*;
-use rusty_parser::variant::{Variant, MAX_INTEGER, MAX_LONG};
 use rusty_parser::BuiltInFunction;
+use rusty_variant::{Variant, MAX_INTEGER, MAX_LONG};
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let v: &str = interpreter.context()[0].to_str_unchecked();

@@ -1,11 +1,12 @@
+use crate::interpreter::byte_size::QByteSize;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use rusty_common::*;
-use rusty_parser::variant::{AsciiSize, Variant};
 use rusty_parser::BuiltInFunction;
+use rusty_variant::Variant;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let v: &Variant = &interpreter.context()[0];
-    let len: i32 = v.ascii_size() as i32;
+    let len: i32 = v.byte_size() as i32;
     interpreter
         .context_mut()
         .set_built_in_function_result(BuiltInFunction::Len, len);

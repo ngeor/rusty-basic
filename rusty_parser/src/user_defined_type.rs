@@ -51,6 +51,7 @@ use crate::types::{
     Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, UserDefinedType,
 };
 use rusty_common::{Locatable, QError};
+use rusty_variant::MAX_INTEGER;
 
 pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
     seq5(
@@ -106,7 +107,7 @@ fn demand_string_length_p() -> impl Parser<Output = ExpressionNode> + NonOptPars
     expression_node_p()
         .and_then(|Locatable { element, pos }| match element {
             Expression::IntegerLiteral(i) => {
-                if i > 0 && i < crate::variant::MAX_INTEGER {
+                if i > 0 && i < MAX_INTEGER {
                     Ok(Locatable::new(element, pos))
                 } else {
                     Err(QError::syntax_error("String length out of range"))

@@ -1,10 +1,11 @@
 use crate::instruction_generator::{Path, RootPath};
 use crate::interpreter::arguments::Arguments;
+use crate::interpreter::byte_size::QByteSize;
 use crate::interpreter::variables::Variables;
 use rusty_common::*;
-use rusty_linter::SubprogramName;
-use rusty_parser::variant::{AsciiSize, QBNumberCast, Variant};
+use rusty_linter::{QBNumberCast, SubprogramName};
 use rusty_parser::{BareName, BuiltInFunction, TypeQualifier};
+use rusty_variant::{bytes_to_i32, i32_to_bytes, UserDefinedTypeValue, VArray, Variant};
 use std::collections::HashMap;
 
 // This is an arbitrary value, not what QBasic is doing
@@ -225,7 +226,7 @@ impl Context {
                 let mut result: usize = 0;
                 for i in 0..memory_block_index {
                     // add the total bytes of the previous variables in previous memory blocks
-                    result += self.memory_blocks[i].variables.ascii_size();
+                    result += self.memory_blocks[i].variables.byte_size();
                 }
                 // add the varptr of this variable
                 result += self.memory_blocks[memory_block_index]
@@ -238,7 +239,7 @@ impl Context {
                 match self.find_value_in_caller_context(parent_path.as_ref())? {
                     Variant::VArray(v_arr) => {
                         let int_indices: Vec<i32> = indices.try_cast()?;
-                        v_arr.address_offset_of_element(&int_indices)
+                        address_offset_of_element(v_arr, &int_indices)
                     }
                     _ => panic!("Expected array"),
                 }
@@ -246,9 +247,10 @@ impl Context {
             Path::Property(parent_path, property_name) => {
                 let parent_var_ptr = self.calculate_varptr(parent_path.as_ref())?;
                 match self.find_value_in_caller_context(parent_path)? {
-                    Variant::VUserDefined(v_u) => {
-                        Ok(v_u.address_offset_of_property(property_name) + parent_var_ptr)
-                    }
+                    Variant::VUserDefined(v_u) => Ok(address_offset_of_property(
+                        v_u.as_ref(),
+                        property_name,
+                    ) + parent_var_ptr),
                     _ => panic!("Expected user defined type"),
                 }
             }
@@ -334,11 +336,12 @@ impl Context {
         if seg == VAR_SEG_BASE {
             // not an array element
             let mut offset: usize = 0;
+            // TODO bad O(M*N) performance
             for block in self.memory_blocks.iter() {
                 for var in block.variables.iter() {
-                    let len = var.ascii_size();
+                    let len = var.byte_size();
                     if offset <= address && address < offset + len {
-                        return var.peek_non_array(address - offset);
+                        return var.peek_byte(address - offset);
                     }
 
                     offset += len;
@@ -351,7 +354,7 @@ impl Context {
                     if let Variant::VArray(v_arr) = var {
                         if idx == seg - VAR_SEG_BASE {
                             // found the array
-                            return v_arr.peek_array_element(address);
+                            return v_arr.peek_byte(address);
                         } else {
                             idx += 1;
                         }
@@ -371,9 +374,9 @@ impl Context {
             let mut offset: usize = 0;
             for block in self.memory_blocks.iter_mut() {
                 for var in block.variables.iter_mut() {
-                    let len = var.ascii_size();
+                    let len = var.byte_size();
                     if offset <= address && address < offset + len {
-                        return var.poke_non_array(address - offset, byte_value);
+                        return var.poke_byte(address - offset, byte_value);
                     }
 
                     offset += len;
@@ -386,7 +389,7 @@ impl Context {
                     if let Variant::VArray(v_arr) = var {
                         if idx == seg - VAR_SEG_BASE {
                             // found the array
-                            return v_arr.poke_array_element(address, byte_value);
+                            return v_arr.poke_byte(address, byte_value);
                         } else {
                             idx += 1;
                         }
@@ -486,5 +489,79 @@ impl MemoryBlock {
             // it can be removed only if it is not static
             !self.is_static
         }
+    }
+}
+
+fn address_offset_of_element(v: &VArray, indices: &[i32]) -> Result<usize, QError> {
+    v.abs_index(indices)
+        .map(|abs_index| abs_index * v.byte_size() / v.len())
+}
+
+fn address_offset_of_property(v: &UserDefinedTypeValue, name: &CaseInsensitiveString) -> usize {
+    v.property_keys()
+        .take_while(|p| *p != name)
+        .flat_map(|p| v.get(p))
+        .map(|v| v.byte_size())
+        .sum()
+}
+
+pub trait PeekByte {
+    /// Gets the byte stored at the specific relative address in the given value.
+    fn peek_byte(&self, address: usize) -> Result<u8, QError>;
+}
+
+impl PeekByte for Variant {
+    fn peek_byte(&self, address: usize) -> Result<u8, QError> {
+        match self {
+            Self::VInteger(i) => {
+                let bytes = i32_to_bytes(*i);
+                Ok(bytes[address])
+            }
+            _ => todo!(),
+        }
+    }
+}
+
+impl PeekByte for VArray {
+    fn peek_byte(&self, address: usize) -> Result<u8, QError> {
+        let element_size = self.byte_size() / self.len();
+        debug_assert!(element_size > 0);
+        let element_index = address / element_size;
+        let offset = address % element_size;
+        let element = self
+            .get(element_index)
+            .ok_or(QError::SubscriptOutOfRange)?;
+        element.peek_byte(offset)
+    }
+}
+
+pub trait PokeByte {
+    fn poke_byte(&mut self, address: usize, value: u8) -> Result<(), QError>;
+}
+
+impl PokeByte for Variant {
+    fn poke_byte(&mut self, address: usize, value: u8) -> Result<(), QError> {
+        match self {
+            Self::VInteger(i) => {
+                let mut bytes = i32_to_bytes(*i);
+                bytes[address] = value;
+                *i = bytes_to_i32(bytes);
+                Ok(())
+            }
+            _ => todo!(),
+        }
+    }
+}
+
+impl PokeByte for VArray {
+    fn poke_byte(&mut self, address: usize, value: u8) -> Result<(), QError> {
+        let element_size = self.byte_size() / self.len();
+        debug_assert!(element_size > 0);
+        let element_index = address / element_size;
+        let offset = address % element_size;
+        let element = self
+            .get_mut(element_index)
+            .ok_or(QError::SubscriptOutOfRange)?;
+        element.poke_byte(offset, value)
     }
 }

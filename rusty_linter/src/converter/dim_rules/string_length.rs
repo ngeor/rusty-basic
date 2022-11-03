@@ -1,8 +1,9 @@
 use crate::const_value_resolver::ConstValueResolver;
 use crate::converter::context::Context;
+use crate::QBNumberCast;
 use rusty_common::{QError, QErrorNode, ToLocatableError};
-use rusty_parser::variant::{QBNumberCast, MAX_INTEGER};
 use rusty_parser::ExpressionNode;
+use rusty_variant::MAX_INTEGER;
 
 pub fn resolve_string_length(
     ctx: &Context,

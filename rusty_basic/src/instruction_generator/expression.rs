@@ -1,6 +1,7 @@
 use super::{Instruction, InstructionGenerator, RootPath};
 use rusty_common::*;
 use rusty_parser::*;
+use rusty_variant::Variant;
 
 impl InstructionGenerator {
     pub fn generate_expression_instructions_casting(
@@ -36,19 +37,19 @@ impl InstructionGenerator {
         let Locatable { element: e, pos } = expr_node;
         match e {
             Expression::SingleLiteral(s) => {
-                self.push_load(s, pos);
+                self.push_load(Variant::VSingle(s), pos);
             }
             Expression::DoubleLiteral(s) => {
-                self.push_load(s, pos);
+                self.push_load(Variant::VDouble(s), pos);
             }
             Expression::StringLiteral(s) => {
-                self.push_load(s, pos);
+                self.push_load(Variant::VString(s), pos);
             }
             Expression::IntegerLiteral(s) => {
-                self.push_load(s, pos);
+                self.push_load(Variant::VInteger(s), pos);
             }
             Expression::LongLiteral(s) => {
-                self.push_load(s, pos);
+                self.push_load(Variant::VLong(s), pos);
             }
             Expression::Variable(_, _)
             | Expression::ArrayElement(_, _, _)

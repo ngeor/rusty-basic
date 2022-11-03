@@ -2,11 +2,11 @@ use crate::const_value_resolver::ConstLookup;
 use crate::converter::types::Implicits;
 use crate::NameContext;
 use rusty_common::CaseInsensitiveString;
-use rusty_parser::variant::Variant;
 use rusty_parser::{
     BareName, BuiltInStyle, HasExpressionType, QualifiedNameNode, RedimInfo, TypeQualifier,
     VarTypeIsExtended, VariableInfo,
 };
+use rusty_variant::Variant;
 use std::collections::HashMap;
 
 /*

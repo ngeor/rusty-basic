@@ -1,5 +1,6 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use rusty_common::*;
+use rusty_linter::CastVariant;
 use rusty_parser::TypeQualifier;
 
 pub fn and<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {

@@ -1,9 +1,8 @@
 use crate::const_value_resolver::ConstValueResolver;
 use crate::converter::context::Context;
-use crate::{HasFunctions, HasSubs};
+use crate::{qualifier_of_const_variant, CastVariant, HasFunctions, HasSubs};
 use rusty_common::*;
 use rusty_parser::*;
-use std::convert::TryFrom;
 
 pub fn on_const(
     ctx: &mut Context,
@@ -44,8 +43,7 @@ fn new_const(
         ..
     } = left_side;
     let value_before_casting = ctx.names.resolve_const(&right_side)?;
-    let value_qualifier =
-        TypeQualifier::try_from(&value_before_casting).with_err_at(&right_side)?;
+    let value_qualifier = qualifier_of_const_variant(&value_before_casting);
     let final_value = if const_name.is_bare_or_of_type(value_qualifier) {
         value_before_casting
     } else {

@@ -1,6 +1,7 @@
 use super::{Instruction, InstructionGenerator, RootPath};
 use rusty_common::*;
 use rusty_parser::*;
+use rusty_variant::Variant;
 
 impl InstructionGenerator {
     pub fn visit_dim_list(&mut self, item: DimList) {
@@ -68,7 +69,7 @@ impl InstructionGenerator {
                         self.generate_expression_instructions(lbound);
                         self.push(Instruction::PushUnnamedByVal, lbound_pos);
                     } else {
-                        self.push_load_unnamed_arg(0, pos);
+                        self.push_load_unnamed_arg(Variant::VInteger(0), pos);
                     }
 
                     let ubound_pos = ubound.pos();

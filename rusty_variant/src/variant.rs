@@ -1,11 +1,7 @@
-use super::fit::FitToType;
-use super::UserDefinedTypeValue;
-use crate::variant::bits::{bytes_to_i32, i32_to_bytes};
-use crate::variant::{qb_and, qb_or, AsciiSize, QBNumberCast, VArray};
-use crate::TypeQualifier;
-use rusty_common::*;
+use crate::fit::FitToType;
+use crate::{qb_and, qb_or, UserDefinedTypeValue, VArray, MIN_INTEGER, MIN_LONG};
+use rusty_common::QError;
 use std::cmp::Ordering;
-use std::convert::TryFrom;
 use std::fmt::Display;
 
 #[derive(Clone, Debug)]
@@ -21,11 +17,6 @@ pub enum Variant {
 
 pub const V_TRUE: Variant = Variant::VInteger(-1);
 pub const V_FALSE: Variant = Variant::VInteger(0);
-
-pub const MIN_INTEGER: i32 = -32768;
-pub const MAX_INTEGER: i32 = 32767;
-pub const MIN_LONG: i64 = -2147483648;
-pub const MAX_LONG: i64 = 2147483647;
 
 trait ApproximateCmp {
     fn cmp(left: &Self, right: &Self) -> Ordering;
@@ -374,47 +365,9 @@ impl Variant {
         }
     }
 
+    // TODO #[deprecated]
     pub fn is_array(&self) -> bool {
         matches!(self, Self::VArray(_))
-    }
-
-    pub fn peek_non_array(&self, address: usize) -> Result<u8, QError> {
-        match self {
-            Self::VInteger(i) => {
-                let bytes = i32_to_bytes(*i);
-                Ok(bytes[address])
-            }
-            _ => {
-                todo!()
-            }
-        }
-    }
-
-    pub fn poke_non_array(&mut self, address: usize, byte_value: u8) -> Result<(), QError> {
-        match self {
-            Self::VInteger(i) => {
-                let mut bytes = i32_to_bytes(*i);
-                bytes[address] = byte_value;
-                *i = bytes_to_i32(bytes);
-                Ok(())
-            }
-            _ => {
-                todo!()
-            }
-        }
-    }
-}
-
-impl AsciiSize for Variant {
-    fn ascii_size(&self) -> usize {
-        match self {
-            Self::VInteger(_) => 2,
-            Self::VLong(_) | Self::VSingle(_) => 4,
-            Self::VDouble(_) => 8,
-            Self::VString(s) => s.chars().count(),
-            Self::VArray(v_array) => v_array.ascii_size(),
-            Self::VUserDefined(user_defined_type_value) => user_defined_type_value.ascii_size(),
-        }
     }
 }
 
@@ -436,41 +389,6 @@ impl Display for Variant {
             Variant::VInteger(n) => write!(f, "{}", n),
             Variant::VLong(n) => write!(f, "{}", n),
             _ => Err(std::fmt::Error),
-        }
-    }
-}
-
-// ========================================================
-// Creating the default variant
-// ========================================================
-
-impl From<TypeQualifier> for Variant {
-    fn from(type_qualifier: TypeQualifier) -> Self {
-        match type_qualifier {
-            TypeQualifier::BangSingle => Self::VSingle(0.0),
-            TypeQualifier::HashDouble => Self::VDouble(0.0),
-            TypeQualifier::DollarString => Self::VString(String::new()),
-            TypeQualifier::PercentInteger => Self::VInteger(0),
-            TypeQualifier::AmpersandLong => Self::VLong(0),
-        }
-    }
-}
-
-// ========================================================
-// Try to get a type qualifier
-// ========================================================
-
-impl TryFrom<&Variant> for TypeQualifier {
-    type Error = QError;
-
-    fn try_from(value: &Variant) -> Result<Self, Self::Error> {
-        match value {
-            Variant::VSingle(_) => Ok(TypeQualifier::BangSingle),
-            Variant::VDouble(_) => Ok(TypeQualifier::HashDouble),
-            Variant::VString(_) => Ok(TypeQualifier::DollarString),
-            Variant::VInteger(_) => Ok(TypeQualifier::PercentInteger),
-            Variant::VLong(_) => Ok(TypeQualifier::AmpersandLong),
-            _ => Err(QError::TypeMismatch),
         }
     }
 }
@@ -543,18 +461,6 @@ impl Variant {
     }
 }
 
-impl QBNumberCast<bool> for Variant {
-    fn try_cast(&self) -> Result<bool, QError> {
-        match self {
-            Variant::VSingle(n) => Ok(*n != 0.0),
-            Variant::VDouble(n) => Ok(*n != 0.0),
-            Variant::VInteger(n) => Ok(*n != 0),
-            Variant::VLong(n) => Ok(*n != 0),
-            _ => Err(QError::TypeMismatch),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -590,30 +496,6 @@ mod tests {
             assert_eq!(Variant::from(42_i64), Variant::VLong(42));
             assert_eq!(Variant::from(true), V_TRUE);
             assert_eq!(Variant::from(false), V_FALSE);
-        }
-    }
-
-    mod try_from {
-        use super::*;
-
-        #[test]
-        fn test_bool_try_from() {
-            assert_eq!(true, bool_try_from(Variant::from(1.0_f32)).unwrap());
-            assert_eq!(false, bool_try_from(Variant::from(0.0_f32)).unwrap());
-            assert_eq!(true, bool_try_from(Variant::from(1.0)).unwrap());
-            assert_eq!(false, bool_try_from(Variant::from(0.0)).unwrap());
-            bool_try_from(Variant::from("hi")).expect_err("should not convert from string");
-            bool_try_from(Variant::from("")).expect_err("should not convert from string");
-            assert_eq!(true, bool_try_from(Variant::from(42)).unwrap());
-            assert_eq!(false, bool_try_from(Variant::from(0)).unwrap());
-            assert_eq!(true, bool_try_from(Variant::from(42_i64)).unwrap());
-            assert_eq!(false, bool_try_from(Variant::from(0_i64)).unwrap());
-            assert_eq!(true, bool_try_from(V_TRUE).unwrap());
-            assert_eq!(false, bool_try_from(V_FALSE).unwrap());
-        }
-
-        fn bool_try_from(v: Variant) -> Result<bool, QError> {
-            v.try_cast()
         }
     }
 
@@ -1538,6 +1420,7 @@ mod tests {
 
         mod long {
             use super::*;
+            use crate::MAX_INTEGER;
 
             #[test]
             fn test_single() {

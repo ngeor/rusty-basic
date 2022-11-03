@@ -1,5 +1,6 @@
 use crate::const_value_resolver::ConstValueResolver;
 use crate::pre_linter::ConstantMap;
+use crate::CastVariant;
 use rusty_common::{Locatable, QError, QErrorNode, ToLocatableError};
 use rusty_parser::{BareName, ExpressionNode, Name, NameNode};
 

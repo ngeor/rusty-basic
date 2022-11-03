@@ -1,6 +1,6 @@
-use crate::variant::{Variant, MIN_INTEGER, MIN_LONG};
 use crate::*;
 use rusty_common::*;
+use rusty_variant::{MIN_INTEGER, MIN_LONG};
 
 // TODO move traits and logic that is linter specific to linter (including CanCastTo from common)
 
@@ -92,17 +92,6 @@ impl From<FileHandle> for Expression {
 }
 
 impl Expression {
-    pub fn from_constant(value: Variant) -> Result<Self, QError> {
-        match value {
-            Variant::VSingle(f) => Ok(f.into()),
-            Variant::VDouble(d) => Ok(d.into()),
-            Variant::VString(s) => Ok(s.into()),
-            Variant::VInteger(i) => Ok(i.into()),
-            Variant::VLong(l) => Ok(l.into()),
-            _ => Err(QError::InvalidConstant),
-        }
-    }
-
     #[cfg(test)]
     pub fn func(s: &str, args: ExpressionNodes) -> Self {
         let name: Name = s.into();

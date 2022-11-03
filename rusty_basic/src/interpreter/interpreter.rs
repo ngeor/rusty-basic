@@ -1,10 +1,12 @@
-use super::handlers::{
-    allocation, cast, comparison, logical, math, registers, subprogram, var_path,
-};
+use super::handlers::{cast, comparison, logical, math, registers, subprogram, var_path};
 use crate::instruction_generator::{Instruction, InstructionGeneratorResult, Path, PrinterType};
+use crate::interpreter::arguments::ArgumentInfo;
 use crate::interpreter::context::*;
 use crate::interpreter::data_segment::DataSegment;
 use crate::interpreter::default_stdlib::DefaultStdlib;
+use crate::interpreter::handlers::allocation::{
+    allocate_array, allocate_fixed_length_string, allocate_user_defined_type, allocate_built_in,
+};
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::{FileManager, Input, Printer};
 use crate::interpreter::lpt1_write::Lpt1Write;
@@ -15,9 +17,9 @@ use crate::interpreter::screen::{CrossTermScreen, Screen};
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
 use rusty_common::*;
-use rusty_linter::HasUserDefinedTypes;
-use rusty_parser::variant::{QBNumberCast, Variant};
+use rusty_linter::{HasUserDefinedTypes, QBNumberCast};
 use rusty_parser::UserDefinedTypes;
+use rusty_variant::Variant;
 use std::collections::VecDeque;
 
 pub struct Interpreter<
@@ -488,18 +490,30 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                 return Err(interpreter_error.clone()).with_err_at(pos);
             }
             Instruction::AllocateBuiltIn(q) => {
-                allocation::allocate_built_in(self, *q).with_err_at(pos)?;
+                self.registers_mut().set_a(allocate_built_in(*q));
             }
             Instruction::AllocateFixedLengthString(len) => {
-                allocation::allocate_fixed_length_string(self, *len).with_err_at(pos)?;
+                self.registers_mut()
+                    .set_a(allocate_fixed_length_string(*len as usize));
             }
             // TODO instructions should only accept simple types as arguments
             Instruction::AllocateArrayIntoA(element_type) => {
-                allocation::allocate_array(self, element_type).with_err_at(pos)?;
+                // TODO review, too long
+                let arguments = self.context_mut().drop_arguments_for_array_allocation();
+                let r_args: Result<Vec<i32>, QError> = arguments
+                    .iter()
+                    .map(|ArgumentInfo { value, .. }| value)
+                    .map(QBNumberCast::try_cast)
+                    .collect();
+                let args = r_args.with_err_at(pos)?;
+                let v = allocate_array(args, element_type, self.user_defined_types())
+                    .with_err_at(pos)?;
+                self.registers_mut().set_a(v);
             }
             Instruction::AllocateUserDefined(user_defined_type_name) => {
-                allocation::allocate_user_defined_type(self, user_defined_type_name)
-                    .with_err_at(pos)?;
+                let v =
+                    allocate_user_defined_type(user_defined_type_name, self.user_defined_types());
+                self.registers_mut().set_a(v);
             }
             Instruction::VarPathName(root_path) => {
                 var_path::var_path_name(self, root_path.clone());

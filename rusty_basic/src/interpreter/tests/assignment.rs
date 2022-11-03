@@ -11,7 +11,7 @@ macro_rules! assert_assign_ok {
         let name = rusty_parser::Name::from($expected_variable_name);
         assert_eq!(
             interpreter.context().get_by_name(&name),
-            rusty_parser::variant::Variant::from($expected_value)
+            rusty_variant::Variant::from($expected_value)
         );
     };
 }

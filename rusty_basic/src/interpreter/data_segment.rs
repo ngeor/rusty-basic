@@ -1,5 +1,5 @@
 use rusty_common::*;
-use rusty_parser::variant::Variant;
+use rusty_variant::Variant;
 
 #[derive(Default)]
 pub struct DataSegment {

@@ -1,8 +1,9 @@
 use crate::instruction_generator::{Path, RootPath};
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use rusty_common::*;
-use rusty_parser::variant::{QBNumberCast, Variant};
+use rusty_linter::QBNumberCast;
 use rusty_parser::BareName;
+use rusty_variant::Variant;
 
 pub fn var_path_name<T: InterpreterTrait>(interpreter: &mut T, root_path: RootPath) {
     interpreter

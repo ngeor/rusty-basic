@@ -1,7 +1,7 @@
 use crate::instruction_generator::PrinterType;
 use crate::interpreter::io::Printer;
 use rusty_common::*;
-use rusty_parser::variant::Variant;
+use rusty_variant::Variant;
 use std::fmt::Display;
 
 /// Handles the PRINT and LPRINT statements.
@@ -184,7 +184,7 @@ mod numeric_formatting {
     //! Handles formatting of numbers.
 
     use rusty_common::*;
-    use rusty_parser::variant::Variant;
+    use rusty_variant::Variant;
 
     pub fn print_digit_formatting_chars(
         format_string_chars: &[char],

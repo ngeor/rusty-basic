@@ -2,11 +2,11 @@ use crate::pre_linter::ConstantMap;
 use rusty_common::{
     AtLocation, Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError,
 };
-use rusty_parser::variant::Variant;
 use rusty_parser::{
     BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, TypeQualifier,
     UserDefinedType, UserDefinedTypes,
 };
+use rusty_variant::{Variant, MAX_INTEGER};
 use std::collections::HashMap;
 
 pub fn user_defined_type(
@@ -99,7 +99,7 @@ fn validate_element_type_str_len(
                             Variant::VInteger(i) => {
                                 if qualifier == TypeQualifier::PercentInteger
                                     && *i >= 1
-                                    && *i <= rusty_parser::variant::MAX_INTEGER
+                                    && *i <= MAX_INTEGER
                                 {
                                     Ok(*i as u16)
                                 } else {
@@ -123,7 +123,7 @@ fn validate_element_type_str_len(
                     Some(const_value) => {
                         match const_value {
                             Variant::VInteger(i) => {
-                                if *i >= 1 && *i <= rusty_parser::variant::MAX_INTEGER {
+                                if *i >= 1 && *i <= MAX_INTEGER {
                                     Ok(*i as u16)
                                 } else {
                                     // illegal string length

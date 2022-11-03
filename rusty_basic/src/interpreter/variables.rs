@@ -1,8 +1,11 @@
 use crate::instruction_generator::Path;
 use crate::interpreter::arguments::{ArgumentInfo, Arguments};
+use crate::interpreter::byte_size::QByteSize;
+use crate::interpreter::context::{PeekByte, PokeByte};
+use crate::interpreter::handlers::allocation::allocate_built_in;
 use rusty_common::{IndexedMap, QError};
-use rusty_parser::variant::{AsciiSize, Variant, V_FALSE};
 use rusty_parser::{BareName, DimName, DimType, Name, ParamName, ParamType, TypeQualifier};
+use rusty_variant::{Variant, V_FALSE};
 
 #[derive(Debug)]
 pub struct Variables {
@@ -116,7 +119,7 @@ impl Variables {
     // the value for unqualified names is not important.
     fn default_value_for_name(name: &Name) -> Variant {
         if let Some(q) = name.qualifier() {
-            Variant::from(q)
+            allocate_built_in(q)
         } else {
             V_FALSE
         }
@@ -206,7 +209,7 @@ impl Variables {
             .keys()
             .take_while(|k| *k != name)
             .map(|k| self.get_by_name(k).unwrap())
-            .map(Variant::ascii_size)
+            .map(Variant::byte_size)
             .sum()
     }
 
@@ -220,9 +223,9 @@ impl Variables {
         let mut offset: usize = 0;
         for RuntimeVariableInfo { value, .. } in self.map.values() {
             if !value.is_array() {
-                let len = value.ascii_size();
+                let len = value.byte_size();
                 if offset <= address && address < offset + len {
-                    return value.peek_non_array(address - offset);
+                    return value.peek_byte(address - offset);
                 }
 
                 offset += len;
@@ -237,9 +240,9 @@ impl Variables {
         let mut offset: usize = 0;
         for RuntimeVariableInfo { value, .. } in self.map.values_mut() {
             if !value.is_array() {
-                let len = value.ascii_size();
+                let len = value.byte_size();
                 if offset <= address && address < offset + len {
-                    return value.poke_non_array(address - offset, byte_value);
+                    return value.poke_byte(address - offset, byte_value);
                 }
 
                 offset += len;
@@ -259,8 +262,8 @@ impl From<Arguments> for Variables {
     }
 }
 
-impl AsciiSize for Variables {
-    fn ascii_size(&self) -> usize {
-        self.iter().map(Variant::ascii_size).sum()
+impl QByteSize for Variables {
+    fn byte_size(&self) -> usize {
+        self.iter().map(Variant::byte_size).sum()
     }
 }

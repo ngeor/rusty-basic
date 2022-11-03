@@ -1,6 +1,6 @@
 use rusty_common::*;
-use rusty_parser::variant::Variant;
 use rusty_parser::{Expression, ExpressionNode, Operator, TypeQualifier, UnaryOperator};
+use rusty_variant::Variant;
 use std::cmp::Ordering;
 
 pub trait ConstLookup {

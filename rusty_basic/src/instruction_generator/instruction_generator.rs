@@ -4,8 +4,8 @@ use crate::instruction_generator::subprogram_info::{
 };
 use rusty_common::{AtLocation, CaseInsensitiveString, FileHandle, Locatable, Location, QError};
 use rusty_linter::SubprogramName;
-use rusty_parser::variant::Variant;
 use rusty_parser::*;
+use rusty_variant::Variant;
 
 /// Generates instructions for the given program.
 pub fn generate_instructions(program: ProgramNode) -> InstructionGeneratorResult {
@@ -356,7 +356,7 @@ impl InstructionGenerator {
                 let q_function_name = QualifiedName::new(bare_name, qualifier);
                 self.mark_current_subprogram(SubprogramName::Function(q_function_name), pos);
                 // set default value
-                self.push_load(qualifier_copy, pos);
+                self.push(Instruction::AllocateBuiltIn(qualifier_copy), pos);
                 self.subprogram_body(body, pos);
             }
         }
@@ -397,21 +397,14 @@ impl InstructionGenerator {
         self.push(Instruction::PopRet, pos);
     }
 
-    /// Adds a Load instruction, converting the given value into a Variant
-    /// and storing it in register A.
-    pub fn push_load<T>(&mut self, value: T, pos: Location)
-    where
-        Variant: From<T>,
-    {
-        self.push(Instruction::LoadIntoA(value.into()), pos);
+    /// Adds a Load instruction, storing the given [Variant] in register A.
+    pub fn push_load(&mut self, value: Variant, pos: Location) {
+        self.push(Instruction::LoadIntoA(value), pos);
     }
 
-    /// Adds a Load instruction, converting the given value into a Variant
-    /// and storing it in register A, followed by a PushUnnamed instruction.
-    pub fn push_load_unnamed_arg<T>(&mut self, value: T, pos: Location)
-    where
-        Variant: From<T>,
-    {
+    /// Adds a Load instruction, storing the given [Variant] in register A,
+    /// followed by a PushUnnamed instruction.
+    pub fn push_load_unnamed_arg(&mut self, value: Variant, pos: Location) {
         self.push_load(value, pos);
         self.push(Instruction::PushUnnamedByVal, pos);
     }

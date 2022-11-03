@@ -10,7 +10,6 @@ use crate::converter::traits::Convertible;
 use expr_state::ExprState;
 use pos_expr_state::PosExprState;
 use rusty_common::*;
-use rusty_parser::variant::Variant;
 use rusty_parser::*;
 use std::convert::TryFrom;
 

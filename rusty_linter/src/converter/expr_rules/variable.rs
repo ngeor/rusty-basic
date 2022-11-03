@@ -1,7 +1,8 @@
 use crate::converter::expr_rules::*;
 use crate::converter::types::ExprContext;
 use crate::type_resolver::{IntoQualified, IntoTypeQualifier};
-use crate::HasSubs;
+use crate::{qualifier_of_const_variant, HasSubs};
+use rusty_variant::Variant;
 
 pub fn convert(
     ctx: &mut PosExprState,
@@ -139,13 +140,24 @@ impl VarResolve for ExistingConst {
 
     fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, QErrorNode> {
         let v = self.opt_v.clone().unwrap();
-        let q = TypeQualifier::try_from(&v).with_err_no_pos()?;
+        let q = qualifier_of_const_variant(&v);
         if name.is_bare_or_of_type(q) {
             // resolve to literal expression
-            Expression::from_constant(v).with_err_no_pos()
+            Ok(const_variant_to_expression(v))
         } else {
             Err(QError::DuplicateDefinition).with_err_no_pos()
         }
+    }
+}
+
+fn const_variant_to_expression(value: Variant) -> Expression {
+    match value {
+        Variant::VSingle(f) => f.into(),
+        Variant::VDouble(d) => d.into(),
+        Variant::VString(s) => s.into(),
+        Variant::VInteger(i) => i.into(),
+        Variant::VLong(l) => l.into(),
+        _ => panic!("Invalid const variant: {:?}", value),
     }
 }
 

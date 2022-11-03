@@ -1,14 +1,12 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use rusty_common::*;
-use rusty_parser::TypeQualifier;
-use std::convert::TryFrom;
+use rusty_linter::{qualifier_of_variant, CastVariant};
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     // variables are passed by ref, so we can assign to them
     let len = interpreter.context().variables().len();
     for i in 0..len {
-        let target_type =
-            TypeQualifier::try_from(interpreter.context().variables().get(i).unwrap())?;
+        let target_type = qualifier_of_variant(interpreter.context().variables().get(i).unwrap())?;
         let data_value = interpreter.data_segment().pop()?;
         let casted_value = data_value.cast(target_type)?;
         interpreter.context_mut()[i] = casted_value;

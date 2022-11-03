@@ -1,6 +1,6 @@
 use crate::instruction_generator::Path;
-use rusty_parser::variant::Variant;
 use rusty_parser::ParamName;
+use rusty_variant::Variant;
 use std::slice::Iter;
 use std::vec::IntoIter;
 

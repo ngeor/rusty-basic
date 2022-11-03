@@ -4,5 +4,6 @@ members = [
   "rusty_basic",
   "rusty_common",
   "rusty_linter",
-  "rusty_parser"
+  "rusty_parser",
+  "rusty_variant"
 ]

@@ -1,6 +1,10 @@
-use crate::variant::{QBNumberCast, Variant};
-use crate::{variant, TypeQualifier};
-use rusty_common::*;
+use rusty_common::QError;
+use rusty_parser::TypeQualifier;
+use rusty_variant::{Variant, MAX_INTEGER, MAX_LONG, MIN_INTEGER, MIN_LONG};
+
+pub trait QBNumberCast<T> {
+    fn try_cast(&self) -> Result<T, QError>;
+}
 
 impl<T> QBNumberCast<Vec<T>> for Vec<Variant>
 where
@@ -32,7 +36,7 @@ impl QBNumberCast<i32> for f32 {
     fn try_cast(&self) -> Result<i32, QError> {
         if self.is_finite() {
             let r = self.round();
-            if r >= (variant::MIN_INTEGER as f32) && r <= (variant::MAX_INTEGER as f32) {
+            if r >= (MIN_INTEGER as f32) && r <= (MAX_INTEGER as f32) {
                 Ok(r as i32)
             } else {
                 Err(QError::Overflow)
@@ -47,7 +51,7 @@ impl QBNumberCast<i64> for f32 {
     fn try_cast(&self) -> Result<i64, QError> {
         if self.is_finite() {
             let r = self.round();
-            if r >= (variant::MIN_LONG as f32) && r <= (variant::MAX_LONG as f32) {
+            if r >= (MIN_LONG as f32) && r <= (MAX_LONG as f32) {
                 Ok(r as i64)
             } else {
                 Err(QError::Overflow)
@@ -68,7 +72,7 @@ impl QBNumberCast<i32> for f64 {
     fn try_cast(&self) -> Result<i32, QError> {
         if self.is_finite() {
             let r = self.round();
-            if r >= (variant::MIN_INTEGER as f64) && r <= (variant::MAX_INTEGER as f64) {
+            if r >= (MIN_INTEGER as f64) && r <= (MAX_INTEGER as f64) {
                 Ok(r as i32)
             } else {
                 Err(QError::Overflow)
@@ -83,7 +87,7 @@ impl QBNumberCast<i64> for f64 {
     fn try_cast(&self) -> Result<i64, QError> {
         if self.is_finite() {
             let r = self.round();
-            if r >= (variant::MIN_LONG as f64) && r <= (variant::MAX_LONG as f64) {
+            if r >= (MIN_LONG as f64) && r <= (MAX_LONG as f64) {
                 Ok(r as i64)
             } else {
                 Err(QError::Overflow)
@@ -126,7 +130,7 @@ impl QBNumberCast<f64> for i64 {
 
 impl QBNumberCast<i32> for i64 {
     fn try_cast(&self) -> Result<i32, QError> {
-        if *self >= (variant::MIN_INTEGER as i64) && *self <= (variant::MAX_INTEGER as i64) {
+        if *self >= (MIN_INTEGER as i64) && *self <= (MAX_INTEGER as i64) {
             Ok(*self as i32)
         } else {
             Err(QError::Overflow)
@@ -182,8 +186,12 @@ impl QBNumberCast<i64> for Variant {
     }
 }
 
-impl Variant {
-    pub fn cast(self, target_type: TypeQualifier) -> Result<Self, QError> {
+pub trait CastVariant: Sized {
+    fn cast(self, target_type: TypeQualifier) -> Result<Self, QError>;
+}
+
+impl CastVariant for Variant {
+    fn cast(self, target_type: TypeQualifier) -> Result<Self, QError> {
         match target_type {
             TypeQualifier::BangSingle => Ok(Self::VSingle(self.try_cast()?)),
             TypeQualifier::HashDouble => Ok(Self::VDouble(self.try_cast()?)),
@@ -193,6 +201,18 @@ impl Variant {
                 Self::VString(_) => Ok(self),
                 _ => Err(QError::TypeMismatch),
             },
+        }
+    }
+}
+
+impl QBNumberCast<bool> for Variant {
+    fn try_cast(&self) -> Result<bool, QError> {
+        match self {
+            Variant::VSingle(n) => Ok(*n != 0.0),
+            Variant::VDouble(n) => Ok(*n != 0.0),
+            Variant::VInteger(n) => Ok(*n != 0),
+            Variant::VLong(n) => Ok(*n != 0),
+            _ => Err(QError::TypeMismatch),
         }
     }
 }
@@ -434,6 +454,31 @@ mod tests {
                     .unwrap(),
                 Variant::from(1_i64)
             );
+        }
+    }
+
+    mod try_from {
+        use super::*;
+        use rusty_variant::{V_FALSE, V_TRUE};
+
+        #[test]
+        fn test_bool_try_from() {
+            assert_eq!(true, bool_try_from(Variant::from(1.0_f32)).unwrap());
+            assert_eq!(false, bool_try_from(Variant::from(0.0_f32)).unwrap());
+            assert_eq!(true, bool_try_from(Variant::from(1.0)).unwrap());
+            assert_eq!(false, bool_try_from(Variant::from(0.0)).unwrap());
+            bool_try_from(Variant::from("hi")).expect_err("should not convert from string");
+            bool_try_from(Variant::from("")).expect_err("should not convert from string");
+            assert_eq!(true, bool_try_from(Variant::from(42)).unwrap());
+            assert_eq!(false, bool_try_from(Variant::from(0)).unwrap());
+            assert_eq!(true, bool_try_from(Variant::from(42_i64)).unwrap());
+            assert_eq!(false, bool_try_from(Variant::from(0_i64)).unwrap());
+            assert_eq!(true, bool_try_from(V_TRUE).unwrap());
+            assert_eq!(false, bool_try_from(V_FALSE).unwrap());
+        }
+
+        fn bool_try_from(v: Variant) -> Result<bool, QError> {
+            v.try_cast()
         }
     }
 }

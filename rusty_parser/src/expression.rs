@@ -170,9 +170,9 @@ mod string_literal {
 mod integer_or_long_literal {
     use crate::pc::*;
     use crate::pc_specific::{SpecificTrait, TokenType};
-    use crate::variant::{BitVec, Variant, MAX_INTEGER, MAX_LONG};
     use crate::*;
     use rusty_common::*;
+    use rusty_variant::{BitVec, BitVecIntOrLong, MAX_INTEGER, MAX_LONG};
 
     // result ::= <digits> | <hex-digits> | <oct-digits>
     pub fn parser() -> impl Parser<Output = ExpressionNode> {
@@ -270,11 +270,10 @@ mod integer_or_long_literal {
     }
 
     fn create_expression_from_bit_vec(bit_vec: BitVec) -> Result<Expression, QError> {
-        match bit_vec.convert_to_integer_variant()? {
-            Variant::VInteger(i) => Ok(Expression::IntegerLiteral(i)),
-            Variant::VLong(l) => Ok(Expression::LongLiteral(l)),
-            _ => Err(QError::Overflow),
-        }
+        bit_vec.convert_to_int_or_long_expr().map(|x| match x {
+            BitVecIntOrLong::Int(i) => Expression::IntegerLiteral(i),
+            BitVecIntOrLong::Long(l) => Expression::LongLiteral(l),
+        })
     }
 }
 

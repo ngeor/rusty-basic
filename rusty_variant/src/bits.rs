@@ -1,6 +1,5 @@
-use crate::variant::Variant;
-use rusty_common::*;
-use std::fmt::{Formatter, Write};
+use rusty_common::QError;
+use std::fmt::Write;
 
 const INT_BITS: usize = 16;
 const LONG_BITS: usize = 32;
@@ -10,6 +9,11 @@ const DOUBLE_BITS: usize = 64;
 const DOUBLE_EXPONENT_BITS: usize = 11;
 const DOUBLE_SIGNIFICANT_BITS: usize = 52;
 const DOUBLE_BIAS: i32 = 1023;
+
+pub const MIN_INTEGER: i32 = -32768;
+pub const MAX_INTEGER: i32 = 32767;
+pub const MIN_LONG: i64 = -2147483648;
+pub const MAX_LONG: i64 = 2147483647;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct BitVec {
@@ -45,20 +49,20 @@ impl BitVec {
         self.v.push(u & 1 == 1);
     }
 
-    pub fn convert_to_integer_variant(mut self) -> Result<Variant, QError> {
+    pub fn convert_to_int_or_long_expr(mut self) -> Result<BitVecIntOrLong, QError> {
         match Self::find_first_non_zero_bit(&self.v) {
             Some(idx) => {
                 let bit_count = self.len() - idx;
                 if bit_count == 0 {
                     // optimization
-                    Ok(Variant::VInteger(0))
+                    Ok(BitVecIntOrLong::Int(0))
                 } else if bit_count <= INT_BITS {
                     if bit_count < INT_BITS {
                         // inject one bit for the sign bit
                         self.v.insert(0, false);
                     }
                     let i: i32 = bits_to_i32(&self.v[idx..]);
-                    Ok(Variant::VInteger(i))
+                    Ok(BitVecIntOrLong::Int(i))
                 } else if bit_count <= LONG_BITS {
                     // it fits in a long
                     if bit_count < LONG_BITS {
@@ -66,12 +70,12 @@ impl BitVec {
                         self.v.insert(0, false);
                     }
                     let l: i64 = bits_to_i64(&self.v[idx..]);
-                    Ok(Variant::VLong(l))
+                    Ok(BitVecIntOrLong::Long(l))
                 } else {
                     Err(QError::Overflow)
                 }
             }
-            None => Ok(Variant::VInteger(0)),
+            None => Ok(BitVecIntOrLong::Int(0)),
         }
     }
 
@@ -86,6 +90,12 @@ impl BitVec {
             None
         }
     }
+}
+
+// TODO rename
+pub enum BitVecIntOrLong {
+    Int(i32),
+    Long(i64),
 }
 
 impl From<i32> for BitVec {
@@ -231,7 +241,7 @@ impl std::fmt::Display for BitVec {
 }
 
 impl std::fmt::Debug for BitVec {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self, f)
     }
 }
@@ -487,7 +497,6 @@ fn lsb_bytes_to_msb_bits(bytes: &[u8]) -> Vec<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::variant::{MAX_INTEGER, MIN_INTEGER};
 
     #[test]
     fn test_bit_vec_from_positive_int() {

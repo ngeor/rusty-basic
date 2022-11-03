@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 rusty_common = { path = "../rusty_common" }
+# TODO parser should not depend on variant
+rusty_variant = { path = "../rusty_variant" }

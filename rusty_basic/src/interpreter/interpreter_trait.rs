@@ -7,7 +7,7 @@ use crate::interpreter::screen::Screen;
 use crate::interpreter::Stdlib;
 use rusty_common::QErrorNode;
 use rusty_linter::HasUserDefinedTypes;
-use rusty_parser::variant::Variant;
+use rusty_variant::Variant;
 use std::collections::VecDeque;
 
 pub trait InterpreterTrait: HasUserDefinedTypes {

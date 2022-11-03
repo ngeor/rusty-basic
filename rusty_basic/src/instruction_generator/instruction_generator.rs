@@ -2,7 +2,7 @@ use crate::instruction_generator::label_resolver::LabelResolver;
 use crate::instruction_generator::subprogram_info::{
     SubprogramInfoCollector, SubprogramInfoRepository,
 };
-use rusty_common::{AtLocation, CaseInsensitiveString, FileHandle, Locatable, Location, QError};
+use rusty_common::{AtLocation, CaseInsensitiveString, Locatable, Location, QError};
 use rusty_linter::SubprogramName;
 use rusty_parser::*;
 use rusty_variant::Variant;

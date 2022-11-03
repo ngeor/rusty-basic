@@ -112,7 +112,10 @@ mod tests {
 
     #[test]
     fn test_allocate_string() {
-        assert_eq!(allocate_fixed_length_string(1), Variant::VString(" ".to_owned()));
+        assert_eq!(
+            allocate_fixed_length_string(1),
+            Variant::VString(" ".to_owned())
+        );
         assert_eq!(
             allocate_fixed_length_string(2),
             Variant::VString("  ".to_owned())

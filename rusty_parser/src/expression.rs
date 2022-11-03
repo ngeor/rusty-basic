@@ -631,7 +631,7 @@ pub mod file_handle {
     use crate::expression::ws_expr_node;
     use crate::pc::*;
     use crate::pc_specific::*;
-    use crate::{Expression, ExpressionNode};
+    use crate::{Expression, ExpressionNode, FileHandle};
     use rusty_common::*;
 
     pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {

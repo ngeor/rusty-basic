@@ -1,5 +1,6 @@
-use rusty_common::{FileHandle, QError};
+use rusty_common::QError;
 use rusty_linter::QBNumberCast;
+use rusty_parser::FileHandle;
 use rusty_variant::Variant;
 use std::convert::TryFrom;
 

@@ -1,5 +1,4 @@
-use crate::ExpressionNode;
-use rusty_common::FileHandle;
+use crate::{ExpressionNode, FileHandle};
 
 /// A call to the PRINT sub.
 /// As separators are important (even trailing needs to be preserved), PRINT has

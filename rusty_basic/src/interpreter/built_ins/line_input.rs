@@ -1,6 +1,7 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Input;
-use rusty_common::{FileHandle, QError};
+use rusty_common::QError;
+use rusty_parser::FileHandle;
 use rusty_variant::Variant;
 use std::convert::TryFrom;
 

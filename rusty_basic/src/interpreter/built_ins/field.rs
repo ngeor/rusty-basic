@@ -1,7 +1,8 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Field;
 use crate::interpreter::utils::VariantCasts;
-use rusty_common::{FileHandle, QError};
+use rusty_common::QError;
+use rusty_parser::FileHandle;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let len = interpreter.context().variables().len();

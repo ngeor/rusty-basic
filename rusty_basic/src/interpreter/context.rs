@@ -528,9 +528,7 @@ impl PeekByte for VArray {
         debug_assert!(element_size > 0);
         let element_index = address / element_size;
         let offset = address % element_size;
-        let element = self
-            .get(element_index)
-            .ok_or(QError::SubscriptOutOfRange)?;
+        let element = self.get(element_index).ok_or(QError::SubscriptOutOfRange)?;
         element.peek_byte(offset)
     }
 }

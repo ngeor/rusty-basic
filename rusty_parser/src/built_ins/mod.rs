@@ -25,11 +25,11 @@ pub use self::built_in_sub::BuiltInSub;
 
 use crate::expression::expression_node_p;
 use crate::expression::file_handle::file_handle_p;
-use crate::lazy_parser;
 use crate::pc::*;
 use crate::pc_specific::*;
+use crate::{lazy_parser, FileHandle};
 use crate::{Expression, ExpressionNode, ExpressionNodes, Keyword, Statement};
-use rusty_common::{AtLocation, FileHandle, Locatable, Location, QError};
+use rusty_common::{AtLocation, Locatable, Location, QError};
 
 // Parses built-in subs which have a special syntax.
 lazy_parser!(pub fn parse<Output=Statement> ; struct LazyParser ; Alt16::new(

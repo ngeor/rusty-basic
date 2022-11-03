@@ -1,6 +1,7 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::utils::VariantCasts;
-use rusty_common::{FileHandle, QError};
+use rusty_common::QError;
+use rusty_parser::FileHandle;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let file_handles: Vec<FileHandle> = interpreter

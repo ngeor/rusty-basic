@@ -1,6 +1,6 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::keyboard::get_indicator_keys;
-use crate::interpreter::utils::VariantCasts;
+use crate::interpreter::variant_casts::VariantCasts;
 use rusty_common::*;
 use rusty_parser::BuiltInFunction;
 

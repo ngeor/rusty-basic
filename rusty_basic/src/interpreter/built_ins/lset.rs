@@ -1,4 +1,5 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::interpreter::variant_casts::VariantCasts;
 use rusty_common::*;
 use rusty_variant::Variant;
 

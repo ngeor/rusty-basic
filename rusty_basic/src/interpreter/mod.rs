@@ -16,8 +16,8 @@ mod registers;
 mod screen;
 mod stdlib;
 mod string_utils;
-mod utils;
 mod variables;
+mod variant_casts;
 mod write_printer;
 
 #[cfg(test)]

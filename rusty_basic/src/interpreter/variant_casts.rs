@@ -14,6 +14,8 @@ pub trait VariantCasts {
     fn to_positive_int(&self) -> Result<usize, QError>;
 
     fn to_positive_int_or(&self, err: QError) -> Result<usize, QError>;
+
+    fn to_str_unchecked(&self) -> &str;
 }
 
 impl VariantCasts for Variant {
@@ -50,6 +52,18 @@ impl VariantCasts for Variant {
             Ok(i as usize)
         } else {
             Err(err)
+        }
+    }
+
+    /// Gets a `str` reference from this Variant.
+    ///
+    /// Panics if the variant is not of string type.
+    ///
+    /// Use it only at runtime if the linter has guaranteed the type.
+    fn to_str_unchecked(&self) -> &str {
+        match self {
+            Variant::VString(s) => s,
+            _ => panic!("Variant was not a string {:?}", self),
         }
     }
 }

@@ -94,6 +94,8 @@ macro_rules! div {
     };
 }
 
+// TODO implement standard operators with panics, let the linter guarantee the type compatibility
+
 impl Variant {
     pub fn try_cmp(&self, other: &Self) -> Result<Ordering, QError> {
         match self {
@@ -439,25 +441,6 @@ impl From<bool> for Variant {
             V_TRUE
         } else {
             V_FALSE
-        }
-    }
-}
-
-// ========================================================
-// Convert from Variant to standard types
-// ========================================================
-
-impl Variant {
-    /// Gets a `str` reference from this Variant.
-    ///
-    /// Panics if the variant is not of string type.
-    ///
-    /// Use it only at runtime if the linter has guaranteed the type.
-    #[deprecated]
-    pub fn to_str_unchecked(&self) -> &str {
-        match self {
-            Variant::VString(s) => s,
-            _ => panic!("Variant was not a string {:?}", self),
         }
     }
 }

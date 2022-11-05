@@ -1,7 +1,7 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Field;
 use crate::interpreter::string_utils::to_ascii_bytes;
-use crate::interpreter::utils::VariantCasts;
+use crate::interpreter::variant_casts::VariantCasts;
 use rusty_common::QError;
 use rusty_parser::{BareName, FileHandle, TypeQualifier};
 

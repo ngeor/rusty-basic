@@ -1,13 +1,11 @@
+use crate::keyword_enum;
 use crate::{Name, QualifiedName, TypeQualifier};
 use rusty_common::*;
+use std::borrow::Borrow;
 use std::convert::TryFrom;
 
-// ========================================================
-// BuiltInFunction
-// ========================================================
-
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub enum BuiltInFunction {
+keyword_enum!(
+pub enum BuiltInFunction SORTED_BUILT_IN_FUNCTIONS SORTED_BUILT_IN_FUNCTION_NAMES SORTED_BUILT_IN_FUNCTIONS_CI_STR {
     /// `CHR$(ascii-code%)` returns the text representation of the given ascii code
     Chr,
 
@@ -93,7 +91,7 @@ pub enum BuiltInFunction {
     /// - `length%` The length of the string
     /// - `ascii-code%` The ASCII code of the repeating character
     /// - `string-expression$` Any string expression. Only the first character will be used.
-    String_,
+    String,
 
     /// UBOUND
     UBound,
@@ -109,52 +107,7 @@ pub enum BuiltInFunction {
 
     /// `VARSEG`
     VarSeg,
-}
-
-const SORTED_BUILT_IN_FUNCTIONS: [BuiltInFunction; 25] = [
-    BuiltInFunction::Chr,
-    BuiltInFunction::Cvd,
-    BuiltInFunction::Environ,
-    BuiltInFunction::Eof,
-    BuiltInFunction::Err,
-    BuiltInFunction::InKey,
-    BuiltInFunction::InStr,
-    BuiltInFunction::LBound,
-    BuiltInFunction::LCase,
-    BuiltInFunction::Left,
-    BuiltInFunction::Len,
-    BuiltInFunction::LTrim,
-    BuiltInFunction::Mid,
-    BuiltInFunction::Mkd,
-    BuiltInFunction::Peek,
-    BuiltInFunction::Right,
-    BuiltInFunction::RTrim,
-    BuiltInFunction::Space,
-    BuiltInFunction::Str,
-    BuiltInFunction::String_,
-    BuiltInFunction::UBound,
-    BuiltInFunction::UCase,
-    BuiltInFunction::Val,
-    BuiltInFunction::VarPtr,
-    BuiltInFunction::VarSeg,
-];
-
-const SORTED_BUILT_IN_FUNCTION_NAMES: [&str; 25] = [
-    "Chr", "Cvd", "Environ", "Eof", "Err", "InKey", "InStr", "LBound", "LCase", "Left", "Len",
-    "LTrim", "Mid", "Mkd", "Peek", "Right", "RTrim", "Space", "Str", "String", "UBound", "UCase",
-    "Val", "VarPtr", "VarSeg",
-];
-
-// BuiltInFunction -> &str
-
-impl AsRef<str> for BuiltInFunction {
-    fn as_ref(&self) -> &str {
-        let idx = SORTED_BUILT_IN_FUNCTIONS
-            .binary_search(self)
-            .expect("Missing built-in function!");
-        SORTED_BUILT_IN_FUNCTION_NAMES[idx]
-    }
-}
+});
 
 // BuiltInFunction -> CaseInsensitiveString
 
@@ -188,7 +141,7 @@ impl From<&BuiltInFunction> for TypeQualifier {
             BuiltInFunction::RTrim => TypeQualifier::DollarString,
             BuiltInFunction::Space => TypeQualifier::DollarString,
             BuiltInFunction::Str => TypeQualifier::DollarString,
-            BuiltInFunction::String_ => TypeQualifier::DollarString,
+            BuiltInFunction::String => TypeQualifier::DollarString,
             BuiltInFunction::UBound => TypeQualifier::PercentInteger,
             BuiltInFunction::UCase => TypeQualifier::DollarString,
             BuiltInFunction::Val => TypeQualifier::BangSingle,
@@ -210,13 +163,11 @@ impl From<BuiltInFunction> for QualifiedName {
 // CaseInsensitiveString -> BuiltInFunction
 
 impl BuiltInFunction {
-    pub fn try_parse(s: &CaseInsensitiveString) -> Option<BuiltInFunction> {
-        match SORTED_BUILT_IN_FUNCTION_NAMES
-            .binary_search_by(|p| CmpIgnoreAsciiCase::compare_ignore_ascii_case(*p, s.as_ref()))
-        {
-            Ok(idx) => Some(SORTED_BUILT_IN_FUNCTIONS[idx]),
-            Err(_) => None,
-        }
+    pub fn try_parse<S>(s: &S) -> Option<BuiltInFunction>
+    where
+        S: Borrow<CaseInsensitiveStr>,
+    {
+        Self::try_from(s.borrow()).ok()
     }
 }
 
@@ -265,7 +216,7 @@ impl TryFrom<&Name> for Option<BuiltInFunction> {
                         }
                     }
                 }
-                BuiltInFunction::Chr | BuiltInFunction::Str | BuiltInFunction::String_ => {
+                BuiltInFunction::Chr | BuiltInFunction::Str | BuiltInFunction::String => {
                     // STR$ or otherwise it's undefined
                     match n {
                         // confirmed that even with DEFSTR A-Z it won't work as unqualified

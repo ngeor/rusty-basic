@@ -105,7 +105,7 @@ pub fn lint_function_call(
         BuiltInFunction::RTrim => rtrim::lint(args),
         BuiltInFunction::Space => space::lint(args),
         BuiltInFunction::Str => str_fn::lint(args),
-        BuiltInFunction::String_ => string_fn::lint(args),
+        BuiltInFunction::String => string_fn::lint(args),
         BuiltInFunction::UBound => ubound::lint(args),
         BuiltInFunction::UCase => ucase::lint(args),
         BuiltInFunction::Val => val::lint(args),

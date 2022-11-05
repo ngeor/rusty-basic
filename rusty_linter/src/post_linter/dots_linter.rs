@@ -82,8 +82,8 @@ impl NoDotNamesCheck<BareNameNode, QErrorNode> for DotsLinter {
 impl NoDotNamesCheck<BareName, QError> for DotsLinter {
     fn ensure_no_dots(&self, x: &BareName) -> Result<(), QError> {
         match x.prefix('.') {
-            Some(first) => {
-                if self.user_defined_names.contains(&first) {
+            Some(part_before_dot) => {
+                if self.user_defined_names.contains(part_before_dot) {
                     Err(QError::DotClash)
                 } else {
                     Ok(())

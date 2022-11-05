@@ -101,7 +101,7 @@ pub fn run_function<S: InterpreterTrait>(
         BuiltInFunction::RTrim => rtrim::run(interpreter),
         BuiltInFunction::Space => space::run(interpreter),
         BuiltInFunction::Str => str_fn::run(interpreter),
-        BuiltInFunction::String_ => string_fn::run(interpreter),
+        BuiltInFunction::String => string_fn::run(interpreter),
         BuiltInFunction::UBound => ubound::run(interpreter),
         BuiltInFunction::UCase => ucase::run(interpreter),
         BuiltInFunction::Val => val::run(interpreter),

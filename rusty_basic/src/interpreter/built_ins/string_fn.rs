@@ -11,7 +11,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let s = run_with_variant(count, v)?;
     interpreter
         .context_mut()
-        .set_built_in_function_result(BuiltInFunction::String_, s);
+        .set_built_in_function_result(BuiltInFunction::String, s);
     Ok(())
 }
 

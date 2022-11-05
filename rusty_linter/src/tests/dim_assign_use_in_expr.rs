@@ -138,13 +138,14 @@ fn user_defined_type() {
         1,
         "Expected one user defined type"
     );
-    let opt_card_type = user_defined_types.get(&"Card".into()).cloned();
+    let key = BareName::from("Card");
+    let opt_card_type = user_defined_types.get(&key).cloned();
     assert!(
         opt_card_type.is_some(),
         "Expected to contain the `Card` type"
     );
     let card_type = opt_card_type.unwrap();
-    assert_eq!(card_type.bare_name(), &BareName::from("Card"));
+    assert_eq!(card_type.bare_name(), &key);
     let elements: Vec<Element> = card_type.elements().map(|x| &x.element).cloned().collect();
     assert_eq!(
         elements,

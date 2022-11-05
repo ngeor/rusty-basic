@@ -67,11 +67,10 @@ impl Name {
         }
     }
 
-    pub fn dot_concat(left: BareName, right: BareName) -> BareName {
-        let mut buf: String = left.into();
-        buf.push('.');
-        buf.push_str(right.as_ref());
-        buf.into()
+    pub fn dot_concat(mut left: BareName, right: BareName) -> BareName {
+        left.push('.');
+        left.push_str(right.as_ref());
+        left
     }
 
     /// Tries to convert this name into a qualified name.

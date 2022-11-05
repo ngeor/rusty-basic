@@ -1,7 +1,8 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Field;
+use crate::interpreter::string_utils::to_ascii_string;
 use crate::interpreter::utils::VariantCasts;
-use rusty_common::{QError, ToAsciiString};
+use rusty_common::QError;
 use rusty_parser::{BareName, FileHandle, TypeQualifier};
 use rusty_variant::Variant;
 
@@ -14,7 +15,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     for fields in field_lists {
         let mut start: usize = 0;
         for Field { width, name } in fields {
-            let s = bytes[start..(start + width)].to_ascii_string();
+            let s = to_ascii_string(&bytes[start..(start + width)]);
             let v = Variant::VString(s);
             // set variable in parent context, because we're inside the context of the built-in sub
             let bare_name: BareName = BareName::from(name);

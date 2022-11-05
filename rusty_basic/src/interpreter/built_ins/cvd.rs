@@ -1,11 +1,12 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use rusty_common::{QError, ToAsciiBytes};
+use crate::interpreter::string_utils::to_ascii_bytes;
+use rusty_common::QError;
 use rusty_parser::BuiltInFunction;
 use rusty_variant::bytes_to_f64;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     let s = interpreter.context()[0].to_str_unchecked();
-    let bytes: Vec<u8> = s.to_ascii_bytes();
+    let bytes: Vec<u8> = to_ascii_bytes(s);
     let f = bytes_to_f64(&bytes);
     interpreter
         .context_mut()

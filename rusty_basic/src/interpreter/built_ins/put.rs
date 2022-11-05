@@ -1,7 +1,8 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Field;
+use crate::interpreter::string_utils::to_ascii_bytes;
 use crate::interpreter::utils::VariantCasts;
-use rusty_common::{QError, ToAsciiBytes};
+use rusty_common::QError;
 use rusty_parser::{BareName, FileHandle, TypeQualifier};
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
@@ -22,7 +23,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
             .caller_variables()
             .get_built_in(&bare_name, TypeQualifier::DollarString)
             .ok_or(QError::VariableRequired)?;
-        let mut bytes: Vec<u8> = v.to_str_unchecked().to_ascii_bytes();
+        let mut bytes: Vec<u8> = to_ascii_bytes(v.to_str_unchecked());
         fix_length(&mut bytes, width);
         record_contents.append(&mut bytes);
     }

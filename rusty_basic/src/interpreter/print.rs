@@ -1,6 +1,7 @@
 use crate::instruction_generator::PrinterType;
 use crate::interpreter::io::Printer;
-use rusty_common::*;
+use crate::interpreter::string_utils::fix_length;
+use rusty_common::QError;
 use rusty_parser::FileHandle;
 use rusty_variant::Variant;
 use std::fmt::Display;
@@ -323,8 +324,9 @@ fn print_string_formatting_chars(
     }
     if *idx < format_string_chars.len() {
         *idx += 1;
-        if let Variant::VString(s) = v {
-            Ok(s.fix_length(counter))
+        if let Variant::VString(mut s) = v {
+            fix_length(&mut s, counter);
+            Ok(s)
         } else {
             Err(QError::TypeMismatch)
         }

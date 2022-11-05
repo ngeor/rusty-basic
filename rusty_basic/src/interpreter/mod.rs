@@ -15,6 +15,7 @@ mod read_input;
 mod registers;
 mod screen;
 mod stdlib;
+mod string_utils;
 mod utils;
 mod variables;
 mod write_printer;

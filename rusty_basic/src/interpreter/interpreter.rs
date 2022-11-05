@@ -320,7 +320,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                 cast::cast(self, q).with_err_at(pos)?;
             }
             Instruction::FixLength(l) => {
-                cast::fix_length(self, l).with_err_at(pos)?;
+                cast::fix_length_in_a(self, l).with_err_at(pos)?;
             }
             Instruction::CopyAToB => {
                 registers::copy_a_to_b(self);

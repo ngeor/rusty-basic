@@ -453,6 +453,7 @@ impl Variant {
     /// Panics if the variant is not of string type.
     ///
     /// Use it only at runtime if the linter has guaranteed the type.
+    #[deprecated]
     pub fn to_str_unchecked(&self) -> &str {
         match self {
             Variant::VString(s) => s,

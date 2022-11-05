@@ -1,8 +1,8 @@
 use crate::arg_validation::ArgValidation;
 use rusty_common::*;
-use rusty_parser::{Expression, ExpressionNodes};
+use rusty_parser::{Expression, Expressions};
 
-pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
+pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
     // the first one or two arguments stand for the file number
     // if the first argument is 0, no file handle
     // if the first argument is 1, the second is the file handle
@@ -11,13 +11,13 @@ pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
         return Err(QError::ArgumentCountMismatch).with_err_no_pos();
     }
     let mut has_file_number: bool = false;
-    if let Locatable {
+    if let Positioned {
         element: Expression::IntegerLiteral(0),
         ..
     } = args[0]
     {
         // does not have a file number
-    } else if let Locatable {
+    } else if let Positioned {
         element: Expression::IntegerLiteral(1),
         ..
     } = args[0]

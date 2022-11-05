@@ -1,6 +1,6 @@
-use crate::expression::expression_node_p;
+use crate::expression::expression_pos_p;
 use crate::expression::file_handle::{
-    file_handle_as_expression_node_p, guarded_file_handle_or_expression_p,
+    file_handle_as_expression_pos_p, guarded_file_handle_or_expression_p,
 };
 use crate::pc::*;
 use crate::pc_specific::*;
@@ -19,7 +19,7 @@ pub fn parse() -> impl Parser<Output = Statement> {
     )
 }
 
-fn file_handles() -> impl Parser<Output = ExpressionNodes> + NonOptParser {
+fn file_handles() -> impl Parser<Output = Expressions> + NonOptParser {
     AccumulateParser::new(
         guarded_file_handle_or_expression_p(),
         comma().then_demand(file_handle_or_expression_p()),
@@ -27,9 +27,9 @@ fn file_handles() -> impl Parser<Output = ExpressionNodes> + NonOptParser {
     .allow_default()
 }
 
-fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> + NonOptParser {
-    file_handle_as_expression_node_p()
-        .or(expression_node_p())
+fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionPos> + NonOptParser {
+    file_handle_as_expression_pos_p()
+        .or(expression_pos_p())
         .or_syntax_error("Expected: file handle")
 }
 
@@ -242,12 +242,12 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                TopLevelToken::Statement(Statement::BuiltInSubCall(
+                GlobalStatement::Statement(Statement::BuiltInSubCall(
                     BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7)]
                 ))
                 .at_rc(1, 1),
-                TopLevelToken::Statement(Statement::Comment(" closes the file".to_string(),))
+                GlobalStatement::Statement(Statement::Comment(" closes the file".to_string(),))
                     .at_rc(1, 10)
             ]
         );

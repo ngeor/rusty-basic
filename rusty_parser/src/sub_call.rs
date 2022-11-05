@@ -6,8 +6,8 @@ use rusty_common::*;
 
 // SubCall                  ::= SubCallNoArgs | SubCallArgsNoParenthesis | SubCallArgsParenthesis
 // SubCallNoArgs            ::= BareName [eof | eol | ' | <ws+>: ]
-// SubCallArgsNoParenthesis ::= BareName<ws+>ExpressionNodes
-// SubCallArgsParenthesis   ::= BareName(ExpressionNodes)
+// SubCallArgsNoParenthesis ::= BareName<ws+>Expressions
+// SubCallArgsParenthesis   ::= BareName(Expressions)
 
 pub fn sub_call_or_assignment_p() -> impl Parser<Output = Statement> {
     SubCallOrAssignment
@@ -19,14 +19,14 @@ impl Parser for SubCallOrAssignment {
     type Output = Statement;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let (
-            Locatable {
+            Positioned {
                 element: name_expr, ..
             },
             opt_equal_sign,
         ) = Self::name_and_opt_eq_sign().parse(tokenizer)?;
         match opt_equal_sign {
             Some(_) => {
-                let right_side_expr = expression::expression_node_p()
+                let right_side_expr = expression::expression_pos_p()
                     .or_syntax_error("Expected: expression for assignment")
                     .parse(tokenizer)?;
                 Ok(Statement::Assignment(name_expr, right_side_expr))
@@ -44,7 +44,7 @@ impl Parser for SubCallOrAssignment {
 }
 
 impl SubCallOrAssignment {
-    fn name_and_opt_eq_sign() -> impl Parser<Output = (ExpressionNode, Option<Token>)> {
+    fn name_and_opt_eq_sign() -> impl Parser<Output = (ExpressionPos, Option<Token>)> {
         expression::property::parser().and_opt(equal_sign())
     }
 }
@@ -54,7 +54,7 @@ impl SubCallOrAssignment {
 /// the sub already has parenthesis). For other cases arguments are resolved later.
 fn expr_to_bare_name_args(
     name_expr: Expression,
-) -> Result<(BareName, Option<ExpressionNodes>), QError> {
+) -> Result<(BareName, Option<Expressions>), QError> {
     match name_expr {
         // A(1,2) or A$(1,2)
         Expression::FunctionCall(name, args) => {
@@ -120,7 +120,7 @@ mod tests {
         let program = parse_file("HELLO1.BAS").demand_single_statement();
         assert_eq!(
             program,
-            Statement::Print(PrintNode::one("Hello, world!".as_lit_expr(1, 7)))
+            Statement::Print(Print::one("Hello, world!".as_lit_expr(1, 7)))
         );
     }
 
@@ -129,7 +129,7 @@ mod tests {
         let program = parse_file("HELLO2.BAS").demand_single_statement();
         assert_eq!(
             program,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: None,
                 lpt1: false,
                 format_string: None,
@@ -144,42 +144,42 @@ mod tests {
 
     #[test]
     fn test_parse_fixture_hello_system() {
-        let program = parse_file_no_location("HELLO_S.BAS");
+        let program = parse_file_no_pos("HELLO_S.BAS");
         assert_eq!(
             program,
             vec![
-                TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                GlobalStatement::Statement(Statement::Print(Print::one(
                     "Hello, world!".as_lit_expr(1, 7)
                 ))),
-                TopLevelToken::Statement(Statement::System),
+                GlobalStatement::Statement(Statement::System),
             ],
         );
     }
 
     #[test]
     fn test_parse_fixture_input() {
-        let program = parse_file_no_location("INPUT.BAS");
+        let program = parse_file_no_pos("INPUT.BAS");
         assert_eq!(
             program,
             vec![
-                TopLevelToken::Statement(Statement::BuiltInSubCall(
+                GlobalStatement::Statement(Statement::BuiltInSubCall(
                     BuiltInSub::Input,
                     vec![
                         0.as_lit_expr(1, 1), // no file number
                         "N".as_var_expr(1, 7)
                     ]
                 )),
-                TopLevelToken::Statement(Statement::Print(PrintNode::one("N".as_var_expr(2, 7)))),
+                GlobalStatement::Statement(Statement::Print(Print::one("N".as_var_expr(2, 7)))),
             ],
         );
     }
 
     #[test]
     fn test_parse_fixture_environ() {
-        let program = parse_file_no_location("ENVIRON.BAS");
+        let program = parse_file_no_pos("ENVIRON.BAS");
         assert_eq!(
             program,
-            vec![TopLevelToken::Statement(Statement::Print(PrintNode::one(
+            vec![GlobalStatement::Statement(Statement::Print(Print::one(
                 Expression::func("ENVIRON$", vec!["PATH".as_lit_expr(1, 16)]).at_rc(1, 7)
             )))]
         );
@@ -194,16 +194,16 @@ mod tests {
             ENVIRON "FOO=BAR"
         END SUB
         "#;
-        let program = parse_str_no_location(input);
+        let program = parse_str_no_pos(input);
         assert_eq!(
             program,
             vec![
                 // DECLARE SUB Hello
-                TopLevelToken::SubDeclaration("Hello".as_bare_name(2, 21), vec![],),
+                GlobalStatement::SubDeclaration("Hello".as_bare_name(2, 21), vec![],),
                 // Hello
-                TopLevelToken::Statement(Statement::SubCall("Hello".into(), vec![])),
+                GlobalStatement::Statement(Statement::SubCall("Hello".into(), vec![])),
                 // SUB Hello
-                TopLevelToken::SubImplementation(SubImplementation {
+                GlobalStatement::SubImplementation(SubImplementation {
                     name: "Hello".as_bare_name(4, 13),
                     params: vec![],
                     body: vec![Statement::SubCall(
@@ -226,20 +226,20 @@ mod tests {
             ENVIRON N$ + "=" + V$
         END SUB
         "#;
-        let program = parse_str_no_location(input);
+        let program = parse_str_no_pos(input);
         assert_eq!(
             program,
             vec![
                 // DECLARE SUB Hello
-                TopLevelToken::SubDeclaration(
+                GlobalStatement::SubDeclaration(
                     "Hello".as_bare_name(2, 21),
                     vec![
-                        ParamName::new(
+                        Parameter::new(
                             "N".into(),
                             ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
                         )
                         .at_rc(2, 27),
-                        ParamName::new(
+                        Parameter::new(
                             "V".into(),
                             ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
                         )
@@ -247,20 +247,20 @@ mod tests {
                     ],
                 ),
                 // Hello
-                TopLevelToken::Statement(Statement::SubCall(
+                GlobalStatement::Statement(Statement::SubCall(
                     "Hello".into(),
                     vec!["FOO".as_lit_expr(3, 15), "BAR".as_lit_expr(3, 22)]
                 )),
                 // SUB Hello
-                TopLevelToken::SubImplementation(SubImplementation {
+                GlobalStatement::SubImplementation(SubImplementation {
                     name: "Hello".as_bare_name(4, 13),
                     params: vec![
-                        ParamName::new(
+                        Parameter::new(
                             "N".into(),
                             ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
                         )
                         .at_rc(4, 19),
-                        ParamName::new(
+                        Parameter::new(
                             "V".into(),
                             ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
                         )

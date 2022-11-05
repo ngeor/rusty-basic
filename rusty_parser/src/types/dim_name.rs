@@ -3,11 +3,11 @@ use rusty_common::*;
 #[cfg(test)]
 use std::convert::TryFrom;
 
-pub type DimName = VarName<DimType>;
-pub type DimNameNode = Locatable<DimName>;
-pub type DimNameNodes = Vec<DimNameNode>;
+pub type DimVar = TypedName<DimType>;
+pub type DimVarPos = Positioned<DimVar>;
+pub type DimVars = Vec<DimVarPos>;
 
-impl DimName {
+impl DimVar {
     pub fn new_compact_local<T>(bare_name: T, qualifier: TypeQualifier) -> Self
     where
         BareName: From<T>,
@@ -18,16 +18,16 @@ impl DimName {
         )
     }
 
-    pub fn into_list(self, pos: Location) -> DimList {
+    pub fn into_list(self, pos: Position) -> DimList {
         DimList {
             shared: false,
-            variables: vec![self.at(pos)],
+            variables: vec![self.at_pos(pos)],
         }
     }
 
     // TODO #[cfg(test)]
     pub fn into_list_rc(self, row: u32, col: u32) -> DimList {
-        self.into_list(Location::new(row, col))
+        self.into_list(Position::new(row, col))
     }
 
     // TODO #[cfg(test)]
@@ -37,7 +37,7 @@ impl DimName {
     }
 }
 
-impl From<QualifiedName> for DimName {
+impl From<QualifiedName> for DimVar {
     fn from(qualified_name: QualifiedName) -> Self {
         let (bare_name, qualifier) = qualified_name.into_inner();
         Self::new_compact_local(bare_name, qualifier)
@@ -69,19 +69,19 @@ impl DimNameBuilder {
         self
     }
 
-    pub fn build(self) -> DimName {
-        DimName::new(self.bare_name.unwrap(), self.dim_type.unwrap())
+    pub fn build(self) -> DimVar {
+        DimVar::new(self.bare_name.unwrap(), self.dim_type.unwrap())
     }
 
-    pub fn build_list(self, pos: Location) -> DimList {
+    pub fn build_list(self, pos: Position) -> DimList {
         DimList {
             shared: false,
-            variables: vec![self.build().at(pos)],
+            variables: vec![self.build().at_pos(pos)],
         }
     }
 
     // TODO #[cfg(test)]
     pub fn build_list_rc(self, row: u32, col: u32) -> DimList {
-        self.build_list(Location::new(row, col))
+        self.build_list(Position::new(row, col))
     }
 }

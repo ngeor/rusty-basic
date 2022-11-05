@@ -1,6 +1,6 @@
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{Instruction, RootPath};
-use rusty_common::AtRowCol;
+use rusty_common::AtPos;
 use rusty_parser::TypeQualifier;
 use rusty_variant::Variant;
 
@@ -34,7 +34,7 @@ fn test_assignment() {
 #[test]
 fn test_assignment_no_cast_implicit_variable() {
     assert_eq!(
-        generate_instructions_str_no_location("X% = 1"),
+        generate_instructions_str_no_pos("X% = 1"),
         [
             // implicit dim
             Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
@@ -62,7 +62,7 @@ fn test_assignment_no_cast_explicit_variable() {
     X% = 1
     "#;
     assert_eq!(
-        generate_instructions_str_no_location(input),
+        generate_instructions_str_no_pos(input),
         [
             // dim
             Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
@@ -90,7 +90,7 @@ fn test_assignment_no_cast_implicit_variable_implicit_dim_is_only_once() {
     X% = 2
     "#;
     assert_eq!(
-        generate_instructions_str_no_location(input),
+        generate_instructions_str_no_pos(input),
         [
             // implicit dim
             Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),
@@ -121,7 +121,7 @@ fn test_assignment_no_cast_implicit_variable_implicit_dim_is_only_once() {
 #[test]
 fn test_assignment_binary_plus() {
     assert_eq!(
-        generate_instructions_str_no_location("X% = 1 + 2.1"),
+        generate_instructions_str_no_pos("X% = 1 + 2.1"),
         [
             // implicit dim
             Instruction::AllocateBuiltIn(TypeQualifier::PercentInteger),

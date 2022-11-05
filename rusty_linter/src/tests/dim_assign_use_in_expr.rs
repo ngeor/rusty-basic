@@ -1,11 +1,11 @@
 use crate::assert_linter_err;
-use crate::assert_linter_ok_top_level_statements;
+use crate::assert_linter_ok_global_statements;
 use crate::test_utils::*;
 use crate::HasUserDefinedTypes;
 use rusty_common::*;
 use rusty_parser::{
-    BareName, BuiltInStyle, DimName, DimType, Element, ElementType, Expression, ExpressionType,
-    PrintNode, Statement, TopLevelToken, TypeQualifier,
+    BareName, BuiltInStyle, DimType, DimVar, Element, ElementType, Expression, ExpressionType,
+    GlobalStatement, Print, Statement, TypeQualifier,
 };
 
 /// Three step tests:
@@ -23,14 +23,14 @@ fn bare() {
     assert_eq!(
         linter_ok(program),
         vec![
-            TopLevelToken::Statement(Statement::Dim(DimName::parse("A!").into_list_rc(2, 9)))
+            GlobalStatement::Statement(Statement::Dim(DimVar::parse("A!").into_list_rc(2, 9)))
                 .at_rc(2, 5),
-            TopLevelToken::Statement(Statement::Assignment(
+            GlobalStatement::Statement(Statement::Assignment(
                 Expression::var_resolved("A!"),
                 Expression::IntegerLiteral(42).at_rc(3, 9)
             ))
             .at_rc(3, 5),
-            TopLevelToken::Statement(Statement::Print(PrintNode::one(
+            GlobalStatement::Statement(Statement::Print(Print::one(
                 Expression::var_resolved("A!").at_rc(4, 11)
             )))
             .at_rc(4, 5)
@@ -48,14 +48,14 @@ fn compact_string() {
     assert_eq!(
         linter_ok(program),
         vec![
-            TopLevelToken::Statement(Statement::Dim(DimName::parse("A$").into_list_rc(2, 9)))
+            GlobalStatement::Statement(Statement::Dim(DimVar::parse("A$").into_list_rc(2, 9)))
                 .at_rc(2, 5),
-            TopLevelToken::Statement(Statement::Assignment(
+            GlobalStatement::Statement(Statement::Assignment(
                 Expression::var_resolved("A$"),
                 Expression::StringLiteral("hello".to_string()).at_rc(3, 10)
             ))
             .at_rc(3, 5),
-            TopLevelToken::Statement(Statement::Print(PrintNode::one(
+            GlobalStatement::Statement(Statement::Print(Print::one(
                 Expression::var_resolved("A$").at_rc(4, 11)
             )))
             .at_rc(4, 5)
@@ -73,20 +73,20 @@ fn extended_string() {
     assert_eq!(
         linter_ok(program),
         vec![
-            TopLevelToken::Statement(Statement::Dim(
-                DimName::new(
+            GlobalStatement::Statement(Statement::Dim(
+                DimVar::new(
                     "A".into(),
                     DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),
                 )
                 .into_list_rc(2, 9)
             ))
             .at_rc(2, 5),
-            TopLevelToken::Statement(Statement::Assignment(
+            GlobalStatement::Statement(Statement::Assignment(
                 Expression::var_resolved("A$"),
                 Expression::StringLiteral("hello".to_string()).at_rc(3, 9)
             ))
             .at_rc(3, 5),
-            TopLevelToken::Statement(Statement::Print(PrintNode::one(
+            GlobalStatement::Statement(Statement::Print(Print::one(
                 Expression::var_resolved("A$").at_rc(4, 11)
             )))
             .at_rc(4, 5)
@@ -109,23 +109,23 @@ fn user_defined_type() {
     assert_eq!(
         program,
         vec![
-            TopLevelToken::Statement(Statement::Dim(
-                DimName::new(
+            GlobalStatement::Statement(Statement::Dim(
+                DimVar::new(
                     "A".into(),
                     DimType::UserDefined(BareName::from("Card").at_rc(6, 14)),
                 )
                 .into_list_rc(6, 9)
             ))
             .at_rc(6, 5),
-            TopLevelToken::Statement(Statement::Dim(
-                DimName::new(
+            GlobalStatement::Statement(Statement::Dim(
+                DimVar::new(
                     "B".into(),
                     DimType::UserDefined(BareName::from("Card").at_rc(7, 14)),
                 )
                 .into_list_rc(7, 9)
             ))
             .at_rc(7, 5),
-            TopLevelToken::Statement(Statement::Assignment(
+            GlobalStatement::Statement(Statement::Assignment(
                 Expression::var_user_defined("A", "Card"),
                 Expression::var_user_defined("B", "Card").at_rc(8, 9)
             ))
@@ -171,10 +171,10 @@ fn user_defined_type_integer_element() {
     A.Value = 42
     PRINT A.Value
     "#;
-    assert_linter_ok_top_level_statements!(
+    assert_linter_ok_global_statements!(
         input,
         Statement::Dim(
-            DimName::new(
+            DimVar::new(
                 "A".into(),
                 DimType::UserDefined(BareName::from("Card").at_rc(6, 14)),
             )
@@ -188,7 +188,7 @@ fn user_defined_type_integer_element() {
             ),
             Expression::IntegerLiteral(42).at_rc(7, 15)
         ),
-        Statement::Print(PrintNode::one(
+        Statement::Print(Print::one(
             Expression::Property(
                 Box::new(Expression::var_user_defined("A", "Card")),
                 "Value".into(),
@@ -210,10 +210,10 @@ fn user_defined_type_string_element() {
     A.Suit = "diamonds"
     PRINT A.Suit
     "#;
-    assert_linter_ok_top_level_statements!(
+    assert_linter_ok_global_statements!(
         input,
         Statement::Dim(
-            DimName::new(
+            DimVar::new(
                 "A".into(),
                 DimType::UserDefined(BareName::from("Card").at_rc(6, 14)),
             )
@@ -227,7 +227,7 @@ fn user_defined_type_string_element() {
             ),
             Expression::StringLiteral("diamonds".to_owned()).at_rc(7, 14)
         ),
-        Statement::Print(PrintNode::one(
+        Statement::Print(Print::one(
             Expression::Property(
                 Box::new(Expression::var_user_defined("A", "Card")),
                 "Suit".into(),

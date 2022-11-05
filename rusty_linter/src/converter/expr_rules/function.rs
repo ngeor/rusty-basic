@@ -5,8 +5,8 @@ use crate::type_resolver::{IntoQualified, IntoTypeQualifier};
 pub fn convert(
     ctx: &mut PosExprState,
     name: Name,
-    args: ExpressionNodes,
-) -> Result<Expression, QErrorNode> {
+    args: Expressions,
+) -> Result<Expression, QErrorPos> {
     // ExistingArrayWithParenthesis goes first because they're allowed to have no arguments
     let rules: Vec<Box<dyn FuncResolve>> = vec![Box::new(ExistingArrayWithParenthesis::default())];
     for mut rule in rules {
@@ -24,8 +24,8 @@ pub fn convert(
 fn resolve_function(
     ctx: &mut Context,
     name: Name,
-    args: ExpressionNodes,
-) -> Result<Expression, QErrorNode> {
+    args: Expressions,
+) -> Result<Expression, QErrorPos> {
     // convert args
     let converted_args = convert_function_args(ctx, args)?;
     // is it built-in function?
@@ -53,8 +53,8 @@ trait FuncResolve {
         &self,
         ctx: &mut PosExprState,
         name: Name,
-        args: ExpressionNodes,
-    ) -> Result<Expression, QErrorNode>;
+        args: Expressions,
+    ) -> Result<Expression, QErrorPos>;
 }
 
 #[derive(Default)]
@@ -94,8 +94,8 @@ impl FuncResolve for ExistingArrayWithParenthesis {
         &self,
         ctx: &mut PosExprState,
         name: Name,
-        args: ExpressionNodes,
-    ) -> Result<Expression, QErrorNode> {
+        args: Expressions,
+    ) -> Result<Expression, QErrorPos> {
         // convert args
         let converted_args = args.convert(ctx)?;
         // convert name
@@ -124,7 +124,7 @@ impl FuncResolve for ExistingArrayWithParenthesis {
     }
 }
 
-pub fn functions_must_have_arguments(args: &ExpressionNodes) -> Result<(), QErrorNode> {
+pub fn functions_must_have_arguments(args: &Expressions) -> Result<(), QErrorPos> {
     if args.is_empty() {
         Err(QError::FunctionNeedsArguments).with_err_no_pos()
     } else {
@@ -134,7 +134,7 @@ pub fn functions_must_have_arguments(args: &ExpressionNodes) -> Result<(), QErro
 
 pub fn convert_function_args(
     ctx: &mut Context,
-    args: ExpressionNodes,
-) -> Result<ExpressionNodes, QErrorNode> {
+    args: Expressions,
+) -> Result<Expressions, QErrorPos> {
     args.convert_in(ctx, ExprContext::Argument)
 }

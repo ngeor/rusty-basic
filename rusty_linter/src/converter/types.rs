@@ -1,6 +1,6 @@
 //! Contains simple types and type aliases.
 
-use rusty_parser::QualifiedNameNode;
+use rusty_parser::QualifiedNamePos;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DimContext {
@@ -41,4 +41,4 @@ impl Default for ExprContext {
 
 /// Alias for the implicit variables collected during evaluating something.
 /// e.g. `INPUT N` is a statement implicitly defining variable `N`.
-pub type Implicits = Vec<QualifiedNameNode>;
+pub type Implicits = Vec<QualifiedNamePos>;

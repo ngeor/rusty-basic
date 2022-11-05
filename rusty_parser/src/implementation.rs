@@ -7,17 +7,17 @@ use crate::types::*;
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
 
-pub fn implementation_p() -> impl Parser<Output = TopLevelToken> {
+pub fn implementation_p() -> impl Parser<Output = GlobalStatement> {
     function_implementation_p().or(sub_implementation_p())
 }
 
-fn function_implementation_p() -> impl Parser<Output = TopLevelToken> {
+fn function_implementation_p() -> impl Parser<Output = GlobalStatement> {
     seq3(
         static_declaration_p(declaration::function_declaration_p()),
         ZeroOrMoreStatements::new(keyword(Keyword::End)),
         keyword_pair(Keyword::End, Keyword::Function).no_incomplete(),
         |((name, params), is_static), body, _| {
-            TopLevelToken::FunctionImplementation(FunctionImplementation {
+            GlobalStatement::FunctionImplementation(FunctionImplementation {
                 name,
                 params,
                 body,
@@ -27,13 +27,13 @@ fn function_implementation_p() -> impl Parser<Output = TopLevelToken> {
     )
 }
 
-fn sub_implementation_p() -> impl Parser<Output = TopLevelToken> {
+fn sub_implementation_p() -> impl Parser<Output = GlobalStatement> {
     seq3(
         static_declaration_p(declaration::sub_declaration_p()),
         ZeroOrMoreStatements::new(keyword(Keyword::End)),
         keyword_pair(Keyword::End, Keyword::Sub).no_incomplete(),
         |((name, params), is_static), body, _| {
-            TopLevelToken::SubImplementation(SubImplementation {
+            GlobalStatement::SubImplementation(SubImplementation {
                 name,
                 params,
                 body,
@@ -70,11 +70,11 @@ mod tests {
         let result = parse(input).demand_single();
         assert_eq!(
             result,
-            TopLevelToken::FunctionImplementation(FunctionImplementation {
+            GlobalStatement::FunctionImplementation(FunctionImplementation {
                 name: "Add".as_name(2, 18),
                 params: vec![
-                    ParamName::new("A".into(), ParamType::Bare).at_rc(2, 22),
-                    ParamName::new("B".into(), ParamType::Bare).at_rc(2, 25)
+                    Parameter::new("A".into(), ParamType::Bare).at_rc(2, 22),
+                    Parameter::new("B".into(), ParamType::Bare).at_rc(2, 25)
                 ],
                 body: vec![Statement::Assignment(
                     Expression::var_unresolved("Add"),
@@ -84,7 +84,7 @@ mod tests {
                         Box::new("B".as_var_expr(3, 23)),
                         ExpressionType::Unresolved
                     )
-                    .at(Location::new(3, 21))
+                    .at_rc(3, 21)
                 )
                 .at_rc(3, 13)],
                 is_static: false
@@ -103,11 +103,11 @@ mod tests {
         let result = parse(input).demand_single();
         assert_eq!(
             result,
-            TopLevelToken::FunctionImplementation(FunctionImplementation {
+            GlobalStatement::FunctionImplementation(FunctionImplementation {
                 name: "add".as_name(2, 18),
                 params: vec![
-                    ParamName::new("a".into(), ParamType::Bare).at_rc(2, 22),
-                    ParamName::new("b".into(), ParamType::Bare).at_rc(2, 25)
+                    Parameter::new("a".into(), ParamType::Bare).at_rc(2, 22),
+                    Parameter::new("b".into(), ParamType::Bare).at_rc(2, 25)
                 ],
                 body: vec![Statement::Assignment(
                     Expression::var_unresolved("add"),

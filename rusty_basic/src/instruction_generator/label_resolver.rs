@@ -1,23 +1,23 @@
-use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionNode};
-use rusty_common::{CaseInsensitiveString, Locatable};
+use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionPos};
+use rusty_common::{CaseInsensitiveString, Positioned};
 use std::collections::HashMap;
 
 pub struct LabelResolver {
-    pub instructions: Vec<InstructionNode>,
+    pub instructions: Vec<InstructionPos>,
 }
 
 impl LabelResolver {
-    pub fn new(instructions: Vec<InstructionNode>) -> Self {
+    pub fn new(instructions: Vec<InstructionPos>) -> Self {
         Self { instructions }
     }
 
     pub fn resolve_labels(&mut self) {
         let label_to_address = self.build_label_to_address_map();
-        for instruction_node in self.instructions.iter_mut() {
-            let Locatable {
+        for instruction_pos in self.instructions.iter_mut() {
+            let Positioned {
                 element: instruction,
                 ..
-            } = instruction_node;
+            } = instruction_pos;
             Self::resolve_label(instruction, &label_to_address);
         }
     }

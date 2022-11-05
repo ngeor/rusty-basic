@@ -25,8 +25,8 @@ fn test_dim_array() {
 
     assert_eq!(
         linter_ok(input),
-        vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new(
+        vec![GlobalStatement::Statement(Statement::Dim(
+            DimVar::new(
                 "choice".into(),
                 DimType::Array(
                     vec![ArrayDimension {
@@ -54,9 +54,9 @@ fn test_sub_with_array_parameter() {
 
     assert_eq!(
         linter_ok(input),
-        vec![TopLevelToken::SubImplementation(SubImplementation {
+        vec![GlobalStatement::SubImplementation(SubImplementation {
             name: BareName::from("Menu").at_rc(2, 9),
-            params: vec![ParamName::new(
+            params: vec![Parameter::new(
                 "choice".into(),
                 ParamType::Array(Box::new(ParamType::BuiltIn(
                     TypeQualifier::DollarString,
@@ -86,7 +86,7 @@ fn test_passing_array_parameter_with_parenthesis() {
     assert_eq!(
         linter_ok(input),
         vec![
-            TopLevelToken::Statement(Statement::Dim(
+            GlobalStatement::Statement(Statement::Dim(
                 DimNameBuilder::new()
                     .bare_name("choice")
                     .dim_type(DimType::Array(
@@ -102,7 +102,7 @@ fn test_passing_array_parameter_with_parenthesis() {
                     .build_list_rc(2, 9)
             ))
             .at_rc(2, 5),
-            TopLevelToken::Statement(Statement::SubCall(
+            GlobalStatement::Statement(Statement::SubCall(
                 "Menu".into(),
                 vec![Expression::ArrayElement(
                     "choice$".into(),
@@ -116,9 +116,9 @@ fn test_passing_array_parameter_with_parenthesis() {
                 .at_rc(4, 10)]
             ))
             .at_rc(4, 5),
-            TopLevelToken::SubImplementation(SubImplementation {
+            GlobalStatement::SubImplementation(SubImplementation {
                 name: BareName::from("Menu").at_rc(6, 9),
-                params: vec![ParamName::new(
+                params: vec![Parameter::new(
                     "choice".into(),
                     ParamType::Array(Box::new(ParamType::BuiltIn(
                         TypeQualifier::DollarString,
@@ -128,7 +128,7 @@ fn test_passing_array_parameter_with_parenthesis() {
                 .at_rc(6, 14)],
                 body: vec![
                     Statement::Dim(
-                        DimName::new_compact_local("X", TypeQualifier::DollarString)
+                        DimVar::new_compact_local("X", TypeQualifier::DollarString)
                             .into_list_rc(7, 9)
                     )
                     .at_rc(7, 9),
@@ -166,11 +166,11 @@ fn test_passing_array_without_parenthesis() {
         linter_ok(input),
         vec![
             // X is hoisted first, even though it's implicitly defined later at line 3
-            TopLevelToken::Statement(Statement::Dim(
-                DimName::new_compact_local("X", TypeQualifier::BangSingle).into_list_rc(3, 5)
+            GlobalStatement::Statement(Statement::Dim(
+                DimVar::new_compact_local("X", TypeQualifier::BangSingle).into_list_rc(3, 5)
             ))
             .at_rc(3, 5),
-            TopLevelToken::Statement(Statement::Dim(
+            GlobalStatement::Statement(Statement::Dim(
                 DimNameBuilder::new()
                     .bare_name("choice")
                     .dim_type(DimType::Array(
@@ -187,7 +187,7 @@ fn test_passing_array_without_parenthesis() {
                     .into_list_rc(2, 9)
             ))
             .at_rc(2, 5),
-            TopLevelToken::Statement(Statement::Assignment(
+            GlobalStatement::Statement(Statement::Assignment(
                 Expression::Variable(
                     "X!".into(),
                     VariableInfo::new_local(ExpressionType::BuiltIn(TypeQualifier::BangSingle))

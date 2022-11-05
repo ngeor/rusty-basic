@@ -1,4 +1,4 @@
-use crate::expression::{ws_expr_node, ws_expr_node_ws};
+use crate::expression::{ws_expr_pos_p, ws_expr_pos_ws_p};
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::*;
@@ -9,18 +9,18 @@ pub fn parse() -> impl Parser<Output = Statement> {
         .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::ViewPrint, opt_args))
 }
 
-fn parse_args() -> impl Parser<Output = ExpressionNodes> {
+fn parse_args() -> impl Parser<Output = Expressions> {
     seq3(
-        ws_expr_node_ws(),
+        ws_expr_pos_ws_p(),
         keyword(Keyword::To).no_incomplete(),
-        ws_expr_node().or_syntax_error("Expected: expression"),
+        ws_expr_pos_p().or_syntax_error("Expected: expression"),
         |l, _, r| vec![l, r],
     )
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::{DemandSingleStatement, ExpressionNodeLiteralFactory};
+    use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
     use crate::{parse, BuiltInSub, Statement};
 
     #[test]

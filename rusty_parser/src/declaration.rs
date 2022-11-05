@@ -1,5 +1,5 @@
 use crate::name;
-use crate::param_name::param_name_node_p;
+use crate::param_name::parameter_pos_p;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::types::*;
@@ -15,16 +15,16 @@ use crate::types::*;
 // ExtendedBuiltIn       ::= <BareName><ws+>AS<ws+>(SINGLE|DOUBLE|STRING|INTEGER|LONG)
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
-pub fn declaration_p() -> impl Parser<Output = TopLevelToken> {
+pub fn declaration_p() -> impl Parser<Output = GlobalStatement> {
     keyword_followed_by_whitespace_p(Keyword::Declare).then_demand(
         function_declaration_p()
-            .map(|(n, p)| TopLevelToken::FunctionDeclaration(n, p))
-            .or(sub_declaration_p().map(|(n, p)| TopLevelToken::SubDeclaration(n, p)))
+            .map(|(n, p)| GlobalStatement::FunctionDeclaration(n, p))
+            .or(sub_declaration_p().map(|(n, p)| GlobalStatement::SubDeclaration(n, p)))
             .or_syntax_error("Expected: FUNCTION or SUB after DECLARE"),
     )
 }
 
-pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNodes)> {
+pub fn function_declaration_p() -> impl Parser<Output = (NamePos, Parameters)> {
     seq4(
         keyword(Keyword::Function),
         whitespace().no_incomplete(),
@@ -32,13 +32,13 @@ pub fn function_declaration_p() -> impl Parser<Output = (NameNode, ParamNameNode
             .with_pos()
             .or_syntax_error("Expected: function name"),
         declaration_parameters_p(),
-        |_, _, function_name_node, declaration_parameters| {
-            (function_name_node, declaration_parameters)
+        |_, _, function_name_pos, declaration_parameters| {
+            (function_name_pos, declaration_parameters)
         },
     )
 }
 
-pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes)> {
+pub fn sub_declaration_p() -> impl Parser<Output = (BareNamePos, Parameters)> {
     seq4(
         keyword(Keyword::Sub),
         whitespace().no_incomplete(),
@@ -46,15 +46,15 @@ pub fn sub_declaration_p() -> impl Parser<Output = (BareNameNode, ParamNameNodes
             .with_pos()
             .or_syntax_error("Expected: sub name"),
         declaration_parameters_p(),
-        |_, _, sub_name_node, declaration_parameters| (sub_name_node, declaration_parameters),
+        |_, _, sub_name_pos, declaration_parameters| (sub_name_pos, declaration_parameters),
     )
 }
 
-// result ::= "" | "(" ")" | "(" param_node (,param_node)* ")"
-fn declaration_parameters_p() -> impl Parser<Output = ParamNameNodes> + NonOptParser {
+// result ::= "" | "(" ")" | "(" parameter (,parameter)* ")"
+fn declaration_parameters_p() -> impl Parser<Output = Parameters> + NonOptParser {
     OptAndPC::new(
         whitespace(),
-        in_parenthesis(csv(param_name_node_p()).allow_default()),
+        in_parenthesis(csv(parameter_pos_p()).allow_default()),
     )
     .keep_right()
     .allow_default()
@@ -72,7 +72,7 @@ mod tests {
         assert_function_declaration!(
             "DECLARE FUNCTION Fib! (N!)",
             Name::from("Fib!"),
-            vec![ParamName::new(
+            vec![Parameter::new(
                 "N".into(),
                 ParamType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
             )]
@@ -84,7 +84,7 @@ mod tests {
         assert_function_declaration!(
             "declare function echo$(msg$)",
             Name::from("echo$"),
-            vec![ParamName::new(
+            vec![Parameter::new(
                 "msg".into(),
                 ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
             )]
@@ -102,24 +102,26 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                TopLevelToken::FunctionDeclaration(
+                GlobalStatement::FunctionDeclaration(
                     "Echo".as_name(2, 26),
-                    vec![ParamName::new("X".into(), ParamType::Bare).at_rc(2, 31)]
+                    vec![Parameter::new("X".into(), ParamType::Bare).at_rc(2, 31)]
                 )
                 .at_rc(2, 9),
-                TopLevelToken::Statement(Statement::Comment(" Echoes stuff back".to_string()))
+                GlobalStatement::Statement(Statement::Comment(" Echoes stuff back".to_string()))
                     .at_rc(2, 34),
-                TopLevelToken::FunctionImplementation(FunctionImplementation {
+                GlobalStatement::FunctionImplementation(FunctionImplementation {
                     name: "Echo".as_name(3, 18),
-                    params: vec![ParamName::new("X".into(), ParamType::Bare).at_rc(3, 23)],
+                    params: vec![Parameter::new("X".into(), ParamType::Bare).at_rc(3, 23)],
                     body: vec![
                         Statement::Comment(" Implementation of Echo".to_string()).at_rc(3, 26)
                     ],
                     is_static: false
                 })
                 .at_rc(3, 9),
-                TopLevelToken::Statement(Statement::Comment(" End of implementation".to_string()))
-                    .at_rc(4, 22),
+                GlobalStatement::Statement(Statement::Comment(
+                    " End of implementation".to_string()
+                ))
+                .at_rc(4, 22),
             ]
         );
     }
@@ -172,9 +174,9 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                TopLevelToken::FunctionDeclaration(
+                GlobalStatement::FunctionDeclaration(
                     "Echo".as_name(2, 26),
-                    vec![ParamName::new(
+                    vec![Parameter::new(
                         "X".into(),
                         ParamType::Array(Box::new(ParamType::BuiltIn(
                             TypeQualifier::DollarString,
@@ -184,9 +186,9 @@ mod tests {
                     .at_rc(2, 31)]
                 )
                 .at_rc(2, 9),
-                TopLevelToken::FunctionImplementation(FunctionImplementation {
+                GlobalStatement::FunctionImplementation(FunctionImplementation {
                     name: "Echo".as_name(3, 18),
-                    params: vec![ParamName::new(
+                    params: vec![Parameter::new(
                         "X".into(),
                         ParamType::Array(Box::new(ParamType::BuiltIn(
                             TypeQualifier::DollarString,
@@ -210,7 +212,9 @@ mod tests {
         let program = parse(input);
         assert_eq!(
             program,
-            vec![TopLevelToken::SubDeclaration("ScrollUp".as_bare_name(2, 21), vec![]).at_rc(2, 9)]
+            vec![
+                GlobalStatement::SubDeclaration("ScrollUp".as_bare_name(2, 21), vec![]).at_rc(2, 9)
+            ]
         );
     }
 
@@ -222,9 +226,9 @@ mod tests {
         let program = parse(input);
         assert_eq!(
             program,
-            vec![TopLevelToken::SubDeclaration(
+            vec![GlobalStatement::SubDeclaration(
                 "LCenter".as_bare_name(2, 21),
-                vec![ParamName::new(
+                vec![Parameter::new(
                     "text".into(),
                     ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
                 )

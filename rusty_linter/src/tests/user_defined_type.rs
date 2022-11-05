@@ -152,7 +152,7 @@ fn cannot_use_in_binary_expression() {
             END IF",
             op
         );
-        // QBasic uses the right side expr for the location
+        // QBasic uses the right side expr for the position
         assert_linter_err!(&input, QError::TypeMismatch, 9, 18 + (op.len() as u32) + 1);
     }
 }

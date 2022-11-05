@@ -1,14 +1,14 @@
 use crate::CanCastTo;
-use rusty_common::{QError, QErrorNode, ToLocatableError};
+use rusty_common::{QError, QErrorPos, WithErrAt};
 use rusty_parser::{
-    Expression, ExpressionNode, ExpressionType, HasExpressionType, Operator, TypeQualifier,
+    Expression, ExpressionPos, ExpressionType, HasExpressionType, Operator, TypeQualifier,
 };
 
 pub fn binary_cast(
-    left: ExpressionNode,
-    right: ExpressionNode,
+    left: ExpressionPos,
+    right: ExpressionPos,
     op: Operator,
-) -> Result<Expression, QErrorNode> {
+) -> Result<Expression, QErrorPos> {
     // get the types
     let t_left = left.expression_type();
     let t_right = right.expression_type();

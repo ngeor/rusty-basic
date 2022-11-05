@@ -2,8 +2,8 @@ use crate::types::*;
 use crate::BuiltInSub;
 use rusty_common::*;
 
-pub type StatementNode = Locatable<Statement>;
-pub type StatementNodes = Vec<StatementNode>;
+pub type StatementPos = Positioned<Statement>;
+pub type Statements = Vec<StatementPos>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
@@ -20,9 +20,9 @@ pub enum Statement {
     /// ```
     ///
     /// The validity of the assignment is determined at the linting phase.
-    Assignment(Expression, ExpressionNode),
+    Assignment(Expression, ExpressionPos),
 
-    Const(NameNode, ExpressionNode),
+    Const(NamePos, ExpressionPos),
 
     /// Declares a variable.
     ///
@@ -75,21 +75,21 @@ pub enum Statement {
 
     Redim(DimList),
 
-    SubCall(BareName, ExpressionNodes),
-    BuiltInSubCall(BuiltInSub, ExpressionNodes),
+    SubCall(BareName, Expressions),
+    BuiltInSubCall(BuiltInSub, Expressions),
 
     /*
      * Decision flow
      */
-    IfBlock(IfBlockNode),
-    SelectCase(SelectCaseNode),
+    IfBlock(IfBlock),
+    SelectCase(SelectCase),
 
     /*
      * Loops
      */
-    ForLoop(ForLoopNode),
-    While(ConditionalBlockNode),
-    DoLoop(DoLoopNode),
+    ForLoop(ForLoop),
+    While(ConditionalBlock),
+    DoLoop(DoLoop),
 
     /*
      * Unstructured flow control
@@ -111,7 +111,7 @@ pub enum Statement {
     /*
      * Special statements
      */
-    Print(PrintNode),
+    Print(Print),
 }
 
 /// A list of variables defined in a DIM statement.
@@ -122,7 +122,7 @@ pub struct DimList {
     pub shared: bool,
 
     /// The variables defined in the DIM statement.
-    pub variables: DimNameNodes,
+    pub variables: DimVars,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -146,57 +146,57 @@ pub enum OnErrorOption {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ForLoopNode {
-    pub variable_name: ExpressionNode,
-    pub lower_bound: ExpressionNode,
-    pub upper_bound: ExpressionNode,
-    pub step: Option<ExpressionNode>,
-    pub statements: StatementNodes,
-    pub next_counter: Option<ExpressionNode>,
+pub struct ForLoop {
+    pub variable_name: ExpressionPos,
+    pub lower_bound: ExpressionPos,
+    pub upper_bound: ExpressionPos,
+    pub step: Option<ExpressionPos>,
+    pub statements: Statements,
+    pub next_counter: Option<ExpressionPos>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ConditionalBlockNode {
-    pub condition: ExpressionNode,
-    pub statements: StatementNodes,
+pub struct ConditionalBlock {
+    pub condition: ExpressionPos,
+    pub statements: Statements,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct IfBlockNode {
-    pub if_block: ConditionalBlockNode,
-    pub else_if_blocks: Vec<ConditionalBlockNode>,
-    pub else_block: Option<StatementNodes>,
+pub struct IfBlock {
+    pub if_block: ConditionalBlock,
+    pub else_if_blocks: Vec<ConditionalBlock>,
+    pub else_block: Option<Statements>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct SelectCaseNode {
+pub struct SelectCase {
     /// The expression been matched
-    pub expr: ExpressionNode,
+    pub expr: ExpressionPos,
     /// The case statements
-    pub case_blocks: Vec<CaseBlockNode>,
+    pub case_blocks: Vec<CaseBlock>,
     /// An optional CASE ELSE block
-    pub else_block: Option<StatementNodes>,
+    pub else_block: Option<Statements>,
     /// Holds an optional inline comment after SELECT CASE X e.g. SELECT CASE X ' make a choice
-    pub inline_comments: Vec<Locatable<String>>,
+    pub inline_comments: Vec<Positioned<String>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct CaseBlockNode {
+pub struct CaseBlock {
     pub expression_list: Vec<CaseExpression>,
-    pub statements: StatementNodes,
+    pub statements: Statements,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CaseExpression {
-    Simple(ExpressionNode),
-    Is(Operator, ExpressionNode),
-    Range(ExpressionNode, ExpressionNode),
+    Simple(ExpressionPos),
+    Is(Operator, ExpressionPos),
+    Range(ExpressionPos, ExpressionPos),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct DoLoopNode {
-    pub condition: ExpressionNode,
-    pub statements: StatementNodes,
+pub struct DoLoop {
+    pub condition: ExpressionPos,
+    pub statements: Statements,
     pub position: DoLoopConditionPosition,
     pub kind: DoLoopConditionKind,
 }

@@ -19,7 +19,7 @@ mod expr_state {
     use crate::converter::types::ExprContext;
     use std::ops::{Deref, DerefMut};
 
-    /// A context that is used when converting an [ExpressionNode].
+    /// A context that is used when converting an [ExpressionPos].
     /// Enhances the parent [Context] with an [ExprContext].
     pub struct ExprState<'a> {
         ctx: &'a mut Context,
@@ -65,22 +65,22 @@ mod pos_expr_state {
 
     use crate::converter::expr_rules::expr_state::ExprState;
     use crate::converter::traits::FromParentContext;
-    use rusty_common::{HasLocation, Location};
+    use rusty_common::{HasPos, Position};
     use std::ops::{Deref, DerefMut};
 
     pub struct PosExprState<'a, 'b> {
         ctx: &'a mut ExprState<'b>,
-        pos: Location,
+        pos: Position,
     }
 
     impl<'a, 'b> PosExprState<'a, 'b> {
-        pub fn new(ctx: &'a mut ExprState<'b>, pos: Location) -> Self {
+        pub fn new(ctx: &'a mut ExprState<'b>, pos: Position) -> Self {
             Self { ctx, pos }
         }
     }
 
-    impl<'a, 'b> FromParentContext<'a, ExprState<'b>, Location> for PosExprState<'a, 'b> {
-        fn create_from_parent_context(parent: &'a mut ExprState<'b>, value: Location) -> Self {
+    impl<'a, 'b> FromParentContext<'a, ExprState<'b>, Position> for PosExprState<'a, 'b> {
+        fn create_from_parent_context(parent: &'a mut ExprState<'b>, value: Position) -> Self {
             Self::new(parent, value)
         }
     }
@@ -99,29 +99,29 @@ mod pos_expr_state {
         }
     }
 
-    impl<'a, 'b> HasLocation for PosExprState<'a, 'b> {
-        fn pos(&self) -> Location {
+    impl<'a, 'b> HasPos for PosExprState<'a, 'b> {
+        fn pos(&self) -> Position {
             self.pos
         }
     }
 }
 
 //
-// ExpressionNode Convertible
+// ExpressionPos Convertible
 //
 
-impl<'a> Convertible<ExprState<'a>> for ExpressionNode {
-    fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, QErrorNode> {
-        let Locatable { element: expr, pos } = self;
+impl<'a> Convertible<ExprState<'a>> for ExpressionPos {
+    fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, QErrorPos> {
+        let Positioned { element: expr, pos } = self;
         match expr.convert_in(ctx, pos) {
-            Ok(expr) => Ok(expr.at(pos)),
+            Ok(expr) => Ok(expr.at_pos(pos)),
             Err(err) => Err(err.patch_pos(pos)),
         }
     }
 }
 
-impl<'a> Convertible<ExprState<'a>> for Box<ExpressionNode> {
-    fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, QErrorNode> {
+impl<'a> Convertible<ExprState<'a>> for Box<ExpressionPos> {
+    fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, QErrorPos> {
         let unboxed = *self;
         unboxed.convert(ctx).map(Box::new)
     }
@@ -132,7 +132,7 @@ impl<'a> Convertible<ExprState<'a>> for Box<ExpressionNode> {
 //
 
 impl<'a, 'b> Convertible<PosExprState<'a, 'b>> for Expression {
-    fn convert(self, ctx: &mut PosExprState<'a, 'b>) -> Result<Self, QErrorNode> {
+    fn convert(self, ctx: &mut PosExprState<'a, 'b>) -> Result<Self, QErrorPos> {
         match self {
             // literals
             Expression::SingleLiteral(_)

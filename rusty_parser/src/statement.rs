@@ -185,13 +185,13 @@ mod tests {
     use rusty_common::*;
 
     #[test]
-    fn test_top_level_comment() {
+    fn test_global_comment() {
         let input = "' closes the file";
         let program = parse(input);
         assert_eq!(
             program,
             vec![
-                TopLevelToken::Statement(Statement::Comment(" closes the file".to_string(),))
+                GlobalStatement::Statement(Statement::Comment(" closes the file".to_string(),))
                     .at_rc(1, 1)
             ]
         );
@@ -204,7 +204,7 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                TopLevelToken::Statement(Statement::Print(PrintNode::one(42.as_lit_expr(1, 9))))
+                GlobalStatement::Statement(Statement::Print(Print::one(42.as_lit_expr(1, 9))))
                     .at_rc(1, 3)
             ]
         );

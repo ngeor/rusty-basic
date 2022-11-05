@@ -108,9 +108,9 @@ fn test_stacktrace() {
         ErrorEnvelope::Stacktrace(
             QError::Other("Invalid expression. Must be name=value.".to_string()),
             vec![
-                Location::new(10, 13), // "inside" Environ
-                Location::new(8, 13),  // at Hello N + 1
-                Location::new(4, 5),   // at Hello 1
+                Position::new(10, 13), // "inside" Environ
+                Position::new(8, 13),  // at Hello N + 1
+                Position::new(4, 5),   // at Hello 1
             ]
         )
     );

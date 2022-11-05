@@ -1,7 +1,7 @@
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{AddressOrLabel, Instruction, PrinterType, RootPath};
-use rusty_common::AtRowCol;
-use rusty_parser::{BuiltInStyle, ExpressionType, ParamName, ParamType, TypeQualifier};
+use rusty_common::AtPos;
+use rusty_parser::{BuiltInStyle, ExpressionType, ParamType, Parameter, TypeQualifier};
 use rusty_variant::Variant;
 
 #[test]
@@ -95,7 +95,7 @@ fn test_assign_and_print_one_element() {
     PRINT A(1)
     "#;
     assert_eq!(
-        generate_instructions_str_no_location(input),
+        generate_instructions_str_no_pos(input),
         [
             // evaluate dimensions of array
             Instruction::BeginCollectArguments,
@@ -156,7 +156,7 @@ fn test_pass_param_to_sub() {
     END SUB
     "#;
     assert_eq!(
-        generate_instructions_str_no_location(input),
+        generate_instructions_str_no_pos(input),
         [
             // evaluate dimensions of array
             Instruction::BeginCollectArguments,
@@ -181,7 +181,7 @@ fn test_pass_param_to_sub() {
             }),
             Instruction::CopyVarPathToA,
             Instruction::PopVarPath,
-            Instruction::PushNamed(ParamName::new(
+            Instruction::PushNamed(Parameter::new(
                 "values".into(),
                 ParamType::Array(Box::new(ParamType::BuiltIn(
                     TypeQualifier::BangSingle,

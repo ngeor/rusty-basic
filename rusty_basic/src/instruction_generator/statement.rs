@@ -1,21 +1,21 @@
 use super::{AddressOrLabel, Instruction, InstructionGenerator, Visitor};
 use rusty_common::*;
-use rusty_parser::{OnErrorOption, ResumeOption, Statement, StatementNode, StatementNodes};
+use rusty_parser::{OnErrorOption, ResumeOption, Statement, StatementPos, Statements};
 
-impl Visitor<StatementNodes> for InstructionGenerator {
-    fn visit(&mut self, block: StatementNodes) {
+impl Visitor<Statements> for InstructionGenerator {
+    fn visit(&mut self, block: Statements) {
         for s in block {
             self.visit(s);
         }
     }
 }
 
-impl Visitor<StatementNode> for InstructionGenerator {
-    fn visit(&mut self, statement_node: StatementNode) {
-        let Locatable {
+impl Visitor<StatementPos> for InstructionGenerator {
+    fn visit(&mut self, statement_pos: StatementPos) {
+        let Positioned {
             element: statement,
             pos,
-        } = statement_node;
+        } = statement_pos;
 
         if let Statement::Comment(_) = &statement {
         } else {
@@ -27,20 +27,18 @@ impl Visitor<StatementNode> for InstructionGenerator {
                 self.generate_assignment_instructions(left_side, right_side, pos)
             }
             Statement::Const(_, _) => panic!("Constants should have been reduced by const_reducer"),
-            Statement::SubCall(n, args) => self.generate_sub_call_instructions(n.at(pos), args),
+            Statement::SubCall(n, args) => self.generate_sub_call_instructions(n.at_pos(pos), args),
             Statement::BuiltInSubCall(n, args) => {
                 self.generate_built_in_sub_call_instructions(n, args, pos)
             }
-            Statement::Print(print_node) => {
-                self.generate_print_instructions(print_node, pos);
+            Statement::Print(print) => {
+                self.generate_print_instructions(print, pos);
             }
             Statement::IfBlock(i) => self.generate_if_block_instructions(i, pos),
             Statement::SelectCase(s) => self.generate_select_case_instructions(s, pos),
             Statement::ForLoop(f) => self.generate_for_loop_instructions(f, pos),
             Statement::While(w) => self.generate_while_instructions(w, pos),
-            Statement::DoLoop(do_loop_node) => {
-                self.generate_do_loop_instructions(do_loop_node, pos)
-            }
+            Statement::DoLoop(do_loop) => self.generate_do_loop_instructions(do_loop, pos),
             Statement::OnError(on_error_option) => match on_error_option {
                 OnErrorOption::Label(label) => {
                     self.push(

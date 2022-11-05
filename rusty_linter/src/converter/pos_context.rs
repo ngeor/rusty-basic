@@ -1,15 +1,15 @@
 use crate::converter::context::Context;
 use crate::converter::traits::FromParentContext;
-use rusty_common::{HasLocation, Location};
+use rusty_common::{HasPos, Position};
 use std::ops::{Deref, DerefMut};
 
 pub struct PosContext<'a> {
     ctx: &'a mut Context,
-    pos: Location,
+    pos: Position,
 }
 
-impl<'a> FromParentContext<'a, Context, Location> for PosContext<'a> {
-    fn create_from_parent_context(ctx: &'a mut Context, pos: Location) -> Self {
+impl<'a> FromParentContext<'a, Context, Position> for PosContext<'a> {
+    fn create_from_parent_context(ctx: &'a mut Context, pos: Position) -> Self {
         Self { ctx, pos }
     }
 }
@@ -28,8 +28,8 @@ impl<'a> DerefMut for PosContext<'a> {
     }
 }
 
-impl<'a> HasLocation for PosContext<'a> {
-    fn pos(&self) -> Location {
+impl<'a> HasPos for PosContext<'a> {
+    fn pos(&self) -> Position {
         self.pos
     }
 }

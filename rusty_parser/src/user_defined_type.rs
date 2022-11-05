@@ -42,15 +42,15 @@
 //
 // Type must be defined Before DECLARE SUB
 
-use crate::expression::expression_node_p;
+use crate::expression::expression_pos_p;
 use crate::name::bare_name_without_dots;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::statement_separator::comments_and_whitespace_p;
 use crate::types::{
-    Element, ElementNode, ElementType, Expression, ExpressionNode, Keyword, UserDefinedType,
+    Element, ElementPos, ElementType, Expression, ExpressionPos, Keyword, UserDefinedType,
 };
-use rusty_common::{Locatable, QError};
+use rusty_common::{Positioned, QError};
 use rusty_variant::MAX_INTEGER;
 
 pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
@@ -58,19 +58,19 @@ pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
         keyword_followed_by_whitespace_p(Keyword::Type),
         bare_name_without_dots().or_syntax_error("Expected: name after TYPE"),
         comments_and_whitespace_p(),
-        element_nodes_p(),
+        elements_p(),
         keyword_pair(Keyword::End, Keyword::Type).no_incomplete(),
         |_, name, comments, elements, _| UserDefinedType::new(name, comments, elements),
     )
 }
 
-fn element_nodes_p() -> impl Parser<Output = Vec<ElementNode>> + NonOptParser {
-    element_node_p()
+fn elements_p() -> impl Parser<Output = Vec<ElementPos>> + NonOptParser {
+    element_pos_p()
         .one_or_more()
         .or_fail(QError::ElementNotDefined)
 }
 
-fn element_node_p() -> impl Parser<Output = ElementNode> {
+fn element_pos_p() -> impl Parser<Output = ElementPos> {
     seq6(
         bare_name_without_dots(),
         whitespace().no_incomplete(),
@@ -103,19 +103,19 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
     )
 }
 
-fn demand_string_length_p() -> impl Parser<Output = ExpressionNode> + NonOptParser {
-    expression_node_p()
-        .and_then(|Locatable { element, pos }| match element {
+fn demand_string_length_p() -> impl Parser<Output = ExpressionPos> + NonOptParser {
+    expression_pos_p()
+        .and_then(|Positioned { element, pos }| match element {
             Expression::IntegerLiteral(i) => {
                 if i > 0 && i < MAX_INTEGER {
-                    Ok(Locatable::new(element, pos))
+                    Ok(Positioned::new(element, pos))
                 } else {
                     Err(QError::syntax_error("String length out of range"))
                 }
             }
             Expression::Variable(_, _) => {
                 // allow it, in case it is a CONST
-                Ok(Locatable::new(element, pos))
+                Ok(Positioned::new(element, pos))
             }
             _ => Err(QError::syntax_error("Illegal string length")),
         })
@@ -127,7 +127,7 @@ mod tests {
     use crate::assert_parser_err;
     use crate::test_utils::*;
     use crate::*;
-    use rusty_common::AtRowCol;
+    use rusty_common::AtPos;
 
     #[test]
     fn parse_type() {
@@ -139,7 +139,7 @@ mod tests {
         ";
         assert_eq!(
             parse(input).demand_single(),
-            TopLevelToken::UserDefinedType(UserDefinedType::new(
+            GlobalStatement::UserDefinedType(UserDefinedType::new(
                 BareName::from("Card"),
                 vec![],
                 vec![
@@ -166,7 +166,7 @@ mod tests {
         ";
         assert_eq!(
             parse(input).demand_single(),
-            TopLevelToken::UserDefinedType(UserDefinedType::new(
+            GlobalStatement::UserDefinedType(UserDefinedType::new(
                 BareName::from("Card"),
                 vec![String::from(" A card").at_rc(2, 19)],
                 vec![

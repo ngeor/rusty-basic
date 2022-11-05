@@ -1,4 +1,4 @@
-use crate::expression::ws_expr_node;
+use crate::expression::ws_expr_pos_p;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::statements::*;
@@ -8,14 +8,14 @@ use rusty_common::*;
 pub fn while_wend_p() -> impl Parser<Output = Statement> {
     seq4(
         keyword(Keyword::While),
-        ws_expr_node().or_syntax_error("Expected: expression after WHILE"),
+        ws_expr_pos_p().or_syntax_error("Expected: expression after WHILE"),
         ZeroOrMoreStatements::new_with_custom_error(
             keyword(Keyword::Wend),
             QError::WhileWithoutWend,
         ),
         keyword(Keyword::Wend).or_fail(QError::WhileWithoutWend),
         |_, condition, statements, _| {
-            Statement::While(ConditionalBlockNode {
+            Statement::While(ConditionalBlock {
                 condition,
                 statements,
             })
@@ -40,7 +40,7 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::While(ConditionalBlockNode {
+            Statement::While(ConditionalBlock {
                 condition: Expression::BinaryExpression(
                     Operator::Less,
                     Box::new("A".as_var_expr(2, 15)),
@@ -58,7 +58,7 @@ mod tests {
         let program = parse("WHILE A < 5: A = A + 1: Flint A: WEND").demand_single_statement();
         assert_eq!(
             program,
-            Statement::While(ConditionalBlockNode {
+            Statement::While(ConditionalBlock {
                 condition: Expression::BinaryExpression(
                     Operator::Less,
                     Box::new("A".as_var_expr(1, 7)),
@@ -96,7 +96,7 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                TopLevelToken::Statement(Statement::While(ConditionalBlockNode {
+                GlobalStatement::Statement(Statement::While(ConditionalBlock {
                     condition: "A".as_var_expr(2, 15),
                     statements: vec![
                         Statement::Comment(" keep looping".to_string()).at_rc(2, 20),
@@ -105,7 +105,7 @@ mod tests {
                     ]
                 }))
                 .at_rc(2, 9),
-                TopLevelToken::Statement(Statement::Comment(" end of loop".to_string()))
+                GlobalStatement::Statement(Statement::Comment(" end of loop".to_string()))
                     .at_rc(4, 20)
             ]
         );
@@ -135,7 +135,7 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::While(ConditionalBlockNode {
+            Statement::While(ConditionalBlock {
                 condition: Expression::Parenthesis(Box::new(
                     Expression::BinaryExpression(
                         Operator::Greater,
@@ -178,7 +178,7 @@ mod tests {
         .demand_single_statement();
         assert_eq!(
             program,
-            Statement::While(ConditionalBlockNode {
+            Statement::While(ConditionalBlock {
                 condition: Expression::BinaryExpression(
                     Operator::Less,
                     Box::new("A".as_var_expr(2, 15)),

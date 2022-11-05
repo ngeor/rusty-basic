@@ -131,12 +131,12 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                TopLevelToken::DefType(DefType::new(
+                GlobalStatement::DefType(DefType::new(
                     TypeQualifier::PercentInteger,
                     vec![LetterRange::Range('A', 'Z')]
                 ))
                 .at_rc(2, 9),
-                TopLevelToken::Statement(Statement::Comment(" Improve performance".to_string()))
+                GlobalStatement::Statement(Statement::Comment(" Improve performance".to_string()))
                     .at_rc(2, 20),
             ]
         );

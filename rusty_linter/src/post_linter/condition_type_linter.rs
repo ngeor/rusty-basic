@@ -1,36 +1,35 @@
 use crate::post_linter::post_conversion_linter::PostConversionLinter;
-use rusty_common::{QError, QErrorNode, ToLocatableError};
+use rusty_common::{QError, QErrorPos, WithErrAt};
 use rusty_parser::{
-    ConditionalBlockNode, DoLoopNode, ExpressionNode, ExpressionType, HasExpressionType,
-    TypeQualifier,
+    ConditionalBlock, DoLoop, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier,
 };
 
 /// Ensures that expressions appearing in logical conditions are numeric.
 pub struct ConditionTypeLinter {}
 
 impl ConditionTypeLinter {
-    fn ensure_expression_is_condition(expr_node: &ExpressionNode) -> Result<(), QErrorNode> {
-        match expr_node.expression_type() {
+    fn ensure_expression_is_condition(expr_pos: &ExpressionPos) -> Result<(), QErrorPos> {
+        match expr_pos.expression_type() {
             ExpressionType::BuiltIn(q) => {
                 if q == TypeQualifier::DollarString {
-                    Err(QError::TypeMismatch).with_err_at(expr_node)
+                    Err(QError::TypeMismatch).with_err_at(expr_pos)
                 } else {
                     Ok(())
                 }
             }
-            _ => Err(QError::TypeMismatch).with_err_at(expr_node),
+            _ => Err(QError::TypeMismatch).with_err_at(expr_pos),
         }
     }
 }
 
 impl PostConversionLinter for ConditionTypeLinter {
-    fn visit_conditional_block(&mut self, c: &ConditionalBlockNode) -> Result<(), QErrorNode> {
-        self.visit_statement_nodes(&c.statements)?;
+    fn visit_conditional_block(&mut self, c: &ConditionalBlock) -> Result<(), QErrorPos> {
+        self.visit_statements(&c.statements)?;
         Self::ensure_expression_is_condition(&c.condition)
     }
 
-    fn visit_do_loop(&mut self, do_loop_node: &DoLoopNode) -> Result<(), QErrorNode> {
-        self.visit_statement_nodes(&do_loop_node.statements)?;
-        Self::ensure_expression_is_condition(&do_loop_node.condition)
+    fn visit_do_loop(&mut self, do_loop: &DoLoop) -> Result<(), QErrorPos> {
+        self.visit_statements(&do_loop.statements)?;
+        Self::ensure_expression_is_condition(&do_loop.condition)
     }
 }

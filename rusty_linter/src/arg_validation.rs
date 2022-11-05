@@ -1,91 +1,91 @@
 use crate::CanCastTo;
-use rusty_common::{QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use rusty_common::{QError, QErrorPos, WithErrAt, WithErrNoPos};
 use rusty_parser::{
-    Expression, ExpressionNode, ExpressionNodes, ExpressionTrait, ExpressionType,
-    HasExpressionType, TypeQualifier, VariableInfo,
+    Expression, ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType,
+    TypeQualifier, VariableInfo,
 };
 
 pub trait ArgValidation {
-    fn require_integer_argument(&self, idx: usize) -> Result<(), QErrorNode>;
+    fn require_integer_argument(&self, idx: usize) -> Result<(), QErrorPos>;
 
-    fn require_long_argument(&self, idx: usize) -> Result<(), QErrorNode>;
+    fn require_long_argument(&self, idx: usize) -> Result<(), QErrorPos>;
 
-    fn require_double_argument(&self, idx: usize) -> Result<(), QErrorNode>;
+    fn require_double_argument(&self, idx: usize) -> Result<(), QErrorPos>;
 
-    fn require_numeric_argument(&self, idx: usize) -> Result<(), QErrorNode>;
+    fn require_numeric_argument(&self, idx: usize) -> Result<(), QErrorPos>;
 
-    fn require_string_argument(&self, idx: usize) -> Result<(), QErrorNode>;
+    fn require_string_argument(&self, idx: usize) -> Result<(), QErrorPos>;
 
     /// Demands that the argument at the given index is a string variable.
     /// This is a strict check, it doesn't allow array elements or
     /// user defined properties of string value.
-    fn require_string_variable(&self, idx: usize) -> Result<(), QErrorNode>;
+    fn require_string_variable(&self, idx: usize) -> Result<(), QErrorPos>;
 
     /// Demands that the argument at the given index is a ref value
     /// that can be cast into a string. This allows for string variables,
     /// array elements, properties of user defined types.
-    fn require_string_ref(&self, idx: usize) -> Result<(), QErrorNode>;
+    fn require_string_ref(&self, idx: usize) -> Result<(), QErrorPos>;
 
-    fn require_variable_of_built_in_type(&self, idx: usize) -> Result<(), QErrorNode>;
+    fn require_variable_of_built_in_type(&self, idx: usize) -> Result<(), QErrorPos>;
 
-    fn require_variable(&self, idx: usize) -> Result<(), QErrorNode>;
+    fn require_variable(&self, idx: usize) -> Result<(), QErrorPos>;
 
-    fn require_one_argument(&self) -> Result<(), QErrorNode>;
+    fn require_one_argument(&self) -> Result<(), QErrorPos>;
 
-    fn require_zero_arguments(&self) -> Result<(), QErrorNode>;
+    fn require_zero_arguments(&self) -> Result<(), QErrorPos>;
 
-    fn require_one_double_argument(&self) -> Result<(), QErrorNode> {
+    fn require_one_double_argument(&self) -> Result<(), QErrorPos> {
         self.require_one_argument()
             .and_then(|_| self.require_double_argument(0))
     }
 
-    fn require_one_numeric_argument(&self) -> Result<(), QErrorNode> {
+    fn require_one_numeric_argument(&self) -> Result<(), QErrorPos> {
         self.require_one_argument()
             .and_then(|_| self.require_numeric_argument(0))
     }
 
-    fn require_one_string_argument(&self) -> Result<(), QErrorNode> {
+    fn require_one_string_argument(&self) -> Result<(), QErrorPos> {
         self.require_one_argument()
             .and_then(|_| self.require_string_argument(0))
     }
 
-    fn require_one_variable(&self) -> Result<(), QErrorNode> {
+    fn require_one_variable(&self) -> Result<(), QErrorPos> {
         self.require_one_argument()
             .and_then(|_| self.require_variable(0))
     }
 
     fn expr(&self, idx: usize) -> &Expression {
-        &self.expr_node(idx).element
+        &self.expr_pos(idx).element
     }
 
-    fn expr_node(&self, idx: usize) -> &ExpressionNode;
+    fn expr_pos(&self, idx: usize) -> &ExpressionPos;
 
-    fn require_predicate<F>(&self, idx: usize, predicate: F) -> Result<(), QErrorNode>
+    fn require_predicate<F>(&self, idx: usize, predicate: F) -> Result<(), QErrorPos>
     where
         F: Fn(&Expression) -> bool,
     {
         if predicate(self.expr(idx)) {
             Ok(())
         } else {
-            Err(QError::ArgumentTypeMismatch).with_err_at(self.expr_node(idx))
+            Err(QError::ArgumentTypeMismatch).with_err_at(self.expr_pos(idx))
         }
     }
 }
 
-impl ArgValidation for ExpressionNodes {
-    fn require_integer_argument(&self, idx: usize) -> Result<(), QErrorNode> {
+impl ArgValidation for Expressions {
+    fn require_integer_argument(&self, idx: usize) -> Result<(), QErrorPos> {
         self.require_predicate(idx, |expr| expr.can_cast_to(&TypeQualifier::PercentInteger))
     }
 
-    fn require_long_argument(&self, idx: usize) -> Result<(), QErrorNode> {
+    fn require_long_argument(&self, idx: usize) -> Result<(), QErrorPos> {
         self.require_predicate(idx, |expr| expr.can_cast_to(&TypeQualifier::AmpersandLong))
     }
 
-    fn require_double_argument(&self, idx: usize) -> Result<(), QErrorNode> {
+    fn require_double_argument(&self, idx: usize) -> Result<(), QErrorPos> {
         self.require_predicate(idx, |expr| expr.can_cast_to(&TypeQualifier::HashDouble))
     }
 
-    fn require_numeric_argument(&self, idx: usize) -> Result<(), QErrorNode> {
+    fn require_numeric_argument(&self, idx: usize) -> Result<(), QErrorPos> {
         self.require_predicate(idx, |expr| {
             if let ExpressionType::BuiltIn(q) = expr.expression_type() {
                 q != TypeQualifier::DollarString
@@ -95,11 +95,11 @@ impl ArgValidation for ExpressionNodes {
         })
     }
 
-    fn require_string_argument(&self, idx: usize) -> Result<(), QErrorNode> {
+    fn require_string_argument(&self, idx: usize) -> Result<(), QErrorPos> {
         self.require_predicate(idx, |expr| expr.can_cast_to(&TypeQualifier::DollarString))
     }
 
-    fn require_string_variable(&self, idx: usize) -> Result<(), QErrorNode> {
+    fn require_string_variable(&self, idx: usize) -> Result<(), QErrorPos> {
         match self.expr(idx) {
             Expression::Variable(
                 _,
@@ -113,7 +113,7 @@ impl ArgValidation for ExpressionNodes {
         }
     }
 
-    fn require_string_ref(&self, idx: usize) -> Result<(), QErrorNode> {
+    fn require_string_ref(&self, idx: usize) -> Result<(), QErrorPos> {
         match self.expr(idx) {
             Expression::Variable(
                 _,
@@ -139,7 +139,7 @@ impl ArgValidation for ExpressionNodes {
         }
     }
 
-    fn require_variable_of_built_in_type(&self, idx: usize) -> Result<(), QErrorNode> {
+    fn require_variable_of_built_in_type(&self, idx: usize) -> Result<(), QErrorPos> {
         match self.expr(idx) {
             Expression::Variable(
                 _,
@@ -162,7 +162,7 @@ impl ArgValidation for ExpressionNodes {
         }
     }
 
-    fn require_variable(&self, idx: usize) -> Result<(), QErrorNode> {
+    fn require_variable(&self, idx: usize) -> Result<(), QErrorPos> {
         if self.expr(idx).is_by_ref() {
             Ok(())
         } else {
@@ -170,7 +170,7 @@ impl ArgValidation for ExpressionNodes {
         }
     }
 
-    fn require_one_argument(&self) -> Result<(), QErrorNode> {
+    fn require_one_argument(&self) -> Result<(), QErrorPos> {
         if self.len() != 1 {
             Err(QError::ArgumentCountMismatch).with_err_no_pos()
         } else {
@@ -178,7 +178,7 @@ impl ArgValidation for ExpressionNodes {
         }
     }
 
-    fn require_zero_arguments(&self) -> Result<(), QErrorNode> {
+    fn require_zero_arguments(&self) -> Result<(), QErrorPos> {
         if self.is_empty() {
             Ok(())
         } else {
@@ -186,7 +186,7 @@ impl ArgValidation for ExpressionNodes {
         }
     }
 
-    fn expr_node(&self, idx: usize) -> &ExpressionNode {
+    fn expr_pos(&self, idx: usize) -> &ExpressionPos {
         self.get(idx).unwrap()
     }
 }

@@ -1,12 +1,10 @@
 use super::{Instruction, InstructionGenerator, Visitor};
 use rusty_common::*;
-use rusty_parser::{
-    CaseBlockNode, CaseExpression, ExpressionNode, Operator, SelectCaseNode, StatementNodes,
-};
+use rusty_parser::{CaseBlock, CaseExpression, ExpressionPos, Operator, SelectCase, Statements};
 
 impl InstructionGenerator {
-    pub fn generate_select_case_instructions(&mut self, s: SelectCaseNode, pos: Location) {
-        let SelectCaseNode {
+    pub fn generate_select_case_instructions(&mut self, s: SelectCase, pos: Position) {
+        let SelectCase {
             expr,
             case_blocks,
             else_block,
@@ -21,17 +19,12 @@ impl InstructionGenerator {
     }
 
     /// Evaluate SELECT CASE x into A
-    fn generate_eval_select_case_expr(&mut self, expr: ExpressionNode, pos: Location) {
+    fn generate_eval_select_case_expr(&mut self, expr: ExpressionPos, pos: Position) {
         self.generate_expression_instructions(expr);
         self.push(Instruction::PushAToValueStack, pos);
     }
 
-    fn generate_case_blocks(
-        &mut self,
-        case_blocks: Vec<CaseBlockNode>,
-        has_else: bool,
-        pos: Location,
-    ) {
+    fn generate_case_blocks(&mut self, case_blocks: Vec<CaseBlock>, has_else: bool, pos: Position) {
         let case_blocks_len = case_blocks.len();
         for (case_block_index, case_block) in case_blocks.into_iter().enumerate() {
             // mark the beginning of this case block
@@ -58,7 +51,7 @@ impl InstructionGenerator {
         }
     }
 
-    fn generate_else_block(&mut self, else_block: Option<StatementNodes>, pos: Location) {
+    fn generate_else_block(&mut self, else_block: Option<Statements>, pos: Position) {
         if let Some(e) = else_block {
             self.label(labels::case_else(), pos);
             self.visit(e);
@@ -69,7 +62,7 @@ impl InstructionGenerator {
         &mut self,
         case_expressions: Vec<CaseExpression>,
         next_case_label: &str,
-        pos: Location,
+        pos: Position,
         case_block_index: usize,
     ) {
         let expressions_len = case_expressions.len();
@@ -108,7 +101,7 @@ impl InstructionGenerator {
         &mut self,
         case_expression: CaseExpression,
         next_case_label: &str,
-        pos: Location,
+        pos: Position,
     ) {
         match case_expression {
             CaseExpression::Simple(e) => {
@@ -125,9 +118,9 @@ impl InstructionGenerator {
 
     fn generate_case_expr_simple(
         &mut self,
-        e: ExpressionNode,
+        e: ExpressionPos,
         next_case_label: &str,
-        pos: Location,
+        pos: Position,
     ) {
         self.generate_comparison_expr(e, pos);
         self.push(Instruction::Equal, pos);
@@ -137,9 +130,9 @@ impl InstructionGenerator {
     fn generate_case_expr_is(
         &mut self,
         op: Operator,
-        e: ExpressionNode,
+        e: ExpressionPos,
         next_case_label: &str,
-        pos: Location,
+        pos: Position,
     ) {
         self.generate_comparison_expr(e, pos);
         match op {
@@ -156,10 +149,10 @@ impl InstructionGenerator {
 
     fn generate_case_expr_range(
         &mut self,
-        from: ExpressionNode,
-        to: ExpressionNode,
+        from: ExpressionPos,
+        to: ExpressionPos,
         next_case_label: &str,
-        pos: Location,
+        pos: Position,
     ) {
         self.generate_comparison_expr(from, pos);
         // compare select expr with lower bound, must be >=
@@ -172,7 +165,7 @@ impl InstructionGenerator {
         self.jump_if_false(next_case_label, pos);
     }
 
-    fn generate_comparison_expr(&mut self, comparison_expr: ExpressionNode, pos: Location) {
+    fn generate_comparison_expr(&mut self, comparison_expr: ExpressionPos, pos: Position) {
         // evaluate the comparison expression into A
         self.generate_expression_instructions(comparison_expr);
         // copy from -> B

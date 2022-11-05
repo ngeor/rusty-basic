@@ -1,15 +1,15 @@
 use crate::converter::context::Context;
 use crate::converter::traits::Convertible;
 use rusty_common::*;
-use rusty_parser::{CaseBlockNode, CaseExpression, SelectCaseNode};
+use rusty_parser::{CaseBlock, CaseExpression, SelectCase};
 
-impl Convertible for SelectCaseNode {
-    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
+impl Convertible for SelectCase {
+    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorPos> {
         let expr = self.expr.convert_in_default(ctx)?;
         let case_blocks = self.case_blocks.convert(ctx)?;
         let else_block = self.else_block.convert(ctx)?;
         let inline_comments = self.inline_comments;
-        Ok(SelectCaseNode {
+        Ok(SelectCase {
             expr,
             case_blocks,
             else_block,
@@ -18,11 +18,11 @@ impl Convertible for SelectCaseNode {
     }
 }
 
-impl Convertible for CaseBlockNode {
-    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
+impl Convertible for CaseBlock {
+    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorPos> {
         let expression_list = self.expression_list.convert(ctx)?;
         let statements = self.statements.convert(ctx)?;
-        Ok(CaseBlockNode {
+        Ok(CaseBlock {
             expression_list,
             statements,
         })
@@ -30,7 +30,7 @@ impl Convertible for CaseBlockNode {
 }
 
 impl Convertible for CaseExpression {
-    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
+    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorPos> {
         match self {
             CaseExpression::Simple(e) => e.convert_in_default(ctx).map(CaseExpression::Simple),
             CaseExpression::Is(op, e) => {

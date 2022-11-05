@@ -1,5 +1,5 @@
 use rusty_common::*;
-use rusty_parser::{Expression, ExpressionNode, Operator, TypeQualifier, UnaryOperator};
+use rusty_parser::{Expression, ExpressionPos, Operator, TypeQualifier, UnaryOperator};
 use rusty_variant::Variant;
 use std::cmp::Ordering;
 
@@ -24,11 +24,11 @@ where
     }
 }
 
-impl<S> ConstValueResolver<Expression, QErrorNode> for S
+impl<S> ConstValueResolver<Expression, QErrorPos> for S
 where
     S: ConstLookup,
 {
-    fn resolve_const(&self, expression: &Expression) -> Result<Variant, QErrorNode> {
+    fn resolve_const(&self, expression: &Expression) -> Result<Variant, QErrorPos> {
         match expression {
             Expression::SingleLiteral(f) => Ok(Variant::VSingle(*f)),
             Expression::DoubleLiteral(d) => Ok(Variant::VDouble(*d)),
@@ -118,21 +118,21 @@ where
     }
 }
 
-impl<S> ConstValueResolver<ExpressionNode, QErrorNode> for S
+impl<S> ConstValueResolver<ExpressionPos, QErrorPos> for S
 where
     S: ConstLookup,
 {
-    fn resolve_const(&self, expr_node: &ExpressionNode) -> Result<Variant, QErrorNode> {
-        self.resolve_const(&expr_node.element)
-            .patch_err_pos(expr_node)
+    fn resolve_const(&self, expr_pos: &ExpressionPos) -> Result<Variant, QErrorPos> {
+        self.resolve_const(&expr_pos.element)
+            .patch_err_pos(expr_pos)
     }
 }
 
-impl<S> ConstValueResolver<Box<ExpressionNode>, QErrorNode> for S
+impl<S> ConstValueResolver<Box<ExpressionPos>, QErrorPos> for S
 where
     S: ConstLookup,
 {
-    fn resolve_const(&self, item: &Box<ExpressionNode>) -> Result<Variant, QErrorNode> {
+    fn resolve_const(&self, item: &Box<ExpressionPos>) -> Result<Variant, QErrorPos> {
         self.resolve_const(item.as_ref())
     }
 }

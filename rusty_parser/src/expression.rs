@@ -7,32 +7,31 @@ use rusty_common::*;
 /// `( expr [, expr]* )`
 pub fn in_parenthesis_csv_expressions_non_opt(
     err_msg: &str,
-) -> impl Parser<Output = ExpressionNodes> + NonOptParser + '_ {
+) -> impl Parser<Output = Expressions> + NonOptParser + '_ {
     in_parenthesis(csv_expressions_non_opt(err_msg)).no_incomplete()
 }
 
 /// Parses one or more expressions separated by comma.
 /// FIXME Unlike csv_expressions, the first expression does not need a separator!
-pub fn csv_expressions_non_opt(msg: &str) -> impl Parser<Output = ExpressionNodes> + NonOptParser {
-    csv_non_opt(expression_node_p(), msg)
+pub fn csv_expressions_non_opt(msg: &str) -> impl Parser<Output = Expressions> + NonOptParser {
+    csv_non_opt(expression_pos_p(), msg)
 }
 
 /// Parses one or more expressions separated by comma.
 /// Trailing commas are not allowed.
 /// Missing expressions are not allowed.
 /// The first expression needs to be preceded by space or surrounded in parenthesis.
-pub fn csv_expressions_first_guarded() -> impl Parser<Output = ExpressionNodes> {
+pub fn csv_expressions_first_guarded() -> impl Parser<Output = Expressions> {
     AccumulateParser::new(
-        ws_expr_node(),
-        comma()
-            .then_demand(expression_node_p().or_syntax_error("Expected: expression after comma")),
+        ws_expr_pos_p(),
+        comma().then_demand(expression_pos_p().or_syntax_error("Expected: expression after comma")),
     )
 }
 
 lazy_parser!(
-    pub fn expression_node_p<Output = ExpressionNode> ;
+    pub fn expression_pos_p<Output = ExpressionPos> ;
     struct LazyExprParser ;
-    eager_expression_node()
+    eager_expression_pos_p()
 );
 
 /// Parses an expression that is either preceded by whitespace
@@ -43,10 +42,10 @@ lazy_parser!(
 /// <ws> <expr-in-parenthesis> |
 /// <expr-in-parenthesis>
 /// ```
-pub fn ws_expr_node() -> impl Parser<Output = ExpressionNode> {
+pub fn ws_expr_pos_p() -> impl Parser<Output = ExpressionPos> {
     // ws* ( expr )
     // ws+ expr
-    preceded_by_ws(expression_node_p())
+    preceded_by_ws(expression_pos_p())
 }
 
 /// Parses an expression that is either followed by whitespace
@@ -60,8 +59,8 @@ pub fn ws_expr_node() -> impl Parser<Output = ExpressionNode> {
 /// <expr-in-parenthesis> <ws> |
 /// <expr-in-parenthesis>
 /// ```
-pub fn expr_node_ws() -> impl Parser<Output = ExpressionNode> {
-    followed_by_ws(expression_node_p())
+pub fn expr_pos_ws_p() -> impl Parser<Output = ExpressionPos> {
+    followed_by_ws(expression_pos_p())
 }
 
 /// Parses an expression that is either surrounded by whitespace
@@ -75,31 +74,31 @@ pub fn expr_node_ws() -> impl Parser<Output = ExpressionNode> {
 /// <ws> <expr-in-parenthesis> <ws> |
 /// <expr-in-parenthesis>
 /// ```
-pub fn ws_expr_node_ws() -> impl Parser<Output = ExpressionNode> {
-    followed_by_ws(ws_expr_node())
+pub fn ws_expr_pos_ws_p() -> impl Parser<Output = ExpressionPos> {
+    followed_by_ws(ws_expr_pos_p())
 }
 
 fn preceded_by_ws(
-    parser: impl Parser<Output = ExpressionNode>,
-) -> impl Parser<Output = ExpressionNode> {
+    parser: impl Parser<Output = ExpressionPos>,
+) -> impl Parser<Output = ExpressionPos> {
     guard::parser().and(parser).keep_right()
 }
 
 fn followed_by_ws(
-    parser: impl Parser<Output = ExpressionNode>,
-) -> impl Parser<Output = ExpressionNode> {
-    parser.chain(|expr_node| {
-        let is_paren = expr_node.is_parenthesis();
+    parser: impl Parser<Output = ExpressionPos>,
+) -> impl Parser<Output = ExpressionPos> {
+    parser.chain(|expr_pos| {
+        let is_paren = expr_pos.is_parenthesis();
         whitespace()
             .allow_none_if(is_paren)
             .no_incomplete()
             .to_parser_once()
-            .map(|_| expr_node)
+            .map(|_| expr_pos)
     })
 }
 
 /// Parses an expression
-fn eager_expression_node() -> impl Parser<Output = ExpressionNode> {
+fn eager_expression_pos_p() -> impl Parser<Output = ExpressionPos> {
     binary_expression::parser()
 }
 
@@ -115,7 +114,7 @@ mod single_or_double_literal {
 
     // TODO support more qualifiers besides '#'
 
-    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+    pub fn parser() -> impl Parser<Output = ExpressionPos> {
         OptAndPC::new(digits(), dot().then_demand(digits().no_incomplete()))
             .and_opt(pound())
             .and_then(|((opt_integer_digits, frac_digits), opt_pound)| {
@@ -142,9 +141,9 @@ mod single_or_double_literal {
 mod string_literal {
     use crate::pc::*;
     use crate::pc_specific::*;
-    use crate::{Expression, ExpressionNode};
+    use crate::{Expression, ExpressionPos};
 
-    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+    pub fn parser() -> impl Parser<Output = ExpressionPos> {
         seq3(
             string_delimiter(),
             inside_string(),
@@ -175,7 +174,7 @@ mod integer_or_long_literal {
     use rusty_variant::{BitVec, BitVecIntOrLong, MAX_INTEGER, MAX_LONG};
 
     // result ::= <digits> | <hex-digits> | <oct-digits>
-    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+    pub fn parser() -> impl Parser<Output = ExpressionPos> {
         any_token()
             .filter(is_allowed_token)
             .and_then(process_token)
@@ -292,7 +291,7 @@ mod variable {
     // must not be followed by parenthesis (solved by ordering of parsers)
     //
     // if <identifier-with-dots> contains dots, it might be converted to a property expression
-    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+    pub fn parser() -> impl Parser<Output = ExpressionPos> {
         name_with_dots_as_tokens().map(map_to_expr).with_pos()
     }
 
@@ -357,7 +356,7 @@ mod variable {
 }
 
 mod function_call_or_array_element {
-    use crate::expression::expression_node_p;
+    use crate::expression::expression_pos_p;
     use crate::name::name_with_dots_as_tokens;
     use crate::pc::*;
     use crate::pc_specific::{csv, in_parenthesis, SpecificTrait};
@@ -373,9 +372,9 @@ mod function_call_or_array_element {
     //
     // A function can be qualified.
 
-    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+    pub fn parser() -> impl Parser<Output = ExpressionPos> {
         name_with_dots_as_tokens()
-            .and(in_parenthesis(csv(expression_node_p()).allow_default()))
+            .and(in_parenthesis(csv(expression_pos_p()).allow_default()))
             .map(|(name_as_tokens, arguments)| {
                 Expression::FunctionCall(name_as_tokens.into(), arguments)
             })
@@ -397,22 +396,22 @@ pub mod property {
     //
     // expr must not be qualified
 
-    pub fn parser() -> impl Parser<Output = ExpressionNode> {
-        Seq2::new(base_expr_node(), dot_properties()).and_then(|(first_expr_node, properties)| {
-            if !properties.is_empty() && is_qualified(&first_expr_node.element) {
+    pub fn parser() -> impl Parser<Output = ExpressionPos> {
+        Seq2::new(base_expr_pos_p(), dot_properties()).and_then(|(first_expr_pos, properties)| {
+            if !properties.is_empty() && is_qualified(&first_expr_pos.element) {
                 // TODO do this check before parsing the properties
                 return Err(QError::syntax_error(
                     "Qualified name cannot have properties",
                 ));
             }
             let result = properties.into_iter().fold(
-                first_expr_node,
-                |prev_expr_node, (name_token, opt_q_token)| {
+                first_expr_pos,
+                |prev_expr_pos, (name_token, opt_q_token)| {
                     let property_name = Name::new(
                         BareName::from(name_token),
                         opt_q_token.as_ref().map(token_to_type_qualifier),
                     );
-                    prev_expr_node.map(|prev_expr| {
+                    prev_expr_pos.map(|prev_expr| {
                         Expression::Property(
                             Box::new(prev_expr),
                             property_name,
@@ -438,8 +437,8 @@ pub mod property {
         identifier().and_opt(type_qualifier())
     }
 
-    // can't use expression_node_p because it will stack overflow
-    fn base_expr_node() -> impl Parser<Output = ExpressionNode> {
+    // can't use expression_pos_p because it will stack overflow
+    fn base_expr_pos_p() -> impl Parser<Output = ExpressionPos> {
         // order is important, variable matches anything that function_call_or_array_element matches
         Alt2::new(function_call_or_array_element::parser(), variable::parser())
     }
@@ -458,46 +457,46 @@ mod built_in_function_call {
     use crate::built_ins::built_in_function_call_p;
     use crate::pc::Parser;
     use crate::pc_specific::SpecificTrait;
-    use crate::ExpressionNode;
+    use crate::ExpressionPos;
 
-    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+    pub fn parser() -> impl Parser<Output = ExpressionPos> {
         built_in_function_call_p().with_pos()
     }
 }
 
 mod binary_expression {
     use crate::expression::{
-        built_in_function_call, expression_node_p, guard, integer_or_long_literal, parenthesis,
+        built_in_function_call, expression_pos_p, guard, integer_or_long_literal, parenthesis,
         property, single_or_double_literal, string_literal, unary_expression,
     };
     use crate::pc::{any_token, Alt7, OptAndPC, Parser, Token, Tokenizer};
     use crate::pc_specific::{whitespace, SpecificTrait, TokenType};
-    use crate::{ExpressionNode, ExpressionNodeTrait, ExpressionTrait, Keyword, Operator};
-    use rusty_common::{Locatable, ParserErrorTrait, QError};
+    use crate::{ExpressionPos, ExpressionPosTrait, ExpressionTrait, Keyword, Operator};
+    use rusty_common::{ParserErrorTrait, Positioned, QError};
     use std::str::FromStr;
 
     // result ::= <non-bin-expr> <operator> <expr>
-    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+    pub fn parser() -> impl Parser<Output = ExpressionPos> {
         BinaryExprParser
     }
 
     struct BinaryExprParser;
 
     impl Parser for BinaryExprParser {
-        type Output = ExpressionNode;
+        type Output = ExpressionPos;
 
         fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
             self.do_parse(tokenizer)
-                .map(ExpressionNode::simplify_unary_minus_literals)
+                .map(ExpressionPos::simplify_unary_minus_literals)
         }
     }
 
     impl BinaryExprParser {
-        fn do_parse(&self, tokenizer: &mut impl Tokenizer) -> Result<ExpressionNode, QError> {
+        fn do_parse(&self, tokenizer: &mut impl Tokenizer) -> Result<ExpressionPos, QError> {
             let first = Self::non_bin_expr().parse(tokenizer)?;
             let is_paren = first.is_parenthesis();
             match Self::operator(is_paren).parse(tokenizer) {
-                Ok(Locatable {
+                Ok(Positioned {
                     element: op,
                     pos: op_pos,
                 }) => {
@@ -508,7 +507,7 @@ mod binary_expression {
                     } else {
                         guard::parser().allow_none().parse(tokenizer)?;
                     }
-                    let right = expression_node_p()
+                    let right = expression_pos_p()
                         .or_syntax_error("Expected: expression after operator")
                         .parse(tokenizer)?;
                     Ok(first.apply_priority_order(right, op, op_pos))
@@ -518,7 +517,7 @@ mod binary_expression {
             }
         }
 
-        fn non_bin_expr() -> impl Parser<Output = ExpressionNode> {
+        fn non_bin_expr() -> impl Parser<Output = ExpressionPos> {
             Alt7::new(
                 single_or_double_literal::parser(),
                 string_literal::parser(),
@@ -531,25 +530,25 @@ mod binary_expression {
             )
         }
 
-        fn operator(is_paren: bool) -> impl Parser<Output = Locatable<Operator>> {
+        fn operator(is_paren: bool) -> impl Parser<Output = Positioned<Operator>> {
             OptAndPC::new(
                 whitespace(),
                 any_token()
                     .filter_map(Self::map_token_to_operator)
                     .with_pos(),
             )
-            .and_then(move |(leading_ws, loc_op)| {
+            .and_then(move |(leading_ws, op_pos)| {
                 let had_whitespace = leading_ws.is_some();
                 let needs_whitespace = matches!(
-                    &loc_op.element,
+                    &op_pos.element,
                     Operator::Modulo | Operator::And | Operator::Or
                 );
                 if had_whitespace || is_paren || !needs_whitespace {
-                    Ok(loc_op)
+                    Ok(op_pos)
                 } else {
                     Err(QError::SyntaxError(format!(
                         "Expected: parenthesis before operator {:?}",
-                        loc_op.element()
+                        op_pos.element()
                     )))
                 }
             })
@@ -586,21 +585,21 @@ mod binary_expression {
 }
 
 mod unary_expression {
-    use crate::expression::{expression_node_p, guard};
+    use crate::expression::{expression_pos_p, guard};
     use crate::pc::{seq2, Parser};
     use crate::pc_specific::{keyword, minus_sign, SpecificTrait};
-    use crate::{ExpressionNode, ExpressionNodeTrait, Keyword, UnaryOperator};
-    use rusty_common::Locatable;
+    use crate::{ExpressionPos, ExpressionPosTrait, Keyword, UnaryOperator};
+    use rusty_common::Positioned;
 
-    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+    pub fn parser() -> impl Parser<Output = ExpressionPos> {
         seq2(
             unary_op(),
-            expression_node_p().or_syntax_error("Expected: expression after unary operator"),
-            |Locatable { element: op, pos }, expr| expr.apply_unary_priority_order(op, pos),
+            expression_pos_p().or_syntax_error("Expected: expression after unary operator"),
+            |Positioned { element: op, pos }, expr| expr.apply_unary_priority_order(op, pos),
         )
     }
 
-    fn unary_op() -> impl Parser<Output = Locatable<UnaryOperator>> {
+    fn unary_op() -> impl Parser<Output = Positioned<UnaryOperator>> {
         minus_sign()
             .map(|_| UnaryOperator::Minus)
             .or(keyword(Keyword::Not)
@@ -611,14 +610,14 @@ mod unary_expression {
 }
 
 mod parenthesis {
-    use crate::expression::expression_node_p;
+    use crate::expression::expression_pos_p;
     use crate::pc::Parser;
     use crate::pc_specific::{in_parenthesis, SpecificTrait};
-    use crate::{Expression, ExpressionNode};
+    use crate::{Expression, ExpressionPos};
 
-    pub fn parser() -> impl Parser<Output = ExpressionNode> {
+    pub fn parser() -> impl Parser<Output = ExpressionPos> {
         in_parenthesis(
-            expression_node_p().or_syntax_error("Expected: expression inside parenthesis"),
+            expression_pos_p().or_syntax_error("Expected: expression inside parenthesis"),
         )
         .map(|child| Expression::Parenthesis(Box::new(child)))
         .with_pos()
@@ -628,13 +627,13 @@ mod parenthesis {
 pub mod file_handle {
     //! Used by PRINT and built-ins
 
-    use crate::expression::ws_expr_node;
+    use crate::expression::ws_expr_pos_p;
     use crate::pc::*;
     use crate::pc_specific::*;
-    use crate::{Expression, ExpressionNode, FileHandle};
+    use crate::{Expression, ExpressionPos, FileHandle};
     use rusty_common::*;
 
-    pub fn file_handle_p() -> impl Parser<Output = Locatable<FileHandle>> {
+    pub fn file_handle_p() -> impl Parser<Output = Positioned<FileHandle>> {
         FileHandleParser
     }
 
@@ -643,14 +642,14 @@ pub mod file_handle {
     struct FileHandleParser;
 
     impl Parser for FileHandleParser {
-        type Output = Locatable<FileHandle>;
+        type Output = Positioned<FileHandle>;
         fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
             let pos = tokenizer.position();
             match tokenizer.read()? {
                 Some(token) if TokenType::Pound.matches(&token) => match tokenizer.read()? {
                     Some(token) if TokenType::Digits.matches(&token) => {
                         match token.text.parse::<u8>() {
-                            Ok(d) if d > 0 => Ok(FileHandle::from(d).at(pos)),
+                            Ok(d) if d > 0 => Ok(FileHandle::from(d).at_pos(pos)),
                             _ => Err(QError::BadFileNameOrNumber),
                         }
                     }
@@ -666,17 +665,17 @@ pub mod file_handle {
     }
 
     /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
-    pub fn file_handle_as_expression_node_p() -> impl Parser<Output = ExpressionNode> {
-        file_handle_p().map(|file_handle_node| file_handle_node.map(Expression::from))
+    pub fn file_handle_as_expression_pos_p() -> impl Parser<Output = ExpressionPos> {
+        file_handle_p().map(|file_handle_pos| file_handle_pos.map(Expression::from))
     }
 
-    pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionNode> {
-        ws_file_handle().or(ws_expr_node())
+    pub fn guarded_file_handle_or_expression_p() -> impl Parser<Output = ExpressionPos> {
+        ws_file_handle().or(ws_expr_pos_p())
     }
 
-    fn ws_file_handle() -> impl Parser<Output = ExpressionNode> {
+    fn ws_file_handle() -> impl Parser<Output = ExpressionPos> {
         whitespace()
-            .and(file_handle_as_expression_node_p())
+            .and(file_handle_as_expression_pos_p())
             .keep_right()
     }
 }

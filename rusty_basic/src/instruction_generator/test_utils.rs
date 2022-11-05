@@ -1,7 +1,7 @@
 use crate::instruction_generator::{
-    generate_instructions, Instruction, InstructionGeneratorResult, InstructionNode,
+    generate_instructions, Instruction, InstructionGeneratorResult, InstructionPos,
 };
-use rusty_common::Locatable;
+use rusty_common::Positioned;
 use rusty_linter::{lint, HasUserDefinedTypes};
 use rusty_parser::parse;
 
@@ -16,11 +16,11 @@ pub fn generate_instructions_str_with_types(
     )
 }
 
-pub fn generate_instructions_str(input: &str) -> Vec<InstructionNode> {
-    let (instruction_nodes, _) = generate_instructions_str_with_types(input);
-    instruction_nodes.instructions
+pub fn generate_instructions_str(input: &str) -> Vec<InstructionPos> {
+    let (instruction_generator_result, _) = generate_instructions_str_with_types(input);
+    instruction_generator_result.instructions
 }
 
-pub fn generate_instructions_str_no_location(input: &str) -> Vec<Instruction> {
-    Locatable::strip_location(generate_instructions_str(input))
+pub fn generate_instructions_str_no_pos(input: &str) -> Vec<Instruction> {
+    Positioned::no_pos(generate_instructions_str(input))
 }

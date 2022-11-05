@@ -1,4 +1,4 @@
-use crate::{ExpressionNode, FileHandle};
+use crate::{ExpressionPos, FileHandle};
 
 /// A call to the PRINT sub.
 /// As separators are important (even trailing needs to be preserved), PRINT has
@@ -52,20 +52,20 @@ use crate::{ExpressionNode, FileHandle};
 ///
 /// Any other character is printed as a literal.
 #[derive(Clone, Debug, PartialEq)]
-pub struct PrintNode {
+pub struct Print {
     pub file_number: Option<FileHandle>,
     pub lpt1: bool,
-    pub format_string: Option<ExpressionNode>,
+    pub format_string: Option<ExpressionPos>,
     pub args: Vec<PrintArg>,
 }
 
-impl PrintNode {
-    pub fn one(expression_node: ExpressionNode) -> Self {
+impl Print {
+    pub fn one(expression_pos: ExpressionPos) -> Self {
         Self {
             file_number: None,
             lpt1: false,
             format_string: None,
-            args: vec![PrintArg::Expression(expression_node)],
+            args: vec![PrintArg::Expression(expression_pos)],
         }
     }
 }
@@ -74,7 +74,7 @@ impl PrintNode {
 pub enum PrintArg {
     Comma,
     Semicolon,
-    Expression(ExpressionNode),
+    Expression(ExpressionPos),
 }
 
 impl PrintArg {

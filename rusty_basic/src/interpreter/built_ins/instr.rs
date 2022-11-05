@@ -64,7 +64,7 @@ mod tests {
         assert_prints!(r#"PRINT INSTR("", "")"#, "0");
         assert_eq!(
             interpret_err(r#"PRINT INSTR(0, "oops", "zero")"#),
-            ErrorEnvelope::Pos(QError::IllegalFunctionCall, Location::new(1, 7))
+            ErrorEnvelope::Pos(QError::IllegalFunctionCall, Position::new(1, 7))
         );
     }
 }

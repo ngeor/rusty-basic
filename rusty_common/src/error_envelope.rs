@@ -1,4 +1,4 @@
-use super::{HasLocation, Location};
+use crate::{HasPos, Position};
 
 //
 // ErrorEnvelope
@@ -7,8 +7,8 @@ use super::{HasLocation, Location};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ErrorEnvelope<T> {
     NoPos(T),
-    Pos(T, Location),
-    Stacktrace(T, Vec<Location>),
+    Pos(T, Position),
+    Stacktrace(T, Vec<Position>),
 }
 
 impl<T> AsRef<T> for ErrorEnvelope<T> {
@@ -29,15 +29,15 @@ impl<T> ErrorEnvelope<T> {
     /// Patches the envelope with the given position.
     /// If the object already has a position or a stacktrace,
     /// it is returned as-is.
-    pub fn patch_pos(self, pos: Location) -> Self {
+    pub fn patch_pos(self, pos: Position) -> Self {
         match self {
             Self::NoPos(t) => Self::Pos(t, pos),
             _ => self,
         }
     }
 
-    pub fn patch_stacktrace(self, v_new: &mut Vec<Location>) -> Self {
-        let mut v_old: Vec<Location> = match &self {
+    pub fn patch_stacktrace(self, v_new: &mut Vec<Position>) -> Self {
+        let mut v_old: Vec<Position> = match &self {
             Self::NoPos(_) => vec![],
             Self::Pos(_, p) => vec![*p],
             Self::Stacktrace(_, v) => v.clone(),
@@ -58,11 +58,11 @@ impl<T> ErrorEnvelope<T> {
 // result.with_err_no_pos()
 //
 
-pub trait ToErrorEnvelopeNoPos<TResult> {
+pub trait WithErrNoPos<TResult> {
     fn with_err_no_pos(self) -> TResult;
 }
 
-impl<T, E> ToErrorEnvelopeNoPos<Result<T, ErrorEnvelope<E>>> for Result<T, E> {
+impl<T, E> WithErrNoPos<Result<T, ErrorEnvelope<E>>> for Result<T, E> {
     fn with_err_no_pos(self) -> Result<T, ErrorEnvelope<E>> {
         self.map_err(|e| ErrorEnvelope::NoPos(e))
     }
@@ -72,21 +72,13 @@ impl<T, E> ToErrorEnvelopeNoPos<Result<T, ErrorEnvelope<E>>> for Result<T, E> {
 // result.with_err_at()
 //
 
-pub trait ToLocatableError<TLocation, TResult> {
-    fn with_err_at(self, p: TLocation) -> TResult;
+pub trait WithErrAt<Pos, TResult> {
+    fn with_err_at(self, p: Pos) -> TResult;
 }
 
-impl<TLocation: HasLocation, T, E> ToLocatableError<&TLocation, Result<T, ErrorEnvelope<E>>>
-    for Result<T, E>
-{
-    fn with_err_at(self, p: &TLocation) -> Result<T, ErrorEnvelope<E>> {
+impl<Pos: HasPos, T, E> WithErrAt<&Pos, Result<T, ErrorEnvelope<E>>> for Result<T, E> {
+    fn with_err_at(self, p: &Pos) -> Result<T, ErrorEnvelope<E>> {
         self.map_err(|e| ErrorEnvelope::Pos(e, p.pos()))
-    }
-}
-
-impl<T, E> ToLocatableError<Location, Result<T, ErrorEnvelope<E>>> for Result<T, E> {
-    fn with_err_at(self, pos: Location) -> Result<T, ErrorEnvelope<E>> {
-        self.map_err(|e| ErrorEnvelope::Pos(e, pos))
     }
 }
 
@@ -94,20 +86,14 @@ impl<T, E> ToLocatableError<Location, Result<T, ErrorEnvelope<E>>> for Result<T,
 // result.patch_err_pos()
 //
 
-pub trait PatchErrPos<TLocation, TResult> {
-    fn patch_err_pos(self, p: TLocation) -> TResult;
+pub trait PatchErrPos<Pos, TResult> {
+    fn patch_err_pos(self, p: Pos) -> TResult;
 }
 
-impl<TLocation: HasLocation, T, E> PatchErrPos<&TLocation, Result<T, ErrorEnvelope<E>>>
+impl<Pos: HasPos, T, E> PatchErrPos<&Pos, Result<T, ErrorEnvelope<E>>>
     for Result<T, ErrorEnvelope<E>>
 {
-    fn patch_err_pos(self, p: &TLocation) -> Self {
+    fn patch_err_pos(self, p: &Pos) -> Self {
         self.map_err(|e| e.patch_pos(p.pos()))
-    }
-}
-
-impl<T, E> PatchErrPos<Location, Result<T, ErrorEnvelope<E>>> for Result<T, ErrorEnvelope<E>> {
-    fn patch_err_pos(self, pos: Location) -> Self {
-        self.map_err(|e| e.patch_pos(pos))
     }
 }

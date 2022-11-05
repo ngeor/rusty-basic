@@ -1,8 +1,8 @@
 use crate::arg_validation::ArgValidation;
-use rusty_common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
-use rusty_parser::ExpressionNodes;
+use rusty_common::{QError, QErrorPos, WithErrNoPos};
+use rusty_parser::Expressions;
 
-pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
+pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
     // needs to be 1 + N*3 args, N >= 1
     // first is the file number
     // then the fields: width, variable name, variable

@@ -1,8 +1,8 @@
 use crate::arg_validation::ArgValidation;
-use rusty_common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
-use rusty_parser::ExpressionNodes;
+use rusty_common::{QError, QErrorPos, WithErrNoPos};
+use rusty_parser::Expressions;
 
-pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
+pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
     if args.is_empty() {
         Err(QError::ArgumentCountMismatch).with_err_no_pos()
     } else {

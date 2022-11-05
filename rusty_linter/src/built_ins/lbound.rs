@@ -1,15 +1,15 @@
 use crate::CanCastTo;
-use rusty_common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
-use rusty_parser::{Expression, ExpressionNodes, ExpressionType, TypeQualifier, VariableInfo};
+use rusty_common::{Positioned, QError, QErrorPos, WithErrAt, WithErrNoPos};
+use rusty_parser::{Expression, ExpressionType, Expressions, TypeQualifier, VariableInfo};
 
-pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
+pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
     if args.is_empty() || args.len() > 2 {
         return Err(QError::ArgumentCountMismatch).with_err_no_pos();
     }
 
     // Can have at one or two arguments. First must be the array name, without parenthesis.
     // Second, optional, is an integer specifying the array dimension >=1 (default is 1).
-    let Locatable {
+    let Positioned {
         element: first,
         pos: first_pos,
     } = args.get(0).unwrap();

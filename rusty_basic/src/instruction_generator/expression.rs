@@ -6,12 +6,12 @@ use rusty_variant::Variant;
 impl InstructionGenerator {
     pub fn generate_expression_instructions_casting(
         &mut self,
-        expr_node: ExpressionNode,
+        expr_pos: ExpressionPos,
         target_type: ExpressionType,
     ) {
-        let expression_type = expr_node.expression_type();
-        let pos = expr_node.pos();
-        self.generate_expression_instructions(expr_node);
+        let expression_type = expr_pos.expression_type();
+        let pos = expr_pos.pos();
+        self.generate_expression_instructions(expr_pos);
         if expression_type != target_type {
             match target_type {
                 ExpressionType::BuiltIn(q) => {
@@ -25,16 +25,16 @@ impl InstructionGenerator {
         }
     }
 
-    pub fn generate_expression_instructions(&mut self, expr_node: ExpressionNode) {
-        self.generate_expression_instructions_optionally_by_ref(expr_node, true);
+    pub fn generate_expression_instructions(&mut self, expr_pos: ExpressionPos) {
+        self.generate_expression_instructions_optionally_by_ref(expr_pos, true);
     }
 
     pub fn generate_expression_instructions_optionally_by_ref(
         &mut self,
-        expr_node: ExpressionNode,
+        expr_pos: ExpressionPos,
         consume_var_path: bool,
     ) {
-        let Locatable { element: e, pos } = expr_node;
+        let Positioned { element: e, pos } = expr_pos;
         match e {
             Expression::SingleLiteral(s) => {
                 self.push_load(Variant::VSingle(s), pos);
@@ -54,15 +54,15 @@ impl InstructionGenerator {
             Expression::Variable(_, _)
             | Expression::ArrayElement(_, _, _)
             | Expression::Property(_, _, _) => {
-                self.generate_path_instructions(e.at(pos));
+                self.generate_path_instructions(e.at_pos(pos));
                 self.push(Instruction::CopyVarPathToA, pos);
                 if consume_var_path {
                     self.push(Instruction::PopVarPath, pos);
                 }
             }
             Expression::FunctionCall(n, args) => {
-                let name_node = n.at(pos);
-                self.generate_function_call_instructions(name_node, args);
+                let name_pos = n.at_pos(pos);
+                self.generate_function_call_instructions(name_pos, args);
             }
             Expression::BuiltInFunctionCall(n, args) => {
                 self.generate_built_in_function_call_instructions(n, args, pos);
@@ -105,8 +105,8 @@ impl InstructionGenerator {
         }
     }
 
-    pub fn generate_path_instructions(&mut self, expr_node: ExpressionNode) {
-        let Locatable { element: expr, pos } = expr_node;
+    pub fn generate_path_instructions(&mut self, expr_pos: ExpressionPos) {
+        let Positioned { element: expr, pos } = expr_pos;
 
         match expr {
             Expression::Variable(var_name, VariableInfo { shared, .. }) => {
@@ -139,7 +139,7 @@ impl InstructionGenerator {
             }
             Expression::Property(box_left_side, property_name, _element_type) => {
                 let left_side = *box_left_side;
-                self.generate_path_instructions(left_side.at(pos));
+                self.generate_path_instructions(left_side.at_pos(pos));
                 self.push(
                     Instruction::VarPathProperty(property_name.demand_bare()),
                     pos,

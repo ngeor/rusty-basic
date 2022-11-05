@@ -1,10 +1,10 @@
 use crate::assert_linter_err;
-use crate::assert_linter_ok_top_level_statements;
+use crate::assert_linter_ok_global_statements;
 use crate::test_utils::linter_ok;
 use rusty_common::*;
 use rusty_parser::{
-    BareName, BuiltInStyle, Expression, ParamName, ParamType, PrintNode, Statement,
-    SubImplementation, TopLevelToken, TypeQualifier,
+    BareName, BuiltInStyle, Expression, GlobalStatement, ParamType, Parameter, Print, Statement,
+    SubImplementation, TypeQualifier,
 };
 
 #[test]
@@ -106,9 +106,9 @@ fn test_constant_definition_and_usage_in_print() {
     CONST X = "hello"
     PRINT X
     "#;
-    assert_linter_ok_top_level_statements!(
+    assert_linter_ok_global_statements!(
         program,
-        Statement::Print(PrintNode::one(
+        Statement::Print(Print::one(
             Expression::StringLiteral("hello".to_owned()).at_rc(3, 11)
         ))
     );
@@ -126,14 +126,14 @@ fn test_constant_definition_and_usage_in_sub_call_arg() {
     assert_eq!(
         linter_ok(program),
         vec![
-            TopLevelToken::Statement(Statement::SubCall(
+            GlobalStatement::Statement(Statement::SubCall(
                 "MySub".into(),
                 vec![Expression::StringLiteral("hello".to_owned()).at_rc(3, 11)]
             ))
             .at_rc(3, 5),
-            TopLevelToken::SubImplementation(SubImplementation {
+            GlobalStatement::SubImplementation(SubImplementation {
                 name: BareName::from("MySub").at_rc(5, 9),
-                params: vec![ParamName::new(
+                params: vec![Parameter::new(
                     "A".into(),
                     ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
                 )

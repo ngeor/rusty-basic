@@ -1,4 +1,4 @@
-use rusty_common::Locatable;
+use rusty_common::Positioned;
 use rusty_linter::SubprogramName;
 use rusty_parser::*;
 use std::collections::HashMap;
@@ -6,7 +6,7 @@ use std::collections::HashMap;
 /// Holds information about a subprogram that is needed at runtime.
 pub struct SubprogramInfo {
     /// The parameters of a subprogram.
-    pub params: Vec<ParamName>,
+    pub params: Vec<Parameter>,
 
     /// Specifies if the subprogram is static. Static subprograms preserve
     /// their variables between calls.
@@ -15,8 +15,8 @@ pub struct SubprogramInfo {
 
 impl SubprogramInfo {
     fn new<T>(subprogram_implementation: &SubprogramImplementation<T>) -> Self {
-        let mut params: Vec<ParamName> = vec![];
-        for Locatable { element, .. } in &subprogram_implementation.params {
+        let mut params: Vec<Parameter> = vec![];
+        for Positioned { element, .. } in &subprogram_implementation.params {
             params.push(element.clone());
         }
         let is_static = subprogram_implementation.is_static;
@@ -30,18 +30,18 @@ pub struct SubprogramInfoCollector {
 }
 
 impl SubprogramInfoCollector {
-    pub fn visit(&mut self, program: &ProgramNode) {
-        for Locatable { element, .. } in program {
-            self.visit_top_level_token(element);
+    pub fn visit(&mut self, program: &Program) {
+        for Positioned { element, .. } in program {
+            self.visit_global_statement(element);
         }
     }
 
-    fn visit_top_level_token(&mut self, top_level_token: &TopLevelToken) {
-        match top_level_token {
-            TopLevelToken::FunctionImplementation(f) => {
+    fn visit_global_statement(&mut self, global_statement: &GlobalStatement) {
+        match global_statement {
+            GlobalStatement::FunctionImplementation(f) => {
                 self.visit_function_implementation(f);
             }
-            TopLevelToken::SubImplementation(s) => {
+            GlobalStatement::SubImplementation(s) => {
                 self.visit_sub_implementation(s);
             }
             _ => {}

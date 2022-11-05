@@ -2,18 +2,18 @@ use std::collections::HashMap;
 use std::slice::Iter;
 
 use crate::types::{
-    BareName, BareNameNode, ExpressionNode, ExpressionType, HasExpressionType, Name, TypeQualifier,
+    BareName, BareNamePos, ExpressionPos, ExpressionType, HasExpressionType, Name, TypeQualifier,
 };
-use rusty_common::{Locatable, QError};
+use rusty_common::{Positioned, QError};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UserDefinedType {
     /// The name of the type
     name: BareName,
     /// Comments between the type name and the first element
-    comments: Vec<Locatable<String>>,
+    comments: Vec<Positioned<String>>,
     /// The elements
-    elements: Vec<ElementNode>,
+    elements: Vec<ElementPos>,
 }
 
 pub type UserDefinedTypes = HashMap<BareName, UserDefinedType>;
@@ -21,8 +21,8 @@ pub type UserDefinedTypes = HashMap<BareName, UserDefinedType>;
 impl UserDefinedType {
     pub fn new(
         name: BareName,
-        comments: Vec<Locatable<String>>,
-        elements: Vec<ElementNode>,
+        comments: Vec<Positioned<String>>,
+        elements: Vec<ElementPos>,
     ) -> Self {
         Self {
             name,
@@ -35,14 +35,14 @@ impl UserDefinedType {
         &self.name
     }
 
-    pub fn elements(&self) -> Iter<'_, ElementNode> {
+    pub fn elements(&self) -> Iter<'_, ElementPos> {
         self.elements.iter()
     }
 
     fn find_element_type(&self, element_name: &BareName) -> Option<&ElementType> {
         self.elements
             .iter()
-            .map(|Locatable { element, .. }| element)
+            .map(|Positioned { element, .. }| element)
             .find(|x| &x.name == element_name)
             .map(|x| &x.element_type)
     }
@@ -59,7 +59,7 @@ impl UserDefinedType {
     }
 }
 
-pub type ElementNode = Locatable<Element>;
+pub type ElementPos = Positioned<Element>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Element {
@@ -68,14 +68,14 @@ pub struct Element {
     /// The element type
     pub element_type: ElementType,
     /// Comments between the end of this element and the next one
-    pub comments: Vec<Locatable<String>>,
+    pub comments: Vec<Positioned<String>>,
 }
 
 impl Element {
     pub fn new(
         name: BareName,
         element_type: ElementType,
-        comments: Vec<Locatable<String>>,
+        comments: Vec<Positioned<String>>,
     ) -> Self {
         Self {
             name,
@@ -91,8 +91,8 @@ pub enum ElementType {
     Long,
     Single,
     Double,
-    FixedLengthString(ExpressionNode, u16),
-    UserDefined(BareNameNode),
+    FixedLengthString(ExpressionPos, u16),
+    UserDefined(BareNamePos),
 }
 
 impl ElementType {
@@ -119,7 +119,7 @@ impl HasExpressionType for ElementType {
             Self::Single => ExpressionType::BuiltIn(TypeQualifier::BangSingle),
             Self::Double => ExpressionType::BuiltIn(TypeQualifier::HashDouble),
             Self::FixedLengthString(_, l) => ExpressionType::FixedLengthString(*l),
-            Self::UserDefined(Locatable { element, .. }) => {
+            Self::UserDefined(Positioned { element, .. }) => {
                 ExpressionType::UserDefined(element.clone())
             }
         }

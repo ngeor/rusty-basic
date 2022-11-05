@@ -24,8 +24,8 @@ pub fn parse_something_completely<P>(input: &str, parser: impl Parser<Output = P
     result
 }
 
-pub fn parse_str_no_location(input: &str) -> Vec<TopLevelToken> {
-    Locatable::strip_location(parse(input))
+pub fn parse_str_no_pos(input: &str) -> Vec<GlobalStatement> {
+    Positioned::no_pos(parse(input))
 }
 
 /// Parses the given file under the `fixtures` folder.
@@ -33,34 +33,34 @@ pub fn parse_str_no_location(input: &str) -> Vec<TopLevelToken> {
 /// # Panics
 ///
 /// If the files does not exist or if the parser has an error.
-pub fn parse_file(filename: &str) -> ProgramNode {
+pub fn parse_file(filename: &str) -> Program {
     let file_path = format!("../fixtures/{}", filename);
     let f = File::open(file_path).expect("Could not read bas file");
     parse_main_file(f).expect("Could not parse program")
 }
 
-pub fn parse_file_no_location(filename: &str) -> Vec<TopLevelToken> {
-    Locatable::strip_location(parse_file(filename))
+pub fn parse_file_no_pos(filename: &str) -> Vec<GlobalStatement> {
+    Positioned::no_pos(parse_file(filename))
 }
 
 /// Parses the given string, expecting that it will fail.
-/// Returns the error with location information.
+/// Returns the error with position information.
 ///
 /// # Panics
 ///
 /// If the parser does not have an error.
-pub fn parse_err_node(input: &str) -> QErrorNode {
+pub fn parse_err_pos(input: &str) -> QErrorPos {
     parse_main_str(input).expect_err("Parser should have failed")
 }
 
 /// Parses the given string, expecting that it will fail.
-/// Returns the error without location information.
+/// Returns the error without position information.
 ///
 /// # Panics
 ///
 /// If the parser does not have an error.
 pub fn parse_err(input: &str) -> QError {
-    parse_err_node(input).into_err()
+    parse_err_pos(input).into_err()
 }
 
 pub trait DemandSingle<T> {
@@ -78,12 +78,12 @@ pub trait DemandSingleStatement {
     fn demand_single_statement(self) -> Statement;
 }
 
-impl DemandSingleStatement for ProgramNode {
+impl DemandSingleStatement for Program {
     fn demand_single_statement(self) -> Statement {
         let t = self.demand_single();
         match t {
-            Locatable {
-                element: TopLevelToken::Statement(s),
+            Positioned {
+                element: GlobalStatement::Statement(s),
                 ..
             } => s,
             _ => panic!("Expected: statement, found {:?}", t),
@@ -92,77 +92,77 @@ impl DemandSingleStatement for ProgramNode {
 }
 
 //
-// Create NameNode out of literals
+// Create NamePos out of literals
 //
 
-pub trait NameNodeFactory {
-    fn as_name(&self, row: u32, col: u32) -> NameNode;
-    fn as_bare_name(&self, row: u32, col: u32) -> BareNameNode;
+pub trait NameFactory {
+    fn as_name(&self, row: u32, col: u32) -> NamePos;
+    fn as_bare_name(&self, row: u32, col: u32) -> BareNamePos;
 }
 
-impl NameNodeFactory for str {
-    fn as_name(&self, row: u32, col: u32) -> NameNode {
-        Name::from(self).at(Location::new(row, col))
+impl NameFactory for str {
+    fn as_name(&self, row: u32, col: u32) -> NamePos {
+        Name::from(self).at_rc(row, col)
     }
 
-    fn as_bare_name(&self, row: u32, col: u32) -> BareNameNode {
-        BareNameNode::new(
+    fn as_bare_name(&self, row: u32, col: u32) -> BareNamePos {
+        BareNamePos::new(
             CaseInsensitiveString::new(self.to_string()),
-            Location::new(row, col),
+            Position::new(row, col),
         )
     }
 }
 
 //
-// Create ExpressionNode out of literals
+// Create ExpressionPos out of literals
 //
 
-pub trait ExpressionNodeLiteralFactory {
-    /// Creates an expression node holding a literal.
-    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode;
+pub trait ExpressionLiteralFactory {
+    /// Creates an expression holding a literal.
+    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionPos;
 }
 
-impl ExpressionNodeLiteralFactory for &str {
-    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode {
+impl ExpressionLiteralFactory for &str {
+    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionPos {
         Expression::StringLiteral(self.to_string()).at_rc(row, col)
     }
 }
 
-impl ExpressionNodeLiteralFactory for u8 {
-    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode {
+impl ExpressionLiteralFactory for u8 {
+    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionPos {
         Expression::IntegerLiteral(*self as i32).at_rc(row, col)
     }
 }
 
-impl ExpressionNodeLiteralFactory for i32 {
-    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode {
+impl ExpressionLiteralFactory for i32 {
+    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionPos {
         Expression::IntegerLiteral(*self).at_rc(row, col)
     }
 }
 
-impl ExpressionNodeLiteralFactory for f32 {
-    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode {
+impl ExpressionLiteralFactory for f32 {
+    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionPos {
         Expression::SingleLiteral(*self).at_rc(row, col)
     }
 }
 
-impl ExpressionNodeLiteralFactory for f64 {
-    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionNode {
+impl ExpressionLiteralFactory for f64 {
+    fn as_lit_expr(&self, row: u32, col: u32) -> ExpressionPos {
         Expression::DoubleLiteral(*self).at_rc(row, col)
     }
 }
 
 //
-// Create ExpressionNode out of literals
+// Create ExpressionPos out of literals
 //
 
-pub trait ExpressionNodeVariableFactory {
-    /// Creates an expression node holding a variable name.
-    fn as_var_expr(&self, row: u32, col: u32) -> ExpressionNode;
+pub trait ExpressionVariableFactory {
+    /// Creates an expression holding a variable name.
+    fn as_var_expr(&self, row: u32, col: u32) -> ExpressionPos;
 }
 
-impl ExpressionNodeVariableFactory for str {
-    fn as_var_expr(&self, row: u32, col: u32) -> ExpressionNode {
+impl ExpressionVariableFactory for str {
+    fn as_var_expr(&self, row: u32, col: u32) -> ExpressionPos {
         Expression::var_unresolved(self).at_rc(row, col)
     }
 }
@@ -189,8 +189,8 @@ macro_rules! assert_sub_call {
             Statement::SubCall(actual_bare_name, actual_args) => {
                 let expected_bare_name: $crate::types::BareName = $expected_name.into();
                 assert_eq!(actual_bare_name, expected_bare_name, "SubCall name mismatch");
-                let actual_args_no_loc: Vec<$crate::Expression> = Locatable::strip_location(actual_args);
-                assert_eq!(actual_args_no_loc, vec![$($arg),+]);
+                let actual_args_no_pos: Vec<$crate::Expression> = rusty_common::Positioned::no_pos(actual_args);
+                assert_eq!(actual_args_no_pos, vec![$($arg),+]);
             }
             _ => panic!("Expected SubCall")
         }
@@ -215,8 +215,8 @@ macro_rules! assert_built_in_sub_call {
         match result {
             Statement::BuiltInSubCall(actual_name, actual_args) => {
                 assert_eq!(actual_name, $expected_name);
-                let actual_args_no_loc: Vec<$crate::Expression> = Locatable::strip_location(actual_args);
-                assert_eq!(actual_args_no_loc, vec![$($arg),+]);
+                let actual_args_no_pos: Vec<$crate::Expression> = rusty_common::Positioned::no_pos(actual_args);
+                assert_eq!(actual_args_no_pos, vec![$($arg),+]);
             }
             _ => panic!("Expected built-in sub call {:?}", $expected_name)
         }
@@ -268,14 +268,14 @@ macro_rules! assert_parser_err {
 
     ($input:expr, $expected_err:expr, $row:expr, $col:expr) => {
         assert_eq!(
-            $crate::test_utils::parse_err_node($input),
-            QErrorNode::Pos($expected_err, Location::new($row, $col))
+            $crate::test_utils::parse_err_pos($input),
+            QErrorPos::Pos($expected_err, rusty_common::Position::new($row, $col))
         );
     };
 }
 
 #[macro_export]
-macro_rules! assert_top_level_assignment {
+macro_rules! assert_global_assignment {
     ($input:expr, $name_expr:expr) => {
         match $crate::parse($input).demand_single_statement() {
             Statement::Assignment(n, _) => {
@@ -286,7 +286,7 @@ macro_rules! assert_top_level_assignment {
     };
     ($input:expr, $name:expr, $value:expr) => {
         match $crate::parse($input).demand_single_statement() {
-            Statement::Assignment(n, Locatable { element: v, .. }) => {
+            Statement::Assignment(n, rusty_common::Positioned { element: v, .. }) => {
                 assert_eq!(n, Expression::var_unresolved($name));
                 assert_eq!(v, Expression::IntegerLiteral($value));
             }
@@ -299,7 +299,7 @@ macro_rules! assert_top_level_assignment {
 macro_rules! assert_function_declaration {
     ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
         match $crate::parse($input).demand_single().element() {
-            TopLevelToken::FunctionDeclaration(name, parameters) => {
+            $crate::GlobalStatement::FunctionDeclaration(name, parameters) => {
                 assert_eq!(
                     name.element(),
                     $expected_function_name,
@@ -310,14 +310,10 @@ macro_rules! assert_function_declaration {
                     $expected_params.len(),
                     "Parameter count mismatch"
                 );
-                let parameters_without_location: Vec<ParamName> =
-                    Locatable::strip_location(parameters);
-                for i in 0..parameters_without_location.len() {
-                    assert_eq!(
-                        parameters_without_location[i], $expected_params[i],
-                        "Parameter {}",
-                        i
-                    );
+                let parameters_no_pos: Vec<$crate::Parameter> =
+                    rusty_common::Positioned::no_pos(parameters);
+                for i in 0..parameters_no_pos.len() {
+                    assert_eq!(parameters_no_pos[i], $expected_params[i], "Parameter {}", i);
                 }
             }
             _ => panic!("{:?}", $input),
@@ -330,7 +326,7 @@ macro_rules! assert_function_declaration {
 macro_rules! assert_def_type {
     ($input:expr, $expected_qualifier:expr, $expected_ranges:expr) => {
         match $crate::parse($input).demand_single().element() {
-            TopLevelToken::DefType(def_type) => {
+            $crate::GlobalStatement::DefType(def_type) => {
                 let def_type_qualifier = def_type.qualifier();
                 assert_eq!(def_type_qualifier, $expected_qualifier);
                 assert_eq!(def_type.ranges(), &$expected_ranges);
@@ -384,7 +380,8 @@ macro_rules! assert_parse_dim_compact {
         assert_eq!(
             p,
             Statement::Dim(
-                DimName::new_compact_local($name, TypeQualifier::$qualifier).into_list_rc(1, 5)
+                $crate::DimVar::new_compact_local($name, TypeQualifier::$qualifier)
+                    .into_list_rc(1, 5)
             )
         );
     };
@@ -417,7 +414,7 @@ macro_rules! int_lit {
     };
 
     ($value: literal at $row: literal:$col: literal) => {
-        Locatable::new(int_lit!($value), Location::new($row, $col))
+        rusty_common::Positioned::new(int_lit!($value), rusty_common::Position::new($row, $col))
     };
 }
 
@@ -433,16 +430,16 @@ macro_rules! bin_exp {
     };
 
     ($left: expr ; plus $right: expr ; at $row: literal:$col: literal) => {
-        Locatable::new(bin_exp!($left ; plus $right), Location::new($row, $col))
+        rusty_common::Positioned::new(bin_exp!($left ; plus $right), rusty_common::Position::new($row, $col))
     };
 }
 
 #[macro_export]
 macro_rules! paren_exp {
     ($child: expr ; at $row: literal:$col: literal) => {
-        Locatable::new(
+        rusty_common::Positioned::new(
             Expression::Parenthesis(Box::new($child)),
-            Location::new($row, $col),
+            rusty_common::Position::new($row, $col),
         )
     };
 }

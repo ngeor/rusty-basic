@@ -1,6 +1,6 @@
 use crate::{FunctionMap, ResolvedParamType, SubMap};
 use rusty_parser::{
-    Expression, ExpressionNode, ExpressionType, HasExpressionType, TypeQualifier, UserDefinedTypes,
+    Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UserDefinedTypes,
 };
 
 pub trait HasFunctions {
@@ -80,21 +80,21 @@ impl CanCastTo<TypeQualifier> for Expression {
     }
 }
 
-impl CanCastTo<TypeQualifier> for ExpressionNode {
+impl CanCastTo<TypeQualifier> for ExpressionPos {
     fn can_cast_to(&self, target: &TypeQualifier) -> bool {
         self.element.can_cast_to(target)
     }
 }
 
-impl CanCastTo<Expression> for ExpressionNode {
+impl CanCastTo<Expression> for ExpressionPos {
     fn can_cast_to(&self, target: &Expression) -> bool {
         self.expression_type()
             .can_cast_to(&target.expression_type())
     }
 }
 
-impl CanCastTo<ExpressionNode> for ExpressionNode {
-    fn can_cast_to(&self, target: &ExpressionNode) -> bool {
+impl CanCastTo<ExpressionPos> for ExpressionPos {
+    fn can_cast_to(&self, target: &ExpressionPos) -> bool {
         self.expression_type()
             .can_cast_to(&target.expression_type())
     }

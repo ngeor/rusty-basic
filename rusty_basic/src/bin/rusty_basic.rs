@@ -4,7 +4,7 @@ use std::fs::File;
 use rusty_basic::instruction_generator;
 use rusty_basic::interpreter::{new_default_interpreter, InterpreterTrait};
 use rusty_linter::{lint, HasUserDefinedTypes};
-use rusty_parser::{parse_main_file, ProgramNode};
+use rusty_parser::{parse_main_file, Program};
 
 fn main() {
     let is_running_in_apache = is_running_in_apache();
@@ -24,7 +24,7 @@ fn main() {
     }
 }
 
-fn on_parsed(program: ProgramNode, run_options: RunOptions) {
+fn on_parsed(program: Program, run_options: RunOptions) {
     match lint(program) {
         Ok((linted_program, user_defined_types_holder)) => {
             on_linted(linted_program, user_defined_types_holder, run_options)
@@ -34,7 +34,7 @@ fn on_parsed(program: ProgramNode, run_options: RunOptions) {
 }
 
 fn on_linted(
-    program: ProgramNode,
+    program: Program,
     user_defined_types_holder: impl HasUserDefinedTypes,
     run_options: RunOptions,
 ) {

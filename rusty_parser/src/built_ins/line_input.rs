@@ -1,5 +1,5 @@
 use crate::built_ins::{encode_opt_file_handle_arg, opt_file_handle_comma_p};
-use crate::expression::expression_node_p;
+use crate::expression::expression_pos_p;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::*;
@@ -11,9 +11,9 @@ pub fn parse() -> impl Parser<Output = Statement> {
         keyword_pair(Keyword::Line, Keyword::Input),
         whitespace().no_incomplete(),
         opt_file_handle_comma_p(),
-        expression_node_p().or_syntax_error("Expected: #file-number or variable"),
-        |_, _, opt_loc_file_handle, variable| {
-            let mut args: ExpressionNodes = encode_opt_file_handle_arg(opt_loc_file_handle);
+        expression_pos_p().or_syntax_error("Expected: #file-number or variable"),
+        |_, _, opt_file_number_pos, variable| {
+            let mut args: Expressions = encode_opt_file_handle_arg(opt_file_number_pos);
             // add the LINE INPUT variable
             args.push(variable);
             Statement::BuiltInSubCall(BuiltInSub::LineInput, args)

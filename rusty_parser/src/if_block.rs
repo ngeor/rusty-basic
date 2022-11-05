@@ -14,8 +14,8 @@ pub fn if_block_p() -> impl Parser<Output = Statement> {
             .or(multi_line_if_p())
             .or_syntax_error("Expected: single line or multi line IF"),
         |condition, (statements, else_if_blocks, else_block)| {
-            Statement::IfBlock(IfBlockNode {
-                if_block: ConditionalBlockNode {
+            Statement::IfBlock(IfBlock {
+                if_block: ConditionalBlock {
                     condition,
                     statements,
                 },
@@ -31,22 +31,17 @@ pub fn if_block_p() -> impl Parser<Output = Statement> {
 // single line else ::= ELSE non-comment-statements-separated-by-colon comment-statement
 // multi line if    ::= statements else-if-blocks else-block END IF
 
-fn if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
+fn if_expr_then_p() -> impl Parser<Output = ExpressionPos> {
     seq3(
         keyword(Keyword::If),
-        expression::ws_expr_node_ws().or_syntax_error("Expected: expression after IF"),
+        expression::ws_expr_pos_ws_p().or_syntax_error("Expected: expression after IF"),
         keyword(Keyword::Then).no_incomplete(),
         |_, m, _| m,
     )
 }
 
-fn single_line_if_else_p() -> impl Parser<
-    Output = (
-        StatementNodes,
-        Vec<ConditionalBlockNode>,
-        Option<StatementNodes>,
-    ),
-> {
+fn single_line_if_else_p(
+) -> impl Parser<Output = (Statements, Vec<ConditionalBlock>, Option<Statements>)> {
     single_line_non_comment_statements_p()
         .and_opt(
             // comment or ELSE
@@ -59,19 +54,14 @@ fn single_line_if_else_p() -> impl Parser<
         .map(|(l, r)| (l, vec![], r))
 }
 
-fn single_line_else_p() -> impl Parser<Output = StatementNodes> {
+fn single_line_else_p() -> impl Parser<Output = Statements> {
     whitespace().and(keyword(Keyword::Else)).then_demand(
         single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
     )
 }
 
-fn multi_line_if_p() -> impl Parser<
-    Output = (
-        StatementNodes,
-        Vec<ConditionalBlockNode>,
-        Option<StatementNodes>,
-    ),
-> {
+fn multi_line_if_p() -> impl Parser<Output = (Statements, Vec<ConditionalBlock>, Option<Statements>)>
+{
     seq4(
         ZeroOrMoreStatements::new(keyword_choice(&[
             Keyword::End,
@@ -85,16 +75,16 @@ fn multi_line_if_p() -> impl Parser<
     )
 }
 
-fn else_if_expr_then_p() -> impl Parser<Output = ExpressionNode> {
+fn else_if_expr_then_p() -> impl Parser<Output = ExpressionPos> {
     seq3(
         keyword(Keyword::ElseIf),
-        expression::ws_expr_node_ws().or_syntax_error("Expected: expression after ELSEIF"),
+        expression::ws_expr_pos_ws_p().or_syntax_error("Expected: expression after ELSEIF"),
         keyword(Keyword::Then).no_incomplete(),
         |_, m, _| m,
     )
 }
 
-fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {
+fn else_if_block_p() -> impl Parser<Output = ConditionalBlock> {
     seq2(
         else_if_expr_then_p(),
         ZeroOrMoreStatements::new(keyword_choice(&[
@@ -102,14 +92,14 @@ fn else_if_block_p() -> impl Parser<Output = ConditionalBlockNode> {
             Keyword::Else,
             Keyword::ElseIf,
         ])),
-        |condition, statements| ConditionalBlockNode {
+        |condition, statements| ConditionalBlock {
             condition,
             statements,
         },
     )
 }
 
-fn else_block_p() -> impl Parser<Output = StatementNodes> {
+fn else_block_p() -> impl Parser<Output = Statements> {
     keyword(Keyword::Else).then_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
 }
 
@@ -126,8 +116,8 @@ mod tests {
         let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
-            Statement::IfBlock(IfBlockNode {
-                if_block: ConditionalBlockNode {
+            Statement::IfBlock(IfBlock {
+                if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
                     statements: vec![Statement::SubCall(
                         "Flint".into(),
@@ -147,12 +137,12 @@ mod tests {
         IF X THEN Flint X
         SYSTEM
         ";
-        let program = parse_str_no_location(input);
+        let program = parse_str_no_pos(input);
         assert_eq!(
             program,
             vec![
-                TopLevelToken::Statement(Statement::IfBlock(IfBlockNode {
-                    if_block: ConditionalBlockNode {
+                GlobalStatement::Statement(Statement::IfBlock(IfBlock {
+                    if_block: ConditionalBlock {
                         condition: "X".as_var_expr(2, 12),
                         statements: vec![Statement::SubCall(
                             "Flint".into(),
@@ -163,7 +153,7 @@ mod tests {
                     else_if_blocks: vec![],
                     else_block: None
                 })),
-                TopLevelToken::Statement(Statement::System)
+                GlobalStatement::Statement(Statement::System)
             ]
         );
     }
@@ -178,8 +168,8 @@ END IF"#;
         let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
-            Statement::IfBlock(IfBlockNode {
-                if_block: ConditionalBlockNode {
+            Statement::IfBlock(IfBlock {
+                if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
                     statements: vec![Statement::SubCall(
                         "Flint".into(),
@@ -207,8 +197,8 @@ END IF"#;
         let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
-            Statement::IfBlock(IfBlockNode {
-                if_block: ConditionalBlockNode {
+            Statement::IfBlock(IfBlock {
+                if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
                     statements: vec![Statement::SubCall(
                         "Flint".into(),
@@ -216,7 +206,7 @@ END IF"#;
                     )
                     .at_rc(2, 5)],
                 },
-                else_if_blocks: vec![ConditionalBlockNode {
+                else_if_blocks: vec![ConditionalBlock {
                     condition: "Y".as_var_expr(3, 8),
                     statements: vec![Statement::SubCall(
                         "Flint".into(),
@@ -241,8 +231,8 @@ END IF"#;
         let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
-            Statement::IfBlock(IfBlockNode {
-                if_block: ConditionalBlockNode {
+            Statement::IfBlock(IfBlock {
+                if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
                     statements: vec![Statement::SubCall(
                         "Flint".into(),
@@ -251,7 +241,7 @@ END IF"#;
                     .at_rc(2, 5)],
                 },
                 else_if_blocks: vec![
-                    ConditionalBlockNode {
+                    ConditionalBlock {
                         condition: "Y".as_var_expr(3, 8),
                         statements: vec![Statement::SubCall(
                             "Flint".into(),
@@ -259,7 +249,7 @@ END IF"#;
                         )
                         .at_rc(4, 5)],
                     },
-                    ConditionalBlockNode {
+                    ConditionalBlock {
                         condition: "Z".as_var_expr(5, 8),
                         statements: vec![Statement::SubCall(
                             "Flint".into(),
@@ -285,8 +275,8 @@ END IF"#;
         let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
-            Statement::IfBlock(IfBlockNode {
-                if_block: ConditionalBlockNode {
+            Statement::IfBlock(IfBlock {
+                if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
                     statements: vec![Statement::SubCall(
                         "Flint".into(),
@@ -294,7 +284,7 @@ END IF"#;
                     )
                     .at_rc(2, 5)],
                 },
-                else_if_blocks: vec![ConditionalBlockNode {
+                else_if_blocks: vec![ConditionalBlock {
                     condition: "Y".as_var_expr(3, 8),
                     statements: vec![Statement::SubCall(
                         "Flint".into(),
@@ -323,8 +313,8 @@ end if"#;
         let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
-            Statement::IfBlock(IfBlockNode {
-                if_block: ConditionalBlockNode {
+            Statement::IfBlock(IfBlock {
+                if_block: ConditionalBlock {
                     condition: "x".as_var_expr(1, 4),
                     statements: vec![Statement::SubCall(
                         "flint".into(),
@@ -332,7 +322,7 @@ end if"#;
                     )
                     .at_rc(2, 5)],
                 },
-                else_if_blocks: vec![ConditionalBlockNode {
+                else_if_blocks: vec![ConditionalBlock {
                     condition: "y".as_var_expr(3, 8),
                     statements: vec![Statement::SubCall(
                         "flint".into(),
@@ -355,8 +345,8 @@ end if"#;
         let if_block = parse(input).demand_single_statement();
         assert_eq!(
             if_block,
-            Statement::IfBlock(IfBlockNode {
-                if_block: ConditionalBlockNode {
+            Statement::IfBlock(IfBlock {
+                if_block: ConditionalBlock {
                     condition: Expression::BinaryExpression(
                         Operator::Equal,
                         Box::new("ID".as_var_expr(1, 4)),
@@ -395,8 +385,8 @@ end if"#;
         assert_eq!(
             program,
             vec![
-                TopLevelToken::Statement(Statement::IfBlock(IfBlockNode {
-                    if_block: ConditionalBlockNode {
+                GlobalStatement::Statement(Statement::IfBlock(IfBlock {
+                    if_block: ConditionalBlock {
                         condition: "A".as_var_expr(2, 12),
                         statements: vec![
                             Statement::Comment(" is a true?".to_string()).at_rc(2, 23),
@@ -405,7 +395,7 @@ end if"#;
                             Statement::Comment(" print a".to_string()).at_rc(3, 23)
                         ],
                     },
-                    else_if_blocks: vec![ConditionalBlockNode {
+                    else_if_blocks: vec![ConditionalBlock {
                         condition: "B".as_var_expr(4, 16),
                         statements: vec![
                             Statement::Comment(" is b true?".to_string()).at_rc(4, 23),
@@ -422,7 +412,7 @@ end if"#;
                     ])
                 }))
                 .at_rc(2, 9),
-                TopLevelToken::Statement(Statement::Comment(" end if".to_string())).at_rc(8, 23)
+                GlobalStatement::Statement(Statement::Comment(" end if".to_string())).at_rc(8, 23)
             ]
         );
     }
@@ -447,8 +437,8 @@ end if"#;
         let program = parse(input);
         assert_eq!(
             program,
-            vec![TopLevelToken::Statement(Statement::IfBlock(IfBlockNode {
-                if_block: ConditionalBlockNode {
+            vec![GlobalStatement::Statement(Statement::IfBlock(IfBlock {
+                if_block: ConditionalBlock {
                     condition: Expression::Parenthesis(Box::new(
                         Expression::BinaryExpression(
                             Operator::Greater,
@@ -465,7 +455,7 @@ end if"#;
                     )
                     .at_rc(3, 13),],
                 },
-                else_if_blocks: vec![ConditionalBlockNode {
+                else_if_blocks: vec![ConditionalBlock {
                     condition: Expression::Parenthesis(Box::new(
                         Expression::BinaryExpression(
                             Operator::Less,
@@ -502,8 +492,8 @@ end if"#;
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::IfBlock(IfBlockNode {
-                if_block: ConditionalBlockNode {
+            Statement::IfBlock(IfBlock {
+                if_block: ConditionalBlock {
                     condition: Expression::BinaryExpression(
                         Operator::GreaterOrEqual,
                         Box::new(

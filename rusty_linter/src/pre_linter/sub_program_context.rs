@@ -5,8 +5,8 @@ use rusty_parser::{BareName, BuiltInFunction, BuiltInSub, Name};
 use std::collections::HashMap;
 
 pub struct SubprogramContext<T> {
-    declarations: HashMap<CaseInsensitiveString, Locatable<T>>,
-    implementations: HashMap<CaseInsensitiveString, Locatable<T>>,
+    declarations: HashMap<CaseInsensitiveString, Positioned<T>>,
+    implementations: HashMap<CaseInsensitiveString, Positioned<T>>,
 }
 
 pub type FunctionContext = SubprogramContext<FunctionSignature>;
@@ -23,12 +23,12 @@ where
     fn check_signature(&self, name: &BareName, signature: &T) -> Result<bool, QError>;
 }
 
-impl<T> CheckSignature<T> for HashMap<CaseInsensitiveString, Locatable<T>>
+impl<T> CheckSignature<T> for HashMap<CaseInsensitiveString, Positioned<T>>
 where
     T: PartialEq,
 {
     fn check_signature(&self, name: &BareName, signature: &T) -> Result<bool, QError> {
-        if let Some(Locatable { element, .. }) = self.get(name) {
+        if let Some(Positioned { element, .. }) = self.get(name) {
             if element != signature {
                 Err(QError::TypeMismatch)
             } else {
@@ -91,13 +91,13 @@ where
         &mut self,
         bare_name: &BareName,
         signature: T,
-        declaration_pos: Location,
+        declaration_pos: Position,
     ) -> Result<(), QError> {
         self.implementations
             .check_signature(bare_name, &signature)?;
         if !self.declarations.check_signature(bare_name, &signature)? {
             self.declarations
-                .insert(bare_name.clone(), signature.at(declaration_pos));
+                .insert(bare_name.clone(), signature.at_pos(declaration_pos));
         }
         Ok(())
     }
@@ -106,24 +106,24 @@ where
         &mut self,
         bare_name: &BareName,
         signature: T,
-        implementation_pos: Location,
+        implementation_pos: Position,
     ) -> Result<(), QError> {
         match self.implementations.get(bare_name) {
             Some(_) => Err(QError::DuplicateDefinition),
             None => {
                 self.declarations.check_signature(bare_name, &signature)?;
                 self.implementations
-                    .insert(bare_name.clone(), signature.at(implementation_pos));
+                    .insert(bare_name.clone(), signature.at_pos(implementation_pos));
                 Ok(())
             }
         }
     }
 
-    pub fn implementations(self) -> HashMap<CaseInsensitiveString, Locatable<T>> {
+    pub fn implementations(self) -> HashMap<CaseInsensitiveString, Positioned<T>> {
         self.implementations
     }
 
-    fn ensure_declarations_are_implemented(&self) -> Result<(), QErrorNode> {
+    fn ensure_declarations_are_implemented(&self) -> Result<(), QErrorPos> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
                 return Err(QError::SubprogramNotDefined).with_err_at(v);
@@ -132,7 +132,7 @@ where
         Ok(())
     }
 
-    fn ensure_does_not_clash_with_built_in<F>(&self, is_built_in: F) -> Result<(), QErrorNode>
+    fn ensure_does_not_clash_with_built_in<F>(&self, is_built_in: F) -> Result<(), QErrorPos>
     where
         F: Fn(&BareName) -> bool,
     {
@@ -147,14 +147,14 @@ where
 }
 
 impl FunctionContext {
-    pub fn post_visit(&self) -> Result<(), QErrorNode> {
+    pub fn post_visit(&self) -> Result<(), QErrorPos> {
         self.ensure_declarations_are_implemented()?;
         self.ensure_does_not_clash_with_built_in(|name| BuiltInFunction::try_parse(name).is_some())
     }
 }
 
 impl SubContext {
-    pub fn post_visit(&self) -> Result<(), QErrorNode> {
+    pub fn post_visit(&self) -> Result<(), QErrorPos> {
         // not checking if declarations are present, because in MONEY.BAS there
         // are two SUBs declared but not implemented (and not called either)
         self.ensure_does_not_clash_with_built_in(|name| {

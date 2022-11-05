@@ -2,8 +2,8 @@ use crate::assert_linter_err;
 use crate::test_utils::linter_ok;
 use rusty_common::*;
 use rusty_parser::{
-    ArrayDimension, BareName, BuiltInStyle, DimName, DimNameBuilder, DimType, Expression,
-    Statement, TopLevelToken, TypeQualifier,
+    ArrayDimension, BareName, BuiltInStyle, DimNameBuilder, DimType, DimVar, Expression,
+    GlobalStatement, Statement, TypeQualifier,
 };
 
 #[test]
@@ -149,8 +149,8 @@ fn test_dim_extended_inside_function_name_clashing_other_function_name() {
 fn test_dim_bare() {
     assert_eq!(
         linter_ok("DIM A"),
-        vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new_compact_local("A", TypeQualifier::BangSingle).into_list_rc(1, 5)
+        vec![GlobalStatement::Statement(Statement::Dim(
+            DimVar::new_compact_local("A", TypeQualifier::BangSingle).into_list_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -160,8 +160,8 @@ fn test_dim_bare() {
 fn test_dim_qualified() {
     assert_eq!(
         linter_ok("DIM A$"),
-        vec![TopLevelToken::Statement(Statement::Dim(
-            DimName::new_compact_local("A", TypeQualifier::DollarString).into_list_rc(1, 5)
+        vec![GlobalStatement::Statement(Statement::Dim(
+            DimVar::new_compact_local("A", TypeQualifier::DollarString).into_list_rc(1, 5)
         ))
         .at_rc(1, 1)]
     );
@@ -171,7 +171,7 @@ fn test_dim_qualified() {
 fn test_dim_extended_built_in() {
     assert_eq!(
         linter_ok("DIM A AS LONG"),
-        vec![TopLevelToken::Statement(Statement::Dim(
+        vec![GlobalStatement::Statement(Statement::Dim(
             DimNameBuilder::new()
                 .bare_name("A")
                 .dim_type(DimType::BuiltIn(
@@ -188,7 +188,7 @@ fn test_dim_extended_built_in() {
 fn test_dim_extended_fixed_length_string() {
     assert_eq!(
         linter_ok("DIM A AS STRING * 5"),
-        vec![TopLevelToken::Statement(Statement::Dim(
+        vec![GlobalStatement::Statement(Statement::Dim(
             DimNameBuilder::new()
                 .bare_name("A")
                 .dim_type(DimType::FixedLengthString(
@@ -211,7 +211,7 @@ fn test_dim_extended_user_defined() {
     "#;
     assert_eq!(
         linter_ok(input),
-        vec![TopLevelToken::Statement(Statement::Dim(
+        vec![GlobalStatement::Statement(Statement::Dim(
             DimNameBuilder::new()
                 .bare_name("A")
                 .dim_type(DimType::UserDefined(BareName::from("Card").at_rc(5, 14)))
@@ -225,7 +225,7 @@ fn test_dim_extended_user_defined() {
 fn test_dim_array_bare() {
     assert_eq!(
         linter_ok("DIM A(2)"),
-        vec![TopLevelToken::Statement(Statement::Dim(
+        vec![GlobalStatement::Statement(Statement::Dim(
             DimNameBuilder::new()
                 .bare_name("A")
                 .dim_type(DimType::Array(
@@ -248,7 +248,7 @@ fn test_dim_array_bare() {
 fn test_dim_array_qualified() {
     assert_eq!(
         linter_ok("DIM A$(2)"),
-        vec![TopLevelToken::Statement(Statement::Dim(
+        vec![GlobalStatement::Statement(Statement::Dim(
             DimNameBuilder::new()
                 .bare_name("A")
                 .dim_type(DimType::Array(
@@ -271,7 +271,7 @@ fn test_dim_array_qualified() {
 fn test_dim_array_extended_built_in() {
     assert_eq!(
         linter_ok("DIM A(2) AS INTEGER"),
-        vec![TopLevelToken::Statement(Statement::Dim(
+        vec![GlobalStatement::Statement(Statement::Dim(
             DimNameBuilder::new()
                 .bare_name("A")
                 .dim_type(DimType::Array(
@@ -294,7 +294,7 @@ fn test_dim_array_extended_built_in() {
 fn test_dim_array_extended_fixed_length_string() {
     assert_eq!(
         linter_ok("DIM A(2) AS STRING * 3"),
-        vec![TopLevelToken::Statement(Statement::Dim(
+        vec![GlobalStatement::Statement(Statement::Dim(
             DimNameBuilder::new()
                 .bare_name("A")
                 .dim_type(DimType::Array(
@@ -323,7 +323,7 @@ fn test_dim_array_extended_user_defined() {
     "#;
     assert_eq!(
         linter_ok(input),
-        vec![TopLevelToken::Statement(Statement::Dim(
+        vec![GlobalStatement::Statement(Statement::Dim(
             DimNameBuilder::new()
                 .bare_name("A")
                 .dim_type(DimType::Array(

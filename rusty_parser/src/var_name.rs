@@ -4,7 +4,7 @@ use crate::name::{bare_name_without_dots, name_with_dots};
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::{
-    BareName, Keyword, Name, TypeQualifier, VarName, VarTypeNewBuiltInCompact,
+    BareName, Keyword, Name, TypeQualifier, TypedName, VarTypeNewBuiltInCompact,
     VarTypeNewUserDefined, VarTypeToArray,
 };
 use rusty_common::*;
@@ -29,7 +29,7 @@ use rusty_common::*;
 pub fn var_name<T, A, P>(
     array_p: impl Parser<Output = A> + NonOptParser,
     built_in_extended_factory: fn() -> P,
-) -> impl Parser<Output = VarName<T>>
+) -> impl Parser<Output = TypedName<T>>
 where
     T: Default,
     T: VarTypeNewBuiltInCompact,
@@ -42,7 +42,7 @@ where
         .map(move |(name, array, var_type)| {
             let bare_name: BareName = name.into();
             let final_type = var_type.to_array(array);
-            VarName::new(bare_name, final_type)
+            TypedName::new(bare_name, final_type)
         })
 }
 

@@ -1,4 +1,4 @@
-use rusty_common::{CaseInsensitiveString, IndexedMap, Locatable, QError};
+use rusty_common::{CaseInsensitiveString, IndexedMap, Positioned, QError};
 use rusty_parser::{
     BareName, Element, ElementType, ExpressionType, TypeQualifier, UserDefinedTypes,
 };
@@ -79,7 +79,7 @@ fn allocate_user_defined_type_inner(
 ) -> UserDefinedTypeValue {
     let user_defined_type = types.get(type_name).expect("Could not find type");
     let mut map: IndexedMap<CaseInsensitiveString, Variant> = IndexedMap::new();
-    for Locatable {
+    for Positioned {
         element: Element {
             name, element_type, ..
         },
@@ -100,7 +100,7 @@ fn allocate_element_type(element_type: &ElementType, types: &UserDefinedTypes) -
         ElementType::FixedLengthString(_, len) => allocate_fixed_length_string(*len as usize),
         ElementType::Integer => allocate_built_in(TypeQualifier::PercentInteger),
         ElementType::Long => allocate_built_in(TypeQualifier::AmpersandLong),
-        ElementType::UserDefined(Locatable { element, .. }) => {
+        ElementType::UserDefined(Positioned { element, .. }) => {
             Variant::VUserDefined(Box::new(allocate_user_defined_type_inner(element, types)))
         }
     }

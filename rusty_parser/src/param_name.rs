@@ -10,11 +10,11 @@ use crate::var_name::var_name;
 /// A AS UserDefinedType // not dots no qualifiers
 /// A() empty array
 /// A.B() as INTEGER
-pub fn param_name_node_p() -> impl Parser<Output = ParamNameNode> {
-    param_name().with_pos()
+pub fn parameter_pos_p() -> impl Parser<Output = ParameterPos> {
+    parameter_p().with_pos()
 }
 
-fn param_name() -> impl Parser<Output = ParamName> {
+fn parameter_p() -> impl Parser<Output = Parameter> {
     var_name(array_indicator(), built_in_extended_type)
 }
 

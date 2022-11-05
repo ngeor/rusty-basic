@@ -6,13 +6,13 @@ use crate::post_linter::{
     user_defined_function_linter, user_defined_sub_linter,
 };
 use crate::{HasFunctions, HasSubs};
-use rusty_common::QErrorNode;
-use rusty_parser::ProgramNode;
+use rusty_common::QErrorPos;
+use rusty_parser::Program;
 
 pub fn post_linter(
-    result: ProgramNode,
+    result: Program,
     pre_linter_result: &(impl HasFunctions + HasSubs),
-) -> Result<ProgramNode, QErrorNode> {
+) -> Result<Program, QErrorPos> {
     // lint
     apply_linters(&result, pre_linter_result)?;
     // reduce
@@ -23,9 +23,9 @@ pub fn post_linter(
 }
 
 fn apply_linters(
-    result: &ProgramNode,
+    result: &Program,
     pre_linter_result: &(impl HasFunctions + HasSubs),
-) -> Result<(), QErrorNode> {
+) -> Result<(), QErrorPos> {
     let mut linter = for_next_counter_match_linter::ForNextCounterMatch {};
     linter.visit_program(result)?;
 

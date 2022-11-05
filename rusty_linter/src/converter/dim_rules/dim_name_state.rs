@@ -1,17 +1,17 @@
 use crate::converter::dim_rules::dim_list_state::DimListState;
 use crate::type_resolver::TypeResolver;
-use rusty_common::{HasLocation, Location};
+use rusty_common::{HasPos, Position};
 use rusty_parser::TypeQualifier;
 use std::ops::{Deref, DerefMut};
 
 pub struct DimNameState<'a, 'b> {
     ctx: &'a mut DimListState<'b>,
     shared: bool,
-    pos: Location,
+    pos: Position,
 }
 
 impl<'a, 'b> DimNameState<'a, 'b> {
-    pub fn new(ctx: &'a mut DimListState<'b>, shared: bool, pos: Location) -> Self {
+    pub fn new(ctx: &'a mut DimListState<'b>, shared: bool, pos: Position) -> Self {
         Self { ctx, shared, pos }
     }
 
@@ -34,8 +34,8 @@ impl<'a, 'b> DerefMut for DimNameState<'a, 'b> {
     }
 }
 
-impl<'a, 'b> HasLocation for DimNameState<'a, 'b> {
-    fn pos(&self) -> Location {
+impl<'a, 'b> HasPos for DimNameState<'a, 'b> {
+    fn pos(&self) -> Position {
         self.pos
     }
 }

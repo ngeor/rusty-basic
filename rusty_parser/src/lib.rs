@@ -11,6 +11,7 @@ mod do_loop;
 mod exit;
 mod expression;
 mod for_loop;
+mod global_statement;
 mod go_sub;
 mod if_block;
 mod implementation;
@@ -26,7 +27,6 @@ mod statement;
 mod statement_separator;
 mod statements;
 mod sub_call;
-mod top_level_token;
 mod types;
 mod user_defined_type;
 mod var_name;
@@ -40,9 +40,9 @@ pub use types::*;
 
 use std::fs::File;
 
+use crate::global_statement::ProgramParser;
 use crate::pc::*;
 use crate::pc_specific::{create_file_tokenizer, create_string_tokenizer};
-use crate::top_level_token::TopLevelTokensParser;
 use rusty_common::*;
 
 /// Parses a QBasic file.
@@ -57,13 +57,13 @@ use rusty_common::*;
 /// <letter> ::= "A".."Z" | "a".."z"
 /// <digit> ::= "0".."9"
 /// ```
-pub fn parse_main_file(f: File) -> Result<ProgramNode, QErrorNode> {
+pub fn parse_main_file(f: File) -> Result<Program, QErrorPos> {
     let mut reader = create_file_tokenizer(f);
     program_parser(&mut reader)
 }
 
-pub fn program_parser(reader: &mut impl Tokenizer) -> Result<ProgramNode, QErrorNode> {
-    match TopLevelTokensParser::new().parse(reader) {
+pub fn program_parser(reader: &mut impl Tokenizer) -> Result<Program, QErrorPos> {
+    match ProgramParser::new().parse(reader) {
         Ok(opt_program) => Ok(opt_program),
         Err(err) => Err(ErrorEnvelope::Pos(err, reader.position())),
     }
@@ -74,11 +74,11 @@ pub fn program_parser(reader: &mut impl Tokenizer) -> Result<ProgramNode, QError
 /// # Panics
 ///
 /// If the parser has an error.
-pub fn parse(input: &str) -> ProgramNode {
+pub fn parse(input: &str) -> Program {
     parse_main_str(input).expect("Could not parse program")
 }
 
-fn parse_main_str(input: &str) -> Result<ProgramNode, QErrorNode> {
+fn parse_main_str(input: &str) -> Result<Program, QErrorPos> {
     let mut reader = create_string_tokenizer(input);
     program_parser(&mut reader)
 }
@@ -92,25 +92,25 @@ mod tests {
 
     #[test]
     fn test_parse_fixture_fib() {
-        let program = parse_file_no_location("FIB.BAS");
+        let program = parse_file_no_pos("FIB.BAS");
         assert_eq!(
             program,
             vec![
                 // DECLARE FUNCTION Fib! (N!)
-                TopLevelToken::FunctionDeclaration(
+                GlobalStatement::FunctionDeclaration(
                     "Fib!".as_name(1, 18),
-                    vec![ParamName::new(
+                    vec![Parameter::new(
                         "N".into(),
                         ParamType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
                     )
                     .at_rc(1, 24)],
                 ),
                 // PRINT "Enter the number of fibonacci to calculate"
-                TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                GlobalStatement::Statement(Statement::Print(Print::one(
                     "Enter the number of fibonacci to calculate".as_lit_expr(2, 7)
                 ))),
                 // INPUT N
-                TopLevelToken::Statement(Statement::BuiltInSubCall(
+                GlobalStatement::Statement(Statement::BuiltInSubCall(
                     BuiltInSub::Input,
                     vec![
                         0.as_lit_expr(1, 1), // no file number
@@ -118,14 +118,14 @@ mod tests {
                     ]
                 )),
                 // FOR I = 0 TO N
-                TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {
+                GlobalStatement::Statement(Statement::ForLoop(ForLoop {
                     variable_name: Expression::var_unresolved("I").at_rc(4, 5),
                     lower_bound: 0.as_lit_expr(4, 9),
                     upper_bound: "N".as_var_expr(4, 14),
                     step: None,
                     statements: vec![
                         // PRINT "Fibonacci of ", I, " is ", Fib(I)
-                        Statement::Print(PrintNode {
+                        Statement::Print(Print {
                             file_number: None,
                             lpt1: false,
                             format_string: None,
@@ -147,13 +147,13 @@ mod tests {
                     next_counter: None,
                 })),
                 // FUNCTION Fib (N)
-                TopLevelToken::FunctionImplementation(FunctionImplementation {
+                GlobalStatement::FunctionImplementation(FunctionImplementation {
                     name: Name::from("Fib").at_rc(8, 10),
-                    params: vec![ParamName::new("N".into(), ParamType::Bare).at_rc(8, 15)],
+                    params: vec![Parameter::new("N".into(), ParamType::Bare).at_rc(8, 15)],
                     body: vec![
                         // IF N <= 1 THEN
-                        Statement::IfBlock(IfBlockNode {
-                            if_block: ConditionalBlockNode {
+                        Statement::IfBlock(IfBlock {
+                            if_block: ConditionalBlock {
                                 // N <= 1
                                 condition: Expression::BinaryExpression(
                                     Operator::LessOrEqual,

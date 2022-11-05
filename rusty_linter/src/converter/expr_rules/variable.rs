@@ -8,7 +8,7 @@ pub fn convert(
     ctx: &mut PosExprState,
     name: Name,
     variable_info: VariableInfo,
-) -> Result<Expression, QErrorNode> {
+) -> Result<Expression, QErrorPos> {
     // validation rules
     validate(ctx, &name)?;
 
@@ -39,7 +39,7 @@ pub fn convert(
     }
 }
 
-fn validate(ctx: &Context, name: &Name) -> Result<(), QErrorNode> {
+fn validate(ctx: &Context, name: &Name) -> Result<(), QErrorPos> {
     if ctx.subs().contains_key(name.bare_name()) {
         return Err(QError::DuplicateDefinition).with_err_no_pos();
     }
@@ -67,14 +67,14 @@ pub fn add_as_new_implicit_var(ctx: &mut PosExprState, name: Name) -> Expression
     let var_info = VariableInfo::new_built_in(q, false);
     let pos = ctx.pos();
     ctx.names
-        .add_implicit(resolved_name.clone().demand_qualified().at(pos));
+        .add_implicit(resolved_name.clone().demand_qualified().at_pos(pos));
     Expression::Variable(resolved_name, var_info)
 }
 
 pub trait VarResolve {
     fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool;
 
-    fn resolve(&self, ctx: &PosExprState, name: Name) -> Result<Expression, QErrorNode>;
+    fn resolve(&self, ctx: &PosExprState, name: Name) -> Result<Expression, QErrorPos>;
 }
 
 #[derive(Default)]
@@ -95,7 +95,7 @@ impl VarResolve for ExistingVar {
         }
     }
 
-    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, QErrorNode> {
+    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, QErrorPos> {
         let variable_info = self.var_info.clone().unwrap();
         let expression_type = &variable_info.expression_type;
         let converted_name = expression_type.qualify_name(name).with_err_no_pos()?;
@@ -138,7 +138,7 @@ impl VarResolve for ExistingConst {
         self.opt_v.is_some()
     }
 
-    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, QErrorNode> {
+    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, QErrorPos> {
         let v = self.opt_v.clone().unwrap();
         let q = qualifier_of_const_variant(&v);
         if name.is_bare_or_of_type(q) {
@@ -178,7 +178,7 @@ impl VarResolve for AssignToFunction {
         }
     }
 
-    fn resolve(&self, ctx: &PosExprState, name: Name) -> Result<Expression, QErrorNode> {
+    fn resolve(&self, ctx: &PosExprState, name: Name) -> Result<Expression, QErrorPos> {
         let function_qualifier = self.function_qualifier.unwrap();
         if ctx.names.is_in_function(name.bare_name()) {
             let converted_name = name.try_qualify(function_qualifier).with_err_no_pos()?;
@@ -202,7 +202,7 @@ impl VarResolve for VarAsBuiltInFunctionCall {
         self.built_in_function.is_some()
     }
 
-    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, QErrorNode> {
+    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, QErrorPos> {
         match Option::<BuiltInFunction>::try_from(&name).with_err_no_pos()? {
             Some(built_in_function) => {
                 Ok(Expression::BuiltInFunctionCall(built_in_function, vec![]))
@@ -223,7 +223,7 @@ impl VarResolve for VarAsUserDefinedFunctionCall {
         self.function_qualifier.is_some()
     }
 
-    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, QErrorNode> {
+    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, QErrorPos> {
         let q = self.function_qualifier.unwrap();
         let converted_name = name.try_qualify(q).with_err_no_pos()?;
         Ok(Expression::FunctionCall(converted_name, vec![]))

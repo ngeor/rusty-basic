@@ -46,14 +46,14 @@ mod view_print;
 mod width;
 
 use crate::NameContext;
-use rusty_common::QErrorNode;
-use rusty_parser::{BuiltInFunction, BuiltInSub, ExpressionNodes};
+use rusty_common::QErrorPos;
+use rusty_parser::{BuiltInFunction, BuiltInSub, Expressions};
 
 pub fn lint_sub_call(
     built_in_sub: &BuiltInSub,
-    args: &ExpressionNodes,
+    args: &Expressions,
     name_context: NameContext,
-) -> Result<(), QErrorNode> {
+) -> Result<(), QErrorPos> {
     match built_in_sub {
         BuiltInSub::Beep => beep::lint(args),
         BuiltInSub::CallAbsolute => Ok(()),
@@ -81,10 +81,7 @@ pub fn lint_sub_call(
     }
 }
 
-pub fn lint_function_call(
-    built_in: &BuiltInFunction,
-    args: &ExpressionNodes,
-) -> Result<(), QErrorNode> {
+pub fn lint_function_call(built_in: &BuiltInFunction, args: &Expressions) -> Result<(), QErrorPos> {
     match built_in {
         BuiltInFunction::Chr => chr::lint(args),
         BuiltInFunction::Cvd => cvd::lint(args),

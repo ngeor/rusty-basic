@@ -1,4 +1,4 @@
-use crate::expression::expression_node_p;
+use crate::expression::expression_pos_p;
 use crate::name;
 use crate::pc::*;
 use crate::pc_specific::*;
@@ -12,7 +12,7 @@ pub fn constant_p() -> impl Parser<Output = Statement> {
             .with_pos()
             .or_syntax_error("Expected: const name"),
         equal_sign().no_incomplete(),
-        expression_node_p().or_syntax_error("Expected: const value"),
+        expression_pos_p().or_syntax_error("Expected: const value"),
         |_, _, const_name, _, const_value_expr| Statement::Const(const_name, const_value_expr),
     )
 }
@@ -29,15 +29,15 @@ mod tests {
         CONST X = 42
         CONST Y$ = "hello"
         "#;
-        let program = parse_str_no_location(input);
+        let program = parse_str_no_pos(input);
         assert_eq!(
             program,
             vec![
-                TopLevelToken::Statement(Statement::Const(
+                GlobalStatement::Statement(Statement::Const(
                     "X".as_name(2, 15),
                     42.as_lit_expr(2, 19),
                 )),
-                TopLevelToken::Statement(Statement::Const(
+                GlobalStatement::Statement(Statement::Const(
                     "Y$".as_name(3, 15),
                     "hello".as_lit_expr(3, 20),
                 ))
@@ -55,8 +55,8 @@ mod tests {
                 let statement = parse(&input).demand_single_statement();
                 match statement {
                     Statement::Const(
-                        Locatable { element: left, .. },
-                        Locatable { element: right, .. },
+                        Positioned { element: left, .. },
+                        Positioned { element: right, .. },
                     ) => {
                         assert_eq!(left, Name::from(*name));
                         assert_eq!(right, Expression::IntegerLiteral(*value));
@@ -74,12 +74,12 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                TopLevelToken::Statement(Statement::Const(
+                GlobalStatement::Statement(Statement::Const(
                     "ANSWER".as_name(1, 7),
                     42.as_lit_expr(1, 16),
                 ))
                 .at_rc(1, 1),
-                TopLevelToken::Statement(Statement::Comment(
+                GlobalStatement::Statement(Statement::Comment(
                     " the answer to life, universe, everything".to_string(),
                 ))
                 .at_rc(1, 19)

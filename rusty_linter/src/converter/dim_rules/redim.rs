@@ -10,7 +10,7 @@ pub fn on_redim_type<'a, 'b>(
     var_type: DimType,
     bare_name: &BareName,
     ctx: &mut DimNameState<'a, 'b>,
-) -> Result<(DimType, Option<RedimInfo>), QErrorNode> {
+) -> Result<(DimType, Option<RedimInfo>), QErrorPos> {
     if let DimType::Array(array_dimensions, element_type) = var_type {
         let dimension_count = array_dimensions.len();
         let converted_array_dimensions: ArrayDimensions = array_dimensions.convert(ctx)?;
@@ -30,7 +30,7 @@ fn to_dim_type<'a, 'b>(
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
     element_dim_type: DimType,
-) -> Result<DimType, QErrorNode> {
+) -> Result<DimType, QErrorPos> {
     match element_dim_type {
         DimType::Bare => bare_to_dim_type(ctx, bare_name, array_dimensions).with_err_no_pos(),
         DimType::BuiltIn(q, built_in_style) => {
@@ -97,7 +97,7 @@ fn bare_to_dim_type<'a, 'b>(
                         Ok(DimType::fixed_length_string(*len, ctx.pos()))
                     }
                     ExpressionType::UserDefined(u) => {
-                        Ok(DimType::UserDefined(u.clone().at(ctx.pos())))
+                        Ok(DimType::UserDefined(u.clone().at_pos(ctx.pos())))
                     }
                     _ => {
                         panic!("REDIM with nested array or unresolved type");
@@ -161,8 +161,8 @@ fn fixed_length_string_to_dim_type<'a, 'b>(
     ctx: &mut DimNameState<'a, 'b>,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
-    length_expression: &ExpressionNode,
-) -> Result<DimType, QErrorNode> {
+    length_expression: &ExpressionPos,
+) -> Result<DimType, QErrorPos> {
     let string_length: u16 = resolve_string_length(ctx, length_expression)?;
     ctx.names
         .find_name_or_shared_in_parent(bare_name)
@@ -194,7 +194,7 @@ fn user_defined_type_to_dim_type(
     ctx: &mut Context,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
-    user_defined_type: BareNameNode,
+    user_defined_type: BareNamePos,
 ) -> Result<DimType, QError> {
     ctx.names
         .find_name_or_shared_in_parent(bare_name)

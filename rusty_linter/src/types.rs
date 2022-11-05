@@ -1,10 +1,10 @@
 use crate::pre_linter::{FunctionSignature, SubSignature};
-use rusty_common::Locatable;
+use rusty_common::Positioned;
 use rusty_parser::{BareName, BuiltInStyle, QualifiedName, TypeQualifier};
 use std::collections::HashMap;
 
-pub type SubMap = HashMap<BareName, Locatable<SubSignature>>;
-pub type FunctionMap = HashMap<BareName, Locatable<FunctionSignature>>;
+pub type SubMap = HashMap<BareName, Positioned<SubSignature>>;
+pub type FunctionMap = HashMap<BareName, Positioned<FunctionSignature>>;
 
 /// Holds the resolved name of a subprogram.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

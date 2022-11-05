@@ -1,5 +1,5 @@
 use crate::instruction_generator::Path;
-use rusty_parser::ParamName;
+use rusty_parser::Parameter;
 use rusty_variant::Variant;
 use std::slice::Iter;
 use std::vec::IntoIter;
@@ -12,7 +12,7 @@ pub struct Arguments {
 #[derive(Debug)]
 pub struct ArgumentInfo {
     pub value: Variant,
-    pub param_name: Option<ParamName>,
+    pub param_name: Option<Parameter>,
     pub arg_path: Option<Path>,
 }
 
@@ -33,7 +33,7 @@ impl Arguments {
         });
     }
 
-    pub fn push_named(&mut self, parameter_name: ParamName, arg: Variant) {
+    pub fn push_named(&mut self, parameter_name: Parameter, arg: Variant) {
         self.v.push(ArgumentInfo {
             value: arg,
             param_name: Some(parameter_name),

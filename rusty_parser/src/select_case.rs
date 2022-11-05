@@ -26,7 +26,7 @@ pub fn select_case_p() -> impl Parser<Output = Statement> {
         case_else().allow_none(),
         keyword_pair(Keyword::End, Keyword::Select).no_incomplete(),
         |expr, inline_comments, case_blocks, else_block, _| {
-            Statement::SelectCase(SelectCaseNode {
+            Statement::SelectCase(SelectCase {
                 expr,
                 case_blocks,
                 else_block,
@@ -37,9 +37,9 @@ pub fn select_case_p() -> impl Parser<Output = Statement> {
 }
 
 /// Parses the `SELECT CASE expression` part
-fn select_case_expr_p() -> impl Parser<Output = ExpressionNode> {
+fn select_case_expr_p() -> impl Parser<Output = ExpressionPos> {
     keyword_pair(Keyword::Select, Keyword::Case)
-        .then_demand(expression::ws_expr_node().or_syntax_error("Expected: expression after CASE"))
+        .then_demand(expression::ws_expr_pos_p().or_syntax_error("Expected: expression after CASE"))
 }
 
 // SELECT CASE expr
@@ -60,11 +60,11 @@ fn select_case_expr_p() -> impl Parser<Output = ExpressionNode> {
 //
 // For range-expression, no space is needed before TO if the first expression is in parenthesis
 
-fn case_blocks() -> impl Parser<Output = Vec<CaseBlockNode>> + NonOptParser {
+fn case_blocks() -> impl Parser<Output = Vec<CaseBlock>> + NonOptParser {
     case_block().zero_or_more()
 }
 
-fn case_block() -> impl Parser<Output = CaseBlockNode> {
+fn case_block() -> impl Parser<Output = CaseBlock> {
     // CASE
     CaseButNotElse.then_demand(
         OptAndPC::new(whitespace(), continue_after_case())
@@ -114,11 +114,11 @@ impl Parser for CaseButNotElse {
     }
 }
 
-fn continue_after_case() -> impl Parser<Output = CaseBlockNode> {
+fn continue_after_case() -> impl Parser<Output = CaseBlock> {
     seq2(
         case_expression_list(),
         ZeroOrMoreStatements::new(keyword_choice(&[Keyword::Case, Keyword::End])),
-        |expression_list, statements| CaseBlockNode {
+        |expression_list, statements| CaseBlock {
             expression_list,
             statements,
         },
@@ -130,11 +130,11 @@ fn case_expression_list() -> impl Parser<Output = Vec<CaseExpression>> {
 }
 
 mod case_expression_parser {
-    use crate::expression::expression_node_p;
+    use crate::expression::expression_pos_p;
     use crate::pc::*;
     use crate::pc_specific::*;
     use crate::{CaseExpression, Keyword, Operator};
-    use rusty_common::Locatable;
+    use rusty_common::Positioned;
 
     pub fn parser() -> impl Parser<Output = CaseExpression> {
         case_is().or(simple_or_range())
@@ -146,14 +146,14 @@ mod case_expression_parser {
             OptAndPC::new(whitespace(), relational_operator_p())
                 .keep_right()
                 .or_syntax_error("Expected: Operator after IS"),
-            OptAndPC::new(whitespace(), expression_node_p())
+            OptAndPC::new(whitespace(), expression_pos_p())
                 .keep_right()
                 .or_syntax_error("Expected: expression after IS operator"),
-            |_, Locatable { element, .. }, r| CaseExpression::Is(element, r),
+            |_, Positioned { element, .. }, r| CaseExpression::Is(element, r),
         )
     }
 
-    fn relational_operator_p() -> impl Parser<Output = Locatable<Operator>> {
+    fn relational_operator_p() -> impl Parser<Output = Positioned<Operator>> {
         any_token()
             .filter_map(|token| match TokenType::from_token(token) {
                 TokenType::LessEquals => Some(Operator::LessOrEqual),
@@ -168,7 +168,7 @@ mod case_expression_parser {
     }
 
     fn simple_or_range() -> impl Parser<Output = CaseExpression> {
-        opt_second_expression_after_keyword(expression_node_p(), Keyword::To).map(
+        opt_second_expression_after_keyword(expression_pos_p(), Keyword::To).map(
             |(left, opt_right)| match opt_right {
                 Some(right) => CaseExpression::Range(left, right),
                 _ => CaseExpression::Simple(left),
@@ -177,7 +177,7 @@ mod case_expression_parser {
     }
 }
 
-fn case_else() -> impl Parser<Output = StatementNodes> {
+fn case_else() -> impl Parser<Output = Statements> {
     keyword_pair(Keyword::Case, Keyword::Else)
         .then_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
 }
@@ -203,10 +203,10 @@ mod tests {
         assert_eq!(
             result,
             vec![
-                TopLevelToken::Statement(Statement::SelectCase(SelectCaseNode {
+                GlobalStatement::Statement(Statement::SelectCase(SelectCase {
                     expr: "X".as_var_expr(2, 21),
                     inline_comments: vec![" testing for x".to_string().at_rc(2, 23)],
-                    case_blocks: vec![CaseBlockNode {
+                    case_blocks: vec![CaseBlock {
                         expression_list: vec![CaseExpression::Simple(1.as_lit_expr(3, 14))],
                         statements: vec![
                             Statement::Comment(" is it one?".to_string()).at_rc(3, 23),
@@ -223,7 +223,7 @@ mod tests {
                     ]),
                 }))
                 .at_rc(2, 9),
-                TopLevelToken::Statement(Statement::Comment(" end of select".to_string()))
+                GlobalStatement::Statement(Statement::Comment(" end of select".to_string()))
                     .at_rc(7, 23)
             ]
         );
@@ -239,7 +239,7 @@ mod tests {
         assert_eq!(
             result,
             vec![
-                TopLevelToken::Statement(Statement::SelectCase(SelectCaseNode {
+                GlobalStatement::Statement(Statement::SelectCase(SelectCase {
                     expr: "X".as_var_expr(2, 21),
                     inline_comments: vec![],
                     case_blocks: vec![],
@@ -263,13 +263,13 @@ mod tests {
         assert_eq!(
             result,
             vec![
-                TopLevelToken::Statement(Statement::SelectCase(SelectCaseNode {
+                GlobalStatement::Statement(Statement::SelectCase(SelectCase {
                     expr: "X".as_var_expr(2, 21),
                     inline_comments: vec![
                         " testing for x".to_string().at_rc(2, 23),
                         " first case".to_string().at_rc(3, 9)
                     ],
-                    case_blocks: vec![CaseBlockNode {
+                    case_blocks: vec![CaseBlock {
                         expression_list: vec![CaseExpression::Simple(1.as_lit_expr(4, 14))],
                         statements: vec![
                             Statement::Comment(" is it one?".to_string()).at_rc(4, 23),
@@ -298,15 +298,15 @@ mod tests {
         let result = parse(input).demand_single_statement();
         assert_eq!(
             result,
-            Statement::SelectCase(SelectCaseNode {
+            Statement::SelectCase(SelectCase {
                 expr: paren_exp!( bin_exp!( int_lit!(5 at 2:21) ; plus int_lit!(2 at 2:23) ; at 2:22 ) ; at 2:20 ),
                 inline_comments: vec![],
                 case_blocks: vec![
-                    CaseBlockNode {
+                    CaseBlock {
                         expression_list: vec![CaseExpression::Simple(
                             paren_exp!( bin_exp!( int_lit!(6 at 3:14) ; plus int_lit!(5 at 3:16) ; at 3:15 ) ; at 3:13 )
                         )],
-                        statements: vec![Statement::Print(PrintNode {
+                        statements: vec![Statement::Print(Print {
                             file_number: None,
                             lpt1: false,
                             format_string: None,
@@ -314,12 +314,12 @@ mod tests {
                         })
                         .at_rc(4, 13)]
                     },
-                    CaseBlockNode {
+                    CaseBlock {
                         expression_list: vec![CaseExpression::Range(
                             Expression::Parenthesis(Box::new(2.as_lit_expr(5, 14))).at_rc(5, 13),
                             Expression::Parenthesis(Box::new(5.as_lit_expr(5, 19))).at_rc(5, 18)
                         )],
-                        statements: vec![Statement::Print(PrintNode {
+                        statements: vec![Statement::Print(Print {
                             file_number: None,
                             lpt1: false,
                             format_string: None,

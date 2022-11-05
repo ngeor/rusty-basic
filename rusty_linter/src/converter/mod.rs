@@ -5,21 +5,21 @@ mod dim_rules;
 mod expr_rules;
 mod names;
 mod pos_context;
+mod program_rules;
 mod statement;
-mod top_level_rules;
 mod traits;
 mod types;
 
 use crate::converter::context::Context;
 use crate::converter::traits::Convertible;
 use crate::pre_linter::PreLinterResult;
-use rusty_common::QErrorNode;
-use rusty_parser::ProgramNode;
+use rusty_common::QErrorPos;
+use rusty_parser::Program;
 
 pub fn convert(
-    program: ProgramNode,
+    program: Program,
     pre_linter_result: PreLinterResult,
-) -> Result<(PreLinterResult, ProgramNode), QErrorNode> {
+) -> Result<(PreLinterResult, Program), QErrorPos> {
     let mut context = Context::new(pre_linter_result);
     program
         .convert(&mut context)

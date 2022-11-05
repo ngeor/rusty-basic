@@ -3,8 +3,7 @@ use crate::built_ins::{lint_function_call, lint_sub_call};
 use crate::NameContext;
 use rusty_common::*;
 use rusty_parser::{
-    BuiltInSub, Expression, ExpressionNode, ExpressionNodes, FunctionImplementation,
-    SubImplementation,
+    BuiltInSub, Expression, ExpressionPos, Expressions, FunctionImplementation, SubImplementation,
 };
 
 /// Lints built-in functions and subs.
@@ -24,16 +23,16 @@ impl PostConversionLinter for BuiltInLinter {
     fn visit_function_implementation(
         &mut self,
         f: &FunctionImplementation,
-    ) -> Result<(), QErrorNode> {
+    ) -> Result<(), QErrorPos> {
         self.name_context = NameContext::Function;
-        let result = self.visit_statement_nodes(&f.body);
+        let result = self.visit_statements(&f.body);
         self.name_context = NameContext::Global;
         result
     }
 
-    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorNode> {
+    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorPos> {
         self.name_context = NameContext::Sub;
-        let result = self.visit_statement_nodes(&s.body);
+        let result = self.visit_statements(&s.body);
         self.name_context = NameContext::Global;
         result
     }
@@ -41,20 +40,20 @@ impl PostConversionLinter for BuiltInLinter {
     fn visit_built_in_sub_call(
         &mut self,
         built_in_sub: &BuiltInSub,
-        args: &ExpressionNodes,
-    ) -> Result<(), QErrorNode> {
+        args: &Expressions,
+    ) -> Result<(), QErrorPos> {
         self.visit_expressions(args)?;
         lint_sub_call(built_in_sub, args, self.name_context)
     }
 
-    fn visit_expression(&mut self, expr_node: &ExpressionNode) -> Result<(), QErrorNode> {
-        let pos = expr_node.pos();
-        match &expr_node.element {
+    fn visit_expression(&mut self, expr_pos: &ExpressionPos) -> Result<(), QErrorPos> {
+        let pos = expr_pos.pos();
+        match &expr_pos.element {
             Expression::BuiltInFunctionCall(built_in_function, args) => {
                 for x in args {
                     self.visit_expression(x)?;
                 }
-                lint_function_call(built_in_function, args).patch_err_pos(pos)
+                lint_function_call(built_in_function, args).patch_err_pos(&pos)
             }
             Expression::BinaryExpression(_, left, right, _) => {
                 self.visit_expression(left)?;

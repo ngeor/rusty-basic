@@ -1,10 +1,10 @@
 use crate::converter::context::Context;
 use crate::converter::traits::Convertible;
 use rusty_common::*;
-use rusty_parser::{PrintArg, PrintNode};
+use rusty_parser::{Print, PrintArg};
 
-impl Convertible for PrintNode {
-    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
+impl Convertible for Print {
+    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorPos> {
         Ok(Self {
             format_string: self.format_string.convert_in_default(ctx)?,
             args: self.args.convert(ctx)?,
@@ -14,7 +14,7 @@ impl Convertible for PrintNode {
 }
 
 impl Convertible for PrintArg {
-    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
+    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorPos> {
         match self {
             Self::Expression(e) => e.convert_in_default(ctx).map(Self::Expression),
             _ => Ok(self),

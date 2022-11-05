@@ -23,7 +23,7 @@ mod tests {
     fn test_kill_edge_cases() {
         assert_eq!(
             interpret_err(r#"KILL "KILL2.TXT""#),
-            ErrorEnvelope::Pos(QError::FileNotFound, Location::new(1, 1))
+            ErrorEnvelope::Pos(QError::FileNotFound, Position::new(1, 1))
         );
     }
 }

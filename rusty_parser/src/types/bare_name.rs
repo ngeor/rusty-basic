@@ -1,8 +1,8 @@
 use crate::pc::Token;
-use rusty_common::{CaseInsensitiveString, Locatable};
+use rusty_common::{CaseInsensitiveString, Positioned};
 
 pub type BareName = CaseInsensitiveString;
-pub type BareNameNode = Locatable<BareName>;
+pub type BareNamePos = Positioned<BareName>;
 
 impl From<Token> for BareName {
     fn from(token: Token) -> Self {

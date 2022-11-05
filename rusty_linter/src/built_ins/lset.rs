@@ -1,8 +1,8 @@
 use crate::arg_validation::ArgValidation;
-use rusty_common::{QError, QErrorNode, ToErrorEnvelopeNoPos};
-use rusty_parser::ExpressionNodes;
+use rusty_common::{QError, QErrorPos, WithErrNoPos};
+use rusty_parser::Expressions;
 
-pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
+pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
     // the parser should produce 3 arguments:
     // the variable name, as a string literal
     // the variable itself, a ByRef string variable

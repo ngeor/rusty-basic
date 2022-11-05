@@ -13,17 +13,17 @@ pub struct MainContext {
     functions: FunctionContext,
     subs: SubContext,
     global_constants: ConstantMap,
-    declaration_pos: Location,
+    declaration_pos: Position,
 }
 
-pub fn pre_lint_program(program: &ProgramNode) -> Result<PreLinterResult, QErrorNode> {
+pub fn pre_lint_program(program: &Program) -> Result<PreLinterResult, QErrorPos> {
     let mut ctx = MainContext {
         resolver: TypeResolverImpl::new(),
         user_defined_types: Default::default(),
         functions: FunctionContext::new(),
         subs: SubContext::new(),
         global_constants: Default::default(),
-        declaration_pos: Location::start(),
+        declaration_pos: Position::start(),
     };
     ctx.on_program(program)?;
     ctx.functions.post_visit()?;
@@ -41,29 +41,29 @@ pub fn pre_lint_program(program: &ProgramNode) -> Result<PreLinterResult, QError
 // FUNCTION/SUB -> depends on resolver for resolving bare names and on user_defined_types to ensure types exist
 
 impl MainContext {
-    fn on_program(&mut self, program: &ProgramNode) -> Result<(), QErrorNode> {
-        for Locatable { element, pos } in program {
+    fn on_program(&mut self, program: &Program) -> Result<(), QErrorPos> {
+        for Positioned { element, pos } in program {
             self.declaration_pos = *pos;
             match element {
-                TopLevelToken::DefType(def_type) => {
+                GlobalStatement::DefType(def_type) => {
                     self.on_def_type(def_type);
                 }
-                TopLevelToken::FunctionDeclaration(name, params) => {
+                GlobalStatement::FunctionDeclaration(name, params) => {
                     self.on_function_declaration(name, params)?;
                 }
-                TopLevelToken::FunctionImplementation(f) => {
+                GlobalStatement::FunctionImplementation(f) => {
                     self.on_function_implementation(f)?;
                 }
-                TopLevelToken::Statement(s) => {
+                GlobalStatement::Statement(s) => {
                     self.on_statement(s)?;
                 }
-                TopLevelToken::SubDeclaration(name, params) => {
+                GlobalStatement::SubDeclaration(name, params) => {
                     self.on_sub_declaration(name, params)?;
                 }
-                TopLevelToken::SubImplementation(s) => {
+                GlobalStatement::SubImplementation(s) => {
                     self.on_sub_implementation(s)?;
                 }
-                TopLevelToken::UserDefinedType(user_defined_type) => {
+                GlobalStatement::UserDefinedType(user_defined_type) => {
                     self.on_user_defined_type(user_defined_type)
                         .patch_err_pos(pos)?;
                 }
@@ -78,28 +78,28 @@ impl MainContext {
 
     fn on_function_declaration(
         &mut self,
-        name: &NameNode,
-        params: &ParamNameNodes,
-    ) -> Result<(), QErrorNode> {
-        let param_types: ResolvedParamTypes = self.on_param_name_nodes(params)?;
+        name: &NamePos,
+        params: &Parameters,
+    ) -> Result<(), QErrorPos> {
+        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
         let bare_name = name.element.bare_name();
         let signature = name.element.to_signature(&self.resolver, param_types);
         self.functions
             .add_declaration(bare_name, signature, self.declaration_pos)
-            .with_err_at(name.pos())
+            .with_err_at(name)
     }
 
-    fn on_function_implementation(&mut self, f: &FunctionImplementation) -> Result<(), QErrorNode> {
+    fn on_function_implementation(&mut self, f: &FunctionImplementation) -> Result<(), QErrorPos> {
         let FunctionImplementation { name, params, .. } = f;
-        let param_types: ResolvedParamTypes = self.on_param_name_nodes(params)?;
+        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
         let bare_name = name.element.bare_name();
         let signature = name.element.to_signature(&self.resolver, param_types);
         self.functions
             .add_implementation(bare_name, signature, self.declaration_pos)
-            .with_err_at(name.pos())
+            .with_err_at(name)
     }
 
-    fn on_statement(&mut self, s: &Statement) -> Result<(), QErrorNode> {
+    fn on_statement(&mut self, s: &Statement) -> Result<(), QErrorPos> {
         match s {
             Statement::Const(name, expr) => self.on_const(name, expr),
             _ => Ok(()),
@@ -108,31 +108,31 @@ impl MainContext {
 
     fn on_sub_declaration(
         &mut self,
-        name: &BareNameNode,
-        params: &ParamNameNodes,
-    ) -> Result<(), QErrorNode> {
-        let param_types: ResolvedParamTypes = self.on_param_name_nodes(params)?;
+        name: &BareNamePos,
+        params: &Parameters,
+    ) -> Result<(), QErrorPos> {
+        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
         let bare_name = &name.element;
         let signature = bare_name.to_signature(&self.resolver, param_types);
         self.subs
             .add_declaration(bare_name, signature, self.declaration_pos)
-            .with_err_at(name.pos())
+            .with_err_at(name)
     }
 
-    fn on_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorNode> {
+    fn on_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorPos> {
         let SubImplementation { name, params, .. } = s;
-        let param_types: ResolvedParamTypes = self.on_param_name_nodes(params)?;
+        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
         let bare_name = &name.element;
         let signature = bare_name.to_signature(&self.resolver, param_types);
         self.subs
             .add_implementation(bare_name, signature, self.declaration_pos)
-            .with_err_at(name.pos())
+            .with_err_at(name)
     }
 
     fn on_user_defined_type(
         &mut self,
         user_defined_type: &UserDefinedType,
-    ) -> Result<(), QErrorNode> {
+    ) -> Result<(), QErrorPos> {
         super::user_defined_type_rules::user_defined_type(
             &mut self.user_defined_types,
             &self.global_constants,
@@ -140,30 +140,27 @@ impl MainContext {
         )
     }
 
-    fn on_const(&mut self, name: &NameNode, expr: &ExpressionNode) -> Result<(), QErrorNode> {
+    fn on_const(&mut self, name: &NamePos, expr: &ExpressionPos) -> Result<(), QErrorPos> {
         global_const(&mut self.global_constants, name, expr)
     }
 
-    fn on_param_name_nodes(
-        &self,
-        param_name_nodes: &ParamNameNodes,
-    ) -> Result<ResolvedParamTypes, QErrorNode> {
-        param_name_nodes
+    fn on_parameters(&self, parameters: &Parameters) -> Result<ResolvedParamTypes, QErrorPos> {
+        parameters
             .iter()
-            .map(|p| self.on_param_name_node(p))
+            .map(|p| self.on_parameter_pos(p))
             .collect()
     }
 
-    fn on_param_name_node(
+    fn on_parameter_pos(
         &self,
-        param_name_node: &ParamNameNode,
-    ) -> Result<ResolvedParamType, QErrorNode> {
-        self.on_param_name(&param_name_node.element)
-            .with_err_at(param_name_node)
+        parameter_pos: &ParameterPos,
+    ) -> Result<ResolvedParamType, QErrorPos> {
+        self.on_parameter(&parameter_pos.element)
+            .with_err_at(parameter_pos)
     }
 
-    fn on_param_name(&self, param_name: &ParamName) -> Result<ResolvedParamType, QError> {
-        self.resolve_param_type(&param_name.bare_name, &param_name.var_type)
+    fn on_parameter(&self, parameter: &Parameter) -> Result<ResolvedParamType, QError> {
+        self.resolve_param_type(&parameter.bare_name, &parameter.var_type)
     }
 
     fn resolve_param_type(

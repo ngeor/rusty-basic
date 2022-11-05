@@ -12,26 +12,26 @@ pub enum Expression {
     IntegerLiteral(i32),
     LongLiteral(i64),
     Variable(Name, VariableInfo),
-    FunctionCall(Name, ExpressionNodes),
+    FunctionCall(Name, Expressions),
     // not a parser type, only at linting can we determine
     // if it's a FunctionCall or an ArrayElement
     ArrayElement(
         // the name of the array (unqualified only for user defined types)
         Name,
         // the array indices
-        ExpressionNodes,
+        Expressions,
         // the type of the elements (shared refers to the array itself)
         VariableInfo,
     ),
-    BuiltInFunctionCall(BuiltInFunction, ExpressionNodes),
+    BuiltInFunctionCall(BuiltInFunction, Expressions),
     BinaryExpression(
         Operator,
-        Box<ExpressionNode>,
-        Box<ExpressionNode>,
+        Box<ExpressionPos>,
+        Box<ExpressionPos>,
         ExpressionType,
     ),
-    UnaryExpression(UnaryOperator, Box<ExpressionNode>),
-    Parenthesis(Box<ExpressionNode>),
+    UnaryExpression(UnaryOperator, Box<ExpressionPos>),
+    Parenthesis(Box<ExpressionPos>),
 
     /// A property of a user defined type
     ///
@@ -46,8 +46,8 @@ pub enum Expression {
     Property(Box<Expression>, Name, ExpressionType),
 }
 
-pub type ExpressionNode = Locatable<Expression>;
-pub type ExpressionNodes = Vec<ExpressionNode>;
+pub type ExpressionPos = Positioned<Expression>;
+pub type Expressions = Vec<ExpressionPos>;
 
 impl From<f32> for Expression {
     fn from(f: f32) -> Expression {
@@ -93,16 +93,16 @@ impl From<FileHandle> for Expression {
 
 impl Expression {
     #[cfg(test)]
-    pub fn func(s: &str, args: ExpressionNodes) -> Self {
+    pub fn func(s: &str, args: Expressions) -> Self {
         let name: Name = s.into();
         Expression::FunctionCall(name, args)
     }
 
-    fn unary_minus(child_node: ExpressionNode) -> Self {
-        let Locatable {
+    fn unary_minus(child_pos: ExpressionPos) -> Self {
+        let Positioned {
             element: child,
             pos,
-        } = child_node;
+        } = child_pos;
         match child {
             Self::SingleLiteral(n) => Self::SingleLiteral(-n),
             Self::DoubleLiteral(n) => Self::DoubleLiteral(-n),
@@ -122,7 +122,7 @@ impl Expression {
             }
             _ => Self::UnaryExpression(
                 UnaryOperator::Minus,
-                Box::new(child.simplify_unary_minus_literals().at(pos)),
+                Box::new(child.simplify_unary_minus_literals().at_pos(pos)),
             ),
         }
     }
@@ -130,19 +130,19 @@ impl Expression {
     pub fn simplify_unary_minus_literals(self) -> Self {
         match self {
             Self::UnaryExpression(op, child) => {
-                let x: ExpressionNode = *child;
+                let x: ExpressionPos = *child;
                 match op {
                     UnaryOperator::Minus => Self::unary_minus(x),
-                    _ => Self::UnaryExpression(op, Self::simplify_unary_minus_node(x)),
+                    _ => Self::UnaryExpression(op, Self::simplify_unary_minus_pos(x)),
                 }
             }
             Self::BinaryExpression(op, left, right, old_expression_type) => Self::BinaryExpression(
                 op,
-                Self::simplify_unary_minus_node(*left),
-                Self::simplify_unary_minus_node(*right),
+                Self::simplify_unary_minus_pos(*left),
+                Self::simplify_unary_minus_pos(*right),
                 old_expression_type,
             ),
-            Self::Parenthesis(child) => Self::Parenthesis(Self::simplify_unary_minus_node(*child)),
+            Self::Parenthesis(child) => Self::Parenthesis(Self::simplify_unary_minus_pos(*child)),
             Self::FunctionCall(name, args) => Self::FunctionCall(
                 name,
                 args.into_iter()
@@ -153,10 +153,10 @@ impl Expression {
         }
     }
 
-    fn simplify_unary_minus_node(child: ExpressionNode) -> Box<ExpressionNode> {
-        let Locatable { element, pos } = child;
+    fn simplify_unary_minus_pos(child: ExpressionPos) -> Box<ExpressionPos> {
+        let Positioned { element, pos } = child;
         let simplified = element.simplify_unary_minus_literals();
-        Box::new(simplified.at(pos))
+        Box::new(simplified.at_pos(pos))
     }
 
     /// Returns the name of this `Variable` or `Property` expression.
@@ -229,19 +229,19 @@ impl Expression {
 }
 
 // TODO #[deprecated]
-pub trait ExpressionNodeTrait {
+pub trait ExpressionPosTrait {
     fn flip_binary(self) -> Self;
 
     fn simplify_unary_minus_literals(self) -> Self;
 
-    fn apply_priority_order(self, right_side: Self, op: Operator, pos: Location) -> Self;
+    fn apply_priority_order(self, right_side: Self, op: Operator, pos: Position) -> Self;
 
-    fn binary_expr(self, op: Operator, right_side: Self, pos: Location) -> Self;
+    fn binary_expr(self, op: Operator, right_side: Self, pos: Position) -> Self;
 
-    fn apply_unary_priority_order(self, op: UnaryOperator, op_pos: Location) -> Self;
+    fn apply_unary_priority_order(self, op: UnaryOperator, op_pos: Position) -> Self;
 }
 
-impl ExpressionNodeTrait for ExpressionNode {
+impl ExpressionPosTrait for ExpressionPos {
     /// Flips a binary expression.
     ///
     /// `A AND B OR C` would be parsed as `A AND (B OR C)` but needs to be `(A AND B) OR C`.
@@ -267,18 +267,18 @@ impl ExpressionNodeTrait for ExpressionNode {
         self.map(|x| x.simplify_unary_minus_literals())
     }
 
-    fn apply_priority_order(self, right_side: Self, op: Operator, pos: Location) -> Self {
+    fn apply_priority_order(self, right_side: Self, op: Operator, pos: Position) -> Self {
         self.binary_expr(op, right_side, pos)
     }
 
-    fn binary_expr(self, op: Operator, right_side: Self, pos: Location) -> Self {
+    fn binary_expr(self, op: Operator, right_side: Self, pos: Position) -> Self {
         let result = Expression::BinaryExpression(
             op,
             Box::new(self),
             Box::new(right_side),
             ExpressionType::Unresolved,
         )
-        .at(pos);
+        .at_pos(pos);
         if result.should_flip_binary() {
             result.flip_binary()
         } else {
@@ -289,20 +289,20 @@ impl ExpressionNodeTrait for ExpressionNode {
     /// Applies the unary operator priority order.
     ///
     /// `NOT A AND B` would be parsed as `NOT (A AND B)`, needs to flip into `(NOT A) AND B`
-    fn apply_unary_priority_order(self, op: UnaryOperator, op_pos: Location) -> Self {
+    fn apply_unary_priority_order(self, op: UnaryOperator, op_pos: Position) -> Self {
         if self.should_flip_unary(op) {
-            let Locatable { element, pos } = self;
+            let Positioned { element, pos } = self;
             match element {
                 Expression::BinaryExpression(r_op, r_left, r_right, _) => {
                     // apply the unary operator to the left of the binary expr
-                    let new_left = Expression::UnaryExpression(op, r_left).at(op_pos);
+                    let new_left = Expression::UnaryExpression(op, r_left).at_pos(op_pos);
                     // and nest it as left inside a binary expr
                     new_left.binary_expr(r_op, *r_right, pos)
                 }
                 _ => panic!("should_flip_unary internal error"),
             }
         } else {
-            Expression::UnaryExpression(op, Box::new(self)).at(op_pos)
+            Expression::UnaryExpression(op, Box::new(self)).at_pos(op_pos)
         }
     }
 }
@@ -348,13 +348,13 @@ impl HasExpressionType for Expression {
     }
 }
 
-impl HasExpressionType for ExpressionNode {
+impl HasExpressionType for ExpressionPos {
     fn expression_type(&self) -> ExpressionType {
         self.element.expression_type()
     }
 }
 
-impl HasExpressionType for Box<ExpressionNode> {
+impl HasExpressionType for Box<ExpressionPos> {
     fn expression_type(&self) -> ExpressionType {
         self.as_ref().expression_type()
     }
@@ -411,7 +411,7 @@ impl ExpressionTrait for Expression {
     }
 }
 
-impl ExpressionTrait for ExpressionNode {
+impl ExpressionTrait for ExpressionPos {
     // needed by parser
     fn is_parenthesis(&self) -> bool {
         self.element.is_parenthesis()
@@ -430,7 +430,7 @@ impl ExpressionTrait for ExpressionNode {
     }
 }
 
-impl ExpressionTrait for Box<ExpressionNode> {
+impl ExpressionTrait for Box<ExpressionPos> {
     fn is_parenthesis(&self) -> bool {
         self.as_ref().is_parenthesis()
     }

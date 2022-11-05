@@ -3,8 +3,8 @@ use crate::converter::expr_rules::*;
 pub fn convert(
     ctx: &mut PosExprState,
     unary_operator: UnaryOperator,
-    child: ExpressionNode,
-) -> Result<Expression, QErrorNode> {
+    child: ExpressionPos,
+) -> Result<Expression, QErrorPos> {
     // convert child (recursion)
     let converted_child = child.convert(ctx)?;
     // ensure operator applies to converted expr

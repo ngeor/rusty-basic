@@ -1,5 +1,5 @@
 use crate::types::{BareName, ExpressionType, HasExpressionType, QualifiedName, TypeQualifier};
-use rusty_common::{Locatable, QError};
+use rusty_common::{Positioned, QError};
 #[cfg(test)]
 use std::convert::TryFrom;
 
@@ -147,8 +147,8 @@ impl HasExpressionType for Name {
     }
 }
 
-/// A [Name] with location information.
-pub type NameNode = Locatable<Name>;
+/// A [Name] with position information.
+pub type NamePos = Positioned<Name>;
 
 #[cfg(test)]
 mod tests {

@@ -1,17 +1,17 @@
 use crate::pc::Token;
 use crate::*;
-use rusty_common::Locatable;
+use rusty_common::Positioned;
 
-pub type ParamName = VarName<ParamType>;
-pub type ParamNameNode = Locatable<ParamName>;
-pub type ParamNameNodes = Vec<ParamNameNode>;
+pub type Parameter = TypedName<ParamType>;
+pub type ParameterPos = Positioned<Parameter>;
+pub type Parameters = Vec<ParameterPos>;
 
 // same as dim minus the "x as string * 5" and the array dimensions
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ParamType {
     Bare,
     BuiltIn(TypeQualifier, BuiltInStyle),
-    UserDefined(BareNameNode),
+    UserDefined(BareNamePos),
     Array(Box<ParamType>),
 }
 
@@ -46,13 +46,13 @@ impl VarTypeToArray for ParamType {
 }
 
 impl VarTypeNewUserDefined for ParamType {
-    fn new_user_defined(name_node: BareNameNode) -> Self {
-        Self::UserDefined(name_node)
+    fn new_user_defined(bare_name_pos: BareNamePos) -> Self {
+        Self::UserDefined(bare_name_pos)
     }
 }
 
 impl VarTypeToUserDefinedRecursively for ParamType {
-    fn as_user_defined_recursively(&self) -> Option<&BareNameNode> {
+    fn as_user_defined_recursively(&self) -> Option<&BareNamePos> {
         match self {
             Self::UserDefined(n) => Some(n),
             Self::Array(e) => e.as_user_defined_recursively(),
@@ -65,7 +65,7 @@ impl HasExpressionType for ParamType {
     fn expression_type(&self) -> ExpressionType {
         match self {
             Self::BuiltIn(qualifier, _) => ExpressionType::BuiltIn(*qualifier),
-            Self::UserDefined(Locatable { element, .. }) => {
+            Self::UserDefined(Positioned { element, .. }) => {
                 ExpressionType::UserDefined(element.clone())
             }
             Self::Array(boxed_element_type) => {

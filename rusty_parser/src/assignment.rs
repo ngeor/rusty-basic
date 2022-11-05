@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
+    use crate::assert_global_assignment;
     use crate::assert_parser_err;
-    use crate::assert_top_level_assignment;
     use crate::test_utils::*;
     use crate::*;
     use rusty_common::*;
@@ -15,23 +15,23 @@ mod tests {
             #[test]
             fn test_assign_unqualified_variable_no_dots() {
                 let input = "A = 42";
-                assert_top_level_assignment!(input, Expression::var_unresolved("A"));
+                assert_global_assignment!(input, Expression::var_unresolved("A"));
             }
 
             #[test]
             fn test_whitespace_around_equals_is_optional() {
                 let var_name = "A";
                 let value = 42;
-                assert_top_level_assignment!(&format!("{} = {}", var_name, value), var_name, value);
-                assert_top_level_assignment!(&format!("{}={}", var_name, value), var_name, value);
-                assert_top_level_assignment!(&format!("{}= {}", var_name, value), var_name, value);
-                assert_top_level_assignment!(&format!("{} ={}", var_name, value), var_name, value);
+                assert_global_assignment!(&format!("{} = {}", var_name, value), var_name, value);
+                assert_global_assignment!(&format!("{}={}", var_name, value), var_name, value);
+                assert_global_assignment!(&format!("{}= {}", var_name, value), var_name, value);
+                assert_global_assignment!(&format!("{} ={}", var_name, value), var_name, value);
             }
 
             #[test]
             fn test_assign_unqualified_variable_no_dots_array() {
                 let input = "A(1) = 42";
-                assert_top_level_assignment!(
+                assert_global_assignment!(
                     input,
                     Expression::FunctionCall("A".into(), vec![1.as_lit_expr(1, 3)])
                 );
@@ -44,7 +44,7 @@ mod tests {
             #[test]
             fn test_potential_property() {
                 let input = "A.B = 42";
-                assert_top_level_assignment!(
+                assert_global_assignment!(
                     input,
                     Expression::Property(
                         Box::new(Expression::var_unresolved("A")),
@@ -57,13 +57,13 @@ mod tests {
             #[test]
             fn test_not_property_due_to_consecutive_dots() {
                 let input = "A..B = 42";
-                assert_top_level_assignment!(input, Expression::var_unresolved("A..B"));
+                assert_global_assignment!(input, Expression::var_unresolved("A..B"));
             }
 
             #[test]
             fn test_assign_array_property() {
                 let input = "A(1).Value = 42";
-                assert_top_level_assignment!(
+                assert_global_assignment!(
                     input,
                     Expression::Property(
                         Box::new(Expression::FunctionCall(
@@ -78,7 +78,7 @@ mod tests {
 
             #[test]
             fn test_max_length() {
-                assert_top_level_assignment!(
+                assert_global_assignment!(
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM = 42",
                     Expression::Property(
                         Box::new(Expression::var_unresolved("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
@@ -99,13 +99,13 @@ mod tests {
             #[test]
             fn test_assign_qualified_variable_no_dots() {
                 let input = "A% = 42";
-                assert_top_level_assignment!(input, Expression::var_unresolved("A%"));
+                assert_global_assignment!(input, Expression::var_unresolved("A%"));
             }
 
             #[test]
             fn test_assign_qualified_variable_no_dots_array() {
                 let input = "A%(1) = 42";
-                assert_top_level_assignment!(
+                assert_global_assignment!(
                     input,
                     Expression::FunctionCall("A%".into(), vec![1.as_lit_expr(1, 4)])
                 );
@@ -118,7 +118,7 @@ mod tests {
             #[test]
             fn test_assign_array_property() {
                 let input = "A(1).Value% = 42";
-                assert_top_level_assignment!(
+                assert_global_assignment!(
                     input,
                     Expression::Property(
                         Box::new(Expression::FunctionCall(
@@ -133,7 +133,7 @@ mod tests {
 
             #[test]
             fn test_max_length() {
-                assert_top_level_assignment!(
+                assert_global_assignment!(
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLM% = 42",
                     Expression::Property(
                         Box::new(Expression::var_unresolved("ABCDEFGHIJKLMNOPQRSTUVWXYZ")),
@@ -145,7 +145,7 @@ mod tests {
 
             #[test]
             fn test_max_length_variable_with_trailing_dot() {
-                assert_top_level_assignment!(
+                assert_global_assignment!(
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLM.% = 42",
                     Expression::Variable(
                         "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLM.%".into(),
@@ -162,10 +162,10 @@ mod tests {
         let values = [1, -1, 0, 42];
         for name in &names {
             for value in &values {
-                assert_top_level_assignment!(&format!("{} = {}", name, value), *name, *value);
-                assert_top_level_assignment!(&format!("{}={}", name, value), *name, *value);
-                assert_top_level_assignment!(&format!("{} ={}", name, value), *name, *value);
-                assert_top_level_assignment!(&format!("{}= {}", name, value), *name, *value);
+                assert_global_assignment!(&format!("{} = {}", name, value), *name, *value);
+                assert_global_assignment!(&format!("{}={}", name, value), *name, *value);
+                assert_global_assignment!(&format!("{} ={}", name, value), *name, *value);
+                assert_global_assignment!(&format!("{}= {}", name, value), *name, *value);
             }
         }
     }
@@ -189,7 +189,7 @@ mod tests {
 
     #[test]
     fn test_numeric_assignment_to_keyword_plus_number_allowed() {
-        assert_top_level_assignment!("FOR42 = 42", "FOR42", 42);
+        assert_global_assignment!("FOR42 = 42", "FOR42", 42);
     }
 
     #[test]
@@ -199,12 +199,12 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                TopLevelToken::Statement(Statement::Assignment(
+                GlobalStatement::Statement(Statement::Assignment(
                     Expression::var_unresolved("ANSWER"),
                     42.as_lit_expr(1, 10)
                 ))
                 .at_rc(1, 1),
-                TopLevelToken::Statement(Statement::Comment(
+                GlobalStatement::Statement(Statement::Comment(
                     " the answer to life, universe, everything".to_string(),
                 ))
                 .at_rc(1, 13)

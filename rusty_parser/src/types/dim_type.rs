@@ -1,17 +1,17 @@
 use crate::{
-    ArrayDimensions, BareNameNode, BuiltInStyle, Expression, ExpressionNode, ExpressionType,
+    ArrayDimensions, BareNamePos, BuiltInStyle, Expression, ExpressionPos, ExpressionType,
     HasExpressionType, TypeQualifier, VarTypeIsExtended, VarTypeNewBuiltInCompact,
     VarTypeNewBuiltInExtended, VarTypeNewUserDefined, VarTypeQualifier, VarTypeToArray,
     VarTypeToUserDefinedRecursively,
 };
-use rusty_common::{AtLocation, Location};
+use rusty_common::{AtPos, Position};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum DimType {
     Bare,
     BuiltIn(TypeQualifier, BuiltInStyle),
-    FixedLengthString(ExpressionNode, u16),
-    UserDefined(BareNameNode),
+    FixedLengthString(ExpressionPos, u16),
+    UserDefined(BareNamePos),
     Array(ArrayDimensions, Box<DimType>),
 }
 
@@ -46,13 +46,13 @@ impl VarTypeToArray for DimType {
 }
 
 impl VarTypeNewUserDefined for DimType {
-    fn new_user_defined(name_node: BareNameNode) -> Self {
-        Self::UserDefined(name_node)
+    fn new_user_defined(bare_name_pos: BareNamePos) -> Self {
+        Self::UserDefined(bare_name_pos)
     }
 }
 
 impl VarTypeToUserDefinedRecursively for DimType {
-    fn as_user_defined_recursively(&self) -> Option<&BareNameNode> {
+    fn as_user_defined_recursively(&self) -> Option<&BareNamePos> {
         match self {
             Self::UserDefined(n) => Some(n),
             Self::Array(_, e) => e.as_user_defined_recursively(),
@@ -62,8 +62,8 @@ impl VarTypeToUserDefinedRecursively for DimType {
 }
 
 impl DimType {
-    pub fn fixed_length_string(len: u16, pos: Location) -> Self {
-        DimType::FixedLengthString(Expression::IntegerLiteral(len as i32).at(pos), len)
+    pub fn fixed_length_string(len: u16, pos: Position) -> Self {
+        DimType::FixedLengthString(Expression::IntegerLiteral(len as i32).at_pos(pos), len)
     }
 }
 

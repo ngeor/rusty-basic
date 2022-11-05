@@ -1,9 +1,9 @@
 use crate::arg_validation::ArgValidation;
 use crate::CanCastTo;
-use rusty_common::{QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
-use rusty_parser::{ExpressionNodes, TypeQualifier};
+use rusty_common::{QError, QErrorPos, WithErrAt, WithErrNoPos};
+use rusty_parser::{Expressions, TypeQualifier};
 
-pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
+pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
     if args.len() != 2 {
         Err(QError::ArgumentCountMismatch).with_err_no_pos()
     } else {

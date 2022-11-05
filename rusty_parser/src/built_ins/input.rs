@@ -12,8 +12,8 @@ pub fn parse() -> impl Parser<Output = Statement> {
         whitespace().no_incomplete(),
         opt_file_handle_comma_p(),
         csv_expressions_non_opt("Expected: #file-number or variable"),
-        |_, _, opt_loc_file_number, variables| {
-            let mut args: ExpressionNodes = encode_opt_file_handle_arg(opt_loc_file_number);
+        |_, _, opt_file_number_pos, variables| {
+            let mut args: Expressions = encode_opt_file_handle_arg(opt_file_number_pos);
             args.extend(variables);
             Statement::BuiltInSubCall(BuiltInSub::Input, args)
         },

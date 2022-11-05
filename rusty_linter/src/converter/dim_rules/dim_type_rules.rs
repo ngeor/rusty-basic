@@ -11,7 +11,7 @@ pub fn on_dim_type<'a, 'b>(
     dim_type: DimType,
     bare_name: &BareName,
     ctx: &mut DimNameState<'a, 'b>,
-) -> Result<DimType, QErrorNode> {
+) -> Result<DimType, QErrorPos> {
     match dim_type {
         DimType::Bare => bare_to_dim_type(ctx, bare_name).with_err_no_pos(),
         DimType::BuiltIn(q, built_in_style) => {
@@ -87,8 +87,8 @@ fn require_extended_can_be_defined(ctx: &Context, bare_name: &BareName) -> Resul
 fn fixed_length_string_to_dim_type(
     ctx: &mut Context,
     bare_name: &BareName,
-    length_expression: &ExpressionNode,
-) -> Result<DimType, QErrorNode> {
+    length_expression: &ExpressionPos,
+) -> Result<DimType, QErrorPos> {
     require_extended_can_be_defined(ctx, bare_name).with_err_no_pos()?;
     let string_length: u16 = resolve_string_length(ctx, length_expression)?;
     Ok(DimType::fixed_length_string(
@@ -100,7 +100,7 @@ fn fixed_length_string_to_dim_type(
 pub fn user_defined_to_dim_type<T: VarTypeNewUserDefined>(
     ctx: &mut Context,
     bare_name: &BareName,
-    user_defined_type: BareNameNode,
+    user_defined_type: BareNamePos,
 ) -> Result<T, QError> {
     require_extended_can_be_defined(ctx, bare_name)?;
     Ok(T::new_user_defined(user_defined_type))
@@ -111,7 +111,7 @@ fn array_to_dim_type<'a, 'b>(
     bare_name: &BareName,
     array_dimensions: ArrayDimensions,
     element_type: DimType,
-) -> Result<DimType, QErrorNode> {
+) -> Result<DimType, QErrorPos> {
     debug_assert!(match ctx.dim_context() {
         DimContext::Default => {
             !array_dimensions.is_empty()

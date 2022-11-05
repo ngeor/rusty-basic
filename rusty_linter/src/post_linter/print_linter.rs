@@ -1,21 +1,21 @@
 use super::post_conversion_linter::PostConversionLinter;
 use rusty_common::*;
-use rusty_parser::{ExpressionType, HasExpressionType, PrintArg, PrintNode, TypeQualifier};
+use rusty_parser::{ExpressionType, HasExpressionType, Print, PrintArg, TypeQualifier};
 
 pub struct PrintLinter;
 
 impl PostConversionLinter for PrintLinter {
-    fn visit_print_node(&mut self, print_node: &PrintNode) -> Result<(), QErrorNode> {
-        if let Some(f) = &print_node.format_string {
+    fn visit_print(&mut self, print: &Print) -> Result<(), QErrorPos> {
+        if let Some(f) = &print.format_string {
             if f.expression_type() != ExpressionType::BuiltIn(TypeQualifier::DollarString) {
                 return Err(QError::TypeMismatch).with_err_at(f);
             }
         }
-        for print_arg in &print_node.args {
-            if let PrintArg::Expression(expr_node) = print_arg {
-                let type_definition = expr_node.expression_type();
+        for print_arg in &print.args {
+            if let PrintArg::Expression(expr_pos) = print_arg {
+                let type_definition = expr_pos.expression_type();
                 if let ExpressionType::UserDefined(_) = type_definition {
-                    return Err(QError::TypeMismatch).with_err_at(expr_node);
+                    return Err(QError::TypeMismatch).with_err_at(expr_pos);
                 }
             }
         }

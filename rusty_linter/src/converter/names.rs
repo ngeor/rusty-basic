@@ -3,7 +3,7 @@ use crate::converter::types::Implicits;
 use crate::NameContext;
 use rusty_common::CaseInsensitiveString;
 use rusty_parser::{
-    BareName, BuiltInStyle, HasExpressionType, QualifiedNameNode, RedimInfo, TypeQualifier,
+    BareName, BuiltInStyle, HasExpressionType, QualifiedNamePos, RedimInfo, TypeQualifier,
     VarTypeIsExtended, VariableInfo,
 };
 use rusty_variant::Variant;
@@ -51,8 +51,8 @@ impl Names {
         Self::new(None, None)
     }
 
-    pub fn add_implicit(&mut self, name_node: QualifiedNameNode) {
-        self.implicits.push(name_node);
+    pub fn add_implicit(&mut self, name_pos: QualifiedNamePos) {
+        self.implicits.push(name_pos);
     }
 
     pub fn get_implicits(&mut self) -> &mut Implicits {

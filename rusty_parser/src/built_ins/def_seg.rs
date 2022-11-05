@@ -1,4 +1,4 @@
-use crate::expression::expression_node_p;
+use crate::expression::expression_pos_p;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::*;
@@ -8,20 +8,20 @@ pub fn parse() -> impl Parser<Output = Statement> {
     seq2(
         keyword_pair(Keyword::Def, Keyword::Seg),
         equal_sign_and_expression().allow_none(),
-        |_, opt_expr_node| {
-            Statement::BuiltInSubCall(BuiltInSub::DefSeg, opt_expr_node.into_iter().collect())
+        |_, opt_expr_pos| {
+            Statement::BuiltInSubCall(BuiltInSub::DefSeg, opt_expr_pos.into_iter().collect())
         },
     )
 }
 
-fn equal_sign_and_expression() -> impl Parser<Output = ExpressionNode> {
+fn equal_sign_and_expression() -> impl Parser<Output = ExpressionPos> {
     equal_sign()
-        .then_demand(expression_node_p().or_syntax_error("Expected expression after equal sign"))
+        .then_demand(expression_pos_p().or_syntax_error("Expected expression after equal sign"))
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::{DemandSingleStatement, ExpressionNodeLiteralFactory};
+    use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
     use crate::*;
 
     #[test]

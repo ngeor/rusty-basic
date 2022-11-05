@@ -2,28 +2,28 @@ use crate::converter::context::Context;
 use crate::converter::pos_context::PosContext;
 use crate::converter::traits::Convertible;
 use crate::converter::types::Implicits;
-use rusty_common::{AtLocation, HasLocation, Locatable, QErrorNode};
+use rusty_common::{AtPos, HasPos, Positioned, QErrorPos};
 use rusty_parser::{
-    DimName, FunctionImplementation, ProgramNode, Statement, StatementNodes, SubImplementation,
-    TopLevelToken, TopLevelTokenNode,
+    DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement,
+    Statements, SubImplementation,
 };
 
-impl Convertible for ProgramNode {
-    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
-        let mut result: ProgramNode = vec![];
-        for Locatable { element, pos } in self {
-            let top_level_vec = element.convert_in(ctx, pos)?;
-            result.extend(top_level_vec.into_iter());
+impl Convertible for Program {
+    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorPos> {
+        let mut result: Program = vec![];
+        for Positioned { element, pos } in self {
+            let global_statements = element.convert_in(ctx, pos)?;
+            result.extend(global_statements.into_iter());
         }
 
         // insert implicits at the top
         let mut implicits = Implicits::new();
         implicits.append(ctx.names.get_implicits());
-        let mut implicit_statements: ProgramNode = implicits
+        let mut implicit_statements: Program = implicits
             .into_iter()
-            .map(|Locatable { element, pos }| {
-                TopLevelToken::Statement(Statement::Dim(DimName::from(element).into_list(pos)))
-                    .at(pos)
+            .map(|Positioned { element, pos }| {
+                GlobalStatement::Statement(Statement::Dim(DimVar::from(element).into_list(pos)))
+                    .at_pos(pos)
             })
             .collect();
         implicit_statements.append(&mut result);
@@ -31,8 +31,8 @@ impl Convertible for ProgramNode {
     }
 }
 
-impl<'a> Convertible<PosContext<'a>, Vec<TopLevelTokenNode>> for TopLevelToken {
-    fn convert(self, ctx: &mut PosContext<'a>) -> Result<Vec<TopLevelTokenNode>, QErrorNode> {
+impl<'a> Convertible<PosContext<'a>, Vec<GlobalStatementPos>> for GlobalStatement {
+    fn convert(self, ctx: &mut PosContext<'a>) -> Result<Vec<GlobalStatementPos>, QErrorPos> {
         match self {
             Self::DefType(def_type) => {
                 ctx.resolver.set(&def_type);
@@ -42,9 +42,9 @@ impl<'a> Convertible<PosContext<'a>, Vec<TopLevelTokenNode>> for TopLevelToken {
             | Self::SubDeclaration(_, _)
             | Self::UserDefinedType(_) => Ok(vec![]),
             Self::FunctionImplementation(f) => on_function_implementation(f, ctx)
-                .map(|f| vec![Self::FunctionImplementation(f).at(ctx.pos())]),
+                .map(|f| vec![Self::FunctionImplementation(f).at_pos(ctx.pos())]),
             Self::SubImplementation(s) => on_sub_implementation(s, ctx)
-                .map(|s| vec![Self::SubImplementation(s).at(ctx.pos())]),
+                .map(|s| vec![Self::SubImplementation(s).at_pos(ctx.pos())]),
             Self::Statement(s) => on_statement(s, ctx),
         }
     }
@@ -53,9 +53,9 @@ impl<'a> Convertible<PosContext<'a>, Vec<TopLevelTokenNode>> for TopLevelToken {
 fn on_function_implementation(
     function_implementation: FunctionImplementation,
     ctx: &mut PosContext,
-) -> Result<FunctionImplementation, QErrorNode> {
+) -> Result<FunctionImplementation, QErrorPos> {
     let FunctionImplementation {
-        name: Locatable {
+        name: Positioned {
             element: unresolved_function_name,
             pos,
         },
@@ -66,7 +66,7 @@ fn on_function_implementation(
     let (resolved_function_name, resolved_params) =
         ctx.push_function_context(unresolved_function_name, params)?;
     let mapped = FunctionImplementation {
-        name: resolved_function_name.at(pos),
+        name: resolved_function_name.at_pos(pos),
         params: resolved_params,
         body: convert_block_hoisting_implicits(body, ctx)?,
         is_static,
@@ -77,7 +77,7 @@ fn on_function_implementation(
 fn on_sub_implementation(
     sub_implementation: SubImplementation,
     ctx: &mut PosContext,
-) -> Result<SubImplementation, QErrorNode> {
+) -> Result<SubImplementation, QErrorPos> {
     let SubImplementation {
         name,
         params,
@@ -104,18 +104,18 @@ fn on_sub_implementation(
 //      DIM A
 //      A = B + C
 fn convert_block_hoisting_implicits(
-    statements: StatementNodes,
+    statements: Statements,
     ctx: &mut Context,
-) -> Result<StatementNodes, QErrorNode> {
+) -> Result<Statements, QErrorPos> {
     let mut result = statements.convert(ctx)?;
     let implicits = ctx.pop_context();
-    let mut implicit_dim: StatementNodes = implicits
+    let mut implicit_dim: Statements = implicits
         .into_iter()
         .map(
-            |Locatable {
+            |Positioned {
                  element: q_name,
                  pos,
-             }| Statement::Dim(DimName::from(q_name).into_list(pos)).at(pos),
+             }| Statement::Dim(DimVar::from(q_name).into_list(pos)).at_pos(pos),
         )
         .collect();
 
@@ -126,12 +126,12 @@ fn convert_block_hoisting_implicits(
 fn on_statement(
     statement: Statement,
     ctx: &mut PosContext,
-) -> Result<Vec<TopLevelTokenNode>, QErrorNode> {
+) -> Result<Vec<GlobalStatementPos>, QErrorPos> {
     // a statement might be converted into multiple statements due to implicits
-    let statements = vec![statement.at(ctx.pos())];
+    let statements = vec![statement.at_pos(ctx.pos())];
     let statements = statements.convert(ctx)?;
     Ok(statements
         .into_iter()
-        .map(|statement_node| statement_node.map(TopLevelToken::Statement))
+        .map(|statement_pos| statement_pos.map(GlobalStatement::Statement))
         .collect())
 }

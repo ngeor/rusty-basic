@@ -1,13 +1,13 @@
 use crate::converter::dim_rules::dim_type_rules;
 use crate::converter::pos_context::PosContext;
-use rusty_common::{QErrorNode, ToErrorEnvelopeNoPos};
+use rusty_common::{QErrorPos, WithErrNoPos};
 use rusty_parser::{BareName, ParamType};
 
 pub fn on_param_type<'a>(
     dim_type: ParamType,
     bare_name: &BareName,
     ctx: &mut PosContext<'a>,
-) -> Result<ParamType, QErrorNode> {
+) -> Result<ParamType, QErrorPos> {
     match dim_type {
         ParamType::Bare => dim_type_rules::bare_to_dim_type(ctx, bare_name).with_err_no_pos(),
         ParamType::BuiltIn(q, built_in_style) => {
@@ -25,7 +25,7 @@ fn param_array_to_param_type<'a>(
     ctx: &mut PosContext<'a>,
     bare_name: &BareName,
     element_type: ParamType,
-) -> Result<ParamType, QErrorNode> {
+) -> Result<ParamType, QErrorPos> {
     let resolved_element_dim_type = on_param_type(element_type, bare_name, ctx)?;
     Ok(ParamType::Array(Box::new(resolved_element_dim_type)))
 }

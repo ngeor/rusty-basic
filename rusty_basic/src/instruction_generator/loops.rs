@@ -1,13 +1,13 @@
 use super::{Instruction, InstructionGenerator, Visitor};
 use rusty_common::*;
 use rusty_parser::{
-    ConditionalBlockNode, DoLoopConditionKind, DoLoopConditionPosition, DoLoopNode, Expression,
-    ExpressionNode, ForLoopNode, HasExpressionType, StatementNodes,
+    ConditionalBlock, DoLoop, DoLoopConditionKind, DoLoopConditionPosition, Expression,
+    ExpressionPos, ForLoop, HasExpressionType, Statements,
 };
 use rusty_variant::Variant;
 
 impl InstructionGenerator {
-    pub fn generate_while_instructions(&mut self, w: ConditionalBlockNode, pos: Location) {
+    pub fn generate_while_instructions(&mut self, w: ConditionalBlock, pos: Position) {
         self.label("while", pos);
         self.generate_expression_instructions(w.condition);
         self.jump_if_false("wend", pos);
@@ -17,18 +17,18 @@ impl InstructionGenerator {
         self.label("wend", pos);
     }
 
-    fn store_counter(&mut self, counter_var: &Expression, pos: Location) {
+    fn store_counter(&mut self, counter_var: &Expression, pos: Position) {
         self.generate_store_instructions(counter_var.clone(), pos);
     }
 
-    fn load_counter(&mut self, counter_var: &Expression, pos: Location) {
-        self.generate_expression_instructions(counter_var.clone().at(pos));
+    fn load_counter(&mut self, counter_var: &Expression, pos: Position) {
+        self.generate_expression_instructions(counter_var.clone().at_pos(pos));
     }
 
-    pub fn generate_for_loop_instructions(&mut self, f: ForLoopNode, pos: Location) {
-        let ForLoopNode {
+    pub fn generate_for_loop_instructions(&mut self, f: ForLoop, pos: Position) {
+        let ForLoop {
             variable_name:
-                Locatable {
+                Positioned {
                     element: counter_var_name,
                     ..
                 },
@@ -55,7 +55,7 @@ impl InstructionGenerator {
         // load the step expression
         match step {
             Some(s) => {
-                let step_location = s.pos();
+                let step_pos = s.pos();
                 // load 0 to B
                 self.push_load(Variant::VInteger(0), pos);
                 self.push(Instruction::CopyAToB, pos);
@@ -93,7 +93,7 @@ impl InstructionGenerator {
                 self.jump("out-of-for", pos);
                 // Zero step
                 self.label("zero", pos);
-                self.push(Instruction::Throw(QError::ForLoopZeroStep), step_location);
+                self.push(Instruction::Throw(QError::ForLoopZeroStep), step_pos);
                 self.label("out-of-for", pos);
             }
             None => {
@@ -114,9 +114,9 @@ impl InstructionGenerator {
     fn generate_for_loop_instructions_positive_or_negative_step(
         &mut self,
         counter_var_name: &Expression,
-        statements: StatementNodes,
+        statements: Statements,
         is_positive: bool,
-        pos: Location,
+        pos: Position,
     ) {
         let loop_label = if is_positive {
             "positive-loop"
@@ -157,13 +157,13 @@ impl InstructionGenerator {
         self.jump(loop_label, pos);
     }
 
-    pub fn generate_do_loop_instructions(&mut self, do_loop_node: DoLoopNode, pos: Location) {
-        let DoLoopNode {
+    pub fn generate_do_loop_instructions(&mut self, do_loop: DoLoop, pos: Position) {
+        let DoLoop {
             condition,
             statements,
             position,
             kind,
-        } = do_loop_node;
+        } = do_loop;
         match position {
             DoLoopConditionPosition::Top => {
                 self.generate_do_loop_top(condition, statements, kind, pos)
@@ -176,10 +176,10 @@ impl InstructionGenerator {
 
     fn generate_do_loop_top(
         &mut self,
-        condition: ExpressionNode,
-        statements: StatementNodes,
+        condition: ExpressionPos,
+        statements: Statements,
         kind: DoLoopConditionKind,
-        pos: Location,
+        pos: Position,
     ) {
         self.label("do", pos);
         self.generate_expression_instructions(condition);
@@ -195,10 +195,10 @@ impl InstructionGenerator {
 
     fn generate_do_loop_bottom(
         &mut self,
-        condition: ExpressionNode,
-        statements: StatementNodes,
+        condition: ExpressionPos,
+        statements: Statements,
         kind: DoLoopConditionKind,
-        pos: Location,
+        pos: Position,
     ) {
         self.label("do", pos);
         self.visit(statements);

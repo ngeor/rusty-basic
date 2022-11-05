@@ -4,7 +4,7 @@ use crate::interpreter::byte_size::QByteSize;
 use crate::interpreter::context::{PeekByte, PokeByte};
 use crate::interpreter::handlers::allocation::allocate_built_in;
 use rusty_common::{IndexedMap, QError};
-use rusty_parser::{BareName, DimName, DimType, Name, ParamName, ParamType, TypeQualifier};
+use rusty_parser::{BareName, DimType, DimVar, Name, ParamType, Parameter, TypeQualifier};
 use rusty_variant::{Variant, V_FALSE};
 
 #[derive(Debug)]
@@ -55,12 +55,12 @@ impl Variables {
             .insert(name, RuntimeVariableInfo::new(value, arg_path));
     }
 
-    pub fn insert_param(&mut self, param_name: ParamName, value: Variant) {
+    pub fn insert_param(&mut self, param_name: Parameter, value: Variant) {
         self.insert(Self::param_to_name(param_name), value);
     }
 
-    fn param_to_name(param_name: ParamName) -> Name {
-        let ParamName {
+    fn param_to_name(param_name: Parameter) -> Name {
+        let Parameter {
             bare_name,
             var_type: param_type,
         } = param_name;
@@ -69,7 +69,7 @@ impl Variables {
             ParamType::BuiltIn(q, _) => Name::Qualified(bare_name, q),
             ParamType::UserDefined(_) => Name::Bare(bare_name),
             ParamType::Array(boxed_param_type) => {
-                let dummy_param = ParamName::new(bare_name, *boxed_param_type);
+                let dummy_param = Parameter::new(bare_name, *boxed_param_type);
                 Self::param_to_name(dummy_param)
             }
         }
@@ -79,8 +79,8 @@ impl Variables {
         self.map.insert(name, RuntimeVariableInfo::new(value, None));
     }
 
-    pub fn insert_dim(&mut self, dim_name: DimName, value: Variant) {
-        let DimName {
+    pub fn insert_dim(&mut self, dim_name: DimVar, value: Variant) {
+        let DimVar {
             bare_name,
             var_type: dim_type,
         } = dim_name;
@@ -177,7 +177,7 @@ impl Variables {
         }
     }
 
-    pub fn get_by_dim_name(&self, dim_name: &DimName) -> Option<&Variant> {
+    pub fn get_by_dim_name(&self, dim_name: &DimVar) -> Option<&Variant> {
         self.get_by_dim_name_internal(&dim_name.bare_name, &dim_name.var_type)
     }
 

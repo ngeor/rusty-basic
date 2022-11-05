@@ -62,7 +62,7 @@ pub struct Interpreter<
     go_sub_address_stack: Vec<usize>,
 
     /// Holds the current call stack
-    stacktrace: Vec<Location>,
+    stacktrace: Vec<Position>,
 
     /// Holds a path to a variable
     var_path_stack: VecDeque<Path>,
@@ -188,7 +188,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
     fn interpret(
         &mut self,
         instruction_generator_result: InstructionGeneratorResult,
-    ) -> Result<(), QErrorNode> {
+    ) -> Result<(), QErrorPos> {
         let InstructionGeneratorResult {
             instructions,
             statement_addresses,
@@ -294,9 +294,9 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
         &mut self,
         i: usize,
         instruction: &Instruction,
-        pos: Location,
+        pos: Position,
         ctx: &mut InterpretOneContext,
-    ) -> Result<(), QErrorNode> {
+    ) -> Result<(), QErrorPos> {
         match instruction {
             Instruction::OnErrorGoTo(address_or_label) => {
                 ctx.error_handler = ErrorHandler::Address(address_or_label.address());
@@ -317,10 +317,10 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                 registers::load_into_a(self, v);
             }
             Instruction::Cast(q) => {
-                cast::cast(self, q).with_err_at(pos)?;
+                cast::cast(self, q).with_err_at(&pos)?;
             }
             Instruction::FixLength(l) => {
-                cast::fix_length_in_a(self, l).with_err_at(pos)?;
+                cast::fix_length_in_a(self, l).with_err_at(&pos)?;
             }
             Instruction::CopyAToB => {
                 registers::copy_a_to_b(self);
@@ -341,53 +341,53 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                 registers::copy_d_to_b(self);
             }
             Instruction::Plus => {
-                math::plus(self).with_err_at(pos)?;
+                math::plus(self).with_err_at(&pos)?;
             }
             Instruction::Minus => {
-                math::minus(self).with_err_at(pos)?;
+                math::minus(self).with_err_at(&pos)?;
             }
             Instruction::Multiply => {
-                math::multiply(self).with_err_at(pos)?;
+                math::multiply(self).with_err_at(&pos)?;
             }
             Instruction::Divide => {
-                math::divide(self).with_err_at(pos)?;
+                math::divide(self).with_err_at(&pos)?;
             }
             Instruction::Modulo => {
-                math::modulo(self).with_err_at(pos)?;
+                math::modulo(self).with_err_at(&pos)?;
             }
             Instruction::NegateA => {
-                logical::negate_a(self).with_err_at(pos)?;
+                logical::negate_a(self).with_err_at(&pos)?;
             }
             Instruction::NotA => {
-                logical::not_a(self).with_err_at(pos)?;
+                logical::not_a(self).with_err_at(&pos)?;
             }
             Instruction::Equal => {
-                comparison::equal(self).with_err_at(pos)?;
+                comparison::equal(self).with_err_at(&pos)?;
             }
             Instruction::NotEqual => {
-                comparison::not_equal(self).with_err_at(pos)?;
+                comparison::not_equal(self).with_err_at(&pos)?;
             }
             Instruction::Less => {
-                comparison::less(self).with_err_at(pos)?;
+                comparison::less(self).with_err_at(&pos)?;
             }
             Instruction::Greater => {
-                comparison::greater(self).with_err_at(pos)?;
+                comparison::greater(self).with_err_at(&pos)?;
             }
             Instruction::LessOrEqual => {
-                comparison::less_or_equal(self).with_err_at(pos)?;
+                comparison::less_or_equal(self).with_err_at(&pos)?;
             }
             Instruction::GreaterOrEqual => {
-                comparison::greater_or_equal(self).with_err_at(pos)?;
+                comparison::greater_or_equal(self).with_err_at(&pos)?;
             }
             Instruction::And => {
-                logical::and(self).with_err_at(pos)?;
+                logical::and(self).with_err_at(&pos)?;
             }
             Instruction::Or => {
-                logical::or(self).with_err_at(pos)?;
+                logical::or(self).with_err_at(&pos)?;
             }
             Instruction::JumpIfFalse(address_or_label) => {
                 let a = self.registers().get_a();
-                let is_true: bool = a.try_cast().with_err_at(pos)?;
+                let is_true: bool = a.try_cast().with_err_at(&pos)?;
                 if !is_true {
                     ctx.opt_next_index = Some(address_or_label.address());
                 }
@@ -463,11 +463,11 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                     });
                 }
                 _ => {
-                    return Err(QError::ReturnWithoutGoSub).with_err_at(pos);
+                    return Err(QError::ReturnWithoutGoSub).with_err_at(&pos);
                 }
             },
             Instruction::Resume => {
-                let last_error_address = self.take_last_error_address().with_err_at(pos)?;
+                let last_error_address = self.take_last_error_address().with_err_at(&pos)?;
                 ctx.opt_next_index = Some(
                     ctx.nearest_statement_finder
                         .find_current(last_error_address),
@@ -475,19 +475,19 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                 self.context.pop();
             }
             Instruction::ResumeNext => {
-                let last_error_address = self.take_last_error_address().with_err_at(pos)?;
+                let last_error_address = self.take_last_error_address().with_err_at(&pos)?;
                 ctx.opt_next_index =
                     Some(ctx.nearest_statement_finder.find_next(last_error_address));
                 self.context.pop();
             }
             Instruction::ResumeLabel(resume_label) => {
                 // not using the last error address but need to clear it which also clears the err code
-                self.take_last_error_address().with_err_at(pos)?;
+                self.take_last_error_address().with_err_at(&pos)?;
                 ctx.opt_next_index = Some(resume_label.address());
                 self.context.pop();
             }
             Instruction::Throw(interpreter_error) => {
-                return Err(interpreter_error.clone()).with_err_at(pos);
+                return Err(interpreter_error.clone()).with_err_at(&pos);
             }
             Instruction::AllocateBuiltIn(q) => {
                 self.registers_mut().set_a(allocate_built_in(*q));
@@ -505,9 +505,9 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                     .map(|ArgumentInfo { value, .. }| value)
                     .map(QBNumberCast::try_cast)
                     .collect();
-                let args = r_args.with_err_at(pos)?;
+                let args = r_args.with_err_at(&pos)?;
                 let v = allocate_array(args, element_type, self.user_defined_types())
-                    .with_err_at(pos)?;
+                    .with_err_at(&pos)?;
                 self.registers_mut().set_a(v);
             }
             Instruction::AllocateUserDefined(user_defined_type_name) => {
@@ -525,14 +525,14 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                 var_path::var_path_property(self, property_name);
             }
             Instruction::CopyAToVarPath => {
-                var_path::copy_a_to_var_path(self).with_err_at(pos)?;
-                var_path::pop_var_path(self).with_err_at(pos)?;
+                var_path::copy_a_to_var_path(self).with_err_at(&pos)?;
+                var_path::pop_var_path(self).with_err_at(&pos)?;
             }
             Instruction::CopyVarPathToA => {
-                var_path::copy_var_path_to_a(self).with_err_at(pos)?;
+                var_path::copy_var_path_to_a(self).with_err_at(&pos)?;
             }
             Instruction::PopVarPath => {
-                var_path::pop_var_path(self).with_err_at(pos)?;
+                var_path::pop_var_path(self).with_err_at(&pos)?;
             }
             Instruction::PushAToValueStack => {
                 let v = self.registers().get_a();
@@ -557,16 +557,16 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                     });
             }
             Instruction::PrintComma => {
-                self.print_comma().map_err(QError::from).with_err_at(pos)?;
+                self.print_comma().map_err(QError::from).with_err_at(&pos)?;
             }
             Instruction::PrintSemicolon => {
                 self.print_state.print_semicolon();
             }
             Instruction::PrintValueFromA => {
-                self.print_value_from_a().with_err_at(pos)?;
+                self.print_value_from_a().with_err_at(&pos)?;
             }
             Instruction::PrintEnd => {
-                self.print_end().with_err_at(pos)?;
+                self.print_end().with_err_at(&pos)?;
             }
             Instruction::IsVariableDefined(dim_name) => {
                 debug_assert_ne!(

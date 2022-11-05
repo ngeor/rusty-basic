@@ -9,7 +9,7 @@ fn test_constant_definition_and_usage_in_print() {
     PRINT X
     "#;
     assert_eq!(
-        generate_instructions_str_no_location(program),
+        generate_instructions_str_no_pos(program),
         [
             // print
             Instruction::PrintSetPrinterType(PrinterType::Print),

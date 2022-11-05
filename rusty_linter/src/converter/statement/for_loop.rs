@@ -2,10 +2,10 @@ use crate::converter::context::Context;
 use crate::converter::traits::Convertible;
 use crate::converter::types::ExprContext;
 use rusty_common::*;
-use rusty_parser::ForLoopNode;
+use rusty_parser::ForLoop;
 
-impl Convertible for ForLoopNode {
-    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
+impl Convertible for ForLoop {
+    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorPos> {
         let variable_name = self
             .variable_name
             .convert_in(ctx, ExprContext::Assignment)?;
@@ -14,7 +14,7 @@ impl Convertible for ForLoopNode {
         let step = self.step.convert_in_default(ctx)?;
         let statements = self.statements.convert(ctx)?;
         let next_counter = self.next_counter.convert_in(ctx, ExprContext::Assignment)?;
-        Ok(ForLoopNode {
+        Ok(ForLoop {
             variable_name,
             lower_bound,
             upper_bound,

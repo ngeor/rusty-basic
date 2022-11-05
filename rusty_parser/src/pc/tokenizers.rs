@@ -1,7 +1,7 @@
 use crate::char_reader::CharReader;
 use crate::pc::{Recognition, Recognizer};
 use crate::BareName;
-use rusty_common::Location;
+use rusty_common::Position;
 use std::iter;
 
 pub type TokenKind = u8;
@@ -15,7 +15,7 @@ pub type TokenKind = u8;
 pub struct Token {
     pub kind: TokenKind,
     pub text: String,
-    pub pos: Location,
+    pub pos: Position,
 }
 
 pub type TokenList = Vec<Token>;
@@ -32,7 +32,7 @@ pub trait Tokenizer {
     // TODO this can also be Result<Token, ?> where ? is Fatal/NotFound, or an Iterator
     fn read(&mut self) -> std::io::Result<Option<Token>>;
     fn unread(&mut self, token: Token);
-    fn position(&self) -> Location;
+    fn position(&self) -> Position;
 }
 
 pub type RecognizerWithTypePair = (TokenKind, Box<dyn Recognizer>);
@@ -48,7 +48,7 @@ pub fn create_tokenizer<R: CharReader>(
 struct TokenizerImpl<R: CharReader> {
     reader: R,
     recognizers: RecognizersWithType,
-    pos: Location,
+    pos: Position,
 }
 
 struct UndoTokenizerImpl<R: CharReader> {
@@ -84,7 +84,7 @@ impl<R: CharReader> TokenizerImpl<R> {
         Self {
             reader,
             recognizers,
-            pos: Location::start(),
+            pos: Position::start(),
         }
     }
 
@@ -140,7 +140,7 @@ impl<R: CharReader> TokenizerImpl<R> {
         }
 
         if let Some(kind) = token_type {
-            let begin: Location = self.pos;
+            let begin: Position = self.pos;
             let mut previous_char: char = ' ';
             for ch in buffer.chars() {
                 if ch == '\r' {
@@ -193,7 +193,7 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
         self.buffer.push(token)
     }
 
-    fn position(&self) -> Location {
+    fn position(&self) -> Position {
         match self.buffer.last() {
             Some(token) => token.pos,
             _ => self.tokenizer.pos,

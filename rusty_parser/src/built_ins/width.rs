@@ -10,21 +10,21 @@ pub fn parse() -> impl Parser<Output = Statement> {
         .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args)))
 }
 
-fn map_args(args: Vec<Option<ExpressionNode>>) -> ExpressionNodes {
+fn map_args(args: Vec<Option<ExpressionPos>>) -> Expressions {
     args.into_iter().flat_map(map_arg).collect()
 }
 
-fn map_arg(arg: Option<ExpressionNode>) -> ExpressionNodes {
+fn map_arg(arg: Option<ExpressionPos>) -> Expressions {
     match arg {
-        Some(a) => vec![Expression::IntegerLiteral(1).at(Location::start()), a],
-        _ => vec![Expression::IntegerLiteral(0).at(Location::start())],
+        Some(a) => vec![Expression::IntegerLiteral(1).at_pos(Position::start()), a],
+        _ => vec![Expression::IntegerLiteral(0).at_pos(Position::start())],
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
-    use crate::test_utils::{DemandSingleStatement, ExpressionNodeLiteralFactory};
+    use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
     use crate::{parse, BuiltInSub, Statement};
     use rusty_common::*;
 

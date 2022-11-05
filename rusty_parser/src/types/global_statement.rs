@@ -1,12 +1,12 @@
 use rusty_common::*;
 
 use super::{
-    BareName, BareNameNode, DefType, Name, NameNode, ParamName, ParamNameNodes, Statement,
-    StatementNodes, UserDefinedType,
+    BareName, BareNamePos, DefType, Name, NamePos, Parameter, Parameters, Statement, Statements,
+    UserDefinedType,
 };
 
-pub type ProgramNode = Vec<TopLevelTokenNode>;
-pub type TopLevelTokenNode = Locatable<TopLevelToken>;
+pub type Program = Vec<GlobalStatementPos>;
+pub type GlobalStatementPos = Positioned<GlobalStatement>;
 
 /// Represents a parsed token that can appear as a top-level element of the
 /// parsing tree.
@@ -14,9 +14,9 @@ pub type TopLevelTokenNode = Locatable<TopLevelToken>;
 /// Syntax reference
 ///
 /// ```txt
-/// <program> ::= <top-level-token> | <top-level-token><program>
+/// <program> ::= <global-statement> | <global-statement><program>
 ///
-/// <top-level-token> ::= <comment>
+/// <global-statement> ::= <comment>
 ///     | <def-type>
 ///     | <declaration>
 ///     | <statement>
@@ -39,12 +39,12 @@ pub type TopLevelTokenNode = Locatable<TopLevelToken>;
 ///     | <on-error-go-to>
 /// ```
 #[derive(Clone, Debug, PartialEq)]
-pub enum TopLevelToken {
+pub enum GlobalStatement {
     /// A default type definition, e.g. `DEFINT A-Z.`
     DefType(DefType),
 
     /// A function declaration, e.g. `DECLARE FUNCTION Add(A, B)`
-    FunctionDeclaration(NameNode, ParamNameNodes),
+    FunctionDeclaration(NamePos, Parameters),
 
     /// A function implementation
     FunctionImplementation(FunctionImplementation),
@@ -53,7 +53,7 @@ pub enum TopLevelToken {
     Statement(Statement),
 
     /// A sub declaration, e.g. `DECLARE SUB Connect`
-    SubDeclaration(BareNameNode, ParamNameNodes),
+    SubDeclaration(BareNamePos, Parameters),
 
     /// A sub implementation
     SubImplementation(SubImplementation),
@@ -62,9 +62,9 @@ pub enum TopLevelToken {
     UserDefinedType(UserDefinedType),
 }
 
-impl From<Statement> for TopLevelToken {
+impl From<Statement> for GlobalStatement {
     fn from(s: Statement) -> Self {
-        TopLevelToken::Statement(s)
+        GlobalStatement::Statement(s)
     }
 }
 
@@ -73,13 +73,13 @@ impl From<Statement> for TopLevelToken {
 pub struct SubprogramImplementation<T> {
     /// The name of the subprogram.
     /// It can be [BareName] for SUBs or [Name] for FUNCTIONs.
-    pub name: Locatable<T>,
+    pub name: Positioned<T>,
 
     /// The parameters of the subprogram.
-    pub params: Vec<Locatable<ParamName>>,
+    pub params: Vec<Positioned<Parameter>>,
 
     /// The body (statements) of the subprogram.
-    pub body: StatementNodes,
+    pub body: Statements,
 
     /// Determines if the subprogram is static. Static subprograms retain their
     /// variable values between calls.

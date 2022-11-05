@@ -94,7 +94,7 @@ pub fn interpret(input: &str) -> impl MockInterpreterTrait {
         .unwrap()
 }
 
-pub fn interpret_err(input: &str) -> QErrorNode {
+pub fn interpret_err(input: &str) -> QErrorPos {
     let (instruction_generator_result, mut interpreter) = mock_interpreter_for_input(input);
     interpreter
         .interpret(instruction_generator_result)
@@ -129,7 +129,7 @@ pub fn interpret_with_env(input: &str, stdlib: MockStdlib) -> impl MockInterpret
         .unwrap()
 }
 
-pub fn interpret_file(filename: &str) -> Result<impl MockInterpreterTrait, QErrorNode> {
+pub fn interpret_file(filename: &str) -> Result<impl MockInterpreterTrait, QErrorPos> {
     let file_path = format!("../fixtures/{}", filename);
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
@@ -144,7 +144,7 @@ pub fn interpret_file(filename: &str) -> Result<impl MockInterpreterTrait, QErro
 pub fn interpret_file_with_raw_input(
     filename: &str,
     raw_input: &str,
-) -> Result<impl MockInterpreterTrait, QErrorNode> {
+) -> Result<impl MockInterpreterTrait, QErrorPos> {
     let file_path = format!("../fixtures/{}", filename);
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
@@ -253,7 +253,10 @@ macro_rules! assert_interpreter_err {
     ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {
         assert_eq!(
             $crate::interpreter::test_utils::interpret_err($program),
-            ErrorEnvelope::Pos($expected_err, Location::new($expected_row, $expected_col))
+            ErrorEnvelope::Pos(
+                $expected_err,
+                rusty_common::Position::new($expected_row, $expected_col)
+            )
         );
     };
 }

@@ -1,12 +1,12 @@
 use crate::expression::file_handle::file_handle_p;
 use crate::expression::guard::Guard;
-use crate::expression::{expression_node_p, ws_expr_node};
+use crate::expression::{expression_pos_p, ws_expr_pos_p};
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::types::*;
 use rusty_common::*;
 
-/// See [PrintNode] for the definition.
+/// See [Print] for the definition.
 pub fn parse_print_p() -> impl Parser<Output = Statement> {
     keyword(Keyword::Print)
         .and_opt(print_boundary().and(Seq3::new(
@@ -17,7 +17,7 @@ pub fn parse_print_p() -> impl Parser<Output = Statement> {
         .keep_right()
         .map(|opt_args| opt_args.unwrap_or_default())
         .map(|(_, (opt_file_number, format_string, args))| {
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: opt_file_number.map(|x| x.element),
                 lpt1: false,
                 format_string,
@@ -32,7 +32,7 @@ pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
         .keep_right()
         .map(|opt_args| opt_args.unwrap_or_default())
         .map(|(_, (format_string, args))| {
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: None,
                 lpt1: true,
                 format_string,
@@ -41,17 +41,18 @@ pub fn parse_lprint_p() -> impl Parser<Output = Statement> {
         })
 }
 
-fn opt_using() -> impl Parser<Output = Option<ExpressionNode>> + NonOptParser {
+fn opt_using() -> impl Parser<Output = Option<ExpressionPos>> + NonOptParser {
     seq3(
         keyword(Keyword::Using),
-        ws_expr_node().or_syntax_error("Expected: expression after USING"),
+        ws_expr_pos_p().or_syntax_error("Expected: expression after USING"),
         semicolon().no_incomplete(),
         |_, using_expr, _| using_expr,
     )
     .allow_none()
 }
 
-fn opt_file_handle_comma_p() -> impl Parser<Output = Option<Locatable<FileHandle>>> + NonOptParser {
+fn opt_file_handle_comma_p() -> impl Parser<Output = Option<Positioned<FileHandle>>> + NonOptParser
+{
     seq2(
         file_handle_p(),
         comma().no_incomplete(),
@@ -72,7 +73,7 @@ impl PrintArgsParser {
     }
 
     fn any_print_arg() -> impl Parser<Output = PrintArg> {
-        expression_node_p()
+        expression_pos_p()
             .map(PrintArg::Expression)
             .or(Self::delimiter_print_arg())
     }
@@ -133,7 +134,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: None,
                 lpt1: false,
                 format_string: None,
@@ -149,7 +150,7 @@ mod tests {
             let statement = parse(*input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::Print(PrintNode {
+                Statement::Print(Print {
                     file_number: None,
                     lpt1: false,
                     format_string: None,
@@ -166,7 +167,7 @@ mod tests {
             let statement = parse(*input).demand_single_statement();
             assert_eq!(
                 statement,
-                Statement::Print(PrintNode {
+                Statement::Print(Print {
                     file_number: None,
                     lpt1: false,
                     format_string: None,
@@ -182,21 +183,21 @@ mod tests {
         for input in &variations {
             let statement = parse(*input).demand_single_statement();
             match statement {
-                Statement::Print(print_node) => {
-                    assert_eq!(print_node.file_number, None);
-                    assert_eq!(print_node.lpt1, false);
-                    assert_eq!(print_node.format_string, None);
-                    assert_eq!(print_node.args[0], PrintArg::Comma);
-                    match print_node.args[1] {
-                        PrintArg::Expression(Locatable {
+                Statement::Print(print) => {
+                    assert_eq!(print.file_number, None);
+                    assert_eq!(print.lpt1, false);
+                    assert_eq!(print.format_string, None);
+                    assert_eq!(print.args[0], PrintArg::Comma);
+                    match print.args[1] {
+                        PrintArg::Expression(Positioned {
                             element: Expression::IntegerLiteral(1),
                             ..
                         }) => {}
                         _ => panic!("Argument mismatch"),
                     }
-                    assert_eq!(print_node.args.len(), 2);
+                    assert_eq!(print.args.len(), 2);
                 }
-                _ => panic!("{} did not yield a PrintNode", input),
+                _ => panic!("{} did not yield a Print", input),
             }
         }
     }
@@ -207,21 +208,21 @@ mod tests {
         for input in &variations {
             let statement = parse(*input).demand_single_statement();
             match statement {
-                Statement::Print(print_node) => {
-                    assert_eq!(print_node.file_number, None);
-                    assert_eq!(print_node.lpt1, false);
-                    assert_eq!(print_node.format_string, None);
-                    assert_eq!(print_node.args[0], PrintArg::Semicolon);
-                    match print_node.args[1] {
-                        PrintArg::Expression(Locatable {
+                Statement::Print(print) => {
+                    assert_eq!(print.file_number, None);
+                    assert_eq!(print.lpt1, false);
+                    assert_eq!(print.format_string, None);
+                    assert_eq!(print.args[0], PrintArg::Semicolon);
+                    match print.args[1] {
+                        PrintArg::Expression(Positioned {
                             element: Expression::IntegerLiteral(1),
                             ..
                         }) => {}
                         _ => panic!("Argument mismatch"),
                     }
-                    assert_eq!(print_node.args.len(), 2);
+                    assert_eq!(print.args.len(), 2);
                 }
-                _ => panic!("{} did not yield a PrintNode", input),
+                _ => panic!("{} did not yield a Print", input),
             }
         }
     }
@@ -232,7 +233,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: None,
                 lpt1: true,
                 format_string: None,
@@ -247,7 +248,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: None,
                 lpt1: false,
                 format_string: None,
@@ -262,7 +263,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: None,
                 lpt1: true,
                 format_string: None,
@@ -277,7 +278,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: None,
                 lpt1: false,
                 format_string: None,
@@ -296,7 +297,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: None,
                 lpt1: true,
                 format_string: None,
@@ -321,7 +322,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: Some(FileHandle::from(1)),
                 lpt1: false,
                 format_string: None,
@@ -336,7 +337,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: Some(FileHandle::from(1)),
                 lpt1: false,
                 format_string: None,
@@ -357,7 +358,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: Some(FileHandle::from(1)),
                 lpt1: false,
                 format_string: None,
@@ -376,7 +377,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: Some(FileHandle::from(1)),
                 lpt1: false,
                 format_string: None,
@@ -396,7 +397,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: Some(FileHandle::from(1)),
                 lpt1: false,
                 format_string: None,
@@ -416,7 +417,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: None,
                 lpt1: false,
                 format_string: Some("#".as_lit_expr(1, 13)),
@@ -431,7 +432,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: None,
                 lpt1: true,
                 format_string: Some("#".as_lit_expr(1, 14)),
@@ -458,7 +459,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: None,
                 lpt1: false,
                 format_string: Some("#".as_lit_expr(1, 13)),
@@ -473,7 +474,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: None,
                 lpt1: true,
                 format_string: Some("#".as_lit_expr(1, 14)),
@@ -488,7 +489,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: Some(FileHandle::from(1)),
                 lpt1: false,
                 format_string: Some("#".as_lit_expr(1, 17)),
@@ -503,7 +504,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::Print(PrintNode {
+            Statement::Print(Print {
                 file_number: Some(FileHandle::from(1)),
                 lpt1: false,
                 format_string: Some("#".as_lit_expr(1, 17)),

@@ -1,4 +1,4 @@
-use crate::expression::expr_node_ws;
+use crate::expression::expr_pos_ws_p;
 use crate::expression::file_handle::file_handle_p;
 use crate::pc::*;
 use crate::pc_specific::*;
@@ -19,9 +19,9 @@ pub fn parse() -> impl Parser<Output = Statement> {
     )
 }
 
-fn field_item_p() -> impl Parser<Output = (ExpressionNode, NameNode)> {
+fn field_item_p() -> impl Parser<Output = (ExpressionPos, NamePos)> {
     seq4(
-        expr_node_ws(),
+        expr_pos_ws_p(),
         keyword(Keyword::As).no_incomplete(),
         whitespace().no_incomplete(),
         name::name_with_dots()
@@ -32,17 +32,17 @@ fn field_item_p() -> impl Parser<Output = (ExpressionNode, NameNode)> {
 }
 
 fn build_args(
-    file_number_node: Locatable<FileHandle>,
-    fields: Vec<(ExpressionNode, NameNode)>,
-) -> ExpressionNodes {
-    let mut args: ExpressionNodes = vec![];
-    args.push(file_number_node.map(Expression::from));
-    for (width, Locatable { element: name, pos }) in fields {
+    file_number_pos: Positioned<FileHandle>,
+    fields: Vec<(ExpressionPos, NamePos)>,
+) -> Expressions {
+    let mut args: Expressions = vec![];
+    args.push(file_number_pos.map(Expression::from));
+    for (width, Positioned { element: name, pos }) in fields {
         args.push(width);
         let variable_name: String = name.bare_name().to_string();
-        args.push(Expression::StringLiteral(variable_name).at(pos));
+        args.push(Expression::StringLiteral(variable_name).at_pos(pos));
         // to lint the variable, not used at runtime
-        args.push(Expression::Variable(name, VariableInfo::unresolved()).at(pos));
+        args.push(Expression::Variable(name, VariableInfo::unresolved()).at_pos(pos));
     }
     args
 }

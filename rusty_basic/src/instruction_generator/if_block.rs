@@ -1,14 +1,10 @@
 use super::{InstructionGenerator, Visitor};
 use rusty_common::*;
-use rusty_parser::IfBlockNode;
+use rusty_parser::IfBlock;
 
 impl InstructionGenerator {
-    pub fn generate_if_block_instructions(
-        &mut self,
-        if_block_statement: IfBlockNode,
-        pos: Location,
-    ) {
-        let IfBlockNode {
+    pub fn generate_if_block_instructions(&mut self, if_block_statement: IfBlock, pos: Position) {
+        let IfBlock {
             if_block,
             else_if_blocks,
             else_block,

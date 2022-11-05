@@ -1,15 +1,14 @@
 use crate::CanCastTo;
-use rusty_common::{QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use rusty_common::{QError, QErrorPos, WithErrAt, WithErrNoPos};
 use rusty_parser::{
-    ExpressionNode, ExpressionNodes, ExpressionTrait, ExpressionType, HasExpressionType,
-    TypeQualifier,
+    ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType, TypeQualifier,
 };
 
-pub fn lint(args: &ExpressionNodes) -> Result<(), QErrorNode> {
+pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
     if args.len() != 1 {
         Err(QError::ArgumentCountMismatch).with_err_no_pos()
     } else {
-        let arg: &ExpressionNode = &args[0];
+        let arg: &ExpressionPos = &args[0];
         if arg.is_by_ref() {
             match arg.expression_type() {
                 // QBasic actually accepts LEN(A) where A is an array,

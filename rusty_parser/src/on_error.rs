@@ -1,9 +1,9 @@
-use crate::expression::expression_node_p;
+use crate::expression::expression_pos_p;
 use crate::name::bare_name_with_dots;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::{Expression, Keyword, OnErrorOption, Statement};
-use rusty_common::{Locatable, QError};
+use rusty_common::{Positioned, QError};
 
 pub fn statement_on_error_go_to_p() -> impl Parser<Output = Statement> {
     Seq2::new(
@@ -36,7 +36,7 @@ fn goto_label() -> impl Parser<Output = OnErrorOption> {
 }
 
 fn goto_zero() -> impl Parser<Output = OnErrorOption> {
-    expression_node_p().and_then(|Locatable { element, .. }| match element {
+    expression_pos_p().and_then(|Positioned { element, .. }| match element {
         Expression::IntegerLiteral(0) => Ok(OnErrorOption::Zero),
         _ => Err(QError::syntax_error("Expected: label or 0")),
     })

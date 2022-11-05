@@ -1,5 +1,5 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use rusty_parser::{Name, ParamName, QualifiedName};
+use rusty_parser::{Name, Parameter, QualifiedName};
 
 pub fn begin_collect_arguments<T: InterpreterTrait>(interpreter: &mut T) {
     interpreter.context_mut().begin_collecting_arguments();
@@ -58,7 +58,7 @@ pub fn push_unnamed_arg_by_ref<T: InterpreterTrait>(interpreter: &mut T) {
         .push_unnamed_by_ref(v, path);
 }
 
-pub fn push_a_to_named_arg<T: InterpreterTrait>(interpreter: &mut T, param_name: &ParamName) {
+pub fn push_a_to_named_arg<T: InterpreterTrait>(interpreter: &mut T, param_name: &Parameter) {
     let v = interpreter.registers().get_a();
     interpreter
         .context_mut()

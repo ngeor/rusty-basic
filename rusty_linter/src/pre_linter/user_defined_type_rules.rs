@@ -1,9 +1,7 @@
 use crate::pre_linter::ConstantMap;
-use rusty_common::{
-    AtLocation, Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError,
-};
+use rusty_common::{AtPos, Positioned, QError, QErrorPos, WithErrAt, WithErrNoPos};
 use rusty_parser::{
-    BareName, Element, ElementNode, ElementType, Expression, ExpressionNode, TypeQualifier,
+    BareName, Element, ElementPos, ElementType, Expression, ExpressionPos, TypeQualifier,
     UserDefinedType, UserDefinedTypes,
 };
 use rusty_variant::{Variant, MAX_INTEGER};
@@ -13,14 +11,14 @@ pub fn user_defined_type(
     user_defined_types: &mut UserDefinedTypes,
     global_constants: &ConstantMap,
     user_defined_type: &UserDefinedType,
-) -> Result<(), QErrorNode> {
+) -> Result<(), QErrorPos> {
     let type_name: &BareName = user_defined_type.bare_name();
     if user_defined_types.contains_key(type_name) {
         // duplicate type definition
         Err(QError::DuplicateDefinition).with_err_no_pos()
     } else {
         let mut resolved_elements: HashMap<BareName, ElementType> = HashMap::new();
-        for Locatable {
+        for Positioned {
             element:
                 Element {
                     name: element_name,
@@ -39,15 +37,15 @@ pub fn user_defined_type(
                 ElementType::Long => ElementType::Long,
                 ElementType::Single => ElementType::Single,
                 ElementType::Double => ElementType::Double,
-                ElementType::FixedLengthString(str_len_expression_node, _) => {
+                ElementType::FixedLengthString(str_len_expression_pos, _) => {
                     let l: u16 =
-                        validate_element_type_str_len(global_constants, str_len_expression_node)?;
+                        validate_element_type_str_len(global_constants, str_len_expression_pos)?;
                     ElementType::FixedLengthString(
-                        Expression::IntegerLiteral(l as i32).at(str_len_expression_node),
+                        Expression::IntegerLiteral(l as i32).at(str_len_expression_pos),
                         l,
                     )
                 }
-                ElementType::UserDefined(Locatable {
+                ElementType::UserDefined(Positioned {
                     element: referred_name,
                     pos,
                 }) => {
@@ -59,8 +57,8 @@ pub fn user_defined_type(
             };
             resolved_elements.insert(element_name.clone(), resolved_element_type);
         }
-        let mut elements: Vec<ElementNode> = vec![];
-        for Locatable {
+        let mut elements: Vec<ElementPos> = vec![];
+        for Positioned {
             element: Element { name, .. },
             pos,
         } in user_defined_type.elements()
@@ -78,12 +76,12 @@ pub fn user_defined_type(
 
 fn validate_element_type_str_len(
     global_constants: &ConstantMap,
-    str_len_expression_node: &ExpressionNode,
-) -> Result<u16, QErrorNode> {
-    let Locatable {
+    str_len_expression_pos: &ExpressionPos,
+) -> Result<u16, QErrorPos> {
+    let Positioned {
         element: str_len_expression,
         pos,
-    } = str_len_expression_node;
+    } = str_len_expression_pos;
     match str_len_expression {
         Expression::IntegerLiteral(i) => {
             // parser already covers that i is between 1..MAX_INT

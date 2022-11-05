@@ -14,11 +14,11 @@ use crate::var_name::var_name;
 /// A(10)
 /// A$(1 TO 2, 0 TO 10)
 /// A(1 TO 5) AS INTEGER
-pub fn dim_name_node_p() -> impl Parser<Output = DimNameNode> {
+pub fn dim_var_pos_p() -> impl Parser<Output = DimVarPos> {
     dim_or_redim(array_dimensions::array_dimensions_p().allow_default())
 }
 
-pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
+pub fn redim_var_pos_p() -> impl Parser<Output = DimVarPos> {
     dim_or_redim(
         array_dimensions::array_dimensions_p().or_syntax_error("Expected: array dimensions"),
     )
@@ -26,7 +26,7 @@ pub fn redim_name_node_p() -> impl Parser<Output = DimNameNode> {
 
 fn dim_or_redim(
     array_dimensions_parser: impl Parser<Output = ArrayDimensions> + NonOptParser,
-) -> impl Parser<Output = DimNameNode> {
+) -> impl Parser<Output = DimVarPos> {
     var_name(array_dimensions_parser, built_in_extended_type).with_pos()
 }
 
@@ -46,7 +46,7 @@ mod array_dimensions {
     // expr ws+ TO ws+ expr (e.g. 1 TO 10)
     // paren_expr ws* TO ws* paren_expr
     fn array_dimension_p() -> impl Parser<Output = ArrayDimension> {
-        opt_second_expression_after_keyword(expression::expression_node_p(), Keyword::To).map(
+        opt_second_expression_after_keyword(expression::expression_pos_p(), Keyword::To).map(
             |(l, opt_r)| match opt_r {
                 Some(r) => ArrayDimension {
                     lbound: Some(l),
@@ -62,7 +62,7 @@ mod array_dimensions {
 }
 
 mod type_definition {
-    use crate::expression::expression_node_p;
+    use crate::expression::expression_pos_p;
     use crate::pc::*;
     use crate::pc_specific::*;
     use crate::*;
@@ -97,9 +97,11 @@ mod type_definition {
 
     fn built_in_string() -> impl Parser<Output = DimType> {
         keyword(Keyword::String)
-            .and_opt(star().then_demand(
-                expression_node_p().or_syntax_error("Expected: string length after *"),
-            ))
+            .and_opt(
+                star().then_demand(
+                    expression_pos_p().or_syntax_error("Expected: string length after *"),
+                ),
+            )
             .map(|(_, opt_len)| match opt_len {
                 Some(len) => DimType::FixedLengthString(len, 0),
                 _ => DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),

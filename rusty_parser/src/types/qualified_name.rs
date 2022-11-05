@@ -47,5 +47,5 @@ impl std::fmt::Display for QualifiedName {
     }
 }
 
-/// A [QualifiedName] with location information.
-pub type QualifiedNameNode = Locatable<QualifiedName>;
+/// A [QualifiedName] with position information.
+pub type QualifiedNamePos = Positioned<QualifiedName>;

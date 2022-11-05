@@ -112,7 +112,7 @@ pub fn peek_eof_or_statement_separator() -> impl Parser<Output = ()> {
 
 // TODO review all parsers that return a collection, implement some `accumulate` method
 /// Reads multiple comments and the surrounding whitespace.
-pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Locatable<String>>> + NonOptParser {
+pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Positioned<String>>> + NonOptParser {
     OptAndPC::new(
         whitespace(),
         OptZip::new(Separator::Comment, CommentAsString.with_pos())

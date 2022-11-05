@@ -1,8 +1,8 @@
 use crate::NameContext;
-use rusty_common::{QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
-use rusty_parser::{Expression, ExpressionNode, ExpressionNodes};
+use rusty_common::{QError, QErrorPos, WithErrAt, WithErrNoPos};
+use rusty_parser::{Expression, ExpressionPos, Expressions};
 
-pub fn lint(args: &ExpressionNodes, name_context: NameContext) -> Result<(), QErrorNode> {
+pub fn lint(args: &Expressions, name_context: NameContext) -> Result<(), QErrorPos> {
     if name_context == NameContext::Global {
         args.iter().try_for_each(require_constant)
     } else {
@@ -10,7 +10,7 @@ pub fn lint(args: &ExpressionNodes, name_context: NameContext) -> Result<(), QEr
     }
 }
 
-fn require_constant(arg: &ExpressionNode) -> Result<(), QErrorNode> {
+fn require_constant(arg: &ExpressionPos) -> Result<(), QErrorPos> {
     match &arg.element {
         Expression::SingleLiteral(_)
         | Expression::DoubleLiteral(_)

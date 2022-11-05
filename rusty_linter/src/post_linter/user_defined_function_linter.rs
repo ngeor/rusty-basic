@@ -10,9 +10,9 @@ pub struct UserDefinedFunctionLinter<'a, R> {
 }
 
 pub fn lint_call_args(
-    args: &ExpressionNodes,
+    args: &Expressions,
     param_types: &ResolvedParamTypes,
-) -> Result<(), QErrorNode> {
+) -> Result<(), QErrorPos> {
     if args.len() != param_types.len() {
         return Err(QError::ArgumentCountMismatch).with_err_no_pos();
     }
@@ -22,32 +22,29 @@ pub fn lint_call_args(
         .try_for_each(|(a, p)| lint_call_arg(a, p))
 }
 
-fn lint_call_arg(
-    arg_node: &ExpressionNode,
-    param_type: &ResolvedParamType,
-) -> Result<(), QErrorNode> {
-    match &arg_node.element {
+fn lint_call_arg(arg_pos: &ExpressionPos, param_type: &ResolvedParamType) -> Result<(), QErrorPos> {
+    match &arg_pos.element {
         Expression::Variable(_, _)
         | Expression::ArrayElement(_, _, _)
-        | Expression::Property(_, _, _) => lint_by_ref_arg(arg_node, param_type),
-        _ => lint_by_val_arg(arg_node, param_type),
+        | Expression::Property(_, _, _) => lint_by_ref_arg(arg_pos, param_type),
+        _ => lint_by_val_arg(arg_pos, param_type),
     }
 }
 
 fn lint_by_ref_arg(
-    arg_node: &ExpressionNode,
+    arg_pos: &ExpressionPos,
     param_type: &ResolvedParamType,
-) -> Result<(), QErrorNode> {
+) -> Result<(), QErrorPos> {
     match param_type {
         ResolvedParamType::BuiltIn(q, _) => {
-            lint_arg_node(arg_node, |e| expr_type_matches_type_qualifier_by_ref(e, *q))
+            lint_arg_pos(arg_pos, |e| expr_type_matches_type_qualifier_by_ref(e, *q))
         }
-        ResolvedParamType::UserDefined(user_defined_type_name) => lint_arg_node(arg_node, |e| {
+        ResolvedParamType::UserDefined(user_defined_type_name) => lint_arg_pos(arg_pos, |e| {
             expr_type_is_user_defined(e, user_defined_type_name)
         }),
         ResolvedParamType::Array(boxed_element_type) => {
             // we can only pass an array by using the array name followed by parenthesis e.g. `Menu choice$()`
-            match &arg_node.element {
+            match &arg_pos.element {
                 Expression::ArrayElement(
                     name,
                     args,
@@ -60,13 +57,13 @@ fn lint_by_ref_arg(
                             name.clone(),
                             VariableInfo::new_local(expression_type.clone()),
                         )
-                        .at(arg_node);
+                        .at(arg_pos);
                         lint_by_ref_arg(&dummy_expr, boxed_element_type.as_ref())
                     } else {
-                        Err(QError::ArgumentTypeMismatch).with_err_at(arg_node)
+                        Err(QError::ArgumentTypeMismatch).with_err_at(arg_pos)
                     }
                 }
-                _ => Err(QError::ArgumentTypeMismatch).with_err_at(arg_node),
+                _ => Err(QError::ArgumentTypeMismatch).with_err_at(arg_pos),
             }
         }
     }
@@ -91,40 +88,37 @@ fn expr_type_is_user_defined(
 }
 
 fn lint_by_val_arg(
-    arg_node: &ExpressionNode,
+    arg_pos: &ExpressionPos,
     param_type: &ResolvedParamType,
-) -> Result<(), QErrorNode> {
+) -> Result<(), QErrorPos> {
     // it's by val, casting is allowed
-    if arg_node.expression_type().can_cast_to(param_type) {
+    if arg_pos.expression_type().can_cast_to(param_type) {
         Ok(())
     } else {
-        Err(QError::ArgumentTypeMismatch).with_err_at(arg_node)
+        Err(QError::ArgumentTypeMismatch).with_err_at(arg_pos)
     }
 }
 
-fn lint_arg_node<F>(
-    arg_node: &ExpressionNode,
-    expression_type_predicate: F,
-) -> Result<(), QErrorNode>
+fn lint_arg_pos<F>(arg_pos: &ExpressionPos, expression_type_predicate: F) -> Result<(), QErrorPos>
 where
     F: Fn(&ExpressionType) -> bool,
 {
-    match arg_node_to_expr_type_and_opt_args(arg_node) {
+    match arg_pos_to_expr_type_and_opt_args(arg_pos) {
         Some((expression_type, opt_args)) => {
             if has_at_least_one_arg(opt_args) && expression_type_predicate(expression_type) {
                 Ok(())
             } else {
-                Err(QError::ArgumentTypeMismatch).with_err_at(arg_node)
+                Err(QError::ArgumentTypeMismatch).with_err_at(arg_pos)
             }
         }
-        _ => Err(QError::ArgumentTypeMismatch).with_err_at(arg_node),
+        _ => Err(QError::ArgumentTypeMismatch).with_err_at(arg_pos),
     }
 }
 
-fn arg_node_to_expr_type_and_opt_args(
-    arg_node: &ExpressionNode,
-) -> Option<(&ExpressionType, Option<&ExpressionNodes>)> {
-    match &arg_node.element {
+fn arg_pos_to_expr_type_and_opt_args(
+    arg_pos: &ExpressionPos,
+) -> Option<(&ExpressionType, Option<&Expressions>)> {
+    match &arg_pos.element {
         Expression::Variable(
             _,
             VariableInfo {
@@ -143,7 +137,7 @@ fn arg_node_to_expr_type_and_opt_args(
     }
 }
 
-fn has_at_least_one_arg(opt_args: Option<&ExpressionNodes>) -> bool {
+fn has_at_least_one_arg(opt_args: Option<&Expressions>) -> bool {
     match opt_args {
         Some(args) => !args.is_empty(),
         _ => true, // not an array expression
@@ -154,14 +148,14 @@ impl<'a, R> UserDefinedFunctionLinter<'a, R>
 where
     R: HasFunctions,
 {
-    fn visit_function(&self, name: &Name, args: &ExpressionNodes) -> Result<(), QErrorNode> {
+    fn visit_function(&self, name: &Name, args: &Expressions) -> Result<(), QErrorPos> {
         if let Name::Qualified(bare_name, qualifier) = name {
             match self.context.functions().get(bare_name) {
-                Some(function_signature_node) => {
-                    if function_signature_node.element.qualifier() != *qualifier {
-                        Err(QError::TypeMismatch).with_err_at(function_signature_node)
+                Some(function_signature_pos) => {
+                    if function_signature_pos.element.qualifier() != *qualifier {
+                        Err(QError::TypeMismatch).with_err_at(function_signature_pos)
                     } else {
-                        lint_call_args(args, function_signature_node.element.param_types())
+                        lint_call_args(args, function_signature_pos.element.param_types())
                     }
                 }
                 None => self.handle_undefined_function(args),
@@ -171,17 +165,17 @@ where
         }
     }
 
-    fn handle_undefined_function(&self, args: &ExpressionNodes) -> Result<(), QErrorNode> {
+    fn handle_undefined_function(&self, args: &Expressions) -> Result<(), QErrorPos> {
         for i in 0..args.len() {
-            let arg_node = args.get(i).unwrap();
-            match arg_node.expression_type() {
+            let arg_pos = args.get(i).unwrap();
+            match arg_pos.expression_type() {
                 ExpressionType::BuiltIn(q) => {
                     if q == TypeQualifier::DollarString {
-                        return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
+                        return Err(QError::ArgumentTypeMismatch).with_err_at(arg_pos);
                     }
                 }
                 _ => {
-                    return Err(QError::ArgumentTypeMismatch).with_err_at(arg_node);
+                    return Err(QError::ArgumentTypeMismatch).with_err_at(arg_pos);
                 }
             }
         }
@@ -195,8 +189,8 @@ impl<'a, R> PostConversionLinter for UserDefinedFunctionLinter<'a, R>
 where
     R: HasFunctions,
 {
-    fn visit_expression(&mut self, expr_node: &ExpressionNode) -> Result<(), QErrorNode> {
-        let Locatable { element: e, pos } = expr_node;
+    fn visit_expression(&mut self, expr_pos: &ExpressionPos) -> Result<(), QErrorPos> {
+        let Positioned { element: e, pos } = expr_pos;
         match e {
             Expression::FunctionCall(n, args) => {
                 for x in args {

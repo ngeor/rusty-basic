@@ -9,13 +9,13 @@ use rusty_common::*;
 use rusty_parser::*;
 
 impl<'a> Convertible<DimListState<'a>> for DimList {
-    fn convert(self, ctx: &mut DimListState<'a>) -> Result<Self, QErrorNode> {
+    fn convert(self, ctx: &mut DimListState<'a>) -> Result<Self, QErrorPos> {
         let Self { variables, shared } = self;
-        let mut new_variables = DimNameNodes::new();
-        for Locatable { element, pos } in variables {
+        let mut new_variables = DimVars::new();
+        for Positioned { element, pos } in variables {
             let mut new_state = DimNameState::new(ctx, shared, pos);
-            let new_dim_name = element.convert(&mut new_state).patch_err_pos(pos)?;
-            new_variables.push(new_dim_name.at(pos));
+            let new_dim_name = element.convert(&mut new_state).patch_err_pos(&pos)?;
+            new_variables.push(new_dim_name.at_pos(pos));
         }
         Ok(DimList {
             variables: new_variables,
@@ -24,8 +24,8 @@ impl<'a> Convertible<DimListState<'a>> for DimList {
     }
 }
 
-impl<'a, 'b> Convertible<DimNameState<'a, 'b>> for DimName {
-    fn convert(self, ctx: &mut DimNameState<'a, 'b>) -> Result<Self, QErrorNode> {
+impl<'a, 'b> Convertible<DimNameState<'a, 'b>> for DimVar {
+    fn convert(self, ctx: &mut DimNameState<'a, 'b>) -> Result<Self, QErrorPos> {
         validation::validate(&self, ctx)?;
         shared_illegal_in_sub_function(ctx).with_err_no_pos()?;
         let Self {
@@ -41,7 +41,7 @@ impl<'a, 'b> Convertible<DimNameState<'a, 'b>> for DimName {
         let shared = ctx.is_shared();
         ctx.names
             .insert(bare_name.clone(), &var_type, shared, redim_info);
-        Ok(DimName::new(bare_name, var_type))
+        Ok(DimVar::new(bare_name, var_type))
     }
 }
 

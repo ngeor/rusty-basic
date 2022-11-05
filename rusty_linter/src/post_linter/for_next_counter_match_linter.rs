@@ -1,13 +1,13 @@
 use rusty_common::*;
-use rusty_parser::{Expression, ExpressionType, ForLoopNode, TypeQualifier, VariableInfo};
+use rusty_parser::{Expression, ExpressionType, ForLoop, TypeQualifier, VariableInfo};
 
 use super::post_conversion_linter::*;
 
 pub struct ForNextCounterMatch;
 
 impl ForNextCounterMatch {
-    fn ensure_numeric_variable(&self, f: &ForLoopNode) -> Result<(), QErrorNode> {
-        let Locatable {
+    fn ensure_numeric_variable(&self, f: &ForLoop) -> Result<(), QErrorPos> {
+        let Positioned {
             element: var_expr, ..
         } = &f.variable_name;
         match var_expr {
@@ -28,11 +28,11 @@ impl ForNextCounterMatch {
         }
     }
 
-    fn ensure_for_next_counter_match(&self, f: &ForLoopNode) -> Result<(), QErrorNode> {
-        let Locatable {
+    fn ensure_for_next_counter_match(&self, f: &ForLoop) -> Result<(), QErrorPos> {
+        let Positioned {
             element: var_expr, ..
         } = &f.variable_name;
-        if let Some(Locatable {
+        if let Some(Positioned {
             element: next_var_expr,
             pos,
         }) = &f.next_counter
@@ -43,7 +43,7 @@ impl ForNextCounterMatch {
                         if var_name == next_var_name {
                             Ok(())
                         } else {
-                            Err(QError::NextWithoutFor).with_err_at(*pos)
+                            Err(QError::NextWithoutFor).with_err_at(pos)
                         }
                     }
                     _ => unimplemented!(),
@@ -58,8 +58,8 @@ impl ForNextCounterMatch {
 }
 
 impl PostConversionLinter for ForNextCounterMatch {
-    fn visit_for_loop(&mut self, f: &ForLoopNode) -> Result<(), QErrorNode> {
-        self.visit_statement_nodes(&f.statements)?;
+    fn visit_for_loop(&mut self, f: &ForLoop) -> Result<(), QErrorPos> {
+        self.visit_statements(&f.statements)?;
         self.ensure_numeric_variable(f)?;
         self.ensure_for_next_counter_match(f)
     }

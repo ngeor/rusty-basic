@@ -47,10 +47,7 @@ impl Context {
         }
     }
 
-    pub fn push_sub_context(
-        &mut self,
-        params: ParamNameNodes,
-    ) -> Result<ParamNameNodes, QErrorNode> {
+    pub fn push_sub_context(&mut self, params: Parameters) -> Result<Parameters, QErrorPos> {
         let temp_dummy = Names::new_root();
         let old_names = std::mem::replace(&mut self.names, temp_dummy);
         self.names = Names::new(Some(Box::new(old_names)), None);
@@ -60,8 +57,8 @@ impl Context {
     pub fn push_function_context(
         &mut self,
         name: Name,
-        params: ParamNameNodes,
-    ) -> Result<(Name, ParamNameNodes), QErrorNode> {
+        params: Parameters,
+    ) -> Result<(Name, Parameters), QErrorPos> {
         let temp_dummy = Names::new_root();
         let old_names = std::mem::replace(&mut self.names, temp_dummy);
         self.names = Names::new(Some(Box::new(old_names)), Some(name.bare_name().clone()));
@@ -91,7 +88,7 @@ impl Context {
     pub fn function_qualifier(&self, bare_name: &BareName) -> Option<TypeQualifier> {
         self.functions()
             .get(bare_name)
-            .map(|function_signature_node| function_signature_node.element.qualifier())
+            .map(|function_signature_pos| function_signature_pos.element.qualifier())
     }
 
     pub fn pre_linter_result(self) -> PreLinterResult {

@@ -5,10 +5,10 @@ use rusty_parser::*;
 ///
 /// The default implementation of the trait simply clones all visited elements.
 pub trait ExpressionReducer {
-    fn visit_program(&mut self, p: ProgramNode) -> Result<ProgramNode, QErrorNode> {
-        let mut result: ProgramNode = vec![];
-        for top_level_token_node in p {
-            let x = self.visit_top_level_token_node(top_level_token_node)?;
+    fn visit_program(&mut self, program: Program) -> Result<Program, QErrorPos> {
+        let mut result: Program = vec![];
+        for global_statement_pos in program {
+            let x = self.visit_global_statement_pos(global_statement_pos)?;
             if let Some(s) = x {
                 result.push(s);
             }
@@ -16,33 +16,33 @@ pub trait ExpressionReducer {
         Ok(result)
     }
 
-    fn visit_top_level_token_node(
+    fn visit_global_statement_pos(
         &mut self,
-        t: TopLevelTokenNode,
-    ) -> Result<Option<TopLevelTokenNode>, QErrorNode> {
-        let Locatable {
-            element: top_level_token,
+        global_statement_pos: GlobalStatementPos,
+    ) -> Result<Option<GlobalStatementPos>, QErrorPos> {
+        let Positioned {
+            element: global_statement,
             pos,
-        } = t;
-        self.visit_top_level_token(top_level_token)
-            .map(|opt_top_level_token| opt_top_level_token.map(|t| t.at(pos)))
-            .patch_err_pos(pos)
+        } = global_statement_pos;
+        self.visit_global_statement(global_statement)
+            .map(|opt_global_statement| opt_global_statement.map(|t| t.at_pos(pos)))
+            .patch_err_pos(&pos)
     }
 
-    fn visit_top_level_token(
+    fn visit_global_statement(
         &mut self,
-        t: TopLevelToken,
-    ) -> Result<Option<TopLevelToken>, QErrorNode> {
-        match t {
-            TopLevelToken::FunctionImplementation(f) => self
+        global_statement: GlobalStatement,
+    ) -> Result<Option<GlobalStatement>, QErrorPos> {
+        match global_statement {
+            GlobalStatement::FunctionImplementation(f) => self
                 .visit_function_implementation(f)
-                .map(|x| Some(TopLevelToken::FunctionImplementation(x))),
-            TopLevelToken::SubImplementation(s) => self
+                .map(|x| Some(GlobalStatement::FunctionImplementation(x))),
+            GlobalStatement::SubImplementation(s) => self
                 .visit_sub_implementation(s)
-                .map(|x| Some(TopLevelToken::SubImplementation(x))),
-            TopLevelToken::Statement(s) => self
+                .map(|x| Some(GlobalStatement::SubImplementation(x))),
+            GlobalStatement::Statement(s) => self
                 .visit_filter_statement(s)
-                .map(|opt_statement| opt_statement.map(TopLevelToken::Statement)),
+                .map(|opt_statement| opt_statement.map(GlobalStatement::Statement)),
             _ => Ok(None),
         }
     }
@@ -50,11 +50,11 @@ pub trait ExpressionReducer {
     fn visit_function_implementation(
         &mut self,
         f: FunctionImplementation,
-    ) -> Result<FunctionImplementation, QErrorNode> {
+    ) -> Result<FunctionImplementation, QErrorPos> {
         Ok(FunctionImplementation {
             name: f.name,
             params: f.params,
-            body: self.visit_statement_nodes(f.body)?,
+            body: self.visit_statements(f.body)?,
             is_static: f.is_static,
         })
     }
@@ -62,19 +62,19 @@ pub trait ExpressionReducer {
     fn visit_sub_implementation(
         &mut self,
         s: SubImplementation,
-    ) -> Result<SubImplementation, QErrorNode> {
+    ) -> Result<SubImplementation, QErrorPos> {
         Ok(SubImplementation {
             name: s.name,
             params: s.params,
-            body: self.visit_statement_nodes(s.body)?,
+            body: self.visit_statements(s.body)?,
             is_static: s.is_static,
         })
     }
 
-    fn visit_statement_nodes(&mut self, s: StatementNodes) -> Result<StatementNodes, QErrorNode> {
-        let mut result: StatementNodes = vec![];
-        for statement_node in s {
-            let x = self.visit_statement_node(statement_node)?;
+    fn visit_statements(&mut self, statements: Statements) -> Result<Statements, QErrorPos> {
+        let mut result: Statements = vec![];
+        for statement_pos in statements {
+            let x = self.visit_statement_pos(statement_pos)?;
             if let Some(s) = x {
                 result.push(s);
             }
@@ -82,24 +82,24 @@ pub trait ExpressionReducer {
         Ok(result)
     }
 
-    fn visit_statement_node(
+    fn visit_statement_pos(
         &mut self,
-        t: StatementNode,
-    ) -> Result<Option<StatementNode>, QErrorNode> {
-        let Locatable {
+        statement_pos: StatementPos,
+    ) -> Result<Option<StatementPos>, QErrorPos> {
+        let Positioned {
             element: statement,
             pos,
-        } = t;
+        } = statement_pos;
         self.visit_filter_statement(statement)
-            .map(|opt_statement| opt_statement.map(|x| x.at(pos)))
-            .patch_err_pos(pos)
+            .map(|opt_statement| opt_statement.map(|x| x.at_pos(pos)))
+            .patch_err_pos(&pos)
     }
 
-    fn visit_filter_statement(&mut self, s: Statement) -> Result<Option<Statement>, QErrorNode> {
+    fn visit_filter_statement(&mut self, s: Statement) -> Result<Option<Statement>, QErrorPos> {
         self.visit_map_statement(s).map(Some)
     }
 
-    fn visit_map_statement(&mut self, s: Statement) -> Result<Statement, QErrorNode> {
+    fn visit_map_statement(&mut self, s: Statement) -> Result<Statement, QErrorPos> {
         match s {
             Statement::Assignment(left, right) => {
                 self.visit_assignment(left, right)
@@ -117,14 +117,12 @@ pub trait ExpressionReducer {
                         Statement::BuiltInSubCall(reduced_name, reduced_expr)
                     })
             }
-            Statement::Print(p) => self.visit_print_node(p).map(Statement::Print),
+            Statement::Print(p) => self.visit_print(p).map(Statement::Print),
             Statement::IfBlock(i) => self.visit_if_block(i).map(Statement::IfBlock),
             Statement::SelectCase(s) => self.visit_select_case(s).map(Statement::SelectCase),
             Statement::ForLoop(f) => self.visit_for_loop(f).map(Statement::ForLoop),
             Statement::While(w) => self.visit_conditional_block(w).map(Statement::While),
-            Statement::DoLoop(do_loop_node) => {
-                self.visit_do_loop(do_loop_node).map(Statement::DoLoop)
-            }
+            Statement::DoLoop(do_loop) => self.visit_do_loop(do_loop).map(Statement::DoLoop),
             Statement::Dim(dim_list) => self.visit_dim_list(dim_list).map(Statement::Dim),
             Statement::Redim(dim_list) => self.visit_dim_list(dim_list).map(Statement::Redim),
             Statement::OnError(_)
@@ -143,36 +141,36 @@ pub trait ExpressionReducer {
     fn visit_sub_call(
         &mut self,
         name: CaseInsensitiveString,
-        args: ExpressionNodes,
-    ) -> Result<(CaseInsensitiveString, ExpressionNodes), QErrorNode> {
-        Ok((name, self.visit_expression_nodes(args)?))
+        args: Expressions,
+    ) -> Result<(CaseInsensitiveString, Expressions), QErrorPos> {
+        Ok((name, self.visit_expressions(args)?))
     }
 
     fn visit_built_in_sub_call(
         &mut self,
         name: BuiltInSub,
-        args: ExpressionNodes,
-    ) -> Result<(BuiltInSub, ExpressionNodes), QErrorNode> {
-        Ok((name, self.visit_expression_nodes(args)?))
+        args: Expressions,
+    ) -> Result<(BuiltInSub, Expressions), QErrorPos> {
+        Ok((name, self.visit_expressions(args)?))
     }
 
     fn visit_assignment(
         &mut self,
         name: Expression,
-        v: ExpressionNode,
-    ) -> Result<(Expression, ExpressionNode), QErrorNode> {
-        Ok((name, self.visit_expression_node(v)?))
+        v: ExpressionPos,
+    ) -> Result<(Expression, ExpressionPos), QErrorPos> {
+        Ok((name, self.visit_expression_pos(v)?))
     }
 
-    fn visit_for_loop(&mut self, f: ForLoopNode) -> Result<ForLoopNode, QErrorNode> {
-        let lower_bound = self.visit_expression_node(f.lower_bound)?;
-        let upper_bound = self.visit_expression_node(f.upper_bound)?;
+    fn visit_for_loop(&mut self, f: ForLoop) -> Result<ForLoop, QErrorPos> {
+        let lower_bound = self.visit_expression_pos(f.lower_bound)?;
+        let upper_bound = self.visit_expression_pos(f.upper_bound)?;
         let step = match f.step {
-            Some(s) => Some(self.visit_expression_node(s)?),
+            Some(s) => Some(self.visit_expression_pos(s)?),
             None => None,
         };
-        let statements = self.visit_statement_nodes(f.statements)?;
-        Ok(ForLoopNode {
+        let statements = self.visit_statements(f.statements)?;
+        Ok(ForLoop {
             lower_bound,
             upper_bound,
             step,
@@ -182,74 +180,74 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn visit_if_block(&mut self, i: IfBlockNode) -> Result<IfBlockNode, QErrorNode> {
+    fn visit_if_block(&mut self, i: IfBlock) -> Result<IfBlock, QErrorPos> {
         let if_block = self.visit_conditional_block(i.if_block)?;
-        let else_if_blocks: Vec<ConditionalBlockNode> = i
+        let else_if_blocks: Vec<ConditionalBlock> = i
             .else_if_blocks
             .into_iter()
             .map(|x| self.visit_conditional_block(x))
-            .collect::<Result<Vec<ConditionalBlockNode>, QErrorNode>>()?;
-        let else_block: Option<StatementNodes> = match i.else_block {
-            Some(x) => Some(self.visit_statement_nodes(x)?),
+            .collect::<Result<Vec<ConditionalBlock>, QErrorPos>>()?;
+        let else_block: Option<Statements> = match i.else_block {
+            Some(x) => Some(self.visit_statements(x)?),
             None => None,
         };
-        Ok(IfBlockNode {
+        Ok(IfBlock {
             if_block,
             else_if_blocks,
             else_block,
         })
     }
 
-    fn visit_select_case(&mut self, s: SelectCaseNode) -> Result<SelectCaseNode, QErrorNode> {
-        let else_block: Option<StatementNodes> = match s.else_block {
-            Some(x) => Some(self.visit_statement_nodes(x)?),
+    fn visit_select_case(&mut self, s: SelectCase) -> Result<SelectCase, QErrorPos> {
+        let else_block: Option<Statements> = match s.else_block {
+            Some(x) => Some(self.visit_statements(x)?),
             None => None,
         };
-        let case_blocks: Vec<CaseBlockNode> = s
+        let case_blocks: Vec<CaseBlock> = s
             .case_blocks
             .into_iter()
             .map(|x| self.visit_case_block(x))
-            .collect::<Result<Vec<CaseBlockNode>, QErrorNode>>()?;
-        Ok(SelectCaseNode {
-            expr: self.visit_expression_node(s.expr)?,
+            .collect::<Result<Vec<CaseBlock>, QErrorPos>>()?;
+        Ok(SelectCase {
+            expr: self.visit_expression_pos(s.expr)?,
             case_blocks,
             else_block,
             inline_comments: s.inline_comments,
         })
     }
 
-    fn visit_case_block(&mut self, s: CaseBlockNode) -> Result<CaseBlockNode, QErrorNode> {
-        let CaseBlockNode {
+    fn visit_case_block(&mut self, s: CaseBlock) -> Result<CaseBlock, QErrorPos> {
+        let CaseBlock {
             expression_list,
             statements,
         } = s;
         let expression_list: Vec<CaseExpression> = expression_list
             .into_iter()
             .map(|case_expr| self.visit_case_expression(case_expr))
-            .collect::<Result<Vec<CaseExpression>, QErrorNode>>()?;
-        Ok(CaseBlockNode {
+            .collect::<Result<Vec<CaseExpression>, QErrorPos>>()?;
+        Ok(CaseBlock {
             expression_list,
-            statements: self.visit_statement_nodes(statements)?,
+            statements: self.visit_statements(statements)?,
         })
     }
 
-    fn visit_case_expression(&mut self, s: CaseExpression) -> Result<CaseExpression, QErrorNode> {
+    fn visit_case_expression(&mut self, s: CaseExpression) -> Result<CaseExpression, QErrorPos> {
         match s {
-            CaseExpression::Simple(e) => self.visit_expression_node(e).map(CaseExpression::Simple),
+            CaseExpression::Simple(e) => self.visit_expression_pos(e).map(CaseExpression::Simple),
             CaseExpression::Is(op, e) => self
-                .visit_expression_node(e)
+                .visit_expression_pos(e)
                 .map(|x| CaseExpression::Is(op, x)),
-            CaseExpression::Range(from, to) => self.visit_expression_node(from).and_then(|x| {
-                self.visit_expression_node(to)
+            CaseExpression::Range(from, to) => self.visit_expression_pos(from).and_then(|x| {
+                self.visit_expression_pos(to)
                     .map(|y| CaseExpression::Range(x, y))
             }),
         }
     }
 
-    fn visit_do_loop(&mut self, do_loop: DoLoopNode) -> Result<DoLoopNode, QErrorNode> {
-        Ok(DoLoopNode {
-            condition: self.visit_expression_node(do_loop.condition)?,
-            statements: self.visit_statement_nodes(do_loop.statements)?,
+    fn visit_do_loop(&mut self, do_loop: DoLoop) -> Result<DoLoop, QErrorPos> {
+        Ok(DoLoop {
+            condition: self.visit_expression_pos(do_loop.condition)?,
+            statements: self.visit_statements(do_loop.statements)?,
             position: do_loop.position,
             kind: do_loop.kind,
         })
@@ -257,97 +255,88 @@ pub trait ExpressionReducer {
 
     fn visit_conditional_block(
         &mut self,
-        c: ConditionalBlockNode,
-    ) -> Result<ConditionalBlockNode, QErrorNode> {
-        Ok(ConditionalBlockNode {
-            condition: self.visit_expression_node(c.condition)?,
-            statements: self.visit_statement_nodes(c.statements)?,
+        c: ConditionalBlock,
+    ) -> Result<ConditionalBlock, QErrorPos> {
+        Ok(ConditionalBlock {
+            condition: self.visit_expression_pos(c.condition)?,
+            statements: self.visit_statements(c.statements)?,
         })
     }
 
-    fn visit_expression_node(
+    fn visit_expression_pos(
         &mut self,
-        expr_node: ExpressionNode,
-    ) -> Result<ExpressionNode, QErrorNode> {
-        let Locatable { element: expr, pos } = expr_node;
+        expr_pos: ExpressionPos,
+    ) -> Result<ExpressionPos, QErrorPos> {
+        let Positioned { element: expr, pos } = expr_pos;
         self.visit_expression(expr)
-            .map(|x| x.at(pos))
-            .patch_err_pos(pos)
+            .map(|x| x.at_pos(pos))
+            .patch_err_pos(&pos)
     }
 
-    fn visit_expression(&mut self, expression: Expression) -> Result<Expression, QErrorNode> {
+    fn visit_expression(&mut self, expression: Expression) -> Result<Expression, QErrorPos> {
         Ok(expression)
     }
 
-    fn visit_expression_nodes(
-        &mut self,
-        args: ExpressionNodes,
-    ) -> Result<ExpressionNodes, QErrorNode> {
+    fn visit_expressions(&mut self, args: Expressions) -> Result<Expressions, QErrorPos> {
         args.into_iter()
-            .map(|a| self.visit_expression_node(a))
-            .collect::<Result<ExpressionNodes, QErrorNode>>()
+            .map(|a| self.visit_expression_pos(a))
+            .collect::<Result<Expressions, QErrorPos>>()
     }
 
-    fn visit_print_node(&mut self, print_node: PrintNode) -> Result<PrintNode, QErrorNode> {
-        Ok(PrintNode {
-            file_number: print_node.file_number,
-            lpt1: print_node.lpt1,
-            format_string: match print_node.format_string {
-                Some(f) => self.visit_expression_node(f).map(Some)?,
+    fn visit_print(&mut self, print: Print) -> Result<Print, QErrorPos> {
+        Ok(Print {
+            file_number: print.file_number,
+            lpt1: print.lpt1,
+            format_string: match print.format_string {
+                Some(f) => self.visit_expression_pos(f).map(Some)?,
                 _ => None,
             },
-            args: self.visit_print_args(print_node.args)?,
+            args: self.visit_print_args(print.args)?,
         })
     }
 
-    fn visit_print_args(&mut self, print_args: Vec<PrintArg>) -> Result<Vec<PrintArg>, QErrorNode> {
+    fn visit_print_args(&mut self, print_args: Vec<PrintArg>) -> Result<Vec<PrintArg>, QErrorPos> {
         print_args
             .into_iter()
             .map(|a| self.visit_print_arg(a))
-            .collect::<Result<Vec<PrintArg>, QErrorNode>>()
+            .collect::<Result<Vec<PrintArg>, QErrorPos>>()
     }
 
-    fn visit_print_arg(&mut self, print_arg: PrintArg) -> Result<PrintArg, QErrorNode> {
+    fn visit_print_arg(&mut self, print_arg: PrintArg) -> Result<PrintArg, QErrorPos> {
         match print_arg {
-            PrintArg::Expression(e) => self.visit_expression_node(e).map(PrintArg::Expression),
+            PrintArg::Expression(e) => self.visit_expression_pos(e).map(PrintArg::Expression),
             _ => Ok(print_arg),
         }
     }
 
-    fn visit_dim_list(&mut self, dim_list: DimList) -> Result<DimList, QErrorNode> {
+    fn visit_dim_list(&mut self, dim_list: DimList) -> Result<DimList, QErrorPos> {
         let DimList { shared, variables } = dim_list;
-        let converted_variables = self.visit_dim_name_nodes(variables)?;
+        let converted_variables = self.dim_vars(variables)?;
         Ok(DimList {
             shared,
             variables: converted_variables,
         })
     }
 
-    fn visit_dim_name_nodes(
-        &mut self,
-        dim_name_nodes: DimNameNodes,
-    ) -> Result<DimNameNodes, QErrorNode> {
-        dim_name_nodes
+    fn dim_vars(&mut self, dim_vars: DimVars) -> Result<DimVars, QErrorPos> {
+        dim_vars
             .into_iter()
-            .map(|d| self.visit_dim_name_node(d))
+            .map(|d| self.visit_dim_var_pos(d))
             .collect()
     }
 
-    fn visit_dim_name_node(
-        &mut self,
-        dim_name_node: DimNameNode,
-    ) -> Result<DimNameNode, QErrorNode> {
-        let DimNameNode {
+    fn visit_dim_var_pos(&mut self, dim_var_pos: DimVarPos) -> Result<DimVarPos, QErrorPos> {
+        let DimVarPos {
             element:
-                DimName {
+                DimVar {
                     bare_name,
                     var_type: dim_type,
                 },
             pos,
-        } = dim_name_node;
+        } = dim_var_pos;
         let converted_dim_type = self.visit_dim_type(dim_type)?;
-        Ok(DimNameNode {
-            element: DimName {
+        Ok(DimVarPos {
+            element: DimVar {
                 bare_name,
                 var_type: converted_dim_type,
             },
@@ -355,7 +344,7 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn visit_dim_type(&mut self, dim_type: DimType) -> Result<DimType, QErrorNode> {
+    fn visit_dim_type(&mut self, dim_type: DimType) -> Result<DimType, QErrorPos> {
         match dim_type {
             DimType::Array(array_dimensions, element_type) => {
                 let converted_array_dimensions = self.visit_array_dimensions(array_dimensions)?;
@@ -368,7 +357,7 @@ pub trait ExpressionReducer {
     fn visit_array_dimensions(
         &mut self,
         array_dimensions: ArrayDimensions,
-    ) -> Result<ArrayDimensions, QErrorNode> {
+    ) -> Result<ArrayDimensions, QErrorPos> {
         array_dimensions
             .into_iter()
             .map(|a| self.visit_array_dimension(a))
@@ -378,13 +367,13 @@ pub trait ExpressionReducer {
     fn visit_array_dimension(
         &mut self,
         array_dimension: ArrayDimension,
-    ) -> Result<ArrayDimension, QErrorNode> {
+    ) -> Result<ArrayDimension, QErrorPos> {
         let ArrayDimension { lbound, ubound } = array_dimension;
         let converted_lbound = match lbound {
-            Some(lbound) => Some(self.visit_expression_node(lbound)?),
+            Some(lbound) => Some(self.visit_expression_pos(lbound)?),
             None => None,
         };
-        let converted_ubound = self.visit_expression_node(ubound)?;
+        let converted_ubound = self.visit_expression_pos(ubound)?;
         Ok(ArrayDimension {
             lbound: converted_lbound,
             ubound: converted_ubound,

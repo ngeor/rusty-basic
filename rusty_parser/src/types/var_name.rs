@@ -1,16 +1,17 @@
-use crate::{BareName, BareNameNode, ExpressionType, HasExpressionType, TypeQualifier};
+use crate::{BareName, BareNamePos, ExpressionType, HasExpressionType, TypeQualifier};
 
 /// A variable name with a type.
 ///
 /// This is an abstraction to address the similarities between [DimName]
 /// and [ParamName].
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct VarName<T> {
+pub struct TypedName<T> {
+    // TODO make fields private
     pub bare_name: BareName,
     pub var_type: T,
 }
 
-impl<T> VarName<T> {
+impl<T> TypedName<T> {
     pub fn new(bare_name: BareName, var_type: T) -> Self {
         Self {
             bare_name,
@@ -19,7 +20,7 @@ impl<T> VarName<T> {
     }
 }
 
-impl<T> HasExpressionType for VarName<T>
+impl<T> HasExpressionType for TypedName<T>
 where
     T: HasExpressionType,
 {
@@ -37,11 +38,11 @@ pub trait VarTypeToArray {
 }
 
 pub trait VarTypeNewUserDefined {
-    fn new_user_defined(name_node: BareNameNode) -> Self;
+    fn new_user_defined(bare_name_pos: BareNamePos) -> Self;
 }
 
 pub trait VarTypeToUserDefinedRecursively {
-    fn as_user_defined_recursively(&self) -> Option<&BareNameNode>;
+    fn as_user_defined_recursively(&self) -> Option<&BareNamePos>;
 }
 
 pub trait VarTypeQualifier {

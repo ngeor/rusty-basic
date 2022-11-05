@@ -13,22 +13,22 @@ impl<'a, R> ExpressionReducer for UndefinedFunctionReducer<'a, R>
 where
     R: HasFunctions,
 {
-    fn visit_expression(&mut self, expression: Expression) -> Result<Expression, QErrorNode> {
+    fn visit_expression(&mut self, expression: Expression) -> Result<Expression, QErrorPos> {
         match expression {
             Expression::BinaryExpression(op, left, right, _) => {
-                let mapped_left = self.visit_expression_node(*left)?;
-                let mapped_right = self.visit_expression_node(*right)?;
+                let mapped_left = self.visit_expression_pos(*left)?;
+                let mapped_right = self.visit_expression_pos(*right)?;
                 binary_cast(mapped_left, mapped_right, op)
             }
             Expression::UnaryExpression(op, child) => {
-                let mapped_child = self.visit_expression_node(*child)?;
+                let mapped_child = self.visit_expression_pos(*child)?;
                 Ok(Expression::UnaryExpression(op, Box::new(mapped_child)))
             }
             Expression::FunctionCall(name, args) => {
                 if self.context.functions().contains_key(name.bare_name()) {
                     Ok(Expression::FunctionCall(
                         name,
-                        self.visit_expression_nodes(args)?,
+                        self.visit_expressions(args)?,
                     ))
                 } else {
                     // the user_defined_function_linter already ensures that the args are valid
@@ -37,7 +37,7 @@ where
             }
             Expression::BuiltInFunctionCall(name, args) => Ok(Expression::BuiltInFunctionCall(
                 name,
-                self.visit_expression_nodes(args)?,
+                self.visit_expressions(args)?,
             )),
             _ => Ok(expression),
         }

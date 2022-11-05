@@ -6,20 +6,20 @@ use rusty_variant::Variant;
 impl InstructionGenerator {
     pub fn visit_dim_list(&mut self, item: DimList) {
         let DimList { shared, variables } = item;
-        for dim_name_node in variables {
-            self.visit_dim_name_node(dim_name_node, false, shared);
+        for dim_var_pos in variables {
+            self.visit_dim_var_pos(dim_var_pos, false, shared);
         }
     }
 
     pub fn visit_redim_list(&mut self, item: DimList) {
         let DimList { shared, variables } = item;
-        for dim_name_node in variables {
-            self.visit_dim_name_node(dim_name_node, true, shared);
+        for dim_var_pos in variables {
+            self.visit_dim_var_pos(dim_var_pos, true, shared);
         }
     }
 
-    fn visit_dim_name_node(&mut self, item: DimNameNode, is_redim: bool, shared: bool) {
-        let Locatable {
+    fn visit_dim_var_pos(&mut self, item: DimVarPos, is_redim: bool, shared: bool) {
+        let Positioned {
             element: dim_name,
             pos,
         } = item;
@@ -54,8 +54,8 @@ impl InstructionGenerator {
         }
     }
 
-    fn generate_dim_name(&mut self, dim_name: DimName, shared: bool, pos: Location) {
-        let DimName {
+    fn generate_dim_name(&mut self, dim_name: DimVar, shared: bool, pos: Position) {
+        let DimVar {
             bare_name,
             var_type: dim_type,
         } = dim_name;
@@ -118,7 +118,7 @@ impl InstructionGenerator {
                 );
                 self.push(Instruction::CopyAToVarPath, pos);
             }
-            DimType::UserDefined(Locatable {
+            DimType::UserDefined(Positioned {
                 element: user_defined_type_name,
                 ..
             }) => {

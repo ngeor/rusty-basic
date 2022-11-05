@@ -8,7 +8,7 @@ pub fn dim_p() -> impl Parser<Output = Statement> {
         keyword(Keyword::Dim),
         whitespace().no_incomplete(),
         opt_shared_keyword(),
-        csv_non_opt(dim_name::dim_name_node_p(), "Expected: name after DIM"),
+        csv_non_opt(dim_name::dim_var_pos_p(), "Expected: name after DIM"),
         |_, _, opt_shared, variables| {
             Statement::Dim(DimList {
                 shared: opt_shared.is_some(),
@@ -24,7 +24,7 @@ pub fn redim_p() -> impl Parser<Output = Statement> {
         keyword(Keyword::Redim),
         whitespace().no_incomplete(),
         opt_shared_keyword(),
-        csv_non_opt(dim_name::redim_name_node_p(), "Expected: name after REDIM"),
+        csv_non_opt(dim_name::redim_var_pos_p(), "Expected: name after REDIM"),
         |_, _, opt_shared, variables| {
             Statement::Redim(DimList {
                 shared: opt_shared.is_some(),
@@ -72,14 +72,14 @@ mod tests {
                 let var_type_bare: BareName = (*var_type).into();
                 match p {
                     Statement::Dim(mut dim_list) => {
-                        let Locatable {
+                        let Positioned {
                             element: dim_name,
                             pos,
                         } = dim_list.variables.pop().unwrap();
-                        assert_eq!(pos, Location::new(1, 5));
+                        assert_eq!(pos, Position::new(1, 5));
                         assert_eq!(dim_name.bare_name, var_name_bare);
                         match dim_name.var_type {
-                            DimType::UserDefined(Locatable { element, .. }) => {
+                            DimType::UserDefined(Positioned { element, .. }) => {
                                 assert_eq!(element, var_type_bare);
                             }
                             _ => panic!("Expected user defined type"),
@@ -225,7 +225,7 @@ mod tests {
             assert_eq!(
                 program,
                 Statement::Dim(
-                    DimName::new_compact_local("DIM", TypeQualifier::DollarString)
+                    DimVar::new_compact_local("DIM", TypeQualifier::DollarString)
                         .into_list_rc(1, 5)
                 )
             );

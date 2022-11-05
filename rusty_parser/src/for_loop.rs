@@ -15,14 +15,14 @@ pub fn for_loop_p() -> impl Parser<Output = Statement> {
         ZeroOrMoreStatements::new(keyword(Keyword::Next)),
         keyword(Keyword::Next).or_fail(QError::ForWithoutNext),
         next_counter_p().allow_none(),
-        |(variable_name, lower_bound, upper_bound, opt_step), statements, _, opt_next_name_node| {
-            Statement::ForLoop(ForLoopNode {
+        |(variable_name, lower_bound, upper_bound, opt_step), statements, _, opt_next_name_pos| {
+            Statement::ForLoop(ForLoop {
                 variable_name,
                 lower_bound,
                 upper_bound,
                 step: opt_step,
                 statements,
-                next_counter: opt_next_name_node,
+                next_counter: opt_next_name_pos,
             })
         },
     )
@@ -31,36 +31,36 @@ pub fn for_loop_p() -> impl Parser<Output = Statement> {
 /// Parses the "FOR I = 1 TO 2 [STEP X]" part
 fn parse_for_step_p() -> impl Parser<
     Output = (
-        ExpressionNode,
-        ExpressionNode,
-        ExpressionNode,
-        Option<ExpressionNode>,
+        ExpressionPos,
+        ExpressionPos,
+        ExpressionPos,
+        Option<ExpressionPos>,
     ),
 > {
     opt_second_expression_after_keyword(parse_for_p(), Keyword::Step)
         .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
 }
 
-impl ExtractExpression for (ExpressionNode, ExpressionNode, ExpressionNode) {
-    fn to_expression(&self) -> &ExpressionNode {
+impl ExtractExpression for (ExpressionPos, ExpressionPos, ExpressionPos) {
+    fn to_expression(&self) -> &ExpressionPos {
         &self.2
     }
 }
 
 /// Parses the "FOR I = 1 TO 2" part
-fn parse_for_p() -> impl Parser<Output = (ExpressionNode, ExpressionNode, ExpressionNode)> {
+fn parse_for_p() -> impl Parser<Output = (ExpressionPos, ExpressionPos, ExpressionPos)> {
     seq6(
         keyword_followed_by_whitespace_p(Keyword::For),
         expression::property::parser().or_syntax_error("Expected: name after FOR"),
         equal_sign().no_incomplete(),
-        expression::expr_node_ws().or_syntax_error("Expected: lower bound of FOR loop"),
+        expression::expr_pos_ws_p().or_syntax_error("Expected: lower bound of FOR loop"),
         keyword(Keyword::To).no_incomplete(),
-        expression::ws_expr_node().or_syntax_error("Expected: upper bound of FOR loop"),
+        expression::ws_expr_pos_p().or_syntax_error("Expected: upper bound of FOR loop"),
         |_, name, _, lower_bound, _, upper_bound| (name, lower_bound, upper_bound),
     )
 }
 
-fn next_counter_p() -> impl Parser<Output = ExpressionNode> {
+fn next_counter_p() -> impl Parser<Output = ExpressionPos> {
     whitespace()
         .and(expression::property::parser())
         .keep_right()
@@ -79,7 +79,7 @@ mod tests {
         let result = parse(input).demand_single_statement();
         assert_eq!(
             result,
-            Statement::ForLoop(ForLoopNode {
+            Statement::ForLoop(ForLoop {
                 variable_name: Expression::var_unresolved("I").at_rc(1, 5),
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
@@ -98,7 +98,7 @@ mod tests {
         let result = parse(input).demand_single_statement();
         assert_eq!(
             result,
-            Statement::ForLoop(ForLoopNode {
+            Statement::ForLoop(ForLoop {
                 variable_name: Expression::var_unresolved("i").at_rc(1, 5),
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
@@ -116,12 +116,12 @@ mod tests {
         let result = parse_file("FOR_PRINT_10.BAS").demand_single_statement();
         assert_eq!(
             result,
-            Statement::ForLoop(ForLoopNode {
+            Statement::ForLoop(ForLoop {
                 variable_name: Expression::var_unresolved("I").at_rc(1, 5),
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
-                statements: vec![Statement::Print(PrintNode {
+                statements: vec![Statement::Print(Print {
                     file_number: None,
                     lpt1: false,
                     format_string: None,
@@ -139,20 +139,20 @@ mod tests {
 
     #[test]
     fn fn_fixture_for_nested() {
-        let result = parse_file_no_location("FOR_NESTED.BAS");
+        let result = parse_file_no_pos("FOR_NESTED.BAS");
         assert_eq!(
             result,
             vec![
-                TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                GlobalStatement::Statement(Statement::Print(Print::one(
                     "Before the outer loop".as_lit_expr(1, 7)
                 ))),
-                TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {
+                GlobalStatement::Statement(Statement::ForLoop(ForLoop {
                     variable_name: Expression::var_unresolved("I").at_rc(2, 5),
                     lower_bound: 1.as_lit_expr(2, 9),
                     upper_bound: 10.as_lit_expr(2, 14),
                     step: None,
                     statements: vec![
-                        Statement::Print(PrintNode {
+                        Statement::Print(Print {
                             file_number: None,
                             lpt1: false,
                             format_string: None,
@@ -163,12 +163,12 @@ mod tests {
                             ],
                         })
                         .at_rc(3, 5),
-                        Statement::ForLoop(ForLoopNode {
+                        Statement::ForLoop(ForLoop {
                             variable_name: Expression::var_unresolved("J").at_rc(4, 9),
                             lower_bound: 1.as_lit_expr(4, 13),
                             upper_bound: 10.as_lit_expr(4, 18),
                             step: None,
-                            statements: vec![Statement::Print(PrintNode {
+                            statements: vec![Statement::Print(Print {
                                 file_number: None,
                                 lpt1: false,
                                 format_string: None,
@@ -184,7 +184,7 @@ mod tests {
                             next_counter: None,
                         })
                         .at_rc(4, 5),
-                        Statement::Print(PrintNode {
+                        Statement::Print(Print {
                             file_number: None,
                             lpt1: false,
                             format_string: None,
@@ -198,7 +198,7 @@ mod tests {
                     ],
                     next_counter: None,
                 })),
-                TopLevelToken::Statement(Statement::Print(PrintNode::one(
+                GlobalStatement::Statement(Statement::Print(Print::one(
                     "After the outer loop".as_lit_expr(9, 7)
                 ))),
             ]
@@ -216,7 +216,7 @@ mod tests {
         assert_eq!(
             result,
             vec![
-                TopLevelToken::Statement(Statement::ForLoop(ForLoopNode {
+                GlobalStatement::Statement(Statement::ForLoop(ForLoop {
                     variable_name: Expression::var_unresolved("I").at_rc(2, 13),
                     lower_bound: 1.as_lit_expr(2, 17),
                     upper_bound: 10.as_lit_expr(2, 22),
@@ -230,7 +230,7 @@ mod tests {
                     next_counter: None,
                 }))
                 .at_rc(2, 9),
-                TopLevelToken::Statement(Statement::Comment(" end of loop".to_string()))
+                GlobalStatement::Statement(Statement::Comment(" end of loop".to_string()))
                     .at_rc(4, 14)
             ]
         );

@@ -10,7 +10,7 @@ pub fn convert(
     ctx: &mut PosExprState,
     left_side: Box<Expression>,
     property_name: Name,
-) -> Result<Expression, QErrorNode> {
+) -> Result<Expression, QErrorPos> {
     // can we fold it into a name?
     let opt_folded_name = try_fold(&left_side, property_name.clone());
     if let Some(folded_name) = opt_folded_name {
@@ -35,11 +35,11 @@ pub fn convert(
     // it is not a folded name, either it is a property of a known variable or expression,
     // or we need to introduce a new implicit var with a dot
     let unboxed_left_side = *left_side;
-    let Locatable {
+    let Positioned {
         element: resolved_left_side,
         ..
     } = unboxed_left_side
-        .at(ctx.pos())
+        .at_pos(ctx.pos())
         .convert_in(ctx, ExprContext::ResolvingPropertyOwner)?;
 
     // functions cannot return udf so no need to check them
@@ -105,7 +105,7 @@ fn existing_property_expression_type(
     expression_type: &ExpressionType,
     property_name: Name,
     allow_unresolved: bool,
-) -> Result<Expression, QErrorNode> {
+) -> Result<Expression, QErrorPos> {
     match expression_type {
         ExpressionType::UserDefined(user_defined_type_name) => {
             existing_property_user_defined_type_name(
@@ -134,7 +134,7 @@ fn existing_property_user_defined_type_name(
     resolved_left_side: Expression,
     user_defined_type_name: &BareName,
     property_name: Name,
-) -> Result<Expression, QErrorNode> {
+) -> Result<Expression, QErrorPos> {
     match ctx.user_defined_types().get(user_defined_type_name) {
         Some(user_defined_type) => existing_property_user_defined_type(
             resolved_left_side,
@@ -149,7 +149,7 @@ fn existing_property_user_defined_type(
     resolved_left_side: Expression,
     user_defined_type: &UserDefinedType,
     property_name: Name,
-) -> Result<Expression, QErrorNode> {
+) -> Result<Expression, QErrorPos> {
     match user_defined_type.demand_element_by_name(&property_name) {
         Ok(element_type) => {
             existing_property_element_type(resolved_left_side, element_type, property_name)
@@ -162,7 +162,7 @@ fn existing_property_element_type(
     resolved_left_side: Expression,
     element_type: &ElementType,
     property_name: Name,
-) -> Result<Expression, QErrorNode> {
+) -> Result<Expression, QErrorPos> {
     let bare_name = property_name.into();
     let property_name = Name::Bare(bare_name);
     Ok(Expression::Property(

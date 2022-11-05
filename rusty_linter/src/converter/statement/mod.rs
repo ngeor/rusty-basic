@@ -3,7 +3,7 @@ mod const_rules;
 mod do_loop;
 mod for_loop;
 mod if_blocks;
-mod print_node;
+mod print;
 mod select_case;
 mod sub_call;
 
@@ -13,16 +13,16 @@ use crate::converter::traits::Convertible;
 use crate::converter::types::{DimContext, ExprContext};
 use crate::NameContext;
 use rusty_common::*;
-use rusty_parser::{ExitObject, Statement, StatementNode, StatementNodes};
+use rusty_parser::{ExitObject, Statement, StatementPos, Statements};
 
-impl Convertible<Context, Option<StatementNode>> for StatementNode {
-    fn convert(self, ctx: &mut Context) -> Result<Option<StatementNode>, QErrorNode> {
-        let Locatable {
+impl Convertible<Context, Option<StatementPos>> for StatementPos {
+    fn convert(self, ctx: &mut Context) -> Result<Option<StatementPos>, QErrorPos> {
+        let Positioned {
             element: statement,
             pos,
         } = self;
         match statement.convert_in(ctx, pos) {
-            Ok(Some(statement)) => Ok(Some(statement.at(pos))),
+            Ok(Some(statement)) => Ok(Some(statement.at_pos(pos))),
             Ok(None) => Ok(None),
             Err(err) => Err(err.patch_pos(pos)),
         }
@@ -30,10 +30,10 @@ impl Convertible<Context, Option<StatementNode>> for StatementNode {
 }
 
 impl<'a> Convertible<PosContext<'a>, Option<Statement>> for Statement {
-    fn convert(self, ctx: &mut PosContext) -> Result<Option<Statement>, QErrorNode> {
+    fn convert(self, ctx: &mut PosContext) -> Result<Option<Statement>, QErrorPos> {
         match self {
             Statement::Assignment(n, e) => assignment::on_assignment(n, e, ctx).map(Some),
-            // CONST will be filtered out in the StatementNodes processor
+            // CONST is mapped to None and is filtered out
             Statement::Const(n, e) => const_rules::on_const(ctx, n, e).map(|_| None),
             Statement::SubCall(n, args) => ctx.sub_call(n, args).map(Some),
             Statement::BuiltInSubCall(built_in_sub, args) => {
@@ -44,9 +44,7 @@ impl<'a> Convertible<PosContext<'a>, Option<Statement>> for Statement {
             Statement::SelectCase(s) => s.convert(ctx).map(Statement::SelectCase).map(Some),
             Statement::ForLoop(f) => f.convert(ctx).map(Statement::ForLoop).map(Some),
             Statement::While(c) => c.convert(ctx).map(Statement::While).map(Some),
-            Statement::DoLoop(do_loop_node) => {
-                do_loop_node.convert(ctx).map(Statement::DoLoop).map(Some)
-            }
+            Statement::DoLoop(do_loop) => do_loop.convert(ctx).map(Statement::DoLoop).map(Some),
             Statement::Return(opt_label) => {
                 if opt_label.is_some() && ctx.is_in_subprogram() {
                     // cannot have RETURN with explicit label inside subprogram
@@ -89,7 +87,7 @@ impl<'a> Convertible<PosContext<'a>, Option<Statement>> for Statement {
                 .convert_in(ctx, DimContext::Redim)
                 .map(Statement::Redim)
                 .map(Some),
-            Statement::Print(print_node) => print_node.convert(ctx).map(Statement::Print).map(Some),
+            Statement::Print(print) => print.convert(ctx).map(Statement::Print).map(Some),
             Statement::OnError(_)
             | Statement::Label(_)
             | Statement::GoTo(_)
@@ -101,8 +99,8 @@ impl<'a> Convertible<PosContext<'a>, Option<Statement>> for Statement {
     }
 }
 
-impl Convertible for StatementNodes {
-    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorNode> {
+impl Convertible for Statements {
+    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorPos> {
         self.into_iter()
             .map(|s| s.convert(ctx))
             .map(|res| match res {

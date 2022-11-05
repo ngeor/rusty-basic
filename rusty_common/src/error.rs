@@ -280,7 +280,7 @@ impl<T, E: ParserErrorTrait> ParserErrorTrait for Result<T, E> {
     }
 }
 
-pub type QErrorNode = ErrorEnvelope<QError>;
+pub type QErrorPos = ErrorEnvelope<QError>;
 
 impl From<&std::io::Error> for QError {
     fn from(e: &std::io::Error) -> Self {

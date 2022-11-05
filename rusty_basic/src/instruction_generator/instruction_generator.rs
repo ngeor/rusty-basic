@@ -2,13 +2,13 @@ use crate::instruction_generator::label_resolver::LabelResolver;
 use crate::instruction_generator::subprogram_info::{
     SubprogramInfoCollector, SubprogramInfoRepository,
 };
-use rusty_common::{AtLocation, CaseInsensitiveString, Locatable, Location, QError};
+use rusty_common::{AtPos, CaseInsensitiveString, Position, Positioned, QError};
 use rusty_linter::SubprogramName;
 use rusty_parser::*;
 use rusty_variant::Variant;
 
 /// Generates instructions for the given program.
-pub fn generate_instructions(program: ProgramNode) -> InstructionGeneratorResult {
+pub fn generate_instructions(program: Program) -> InstructionGeneratorResult {
     // pass 1: collect function/sub names -> parameter names, in order to use them in function/sub calls
     // the parameter names and types are needed
     let mut subprogram_info_collector = SubprogramInfoCollector::default();
@@ -33,7 +33,7 @@ pub fn generate_instructions(program: ProgramNode) -> InstructionGeneratorResult
 }
 
 pub struct InstructionGeneratorResult {
-    pub instructions: Vec<InstructionNode>,
+    pub instructions: Vec<InstructionPos>,
     pub statement_addresses: Vec<usize>,
 }
 
@@ -159,7 +159,7 @@ pub enum Instruction {
     BeginCollectArguments,
 
     /// Pushes the value of register A as a named parameter to a child context.
-    PushNamed(ParamName),
+    PushNamed(Parameter),
 
     /// Pushes the value of register A as an unnamed parameter to a child context.
     /// Unnamed parameters are used by built-in functions/subs.
@@ -219,10 +219,10 @@ pub enum Instruction {
 
     /// Checks if a variable is defined (used to prevent re-allocation of variables in STATIC functions/subs).
     /// If the variable is already present, it will set the A register to true, otherwise to false.
-    IsVariableDefined(DimName),
+    IsVariableDefined(DimVar),
 }
 
-pub type InstructionNode = Locatable<Instruction>;
+pub type InstructionPos = Positioned<Instruction>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AddressOrLabel {
@@ -249,7 +249,7 @@ pub enum PrinterType {
 
 // TODO visibility needs to be reduced. It was not pub when it lived in the mess of `mod.rs`
 pub struct InstructionGenerator {
-    pub instructions: Vec<InstructionNode>,
+    pub instructions: Vec<InstructionPos>,
     pub statement_addresses: Vec<usize>,
     pub subprogram_info_repository: SubprogramInfoRepository,
     pub current_subprogram: Option<SubprogramName>,
@@ -265,51 +265,51 @@ impl InstructionGenerator {
         }
     }
 
-    fn generate_unresolved(&mut self, program: ProgramNode) {
-        let (top_level_statements, functions, subs) = Self::split_program(program);
-        self.visit_top_level_statements(top_level_statements);
+    fn generate_unresolved(&mut self, program: Program) {
+        let (global_statements, functions, subs) = Self::split_program(program);
+        self.visit_global_statements(global_statements);
         self.visit_functions(functions);
         self.visit_subs(subs);
     }
 
-    pub fn push(&mut self, i: Instruction, pos: Location) {
-        self.instructions.push(i.at(pos));
+    pub fn push(&mut self, i: Instruction, pos: Position) {
+        self.instructions.push(i.at_pos(pos));
     }
 
     fn split_program(
-        program: ProgramNode,
+        program: Program,
     ) -> (
-        StatementNodes,
-        Vec<Locatable<FunctionImplementation>>,
-        Vec<Locatable<SubImplementation>>,
+        Statements,
+        Vec<Positioned<FunctionImplementation>>,
+        Vec<Positioned<SubImplementation>>,
     ) {
-        let mut top_level_statements: StatementNodes = vec![];
-        let mut functions: Vec<Locatable<FunctionImplementation>> = vec![];
-        let mut subs: Vec<Locatable<SubImplementation>> = vec![];
-        for Locatable { element, pos } in program {
+        let mut global_statements: Statements = vec![];
+        let mut functions: Vec<Positioned<FunctionImplementation>> = vec![];
+        let mut subs: Vec<Positioned<SubImplementation>> = vec![];
+        for Positioned { element, pos } in program {
             match element {
-                TopLevelToken::Statement(s) => {
-                    top_level_statements.push(s.at(pos));
+                GlobalStatement::Statement(s) => {
+                    global_statements.push(s.at_pos(pos));
                 }
-                TopLevelToken::FunctionImplementation(f) => {
-                    functions.push(f.at(pos));
+                GlobalStatement::FunctionImplementation(f) => {
+                    functions.push(f.at_pos(pos));
                 }
-                TopLevelToken::SubImplementation(s) => {
-                    subs.push(s.at(pos));
+                GlobalStatement::SubImplementation(s) => {
+                    subs.push(s.at_pos(pos));
                 }
                 _ => {}
             }
         }
         (
-            Self::move_data_statements_first(top_level_statements),
+            Self::move_data_statements_first(global_statements),
             functions,
             subs,
         )
     }
 
-    fn move_data_statements_first(statements: StatementNodes) -> StatementNodes {
-        let mut data_statements: StatementNodes = vec![];
-        let mut other_statements: StatementNodes = vec![];
+    fn move_data_statements_first(statements: Statements) -> Statements {
+        let mut data_statements: Statements = vec![];
+        let mut other_statements: Statements = vec![];
         for statement in statements {
             if let Statement::BuiltInSubCall(BuiltInSub::Data, _) = &statement.element {
                 data_statements.push(statement);
@@ -321,28 +321,28 @@ impl InstructionGenerator {
         data_statements
     }
 
-    fn visit_top_level_statements(&mut self, statements: StatementNodes) {
+    fn visit_global_statements(&mut self, statements: Statements) {
         self.visit(statements);
 
         // add HALT instruction at end of program to separate from the functions and subs
         self.mark_statement_address();
-        self.push(Instruction::Halt, Location::new(u32::MAX, u32::MAX));
+        self.push(Instruction::Halt, Position::new(u32::MAX, u32::MAX));
     }
 
-    fn visit_functions(&mut self, functions: Vec<Locatable<FunctionImplementation>>) {
+    fn visit_functions(&mut self, functions: Vec<Positioned<FunctionImplementation>>) {
         for f in functions {
             self.visit_function(f);
         }
     }
 
-    fn visit_function(&mut self, function_node: Locatable<FunctionImplementation>) {
-        let Locatable {
+    fn visit_function(&mut self, function_implementation_pos: Positioned<FunctionImplementation>) {
+        let Positioned {
             element: function_implementation,
             pos,
-        } = function_node;
+        } = function_implementation_pos;
         let FunctionImplementation {
             name:
-                Locatable {
+                Positioned {
                     element: function_name,
                     ..
                 },
@@ -362,19 +362,19 @@ impl InstructionGenerator {
         }
     }
 
-    fn visit_subs(&mut self, subs: Vec<Locatable<SubImplementation>>) {
+    fn visit_subs(&mut self, subs: Vec<Positioned<SubImplementation>>) {
         for s in subs {
             self.visit_sub(s);
         }
     }
 
-    fn visit_sub(&mut self, sub_node: Locatable<SubImplementation>) {
-        let Locatable {
+    fn visit_sub(&mut self, sub_implementation_pos: Positioned<SubImplementation>) {
+        let Positioned {
             element: sub_implementation,
             pos,
-        } = sub_node;
+        } = sub_implementation_pos;
         let SubImplementation {
-            name: Locatable { element: name, .. },
+            name: Positioned { element: name, .. },
             body,
             ..
         } = sub_implementation;
@@ -382,7 +382,7 @@ impl InstructionGenerator {
         self.subprogram_body(body, pos);
     }
 
-    fn mark_current_subprogram(&mut self, subprogram_name: SubprogramName, pos: Location) {
+    fn mark_current_subprogram(&mut self, subprogram_name: SubprogramName, pos: Position) {
         self.push(
             Instruction::Label(Self::format_subprogram_label(&subprogram_name)),
             pos,
@@ -390,7 +390,7 @@ impl InstructionGenerator {
         self.current_subprogram = Some(subprogram_name);
     }
 
-    fn subprogram_body(&mut self, block: StatementNodes, pos: Location) {
+    fn subprogram_body(&mut self, block: Statements, pos: Position) {
         self.visit(block);
         // to be able to RESUME NEXT if an error occurs on the last statement
         self.mark_statement_address();
@@ -398,18 +398,18 @@ impl InstructionGenerator {
     }
 
     /// Adds a Load instruction, storing the given [Variant] in register A.
-    pub fn push_load(&mut self, value: Variant, pos: Location) {
+    pub fn push_load(&mut self, value: Variant, pos: Position) {
         self.push(Instruction::LoadIntoA(value), pos);
     }
 
     /// Adds a Load instruction, storing the given [Variant] in register A,
     /// followed by a PushUnnamed instruction.
-    pub fn push_load_unnamed_arg(&mut self, value: Variant, pos: Location) {
+    pub fn push_load_unnamed_arg(&mut self, value: Variant, pos: Position) {
         self.push_load(value, pos);
         self.push(Instruction::PushUnnamedByVal, pos);
     }
 
-    pub fn jump_if_false(&mut self, prefix: &str, pos: Location) {
+    pub fn jump_if_false(&mut self, prefix: &str, pos: Position) {
         self.push(
             Instruction::JumpIfFalse(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
                 format!("_{}_{:?}", prefix, pos),
@@ -418,7 +418,7 @@ impl InstructionGenerator {
         );
     }
 
-    pub fn jump(&mut self, prefix: &str, pos: Location) {
+    pub fn jump(&mut self, prefix: &str, pos: Position) {
         self.push(
             Instruction::Jump(AddressOrLabel::Unresolved(CaseInsensitiveString::new(
                 format!("_{}_{:?}", prefix, pos),
@@ -427,7 +427,7 @@ impl InstructionGenerator {
         );
     }
 
-    pub fn label(&mut self, prefix: &str, pos: Location) {
+    pub fn label(&mut self, prefix: &str, pos: Position) {
         self.push(
             Instruction::Label(CaseInsensitiveString::new(format!("_{}_{:?}", prefix, pos))),
             pos,
@@ -437,16 +437,16 @@ impl InstructionGenerator {
     pub fn generate_assignment_instructions(
         &mut self,
         l: Expression,
-        r: ExpressionNode,
-        pos: Location,
+        r: ExpressionPos,
+        pos: Position,
     ) {
         let left_type = l.expression_type();
         self.generate_expression_instructions_casting(r, left_type);
         self.generate_store_instructions(l, pos);
     }
 
-    pub fn generate_store_instructions(&mut self, l: Expression, pos: Location) {
-        self.generate_path_instructions(l.at(pos));
+    pub fn generate_store_instructions(&mut self, l: Expression, pos: Position) {
+        self.generate_path_instructions(l.at_pos(pos));
         self.push(Instruction::CopyAToVarPath, pos);
     }
 

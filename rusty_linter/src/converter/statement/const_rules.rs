@@ -6,18 +6,18 @@ use rusty_parser::*;
 
 pub fn on_const(
     ctx: &mut Context,
-    left_side: NameNode,
-    right_side: ExpressionNode,
-) -> Result<(), QErrorNode> {
+    left_side: NamePos,
+    right_side: ExpressionPos,
+) -> Result<(), QErrorPos> {
     const_cannot_clash_with_existing_names(ctx, &left_side)?;
     new_const(ctx, left_side, right_side)
 }
 
 fn const_cannot_clash_with_existing_names(
     ctx: &mut Context,
-    left_side: &NameNode,
-) -> Result<(), QErrorNode> {
-    let Locatable {
+    left_side: &NamePos,
+) -> Result<(), QErrorPos> {
+    let Positioned {
         element: const_name,
         pos: const_name_pos,
     } = left_side;
@@ -27,7 +27,7 @@ fn const_cannot_clash_with_existing_names(
         || ctx.subs().contains_key(const_name.bare_name())
         || ctx.functions().contains_key(const_name.bare_name())
     {
-        Err(QError::DuplicateDefinition).with_err_at(*const_name_pos)
+        Err(QError::DuplicateDefinition).with_err_at(const_name_pos)
     } else {
         Ok(())
     }
@@ -35,10 +35,10 @@ fn const_cannot_clash_with_existing_names(
 
 fn new_const(
     ctx: &mut Context,
-    left_side: NameNode,
-    right_side: ExpressionNode,
-) -> Result<(), QErrorNode> {
-    let Locatable {
+    left_side: NamePos,
+    right_side: ExpressionPos,
+) -> Result<(), QErrorPos> {
+    let Positioned {
         element: const_name,
         ..
     } = left_side;

@@ -45,7 +45,7 @@ mod tests {
         let program = parse(input);
         assert_eq!(
             program,
-            vec![TopLevelToken::Statement(Statement::Comment(
+            vec![GlobalStatement::Statement(Statement::Comment(
                 " just a comment . 123 AS".to_string()
             ))
             .at_rc(1, 1)]
@@ -58,7 +58,7 @@ mod tests {
         let program = parse(input);
         assert_eq!(
             program,
-            vec![TopLevelToken::Statement(Statement::Comment(String::new())).at_rc(1, 1)]
+            vec![GlobalStatement::Statement(Statement::Comment(String::new())).at_rc(1, 1)]
         );
     }
 }

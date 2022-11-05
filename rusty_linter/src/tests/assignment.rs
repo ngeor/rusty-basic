@@ -1,7 +1,7 @@
 use crate::assert_linter_err;
-use crate::assert_linter_ok_top_level_statements;
+use crate::assert_linter_ok_global_statements;
 use rusty_common::*;
-use rusty_parser::{DimName, Expression, ExpressionType, Operator, Statement, TypeQualifier};
+use rusty_parser::{DimVar, Expression, ExpressionType, Operator, Statement, TypeQualifier};
 
 #[test]
 fn name_clashes_with_other_sub_name() {
@@ -59,10 +59,10 @@ fn assign_integer_to_extended_string() {
 
 #[test]
 fn test_assign_binary_plus() {
-    assert_linter_ok_top_level_statements!(
+    assert_linter_ok_global_statements!(
         "X% = 1 + 2.1",
         Statement::Dim(
-            DimName::new_compact_local("X", TypeQualifier::PercentInteger).into_list_rc(1, 1)
+            DimVar::new_compact_local("X", TypeQualifier::PercentInteger).into_list_rc(1, 1)
         ),
         Statement::Assignment(
             Expression::var_resolved("X%"),
@@ -79,10 +79,10 @@ fn test_assign_binary_plus() {
 
 #[test]
 fn test_possible_property_folded_back_to_variable() {
-    assert_linter_ok_top_level_statements!(
+    assert_linter_ok_global_statements!(
         "A.B = 12",
         Statement::Dim(
-            DimName::new_compact_local("A.B", TypeQualifier::BangSingle).into_list_rc(1, 1)
+            DimVar::new_compact_local("A.B", TypeQualifier::BangSingle).into_list_rc(1, 1)
         ),
         Statement::Assignment(
             Expression::var_resolved("A.B!"),

@@ -1,16 +1,16 @@
 use crate::converter::context::Context;
 use crate::type_resolver::IntoTypeQualifier;
 use crate::{HasFunctions, HasSubs, HasUserDefinedTypes};
-use rusty_common::{Locatable, QError, QErrorNode, ToErrorEnvelopeNoPos, ToLocatableError};
+use rusty_common::{Positioned, QError, QErrorPos, WithErrAt, WithErrNoPos};
 use rusty_parser::{
-    DimName, ParamName, VarName, VarTypeIsExtended, VarTypeQualifier,
+    DimVar, Parameter, TypedName, VarTypeIsExtended, VarTypeQualifier,
     VarTypeToUserDefinedRecursively,
 };
 
-pub fn validate<T>(var_name: &VarName<T>, ctx: &Context) -> Result<(), QErrorNode>
+pub fn validate<T>(var_name: &TypedName<T>, ctx: &Context) -> Result<(), QErrorPos>
 where
     T: VarTypeIsExtended + VarTypeQualifier + VarTypeToUserDefinedRecursively,
-    VarName<T>: CannotClashWithFunctions,
+    TypedName<T>: CannotClashWithFunctions,
 {
     cannot_clash_with_subs(var_name, ctx).with_err_no_pos()?;
     var_name
@@ -20,7 +20,7 @@ where
     cannot_clash_with_local_constants(var_name, ctx).with_err_no_pos()
 }
 
-fn cannot_clash_with_subs<T, C: HasSubs>(var_name: &VarName<T>, ctx: &C) -> Result<(), QError> {
+fn cannot_clash_with_subs<T, C: HasSubs>(var_name: &TypedName<T>, ctx: &C) -> Result<(), QError> {
     if ctx.subs().contains_key(&var_name.bare_name) {
         Err(QError::DuplicateDefinition)
     } else {
@@ -29,7 +29,7 @@ fn cannot_clash_with_subs<T, C: HasSubs>(var_name: &VarName<T>, ctx: &C) -> Resu
 }
 
 fn cannot_clash_with_local_constants<T>(
-    var_name: &VarName<T>,
+    var_name: &TypedName<T>,
     ctx: &Context,
 ) -> Result<(), QError> {
     if ctx.names.contains_const(&var_name.bare_name) {
@@ -43,7 +43,7 @@ pub trait CannotClashWithFunctions {
     fn cannot_clash_with_functions(&self, ctx: &Context) -> Result<(), QError>;
 }
 
-impl CannotClashWithFunctions for DimName {
+impl CannotClashWithFunctions for DimVar {
     fn cannot_clash_with_functions(&self, ctx: &Context) -> Result<(), QError> {
         if ctx.functions().contains_key(&self.bare_name) {
             Err(QError::DuplicateDefinition)
@@ -53,7 +53,7 @@ impl CannotClashWithFunctions for DimName {
     }
 }
 
-impl CannotClashWithFunctions for ParamName {
+impl CannotClashWithFunctions for Parameter {
     fn cannot_clash_with_functions(&self, ctx: &Context) -> Result<(), QError> {
         if let Some(func_qualifier) = ctx.function_qualifier(&self.bare_name) {
             if self.var_type.is_extended() {
@@ -76,19 +76,19 @@ impl CannotClashWithFunctions for ParamName {
     }
 }
 
-fn user_defined_type_must_exist<T>(var_name: &VarName<T>, ctx: &Context) -> Result<(), QErrorNode>
+fn user_defined_type_must_exist<T>(var_name: &TypedName<T>, ctx: &Context) -> Result<(), QErrorPos>
 where
     T: VarTypeToUserDefinedRecursively,
 {
     match var_name.var_type.as_user_defined_recursively() {
-        Some(Locatable {
+        Some(Positioned {
             element: type_name,
             pos,
         }) => {
             if ctx.user_defined_types().contains_key(type_name) {
                 Ok(())
             } else {
-                Err(QError::TypeNotDefined).with_err_at(*pos)
+                Err(QError::TypeNotDefined).with_err_at(pos)
             }
         }
         _ => Ok(()),

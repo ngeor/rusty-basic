@@ -8,20 +8,20 @@ use crate::types::*;
 use crate::user_defined_type;
 use rusty_common::*;
 
-pub struct TopLevelTokensParser;
+pub struct ProgramParser;
 
-impl TopLevelTokensParser {
+impl ProgramParser {
     pub fn new() -> Self {
         Self
     }
 }
 
-impl Parser for TopLevelTokensParser {
-    type Output = ProgramNode;
+impl Parser for ProgramParser {
+    type Output = Program;
     fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
         let mut read_separator = true; // we are at the beginning of the file
-        let mut top_level_tokens: ProgramNode = vec![];
-        let top_level_token_parser = top_level_token_one_p();
+        let mut program: Program = vec![];
+        let global_statement_parser = global_statement_pos_p();
         loop {
             let opt_item = tokenizer.read()?;
             match opt_item {
@@ -38,10 +38,11 @@ impl Parser for TopLevelTokensParser {
                             return Err(QError::SyntaxError(format!("No separator: {}", ch.text)));
                         }
                         tokenizer.unread(ch);
-                        let opt_top_level_token = top_level_token_parser.parse_opt(tokenizer)?;
-                        match opt_top_level_token {
-                            Some(top_level_token) => {
-                                top_level_tokens.push(top_level_token);
+                        let opt_global_statement_pos =
+                            global_statement_parser.parse_opt(tokenizer)?;
+                        match opt_global_statement_pos {
+                            Some(global_statement_pos) => {
+                                program.push(global_statement_pos);
                                 read_separator = false;
                             }
                             _ => {
@@ -55,17 +56,17 @@ impl Parser for TopLevelTokensParser {
                 }
             }
         }
-        Ok(top_level_tokens)
+        Ok(program)
     }
 }
 
-fn top_level_token_one_p() -> impl Parser<Output = TopLevelTokenNode> {
+fn global_statement_pos_p() -> impl Parser<Output = GlobalStatementPos> {
     Alt5::new(
-        def_type::def_type_p().map(TopLevelToken::DefType),
+        def_type::def_type_p().map(GlobalStatement::DefType),
         declaration::declaration_p(),
         implementation::implementation_p(),
-        statement::statement_p().map(TopLevelToken::Statement),
-        user_defined_type::user_defined_type_p().map(TopLevelToken::UserDefinedType),
+        statement::statement_p().map(GlobalStatement::Statement),
+        user_defined_type::user_defined_type_p().map(GlobalStatement::UserDefinedType),
     )
     .with_pos()
 }

@@ -25,7 +25,7 @@ pub fn parse_something_completely<P>(input: &str, parser: impl Parser<Output = P
 }
 
 pub fn parse_str_no_pos(input: &str) -> Vec<GlobalStatement> {
-    Positioned::no_pos(parse(input))
+    parse(input).no_pos()
 }
 
 /// Parses the given file under the `fixtures` folder.
@@ -40,7 +40,7 @@ pub fn parse_file(filename: &str) -> Program {
 }
 
 pub fn parse_file_no_pos(filename: &str) -> Vec<GlobalStatement> {
-    Positioned::no_pos(parse_file(filename))
+    parse_file(filename).no_pos()
 }
 
 /// Parses the given string, expecting that it will fail.
@@ -189,7 +189,7 @@ macro_rules! assert_sub_call {
             Statement::SubCall(actual_bare_name, actual_args) => {
                 let expected_bare_name: $crate::types::BareName = $expected_name.into();
                 assert_eq!(actual_bare_name, expected_bare_name, "SubCall name mismatch");
-                let actual_args_no_pos: Vec<$crate::Expression> = rusty_common::Positioned::no_pos(actual_args);
+                let actual_args_no_pos: Vec<$crate::Expression> = rusty_common::NoPosContainer::no_pos(actual_args);
                 assert_eq!(actual_args_no_pos, vec![$($arg),+]);
             }
             _ => panic!("Expected SubCall")
@@ -215,7 +215,7 @@ macro_rules! assert_built_in_sub_call {
         match result {
             Statement::BuiltInSubCall(actual_name, actual_args) => {
                 assert_eq!(actual_name, $expected_name);
-                let actual_args_no_pos: Vec<$crate::Expression> = rusty_common::Positioned::no_pos(actual_args);
+                let actual_args_no_pos: Vec<$crate::Expression> = rusty_common::NoPosContainer::no_pos(actual_args);
                 assert_eq!(actual_args_no_pos, vec![$($arg),+]);
             }
             _ => panic!("Expected built-in sub call {:?}", $expected_name)
@@ -311,7 +311,7 @@ macro_rules! assert_function_declaration {
                     "Parameter count mismatch"
                 );
                 let parameters_no_pos: Vec<$crate::Parameter> =
-                    rusty_common::Positioned::no_pos(parameters);
+                    rusty_common::NoPosContainer::no_pos(parameters);
                 for i in 0..parameters_no_pos.len() {
                     assert_eq!(parameters_no_pos[i], $expected_params[i], "Parameter {}", i);
                 }

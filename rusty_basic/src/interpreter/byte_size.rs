@@ -31,6 +31,6 @@ impl QByteSize for VArray {
 
 impl QByteSize for UserDefinedTypeValue {
     fn byte_size(&self) -> usize {
-        self.property_values().map(Variant::byte_size).sum()
+        self.values().map(Variant::byte_size).sum()
     }
 }

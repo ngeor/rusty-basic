@@ -41,7 +41,7 @@ impl LabelLinter {
             .get(label_owner)
             .and_then(|set| set.get(label))
             .map(|_| ())
-            .ok_or_else(|| LintError::LabelNotDefined)
+            .ok_or(LintError::LabelNotDefined)
             .with_err_no_pos()
     }
 

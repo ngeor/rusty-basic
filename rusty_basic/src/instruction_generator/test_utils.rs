@@ -1,7 +1,7 @@
 use crate::instruction_generator::{
     generate_instructions, Instruction, InstructionGeneratorResult, InstructionPos,
 };
-use rusty_common::Positioned;
+use rusty_common::NoPosContainer;
 use rusty_linter::{lint, HasUserDefinedTypes};
 use rusty_parser::parse;
 
@@ -22,5 +22,5 @@ pub fn generate_instructions_str(input: &str) -> Vec<InstructionPos> {
 }
 
 pub fn generate_instructions_str_no_pos(input: &str) -> Vec<Instruction> {
-    Positioned::no_pos(generate_instructions_str(input))
+    generate_instructions_str(input).no_pos()
 }

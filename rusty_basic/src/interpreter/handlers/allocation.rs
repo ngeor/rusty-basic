@@ -1,8 +1,6 @@
 use crate::RuntimeError;
-use rusty_common::{CaseInsensitiveString, IndexedMap, Positioned};
-use rusty_parser::{
-    BareName, Element, ElementType, ExpressionType, TypeQualifier, UserDefinedTypes,
-};
+use rusty_common::{CaseInsensitiveString, NoPosIterTrait, Positioned};
+use rusty_parser::{BareName, ElementType, ExpressionType, TypeQualifier, UserDefinedTypes};
 use rusty_variant::{UserDefinedTypeValue, VArray, Variant};
 
 /// TODO add unit tests
@@ -21,7 +19,7 @@ pub fn allocate_built_in(type_qualifier: TypeQualifier) -> Variant {
 /// Allocates a new Variant that holds a string.
 /// The string is padded with whitespace of the given length.
 pub fn allocate_fixed_length_string(len: usize) -> Variant {
-    Variant::VString(std::iter::repeat(' ').take(len).collect())
+    Variant::VString(" ".repeat(len))
 }
 
 pub fn allocate_array(
@@ -79,19 +77,17 @@ fn allocate_user_defined_type_inner(
     types: &UserDefinedTypes,
 ) -> UserDefinedTypeValue {
     let user_defined_type = types.get(type_name).expect("Could not find type");
-    let mut map: IndexedMap<CaseInsensitiveString, Variant> = IndexedMap::new();
-    for Positioned {
-        element: Element {
-            name, element_type, ..
-        },
-        ..
-    } in user_defined_type.elements()
-    {
-        let def_value: Variant = allocate_element_type(element_type, types);
-        map.insert(name.clone(), def_value);
-    }
-
-    UserDefinedTypeValue::new(map)
+    let arr: Vec<(CaseInsensitiveString, Variant)> = user_defined_type
+        .elements()
+        .no_pos()
+        .map(|element| {
+            (
+                element.name.clone(),
+                allocate_element_type(&element.element_type, types),
+            )
+        })
+        .collect();
+    UserDefinedTypeValue::new(arr)
 }
 
 fn allocate_element_type(element_type: &ElementType, types: &UserDefinedTypes) -> Variant {

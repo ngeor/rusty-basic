@@ -155,7 +155,7 @@ fn existing_property_user_defined_type(
         Ok(element_type) => {
             existing_property_element_type(resolved_left_side, element_type, property_name)
         }
-        Err(e) => Err(LintError::from(e).at_no_pos()),
+        Err(e) => Err(e.at_no_pos()),
     }
 }
 

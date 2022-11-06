@@ -3,8 +3,8 @@ use crate::interpreter::arguments::{ArgumentInfo, Arguments};
 use crate::interpreter::byte_size::QByteSize;
 use crate::interpreter::context::{PeekByte, PokeByte};
 use crate::interpreter::handlers::allocation::allocate_built_in;
+use crate::interpreter::indexed_map::IndexedMap;
 use crate::RuntimeError;
-use rusty_common::IndexedMap;
 use rusty_parser::{BareName, DimType, DimVar, Name, ParamType, Parameter, TypeQualifier};
 use rusty_variant::{Variant, V_FALSE};
 

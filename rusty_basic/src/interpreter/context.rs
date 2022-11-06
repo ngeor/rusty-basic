@@ -7,6 +7,7 @@ use rusty_common::*;
 use rusty_linter::{QBNumberCast, SubprogramName};
 use rusty_parser::{BareName, BuiltInFunction, TypeQualifier};
 use rusty_variant::{bytes_to_i32, i32_to_bytes, UserDefinedTypeValue, VArray, Variant};
+use std::borrow::Borrow;
 use std::collections::HashMap;
 
 // This is an arbitrary value, not what QBasic is doing
@@ -250,7 +251,7 @@ impl Context {
                 match self.find_value_in_caller_context(parent_path)? {
                     Variant::VUserDefined(v_u) => Ok(address_offset_of_property(
                         v_u.as_ref(),
-                        property_name,
+                        property_name.borrow(),
                     ) + parent_var_ptr),
                     _ => panic!("Expected user defined type"),
                 }
@@ -499,8 +500,8 @@ fn address_offset_of_element(v: &VArray, indices: &[i32]) -> Result<usize, Runti
         .map_err(RuntimeError::from)
 }
 
-fn address_offset_of_property(v: &UserDefinedTypeValue, name: &CaseInsensitiveString) -> usize {
-    v.property_keys()
+fn address_offset_of_property(v: &UserDefinedTypeValue, name: &CaseInsensitiveStr) -> usize {
+    v.names()
         .take_while(|p| *p != name)
         .flat_map(|p| v.get(p))
         .map(|v| v.byte_size())

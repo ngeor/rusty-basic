@@ -2,12 +2,10 @@
 mod case_insensitive_str;
 mod case_insensitive_string;
 mod case_insensitive_utils;
-mod indexed_map;
 mod position;
 mod positioned;
 
 pub use self::case_insensitive_str::*;
 pub use self::case_insensitive_string::*;
-pub use self::indexed_map::*;
 pub use self::position::*;
 pub use self::positioned::*;

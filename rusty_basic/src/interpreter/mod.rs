@@ -6,6 +6,7 @@ mod data_segment;
 mod default_stdlib;
 pub mod error;
 mod handlers;
+mod indexed_map;
 mod interpreter;
 mod interpreter_trait;
 mod io;

@@ -40,11 +40,6 @@ where
         self.get_index_of_key(key).and_then(|x| self.values.get(x))
     }
 
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
-        self.get_index_of_key(key)
-            .and_then(move |x| self.values.get_mut(x))
-    }
-
     fn get_index_of_key(&self, key: &K) -> Option<usize> {
         self.keys_to_indices.get(key).copied()
     }
@@ -85,10 +80,6 @@ where
 
     pub fn len(&self) -> usize {
         self.values.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.values.is_empty()
     }
 }
 

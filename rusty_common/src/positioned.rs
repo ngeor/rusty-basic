@@ -29,11 +29,6 @@ impl<T> Positioned<T> {
             pos,
         }
     }
-
-    // TODO: #[cfg(test)]
-    pub fn no_pos(items: Vec<Self>) -> Vec<T> {
-        items.into_iter().map(Self::element).collect()
-    }
 }
 
 // AtPos
@@ -85,5 +80,88 @@ impl HasPos for Position {
 impl<T> HasPos for Box<Positioned<T>> {
     fn pos(&self) -> Position {
         self.as_ref().pos()
+    }
+}
+
+//
+// NoPosIter
+//
+
+pub struct NoPosIter<'a, T: 'a, I>
+where
+    I: Iterator<Item = &'a Positioned<T>>,
+{
+    pos_iter: I,
+}
+
+impl<'a, T: 'a, I> Iterator for NoPosIter<'a, T, I>
+where
+    I: Iterator<Item = &'a Positioned<T>>,
+{
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.pos_iter.next().map(|positioned| &positioned.element)
+    }
+}
+
+pub trait NoPosIterTrait<'a, T: 'a>: Iterator<Item = &'a Positioned<T>> {
+    fn no_pos(self) -> NoPosIter<'a, T, Self>
+    where
+        Self: Sized,
+    {
+        NoPosIter { pos_iter: self }
+    }
+}
+
+impl<'a, T: 'a, I> NoPosIterTrait<'a, T> for I where I: Iterator<Item = &'a Positioned<T>> {}
+
+//
+// NoPosIntoIter
+//
+
+pub struct NoPosIntoIter<T, I>
+where
+    I: Iterator<Item = Positioned<T>>,
+{
+    pos_iter: I,
+}
+
+impl<T, I> Iterator for NoPosIntoIter<T, I>
+where
+    I: Iterator<Item = Positioned<T>>,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.pos_iter.next().map(|positioned| positioned.element)
+    }
+}
+
+pub trait NoPosIntoIterTrait<T>: Iterator<Item = Positioned<T>> {
+    fn no_pos(self) -> NoPosIntoIter<T, Self>
+    where
+        Self: Sized,
+    {
+        NoPosIntoIter { pos_iter: self }
+    }
+}
+
+impl<T, I> NoPosIntoIterTrait<T> for I where I: Iterator<Item = Positioned<T>> {}
+
+//
+// NoPosContainer
+//
+
+pub trait NoPosContainer {
+    type Output;
+    fn no_pos(self) -> Self::Output;
+}
+
+impl<T> NoPosContainer for Vec<Positioned<T>> {
+    type Output = Vec<T>;
+
+    fn no_pos(self) -> Self::Output {
+        self.into_iter().no_pos().collect()
     }
 }

@@ -50,6 +50,14 @@ pub trait AtPos: Sized {
     fn at_rc(self, row: u32, col: u32) -> Positioned<Self> {
         self.at_pos(Position::new(row, col))
     }
+
+    fn at_start(self) -> Positioned<Self> {
+        self.at_pos(Position::start())
+    }
+
+    fn at_no_pos(self) -> Positioned<Self> {
+        self.at_pos(Position::zero())
+    }
 }
 
 impl<T> AtPos for T {}

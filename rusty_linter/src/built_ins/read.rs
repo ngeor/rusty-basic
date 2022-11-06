@@ -1,11 +1,11 @@
 use crate::arg_validation::ArgValidation;
 use crate::error::{LintError, LintErrorPos};
-use rusty_common::WithErrNoPos;
+use rusty_common::AtPos;
 use rusty_parser::Expressions;
 
 pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     if args.is_empty() {
-        Err(LintError::ArgumentCountMismatch).with_err_no_pos()
+        Err(LintError::ArgumentCountMismatch.at_no_pos())
     } else {
         for i in 0..args.len() {
             args.require_variable_of_built_in_type(i)?;

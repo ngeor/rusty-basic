@@ -1,13 +1,13 @@
 use crate::error::{LintError, LintErrorPos};
 use crate::NameContext;
-use rusty_common::{WithErrAt, WithErrNoPos};
+use rusty_common::AtPos;
 use rusty_parser::{Expression, ExpressionPos, Expressions};
 
 pub fn lint(args: &Expressions, name_context: NameContext) -> Result<(), LintErrorPos> {
     if name_context == NameContext::Global {
         args.iter().try_for_each(require_constant)
     } else {
-        Err(LintError::IllegalInSubFunction).with_err_no_pos()
+        Err(LintError::IllegalInSubFunction.at_no_pos())
     }
 }
 
@@ -18,7 +18,7 @@ fn require_constant(arg: &ExpressionPos) -> Result<(), LintErrorPos> {
         | Expression::StringLiteral(_)
         | Expression::IntegerLiteral(_)
         | Expression::LongLiteral(_) => Ok(()),
-        _ => Err(LintError::InvalidConstant).with_err_at(arg),
+        _ => Err(LintError::InvalidConstant.at(arg)),
     }
 }
 

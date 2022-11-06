@@ -8,6 +8,7 @@ mod variable;
 use crate::converter::context::Context;
 use crate::converter::traits::Convertible;
 use crate::error::LintErrorPos;
+use crate::LintPosResult;
 use expr_state::ExprState;
 use pos_expr_state::PosExprState;
 use rusty_common::*;
@@ -113,10 +114,9 @@ mod pos_expr_state {
 impl<'a> Convertible<ExprState<'a>> for ExpressionPos {
     fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, LintErrorPos> {
         let Positioned { element: expr, pos } = self;
-        match expr.convert_in(ctx, pos) {
-            Ok(expr) => Ok(expr.at_pos(pos)),
-            Err(err) => Err(err.patch_pos(pos)),
-        }
+        expr.convert_in(ctx, pos)
+            .map(|expr| expr.at_pos(pos))
+            .patch_err_pos(&pos)
     }
 }
 

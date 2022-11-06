@@ -1,6 +1,6 @@
 use crate::error::{LintError, LintErrorPos};
 use crate::post_linter::post_conversion_linter::PostConversionLinter;
-use rusty_common::WithErrAt;
+use rusty_common::AtPos;
 use rusty_parser::{
     ConditionalBlock, DoLoop, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier,
 };
@@ -13,12 +13,12 @@ impl ConditionTypeLinter {
         match expr_pos.expression_type() {
             ExpressionType::BuiltIn(q) => {
                 if q == TypeQualifier::DollarString {
-                    Err(LintError::TypeMismatch).with_err_at(expr_pos)
+                    Err(LintError::TypeMismatch.at(expr_pos))
                 } else {
                     Ok(())
                 }
             }
-            _ => Err(LintError::TypeMismatch).with_err_at(expr_pos),
+            _ => Err(LintError::TypeMismatch.at(expr_pos)),
         }
     }
 }

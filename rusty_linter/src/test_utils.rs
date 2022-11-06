@@ -36,38 +36,31 @@ pub fn linter_err(input: &str, msg: &str) -> LintErrorPos {
 #[macro_export]
 macro_rules! assert_linter_err {
     ($program:expr, $expected_err:expr) => {
-        match $crate::test_utils::linter_err($program, "") {
-            $crate::LintErrorPos::Pos(actual_err, _) => {
-                assert_eq!(actual_err, $expected_err);
-            }
-            _ => panic!("Should have an error position"),
-        }
+        let rusty_common::Positioned { element, pos } =
+            $crate::test_utils::linter_err($program, "");
+        assert_eq!(element, $expected_err);
+        assert_ne!(pos, rusty_common::Position::zero());
     };
 
     ($program:expr, $expected_err:expr, $msg:expr) => {
-        match $crate::test_utils::linter_err($program, format!("{}", $msg).as_ref()) {
-            $crate::LintErrorPos::Pos(actual_err, _) => {
-                assert_eq!(
-                    actual_err, $expected_err,
-                    "'{}' failed, expected {:?} but was {:?}",
-                    $msg, $expected_err, actual_err
-                );
-            }
-            _ => panic!("Should have an error position"),
-        }
+        let rusty_common::Positioned { element, pos } =
+            $crate::test_utils::linter_err($program, format!("{}", $msg).as_ref());
+        assert_eq!(
+            element, $expected_err,
+            "'{}' failed, expected {:?} but was {:?}",
+            $msg, $expected_err, element
+        );
+        assert_ne!(pos, rusty_common::Position::zero());
     };
 
     ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {
-        match $crate::test_utils::linter_err($program, "") {
-            $crate::LintErrorPos::Pos(actual_err, actual_pos) => {
-                assert_eq!(actual_err, $expected_err);
-                assert_eq!(
-                    actual_pos,
-                    rusty_common::Position::new($expected_row, $expected_col)
-                );
-            }
-            _ => panic!("Should have an error position"),
-        }
+        let rusty_common::Positioned { element, pos } =
+            $crate::test_utils::linter_err($program, "");
+        assert_eq!(element, $expected_err);
+        assert_eq!(
+            pos,
+            rusty_common::Position::new($expected_row, $expected_col)
+        );
     };
 }
 

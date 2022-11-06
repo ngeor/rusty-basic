@@ -1,13 +1,13 @@
 use crate::error::{LintError, LintErrorPos};
 use crate::CanCastTo;
-use rusty_common::{WithErrAt, WithErrNoPos};
+use rusty_common::AtPos;
 use rusty_parser::{
     ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType, TypeQualifier,
 };
 
 pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     if args.len() != 1 {
-        Err(LintError::ArgumentCountMismatch).with_err_no_pos()
+        Err(LintError::ArgumentCountMismatch.at_no_pos())
     } else {
         let arg: &ExpressionPos = &args[0];
         if arg.is_by_ref() {
@@ -15,12 +15,12 @@ pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
                 // QBasic actually accepts LEN(A) where A is an array,
                 // but its results don't make much sense
                 ExpressionType::Unresolved | ExpressionType::Array(_) => {
-                    Err(LintError::ArgumentTypeMismatch).with_err_at(arg)
+                    Err(LintError::ArgumentTypeMismatch.at(arg))
                 }
                 _ => Ok(()),
             }
         } else if !arg.can_cast_to(&TypeQualifier::DollarString) {
-            Err(LintError::VariableRequired).with_err_at(arg)
+            Err(LintError::VariableRequired.at(arg))
         } else {
             Ok(())
         }

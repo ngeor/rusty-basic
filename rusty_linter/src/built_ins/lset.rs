@@ -1,6 +1,6 @@
 use crate::arg_validation::ArgValidation;
 use crate::error::{LintError, LintErrorPos};
-use rusty_common::WithErrNoPos;
+use rusty_common::AtPos;
 use rusty_parser::Expressions;
 
 pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
@@ -9,7 +9,7 @@ pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     // the variable itself, a ByRef string variable
     // a string expression to assign to
     if args.len() != 3 {
-        return Err(LintError::ArgumentCountMismatch).with_err_no_pos();
+        return Err(LintError::ArgumentCountMismatch.at_no_pos());
     }
     args.require_string_argument(0)?;
     // TODO ensure LSET is operating on variables previously used by FIELD in this scope

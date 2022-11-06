@@ -14,7 +14,7 @@ pub fn convert(
         let unary_expr = Expression::UnaryExpression(unary_operator, Box::new(converted_child));
         Ok(unary_expr)
     } else {
-        Err(LintError::TypeMismatch).with_err_at(&converted_child)
+        Err(LintError::TypeMismatch.at(&converted_child))
     }
 }
 

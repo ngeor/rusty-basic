@@ -253,7 +253,7 @@ macro_rules! assert_interpreter_err {
     ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {
         assert_eq!(
             $crate::interpreter::test_utils::interpret_err($program),
-            rusty_common::ErrorEnvelope::Pos(
+            $crate::ErrorEnvelope::Pos(
                 $expected_err,
                 rusty_common::Position::new($expected_row, $expected_col)
             )

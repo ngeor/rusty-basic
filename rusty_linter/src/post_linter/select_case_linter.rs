@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::error::{LintError, LintErrorPos};
 use crate::CanCastTo;
-use rusty_common::*;
+use rusty_common::AtPos;
 use rusty_parser::{CaseExpression, ExpressionPos};
 
 pub struct SelectCaseLinter;
@@ -15,21 +15,21 @@ impl PostConversionLinter for SelectCaseLinter {
         match case_expr {
             CaseExpression::Simple(expr) => {
                 if !expr.can_cast_to(select_expr) {
-                    return Err(LintError::TypeMismatch).with_err_at(expr);
+                    return Err(LintError::TypeMismatch.at(expr));
                 }
             }
             CaseExpression::Range(from, to) => {
                 if !from.can_cast_to(select_expr) {
-                    return Err(LintError::TypeMismatch).with_err_at(from);
+                    return Err(LintError::TypeMismatch.at(from));
                 }
 
                 if !to.can_cast_to(select_expr) {
-                    return Err(LintError::TypeMismatch).with_err_at(to);
+                    return Err(LintError::TypeMismatch.at(to));
                 }
             }
             CaseExpression::Is(_, expr) => {
                 if !expr.can_cast_to(select_expr) {
-                    return Err(LintError::TypeMismatch).with_err_at(expr);
+                    return Err(LintError::TypeMismatch.at(expr));
                 }
             }
         }

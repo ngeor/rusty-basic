@@ -1,4 +1,5 @@
 use crate::error::{LintError, LintErrorPos};
+use crate::LintPosResult;
 use rusty_common::*;
 use rusty_parser::{Expression, ExpressionPos, Operator, TypeQualifier, UnaryOperator};
 use rusty_variant::Variant;
@@ -37,9 +38,7 @@ where
             Expression::IntegerLiteral(i) => Ok(Variant::VInteger(*i)),
             Expression::LongLiteral(l) => Ok(Variant::VLong(*l)),
             Expression::Variable(name_expr, _) => {
-                let v = self
-                    .resolve_const(name_expr.bare_name())
-                    .with_err_no_pos()?;
+                let v = self.resolve_const(name_expr.bare_name())?;
                 if let Some(qualifier) = name_expr.qualifier() {
                     let v_q = match v {
                         Variant::VDouble(_) => TypeQualifier::HashDouble,
@@ -54,7 +53,7 @@ where
                     if v_q == qualifier {
                         Ok(v)
                     } else {
-                        Err(LintError::TypeMismatch).with_err_no_pos()
+                        Err(LintError::TypeMismatch.at_no_pos())
                     }
                 } else {
                     Ok(v)
@@ -99,7 +98,7 @@ where
                     Operator::Or => v_left.or(v_right),
                 })
                 .map_err(LintError::from)
-                .with_err_at(right)
+                .map_err(|e| e.at(right))
             }
             Expression::UnaryExpression(op, child) => {
                 let v = self.resolve_const(child)?;
@@ -108,15 +107,13 @@ where
                     UnaryOperator::Not => v.unary_not(),
                 })
                 .map_err(LintError::from)
-                .with_err_at(child)
+                .map_err(|e| e.at(child))
             }
             Expression::Parenthesis(child) => self.resolve_const(child),
             Expression::Property(_, _, _)
             | Expression::FunctionCall(_, _)
             | Expression::ArrayElement(_, _, _)
-            | Expression::BuiltInFunctionCall(_, _) => {
-                Err(LintError::InvalidConstant).with_err_no_pos()
-            }
+            | Expression::BuiltInFunctionCall(_, _) => Err(LintError::InvalidConstant.at_no_pos()),
         }
     }
 }

@@ -44,7 +44,7 @@ pub fn convert(
 
 fn validate(ctx: &Context, name: &Name) -> Result<(), LintErrorPos> {
     if ctx.subs().contains_key(name.bare_name()) {
-        return Err(LintError::DuplicateDefinition).with_err_no_pos();
+        return Err(LintError::DuplicateDefinition.at_no_pos());
     }
 
     Ok(())
@@ -101,7 +101,7 @@ impl VarResolve for ExistingVar {
     fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
         let variable_info = self.var_info.clone().unwrap();
         let expression_type = &variable_info.expression_type;
-        let converted_name = qualify_name(expression_type, name).with_err_no_pos()?;
+        let converted_name = qualify_name(expression_type, name)?;
         Ok(Expression::Variable(converted_name, variable_info))
     }
 }
@@ -148,7 +148,7 @@ impl VarResolve for ExistingConst {
             // resolve to literal expression
             Ok(const_variant_to_expression(v))
         } else {
-            Err(LintError::DuplicateDefinition).with_err_no_pos()
+            Err(LintError::DuplicateDefinition.at_no_pos())
         }
     }
 }
@@ -184,12 +184,12 @@ impl VarResolve for AssignToFunction {
     fn resolve(&self, ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
         let function_qualifier = self.function_qualifier.unwrap();
         if ctx.names.is_in_function(name.bare_name()) {
-            let converted_name = try_qualify(name, function_qualifier).with_err_no_pos()?;
+            let converted_name = try_qualify(name, function_qualifier)?;
             let expr_type = ExpressionType::BuiltIn(function_qualifier);
             let expr = Expression::Variable(converted_name, VariableInfo::new_local(expr_type));
             Ok(expr)
         } else {
-            Err(LintError::DuplicateDefinition).with_err_no_pos()
+            Err(LintError::DuplicateDefinition.at_no_pos())
         }
     }
 }
@@ -206,7 +206,7 @@ impl VarResolve for VarAsBuiltInFunctionCall {
     }
 
     fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
-        match try_built_in_function(&name).with_err_no_pos()? {
+        match try_built_in_function(&name)? {
             Some(built_in_function) => {
                 Ok(Expression::BuiltInFunctionCall(built_in_function, vec![]))
             }
@@ -228,7 +228,7 @@ impl VarResolve for VarAsUserDefinedFunctionCall {
 
     fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
         let q = self.function_qualifier.unwrap();
-        let converted_name = try_qualify(name, q).with_err_no_pos()?;
+        let converted_name = try_qualify(name, q)?;
         Ok(Expression::FunctionCall(converted_name, vec![]))
     }
 }

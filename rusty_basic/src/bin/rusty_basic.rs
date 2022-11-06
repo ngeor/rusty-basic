@@ -1,10 +1,9 @@
-use std::env;
-use std::fs::File;
-
-use rusty_basic::instruction_generator;
+use rusty_basic::instruction_generator::generate_instructions;
 use rusty_basic::interpreter::{new_default_interpreter, InterpreterTrait};
 use rusty_linter::{lint, HasUserDefinedTypes};
 use rusty_parser::{parse_main_file, Program};
+use std::env;
+use std::fs::File;
 
 fn main() {
     let is_running_in_apache = is_running_in_apache();
@@ -38,7 +37,7 @@ fn on_linted(
     user_defined_types_holder: impl HasUserDefinedTypes,
     run_options: RunOptions,
 ) {
-    let instruction_generator_result = instruction_generator::generate_instructions(program);
+    let instruction_generator_result = generate_instructions(program);
     let mut interpreter = new_default_interpreter(user_defined_types_holder);
     run_options.set_current_dir_if_apache();
     match interpreter.interpret(instruction_generator_result) {

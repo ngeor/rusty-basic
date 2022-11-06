@@ -20,10 +20,10 @@ impl ForNextCounterMatch {
                 },
             ) => match var_type {
                 ExpressionType::BuiltIn(TypeQualifier::DollarString) => {
-                    Err(LintError::TypeMismatch).with_err_no_pos()
+                    Err(LintError::TypeMismatch.at_no_pos())
                 }
                 ExpressionType::BuiltIn(_) => Ok(()),
-                _ => Err(LintError::TypeMismatch).with_err_no_pos(),
+                _ => Err(LintError::TypeMismatch.at_no_pos()),
             },
             _ => unimplemented!(),
         }
@@ -44,7 +44,7 @@ impl ForNextCounterMatch {
                         if var_name == next_var_name {
                             Ok(())
                         } else {
-                            Err(LintError::NextWithoutFor).with_err_at(pos)
+                            Err(LintError::NextWithoutFor.at(pos))
                         }
                     }
                     _ => unimplemented!(),

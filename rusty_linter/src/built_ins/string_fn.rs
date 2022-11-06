@@ -1,12 +1,12 @@
 use crate::arg_validation::ArgValidation;
 use crate::error::{LintError, LintErrorPos};
 use crate::CanCastTo;
-use rusty_common::{WithErrAt, WithErrNoPos};
+use rusty_common::AtPos;
 use rusty_parser::{Expressions, TypeQualifier};
 
 pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     if args.len() != 2 {
-        Err(LintError::ArgumentCountMismatch).with_err_no_pos()
+        Err(LintError::ArgumentCountMismatch.at_no_pos())
     } else {
         args.require_integer_argument(0)?;
         if args[1].can_cast_to(&TypeQualifier::PercentInteger)
@@ -14,7 +14,7 @@ pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
         {
             Ok(())
         } else {
-            Err(LintError::ArgumentTypeMismatch).with_err_at(&args[1])
+            Err(LintError::ArgumentTypeMismatch.at(&args[1]))
         }
     }
 }

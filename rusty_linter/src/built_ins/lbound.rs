@@ -1,11 +1,11 @@
 use crate::error::{LintError, LintErrorPos};
 use crate::CanCastTo;
-use rusty_common::{Positioned, WithErrAt, WithErrNoPos};
+use rusty_common::{AtPos, Positioned};
 use rusty_parser::{Expression, ExpressionType, Expressions, TypeQualifier, VariableInfo};
 
 pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     if args.is_empty() || args.len() > 2 {
-        return Err(LintError::ArgumentCountMismatch).with_err_no_pos();
+        return Err(LintError::ArgumentCountMismatch.at_no_pos());
     }
 
     // Can have at one or two arguments. First must be the array name, without parenthesis.
@@ -26,12 +26,12 @@ pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
             if args[1].can_cast_to(&TypeQualifier::PercentInteger) {
                 Ok(())
             } else {
-                Err(LintError::ArgumentTypeMismatch).with_err_at(&args[1])
+                Err(LintError::ArgumentTypeMismatch.at(&args[1]))
             }
         } else {
             Ok(())
         }
     } else {
-        Err(LintError::ArgumentTypeMismatch).with_err_at(first_pos)
+        Err(LintError::ArgumentTypeMismatch.at(first_pos))
     }
 }

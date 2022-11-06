@@ -1,4 +1,4 @@
-use crate::{HasPos, Position};
+use rusty_common::{HasPos, Position};
 
 //
 // ErrorEnvelope

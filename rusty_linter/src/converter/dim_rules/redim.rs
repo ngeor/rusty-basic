@@ -4,6 +4,7 @@ use crate::converter::dim_rules::string_length::resolve_string_length;
 use crate::converter::traits::Convertible;
 use crate::error::{LintError, LintErrorPos};
 use crate::type_resolver::IntoTypeQualifier;
+use crate::LintResult;
 use rusty_common::*;
 use rusty_parser::*;
 
@@ -175,8 +176,7 @@ fn fixed_length_string_to_dim_type<'a, 'b>(
                 require_fixed_length_string_array(variable_info, string_length)?;
                 require_dimension_count(variable_info, array_dimensions.len())
             }
-        })
-        .with_err_no_pos()?;
+        })?;
     Ok(DimType::fixed_length_string(string_length, ctx.pos()))
 }
 

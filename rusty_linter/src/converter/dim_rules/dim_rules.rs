@@ -6,7 +6,7 @@ use crate::converter::dim_rules::validation;
 use crate::converter::traits::Convertible;
 use crate::converter::types::DimContext;
 use crate::error::LintErrorPos;
-use crate::LintError;
+use crate::{LintError, LintPosResult};
 use rusty_common::*;
 use rusty_parser::*;
 
@@ -29,7 +29,7 @@ impl<'a> Convertible<DimListState<'a>> for DimList {
 impl<'a, 'b> Convertible<DimNameState<'a, 'b>> for DimVar {
     fn convert(self, ctx: &mut DimNameState<'a, 'b>) -> Result<Self, LintErrorPos> {
         validation::validate(&self, ctx)?;
-        shared_illegal_in_sub_function(ctx).with_err_no_pos()?;
+        shared_illegal_in_sub_function(ctx)?;
         let Self {
             bare_name,
             var_type,

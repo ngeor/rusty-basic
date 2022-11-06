@@ -88,7 +88,7 @@ pub fn convert(
         }
         _ => {
             // this cannot possibly have a dot property
-            Err(LintError::TypeMismatch).with_err_no_pos()
+            Err(LintError::TypeMismatch.at_no_pos())
         }
     }
 }
@@ -120,13 +120,13 @@ fn existing_property_expression_type(
             if allow_unresolved {
                 match try_fold(&resolved_left_side, property_name) {
                     Some(folded_name) => Ok(add_as_new_implicit_var(ctx, folded_name)),
-                    _ => Err(LintError::TypeMismatch).with_err_no_pos(),
+                    _ => Err(LintError::TypeMismatch.at_no_pos()),
                 }
             } else {
-                Err(LintError::TypeMismatch).with_err_no_pos()
+                Err(LintError::TypeMismatch.at_no_pos())
             }
         }
-        _ => Err(LintError::TypeMismatch).with_err_no_pos(),
+        _ => Err(LintError::TypeMismatch.at_no_pos()),
     }
 }
 
@@ -142,7 +142,7 @@ fn existing_property_user_defined_type_name(
             user_defined_type,
             property_name,
         ),
-        _ => Err(LintError::TypeNotDefined).with_err_no_pos(),
+        _ => Err(LintError::TypeNotDefined.at_no_pos()),
     }
 }
 
@@ -155,7 +155,7 @@ fn existing_property_user_defined_type(
         Ok(element_type) => {
             existing_property_element_type(resolved_left_side, element_type, property_name)
         }
-        Err(e) => Err(LintError::from(e)).with_err_no_pos(),
+        Err(e) => Err(LintError::from(e).at_no_pos()),
     }
 }
 

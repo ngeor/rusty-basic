@@ -44,9 +44,10 @@ fn do_instr(start: usize, hay: &str, needle: &str) -> Result<i32, RuntimeError> 
 mod tests {
     use super::*;
     use crate::assert_prints;
+    use crate::error_envelope::ErrorEnvelope;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::test_utils::interpret_err;
-    use rusty_common::{ErrorEnvelope, Position};
+    use rusty_common::Position;
 
     #[test]
     fn test_instr_happy_flow() {

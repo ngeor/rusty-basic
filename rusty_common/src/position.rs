@@ -6,8 +6,8 @@ pub struct Position {
 }
 
 impl Position {
-    pub fn new(row: u32, col: u32) -> Position {
-        Position { row, col }
+    pub fn new(row: u32, col: u32) -> Self {
+        Self { row, col }
     }
 
     pub fn inc_col(&mut self) {
@@ -19,8 +19,12 @@ impl Position {
         self.col = 1;
     }
 
-    pub fn start() -> Position {
-        Position::new(1, 1)
+    pub fn start() -> Self {
+        Self::new(1, 1)
+    }
+
+    pub fn zero() -> Self {
+        Self::new(0, 0)
     }
 
     pub fn row(&self) -> u32 {

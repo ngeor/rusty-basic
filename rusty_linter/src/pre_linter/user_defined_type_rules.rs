@@ -1,6 +1,6 @@
 use crate::error::{LintError, LintErrorPos};
 use crate::pre_linter::ConstantMap;
-use rusty_common::{AtPos, Positioned, WithErrAt, WithErrNoPos};
+use rusty_common::{AtPos, Positioned};
 use rusty_parser::{
     BareName, Element, ElementPos, ElementType, Expression, ExpressionPos, TypeQualifier,
     UserDefinedType, UserDefinedTypes,
@@ -16,7 +16,7 @@ pub fn user_defined_type(
     let type_name: &BareName = user_defined_type.bare_name();
     if user_defined_types.contains_key(type_name) {
         // duplicate type definition
-        Err(LintError::DuplicateDefinition).with_err_no_pos()
+        Err(LintError::DuplicateDefinition.at_no_pos())
     } else {
         let mut resolved_elements: HashMap<BareName, ElementType> = HashMap::new();
         for Positioned {
@@ -31,7 +31,7 @@ pub fn user_defined_type(
         {
             if resolved_elements.contains_key(element_name) {
                 // duplicate element name within type
-                return Err(LintError::DuplicateDefinition).with_err_at(pos);
+                return Err(LintError::DuplicateDefinition.at(pos));
             }
             let resolved_element_type = match element_type {
                 ElementType::Integer => ElementType::Integer,
@@ -51,7 +51,7 @@ pub fn user_defined_type(
                     pos,
                 }) => {
                     if !user_defined_types.contains_key(referred_name) {
-                        return Err(LintError::TypeNotDefined).with_err_at(pos);
+                        return Err(LintError::TypeNotDefined.at(pos));
                     }
                     ElementType::UserDefined(referred_name.clone().at(pos))
                 }
@@ -103,17 +103,17 @@ fn validate_element_type_str_len(
                                     Ok(*i as u16)
                                 } else {
                                     // illegal string length or using wrong qualifier to reference the int constant
-                                    Err(LintError::InvalidConstant).with_err_at(pos)
+                                    Err(LintError::InvalidConstant.at(pos))
                                 }
                             }
                             _ => {
                                 // only integer constants allowed
-                                Err(LintError::InvalidConstant).with_err_at(pos)
+                                Err(LintError::InvalidConstant.at(pos))
                             }
                         }
                     }
                     // constant does not exist
-                    None => Err(LintError::InvalidConstant).with_err_at(pos),
+                    None => Err(LintError::InvalidConstant.at(pos)),
                 }
             } else {
                 // bare name constant
@@ -126,17 +126,17 @@ fn validate_element_type_str_len(
                                     Ok(*i as u16)
                                 } else {
                                     // illegal string length
-                                    Err(LintError::InvalidConstant).with_err_at(pos)
+                                    Err(LintError::InvalidConstant.at(pos))
                                 }
                             }
                             _ => {
                                 // only integer constants allowed
-                                Err(LintError::InvalidConstant).with_err_at(pos)
+                                Err(LintError::InvalidConstant.at(pos))
                             }
                         }
                     }
                     // constant does not exist
-                    None => Err(LintError::InvalidConstant).with_err_at(pos),
+                    None => Err(LintError::InvalidConstant.at(pos)),
                 }
             }
         }

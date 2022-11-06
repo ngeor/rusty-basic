@@ -60,7 +60,7 @@ pub fn parse_err_pos(input: &str) -> ParseErrorPos {
 ///
 /// If the parser does not have an error.
 pub fn parse_err(input: &str) -> ParseError {
-    parse_err_pos(input).into_err()
+    parse_err_pos(input).element()
 }
 
 pub trait DemandSingle<T> {
@@ -269,7 +269,7 @@ macro_rules! assert_parser_err {
     ($input:expr, $expected_err:expr, $row:expr, $col:expr) => {
         assert_eq!(
             $crate::test_utils::parse_err_pos($input),
-            $crate::ParseErrorPos::Pos($expected_err, rusty_common::Position::new($row, $col))
+            rusty_common::AtPos::at_rc($expected_err, $row, $col)
         );
     };
 }

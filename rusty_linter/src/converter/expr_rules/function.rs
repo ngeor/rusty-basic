@@ -31,15 +31,13 @@ fn resolve_function(
     // convert args
     let converted_args = convert_function_args(ctx, args)?;
     // is it built-in function?
-    let converted_expr = match try_built_in_function(&name).with_err_no_pos()? {
+    let converted_expr = match try_built_in_function(&name)? {
         Some(built_in_function) => {
             Expression::BuiltInFunctionCall(built_in_function, converted_args)
         }
         _ => {
             let converted_name: Name = match ctx.function_qualifier(name.bare_name()) {
-                Some(function_qualifier) => {
-                    try_qualify(name, function_qualifier).with_err_no_pos()?
-                }
+                Some(function_qualifier) => try_qualify(name, function_qualifier)?,
                 _ => name.to_qualified(ctx),
             };
             Expression::FunctionCall(converted_name, converted_args)
@@ -108,7 +106,7 @@ impl FuncResolve for ExistingArrayWithParenthesis {
         } = self.var_info.clone().unwrap();
         match expression_type {
             ExpressionType::Array(element_type) => {
-                let converted_name = qualify_name(element_type.as_ref(), name).with_err_no_pos()?;
+                let converted_name = qualify_name(element_type.as_ref(), name)?;
                 // create result
                 let result_expr = Expression::ArrayElement(
                     converted_name,
@@ -121,14 +119,14 @@ impl FuncResolve for ExistingArrayWithParenthesis {
                 );
                 Ok(result_expr)
             }
-            _ => Err(LintError::ArrayNotDefined).with_err_no_pos(),
+            _ => Err(LintError::ArrayNotDefined.at_no_pos()),
         }
     }
 }
 
 pub fn functions_must_have_arguments(args: &Expressions) -> Result<(), LintErrorPos> {
     if args.is_empty() {
-        Err(LintError::FunctionNeedsArguments).with_err_no_pos()
+        Err(LintError::FunctionNeedsArguments.at_no_pos())
     } else {
         Ok(())
     }

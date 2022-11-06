@@ -9,7 +9,7 @@ pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     // if the first argument is 1, the second is the file handle
 
     if args.len() <= 1 {
-        return Err(LintError::ArgumentCountMismatch).with_err_no_pos();
+        return Err(LintError::ArgumentCountMismatch.at_no_pos());
     }
     let mut has_file_number: bool = false;
     if let Positioned {
@@ -32,7 +32,7 @@ pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
 
     let starting_index = if has_file_number { 2 } else { 1 };
     if args.len() <= starting_index {
-        return Err(LintError::ArgumentCountMismatch).with_err_no_pos();
+        return Err(LintError::ArgumentCountMismatch.at_no_pos());
     }
 
     for i in starting_index..args.len() {

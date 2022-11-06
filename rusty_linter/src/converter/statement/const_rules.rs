@@ -1,7 +1,7 @@
 use crate::const_value_resolver::ConstValueResolver;
 use crate::converter::context::Context;
 use crate::error::{LintError, LintErrorPos};
-use crate::{qualifier_of_const_variant, CastVariant, HasFunctions, HasSubs};
+use crate::{qualifier_of_const_variant, CastVariant, HasFunctions, HasSubs, LintResult};
 use rusty_common::*;
 use rusty_parser::*;
 
@@ -28,7 +28,7 @@ fn const_cannot_clash_with_existing_names(
         || ctx.subs().contains_key(const_name.bare_name())
         || ctx.functions().contains_key(const_name.bare_name())
     {
-        Err(LintError::DuplicateDefinition).with_err_at(const_name_pos)
+        Err(LintError::DuplicateDefinition.at(const_name_pos))
     } else {
         Ok(())
     }

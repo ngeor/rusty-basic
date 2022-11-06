@@ -1,6 +1,6 @@
 use crate::arg_validation::ArgValidation;
 use crate::error::{LintError, LintErrorPos};
-use rusty_common::WithErrNoPos;
+use rusty_common::AtPos;
 use rusty_parser::Expressions;
 
 pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
@@ -9,7 +9,7 @@ pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     } else if args.len() == 1 {
         args.require_numeric_argument(0)
     } else {
-        Err(LintError::ArgumentCountMismatch).with_err_no_pos()
+        Err(LintError::ArgumentCountMismatch.at_no_pos())
     }
 }
 

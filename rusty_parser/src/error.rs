@@ -1,4 +1,4 @@
-use rusty_common::ErrorEnvelope;
+use rusty_common::Positioned;
 
 /// Represents parser errors.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -92,9 +92,7 @@ impl<T, E: ParserErrorTrait> ParserErrorTrait for Result<T, E> {
     }
 }
 
-// TODO switch to Positioned<QError>
-
-pub type ParseErrorPos = ErrorEnvelope<ParseError>;
+pub type ParseErrorPos = Positioned<ParseError>;
 
 impl From<std::io::Error> for ParseError {
     fn from(e: std::io::Error) -> Self {

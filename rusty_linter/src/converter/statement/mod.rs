@@ -12,7 +12,7 @@ use crate::converter::pos_context::PosContext;
 use crate::converter::traits::Convertible;
 use crate::converter::types::{DimContext, ExprContext};
 use crate::error::{LintError, LintErrorPos};
-use crate::NameContext;
+use crate::{LintPosResult, NameContext};
 use rusty_common::*;
 use rusty_parser::{ExitObject, Statement, StatementPos, Statements};
 
@@ -22,11 +22,10 @@ impl Convertible<Context, Option<StatementPos>> for StatementPos {
             element: statement,
             pos,
         } = self;
-        match statement.convert_in(ctx, pos) {
-            Ok(Some(statement)) => Ok(Some(statement.at_pos(pos))),
-            Ok(None) => Ok(None),
-            Err(err) => Err(err.patch_pos(pos)),
-        }
+        statement
+            .convert_in(ctx, pos)
+            .map(|opt_statement| opt_statement.map(|s| s.at_pos(pos)))
+            .patch_err_pos(&pos)
     }
 }
 
@@ -49,32 +48,32 @@ impl<'a> Convertible<PosContext<'a>, Option<Statement>> for Statement {
             Statement::Return(opt_label) => {
                 if opt_label.is_some() && ctx.is_in_subprogram() {
                     // cannot have RETURN with explicit label inside subprogram
-                    Err(LintError::IllegalInSubFunction).with_err_no_pos()
+                    Err(LintError::IllegalInSubFunction.at_no_pos())
                 } else {
                     Ok(Statement::Return(opt_label)).map(Some)
                 }
             }
             Statement::Resume(resume_option) => {
                 if ctx.is_in_subprogram() {
-                    Err(LintError::IllegalInSubFunction).with_err_no_pos()
+                    Err(LintError::IllegalInSubFunction.at_no_pos())
                 } else {
                     Ok(Statement::Resume(resume_option)).map(Some)
                 }
             }
             Statement::Exit(exit_object) => match ctx.names.get_name_context() {
-                NameContext::Global => Err(LintError::IllegalOutsideSubFunction).with_err_no_pos(),
+                NameContext::Global => Err(LintError::IllegalOutsideSubFunction.at_no_pos()),
                 NameContext::Sub => {
                     if exit_object == ExitObject::Sub {
                         Ok(Statement::Exit(exit_object)).map(Some)
                     } else {
-                        Err(LintError::IllegalInSubFunction).with_err_no_pos()
+                        Err(LintError::IllegalInSubFunction.at_no_pos())
                     }
                 }
                 NameContext::Function => {
                     if exit_object == ExitObject::Function {
                         Ok(Statement::Exit(exit_object)).map(Some)
                     } else {
-                        Err(LintError::IllegalInSubFunction).with_err_no_pos()
+                        Err(LintError::IllegalInSubFunction.at_no_pos())
                     }
                 }
             },

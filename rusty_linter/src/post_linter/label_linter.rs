@@ -1,5 +1,6 @@
 use super::post_conversion_linter::*;
 use crate::error::{LintError, LintErrorPos};
+use crate::LintResult;
 use rusty_common::*;
 use rusty_parser::*;
 use std::collections::{HashMap, HashSet};
@@ -121,7 +122,7 @@ impl PostConversionLinter for LabelCollector {
     fn visit_label(&mut self, label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
         if self.labels.values().any(|s| s.contains(label)) {
             // labels need to be unique across all scopes
-            Err(LintError::DuplicateLabel).with_err_no_pos()
+            Err(LintError::DuplicateLabel.at_no_pos())
         } else {
             // TODO prevent clone for key and value?
             self.labels

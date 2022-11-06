@@ -1,6 +1,6 @@
 use crate::error::{LintError, LintErrorPos};
 use crate::CanCastTo;
-use rusty_common::{WithErrAt, WithErrNoPos};
+use rusty_common::AtPos;
 use rusty_parser::{
     Expression, ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType,
     TypeQualifier, VariableInfo,
@@ -68,7 +68,7 @@ pub trait ArgValidation {
         if predicate(self.expr(idx)) {
             Ok(())
         } else {
-            Err(LintError::ArgumentTypeMismatch).with_err_at(self.expr_pos(idx))
+            Err(LintError::ArgumentTypeMismatch.at(self.expr_pos(idx)))
         }
     }
 }
@@ -109,10 +109,8 @@ impl ArgValidation for Expressions {
                     ..
                 },
             ) => Ok(()),
-            Expression::Variable(_, _) => {
-                Err(LintError::ArgumentTypeMismatch).with_err_at(&self[idx])
-            }
-            _ => Err(LintError::VariableRequired).with_err_at(&self[idx]),
+            Expression::Variable(_, _) => Err(LintError::ArgumentTypeMismatch.at(&self[idx])),
+            _ => Err(LintError::VariableRequired.at(&self[idx])),
         }
     }
 
@@ -135,10 +133,10 @@ impl ArgValidation for Expressions {
                 if expression_type.can_cast_to(&TypeQualifier::DollarString) {
                     Ok(())
                 } else {
-                    Err(LintError::ArgumentTypeMismatch).with_err_at(&self[idx])
+                    Err(LintError::ArgumentTypeMismatch.at(&self[idx]))
                 }
             }
-            _ => Err(LintError::VariableRequired).with_err_at(&self[idx]),
+            _ => Err(LintError::VariableRequired.at(&self[idx])),
         }
     }
 
@@ -159,9 +157,9 @@ impl ArgValidation for Expressions {
             )
             | Expression::Property(_, _, expression_type) => match expression_type {
                 ExpressionType::BuiltIn(_) | ExpressionType::FixedLengthString(_) => Ok(()),
-                _ => Err(LintError::ArgumentTypeMismatch).with_err_at(&self[idx]),
+                _ => Err(LintError::ArgumentTypeMismatch.at(&self[idx])),
             },
-            _ => Err(LintError::VariableRequired).with_err_at(&self[idx]),
+            _ => Err(LintError::VariableRequired.at(&self[idx])),
         }
     }
 
@@ -169,13 +167,13 @@ impl ArgValidation for Expressions {
         if self.expr(idx).is_by_ref() {
             Ok(())
         } else {
-            Err(LintError::VariableRequired).with_err_at(&self[idx])
+            Err(LintError::VariableRequired.at(&self[idx]))
         }
     }
 
     fn require_one_argument(&self) -> Result<(), LintErrorPos> {
         if self.len() != 1 {
-            Err(LintError::ArgumentCountMismatch).with_err_no_pos()
+            Err(LintError::ArgumentCountMismatch.at_no_pos())
         } else {
             Ok(())
         }
@@ -185,7 +183,7 @@ impl ArgValidation for Expressions {
         if self.is_empty() {
             Ok(())
         } else {
-            Err(LintError::ArgumentCountMismatch).with_err_no_pos()
+            Err(LintError::ArgumentCountMismatch.at_no_pos())
         }
     }
 

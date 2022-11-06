@@ -125,9 +125,9 @@ fn print_boundary() -> impl Parser<Output = Guard> {
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
+    use super::*;
     use crate::test_utils::*;
-    use crate::*;
+    use crate::{assert_parser_err, parse};
 
     #[test]
     fn test_print_no_args() {

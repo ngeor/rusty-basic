@@ -1,8 +1,8 @@
-use crate::assert_prints;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::test_utils::*;
 use crate::interpreter::Stdlib;
 use crate::RuntimeError;
+use crate::{assert_prints, ErrorEnvelope};
 use rusty_common::*;
 
 #[test]

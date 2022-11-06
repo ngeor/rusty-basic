@@ -1,10 +1,10 @@
-use crate::assert_has_variable;
 use crate::assert_prints;
 use crate::assert_prints_exact;
 use crate::assert_prints_nothing;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::test_utils::*;
 use crate::RuntimeError;
+use crate::{assert_has_variable, ErrorEnvelope};
 use rusty_common::*;
 
 #[test]

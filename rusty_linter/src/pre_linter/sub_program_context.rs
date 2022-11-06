@@ -127,7 +127,7 @@ where
     fn ensure_declarations_are_implemented(&self) -> Result<(), LintErrorPos> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
-                return Err(LintError::SubprogramNotDefined).with_err_at(v);
+                return Err(LintError::SubprogramNotDefined.at(v));
             }
         }
         Ok(())
@@ -139,7 +139,7 @@ where
     {
         for (k, v) in self.implementations.iter() {
             if is_built_in(k) {
-                return Err(LintError::DuplicateDefinition).with_err_at(v);
+                return Err(LintError::DuplicateDefinition.at(v));
             }
         }
 

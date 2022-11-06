@@ -3,6 +3,7 @@ use rusty_common::*;
 use rusty_parser::*;
 
 use crate::error::{LintError, LintErrorPos};
+use crate::LintPosResult;
 use std::collections::HashSet;
 
 #[derive(Default)]
@@ -37,7 +38,7 @@ impl NoDotNamesCheck<Vec<Positioned<Parameter>>, LintErrorPos> for DotsLinter {
 impl NoDotNamesCheck<Positioned<Parameter>, LintErrorPos> for DotsLinter {
     fn ensure_no_dots(&self, x: &Positioned<Parameter>) -> Result<(), LintErrorPos> {
         let Positioned { element, pos } = x;
-        self.ensure_no_dots(element).with_err_at(pos)
+        self.ensure_no_dots(element).map_err(|e| e.at(pos))
     }
 }
 
@@ -50,7 +51,7 @@ impl NoDotNamesCheck<Parameter, LintError> for DotsLinter {
 impl NoDotNamesCheck<DimVarPos, LintErrorPos> for DotsLinter {
     fn ensure_no_dots(&self, x: &DimVarPos) -> Result<(), LintErrorPos> {
         let Positioned { element, pos } = x;
-        self.ensure_no_dots(element).with_err_at(pos)
+        self.ensure_no_dots(element).map_err(|e| e.at(pos))
     }
 }
 
@@ -61,9 +62,9 @@ impl NoDotNamesCheck<DimVar, LintError> for DotsLinter {
 }
 
 impl NoDotNamesCheck<NamePos, LintErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &NamePos) -> Result<(), LintErrorPos> {
-        let name = &x.element;
-        self.ensure_no_dots(name).with_err_at(x)
+    fn ensure_no_dots(&self, name_pos: &NamePos) -> Result<(), LintErrorPos> {
+        let name = &name_pos.element;
+        self.ensure_no_dots(name).map_err(|e| e.at(name_pos))
     }
 }
 
@@ -76,7 +77,7 @@ impl NoDotNamesCheck<Name, LintError> for DotsLinter {
 impl NoDotNamesCheck<BareNamePos, LintErrorPos> for DotsLinter {
     fn ensure_no_dots(&self, x: &BareNamePos) -> Result<(), LintErrorPos> {
         let Positioned { element, pos } = x;
-        self.ensure_no_dots(element).with_err_at(pos)
+        self.ensure_no_dots(element).map_err(|e| e.at(pos))
     }
 }
 
@@ -111,13 +112,15 @@ impl NoDotNamesCheck<ExpressionPos, LintErrorPos> for DotsLinter {
 impl NoDotNamesCheck<Expression, LintErrorPos> for DotsLinter {
     fn ensure_no_dots(&self, x: &Expression) -> Result<(), LintErrorPos> {
         match x {
-            Expression::Variable(var_name, _) => self.ensure_no_dots(var_name).with_err_no_pos(),
+            Expression::Variable(var_name, _) => {
+                self.ensure_no_dots(var_name).map_err(|e| e.at_no_pos())
+            }
             Expression::ArrayElement(var_name, indices, _) => {
-                self.ensure_no_dots(var_name).with_err_no_pos()?;
+                self.ensure_no_dots(var_name)?;
                 self.ensure_no_dots(indices)
             }
             Expression::FunctionCall(name, args) => {
-                self.ensure_no_dots(name).with_err_no_pos()?;
+                self.ensure_no_dots(name)?;
                 self.ensure_no_dots(args)
             }
             Expression::BuiltInFunctionCall(_, args) => self.ensure_no_dots(args),

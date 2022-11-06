@@ -25,7 +25,6 @@ pub fn on_assignment(
 mod assignment_pre_conversion_validation_rules {
     use super::*;
     use crate::LintError;
-    use rusty_common::WithErrNoPos;
 
     pub fn validate(ctx: &mut Context, left_side: &Expression) -> Result<(), LintErrorPos> {
         cannot_assign_to_const(ctx, left_side)
@@ -34,7 +33,7 @@ mod assignment_pre_conversion_validation_rules {
     fn cannot_assign_to_const(ctx: &mut Context, input: &Expression) -> Result<(), LintErrorPos> {
         if let Expression::Variable(var_name, _) = input {
             if ctx.names.contains_const_recursively(var_name.bare_name()) {
-                Err(LintError::DuplicateDefinition).with_err_no_pos()
+                Err(LintError::DuplicateDefinition.at_no_pos())
             } else {
                 Ok(())
             }
@@ -48,7 +47,6 @@ mod assignment_post_conversion_validation_rules {
     use super::*;
     use crate::CanCastTo;
     use crate::LintError;
-    use rusty_common::WithErrAt;
 
     pub fn validate(
         left_side: &Expression,
@@ -57,7 +55,7 @@ mod assignment_post_conversion_validation_rules {
         if right_side.can_cast_to(left_side) {
             Ok(())
         } else {
-            Err(LintError::TypeMismatch).with_err_at(right_side)
+            Err(LintError::TypeMismatch.at(right_side))
         }
     }
 }

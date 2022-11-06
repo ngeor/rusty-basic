@@ -1,6 +1,6 @@
 use crate::arg_validation::ArgValidation;
 use crate::error::{LintError, LintErrorPos};
-use rusty_common::WithErrNoPos;
+use rusty_common::AtPos;
 use rusty_parser::Expressions;
 
 pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
@@ -8,10 +8,10 @@ pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     // first is the file number
     // then the fields: width, variable name, variable
     if args.len() < 4 {
-        return Err(LintError::ArgumentCountMismatch).with_err_no_pos();
+        return Err(LintError::ArgumentCountMismatch.at_no_pos());
     }
     if (args.len() - 1) % 3 != 0 {
-        return Err(LintError::ArgumentCountMismatch).with_err_no_pos();
+        return Err(LintError::ArgumentCountMismatch.at_no_pos());
     }
     args.require_integer_argument(0)?;
     let mut i: usize = 1;

@@ -1,7 +1,7 @@
 use crate::converter::dim_rules::dim_type_rules;
 use crate::converter::pos_context::PosContext;
 use crate::error::LintErrorPos;
-use rusty_common::WithErrNoPos;
+use crate::LintResult;
 use rusty_parser::{BareName, ParamType};
 
 pub fn on_param_type<'a>(

@@ -1,6 +1,6 @@
 use crate::error::{LintError, LintErrorPos};
 use crate::pre_linter::ResolvedParamTypes;
-use crate::{CanCastTo, HasFunctions, ResolvedParamType};
+use crate::{CanCastTo, HasFunctions, LintPosResult, ResolvedParamType};
 use rusty_common::*;
 use rusty_parser::*;
 
@@ -15,7 +15,7 @@ pub fn lint_call_args(
     param_types: &ResolvedParamTypes,
 ) -> Result<(), LintErrorPos> {
     if args.len() != param_types.len() {
-        return Err(LintError::ArgumentCountMismatch).with_err_no_pos();
+        return Err(LintError::ArgumentCountMismatch.at_no_pos());
     }
 
     args.iter()
@@ -64,10 +64,10 @@ fn lint_by_ref_arg(
                         .at(arg_pos);
                         lint_by_ref_arg(&dummy_expr, boxed_element_type.as_ref())
                     } else {
-                        Err(LintError::ArgumentTypeMismatch).with_err_at(arg_pos)
+                        Err(LintError::ArgumentTypeMismatch.at(arg_pos))
                     }
                 }
-                _ => Err(LintError::ArgumentTypeMismatch).with_err_at(arg_pos),
+                _ => Err(LintError::ArgumentTypeMismatch.at(arg_pos)),
             }
         }
     }
@@ -99,7 +99,7 @@ fn lint_by_val_arg(
     if arg_pos.expression_type().can_cast_to(param_type) {
         Ok(())
     } else {
-        Err(LintError::ArgumentTypeMismatch).with_err_at(arg_pos)
+        Err(LintError::ArgumentTypeMismatch.at(arg_pos))
     }
 }
 
@@ -115,10 +115,10 @@ where
             if has_at_least_one_arg(opt_args) && expression_type_predicate(expression_type) {
                 Ok(())
             } else {
-                Err(LintError::ArgumentTypeMismatch).with_err_at(arg_pos)
+                Err(LintError::ArgumentTypeMismatch.at(arg_pos))
             }
         }
-        _ => Err(LintError::ArgumentTypeMismatch).with_err_at(arg_pos),
+        _ => Err(LintError::ArgumentTypeMismatch.at(arg_pos)),
     }
 }
 
@@ -160,7 +160,7 @@ where
             match self.context.functions().get(bare_name) {
                 Some(function_signature_pos) => {
                     if function_signature_pos.element.qualifier() != *qualifier {
-                        Err(LintError::TypeMismatch).with_err_at(function_signature_pos)
+                        Err(LintError::TypeMismatch.at(function_signature_pos))
                     } else {
                         lint_call_args(args, function_signature_pos.element.param_types())
                     }
@@ -178,11 +178,11 @@ where
             match arg_pos.expression_type() {
                 ExpressionType::BuiltIn(q) => {
                     if q == TypeQualifier::DollarString {
-                        return Err(LintError::ArgumentTypeMismatch).with_err_at(arg_pos);
+                        return Err(LintError::ArgumentTypeMismatch.at(arg_pos));
                     }
                 }
                 _ => {
-                    return Err(LintError::ArgumentTypeMismatch).with_err_at(arg_pos);
+                    return Err(LintError::ArgumentTypeMismatch.at(arg_pos));
                 }
             }
         }

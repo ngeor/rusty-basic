@@ -1,8 +1,8 @@
 use crate::converter::context::Context;
 use crate::error::{LintError, LintErrorPos};
 use crate::type_resolver::IntoTypeQualifier;
-use crate::{HasFunctions, HasSubs, HasUserDefinedTypes};
-use rusty_common::{Positioned, WithErrAt, WithErrNoPos};
+use crate::{HasFunctions, HasSubs, HasUserDefinedTypes, LintResult};
+use rusty_common::{AtPos, Positioned};
 use rusty_parser::{
     DimVar, Parameter, TypedName, VarTypeIsExtended, VarTypeQualifier,
     VarTypeToUserDefinedRecursively,
@@ -13,10 +13,8 @@ where
     T: VarTypeIsExtended + VarTypeQualifier + VarTypeToUserDefinedRecursively,
     TypedName<T>: CannotClashWithFunctions,
 {
-    cannot_clash_with_subs(var_name, ctx).with_err_no_pos()?;
-    var_name
-        .cannot_clash_with_functions(ctx)
-        .with_err_no_pos()?;
+    cannot_clash_with_subs(var_name, ctx)?;
+    var_name.cannot_clash_with_functions(ctx)?;
     user_defined_type_must_exist(var_name, ctx)?;
     cannot_clash_with_local_constants(var_name, ctx).with_err_no_pos()
 }
@@ -95,7 +93,7 @@ where
             if ctx.user_defined_types().contains_key(type_name) {
                 Ok(())
             } else {
-                Err(LintError::TypeNotDefined).with_err_at(pos)
+                Err(LintError::TypeNotDefined.at(pos))
             }
         }
         _ => Ok(()),

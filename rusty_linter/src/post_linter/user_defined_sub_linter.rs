@@ -22,7 +22,7 @@ where
             Some(sub_signature_pos) => {
                 lint_call_args(args, sub_signature_pos.element.param_types())
             }
-            None => Err(LintError::SubprogramNotDefined).with_err_no_pos(),
+            None => Err(LintError::SubprogramNotDefined.at_no_pos()),
         }
     }
 }

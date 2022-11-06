@@ -40,12 +40,12 @@ pub use built_ins::{BuiltInFunction, BuiltInSub};
 pub use error::*;
 pub use types::*;
 
+use rusty_common::AtPos;
 use std::fs::File;
 
 use crate::global_statement::ProgramParser;
 use crate::pc::*;
 use crate::pc_specific::{create_file_tokenizer, create_string_tokenizer};
-use rusty_common::*;
 
 /// Parses a QBasic file.
 ///
@@ -67,7 +67,7 @@ pub fn parse_main_file(f: File) -> Result<Program, ParseErrorPos> {
 pub fn program_parser(reader: &mut impl Tokenizer) -> Result<Program, ParseErrorPos> {
     match ProgramParser::new().parse(reader) {
         Ok(opt_program) => Ok(opt_program),
-        Err(err) => Err(ErrorEnvelope::Pos(err, reader.position())),
+        Err(err) => Err(err.at_pos(reader.position())),
     }
 }
 

@@ -4,7 +4,8 @@ use crate::converter::dim_rules::validation;
 use crate::converter::pos_context::PosContext;
 use crate::converter::traits::Convertible;
 use crate::error::LintErrorPos;
-use rusty_common::{AtPos, PatchErrPos};
+use crate::LintPosResult;
+use rusty_common::AtPos;
 use rusty_parser::{Parameter, ParameterPos};
 
 impl Convertible for ParameterPos {

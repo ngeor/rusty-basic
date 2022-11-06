@@ -1,4 +1,4 @@
-use rusty_common::ErrorEnvelope;
+use crate::error_envelope::ErrorEnvelope;
 use rusty_linter::LintError;
 use rusty_variant::{SubscriptOutOfRangeError, VariantError};
 

@@ -2,7 +2,7 @@ use crate::const_value_resolver::ConstValueResolver;
 use crate::error::{LintError, LintErrorPos};
 use crate::pre_linter::ConstantMap;
 use crate::CastVariant;
-use rusty_common::{Positioned, WithErrAt};
+use rusty_common::{AtPos, Positioned};
 use rusty_parser::{BareName, ExpressionPos, Name, NamePos};
 
 // calculate global constant values
@@ -14,13 +14,13 @@ pub fn global_const(
     let Positioned { element: name, pos } = name_pos;
     let bare_name: &BareName = name.bare_name();
     (match global_constants.get(bare_name) {
-        Some(_) => Err(LintError::DuplicateDefinition).with_err_at(pos),
+        Some(_) => Err(LintError::DuplicateDefinition.at(pos)),
         _ => Ok(()),
     })
     .and_then(|_| global_constants.resolve_const(expression_pos))
     .and_then(|v| match name {
         Name::Bare(_) => Ok(v),
-        Name::Qualified(_, qualifier) => v.cast(*qualifier).with_err_at(expression_pos),
+        Name::Qualified(_, qualifier) => v.cast(*qualifier).map_err(|e| e.at(expression_pos)),
     })
     .map(|casted| {
         global_constants.insert(bare_name.clone(), casted);

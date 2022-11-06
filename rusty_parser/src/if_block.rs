@@ -420,7 +420,7 @@ end if"#;
     #[test]
     fn test_else_without_if() {
         let input = "ELSE";
-        assert_parser_err!(input, QError::ElseWithoutIf);
+        assert_parser_err!(input, ParseError::ElseWithoutIf);
     }
 
     #[test]

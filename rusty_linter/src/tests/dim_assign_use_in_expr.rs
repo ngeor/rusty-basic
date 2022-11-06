@@ -2,11 +2,9 @@ use crate::assert_linter_err;
 use crate::assert_linter_ok_global_statements;
 use crate::test_utils::*;
 use crate::HasUserDefinedTypes;
+use crate::LintError;
 use rusty_common::*;
-use rusty_parser::{
-    BareName, BuiltInStyle, DimType, DimVar, Element, ElementType, Expression, ExpressionType,
-    GlobalStatement, Print, Statement, TypeQualifier,
-};
+use rusty_parser::*;
 
 /// Three step tests:
 /// 1. DIM a new variable
@@ -247,5 +245,5 @@ fn element_type_qualified_wrong_type() {
     DIM c AS Card
     c.Value! = 3
     "#;
-    assert_linter_err!(program, QError::TypeMismatch, 6, 5);
+    assert_linter_err!(program, LintError::TypeMismatch, 6, 5);
 }

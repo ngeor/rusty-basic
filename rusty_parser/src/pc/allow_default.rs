@@ -1,6 +1,5 @@
-use crate::parser_declaration;
 use crate::pc::{NonOptParser, Parser, Tokenizer};
-use rusty_common::{ParserErrorTrait, QError};
+use crate::{parser_declaration, ParseError, ParserErrorTrait};
 
 parser_declaration!(pub struct AllowDefaultParser);
 
@@ -11,7 +10,7 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             Ok(value) => Ok(value),
             Err(err) if err.is_incomplete() => Ok(Self::Output::default()),

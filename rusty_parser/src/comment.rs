@@ -1,7 +1,7 @@
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::types::*;
-use rusty_common::*;
+use crate::ParseError;
 
 /// Tries to read a comment.
 pub fn comment_p() -> impl Parser<Output = Statement> {
@@ -12,7 +12,7 @@ pub struct CommentAsString;
 
 impl Parser for CommentAsString {
     type Output = String;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         match tokenizer.read()? {
             Some(token) if TokenType::SingleQuote.matches(&token) => {
                 let mut result = String::new();
@@ -28,9 +28,9 @@ impl Parser for CommentAsString {
             }
             Some(token) => {
                 tokenizer.unread(token);
-                Err(QError::Incomplete)
+                Err(ParseError::Incomplete)
             }
-            None => Err(QError::Incomplete),
+            None => Err(ParseError::Incomplete),
         }
     }
 }

@@ -1,7 +1,6 @@
 use crate::pc::{Parser, Tokenizer};
 use crate::pc_specific::{keyword_syntax_error, TokenType};
-use crate::Keyword;
-use rusty_common::*;
+use crate::{Keyword, ParseError};
 
 pub fn keyword_map<T>(mappings: &[(Keyword, T)]) -> KeywordMap<T>
 where
@@ -21,7 +20,7 @@ where
     T: Clone,
 {
     type Output = T;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         match tokenizer.read()? {
             Some(keyword_token) if TokenType::Keyword.matches(&keyword_token) => {
                 for (keyword, mapped_value) in &self.mappings {
@@ -42,8 +41,8 @@ where
 }
 
 impl<T> KeywordMap<T> {
-    fn to_err(&self) -> Result<T, QError> {
-        Err(QError::Expected(keyword_syntax_error(
+    fn to_err(&self) -> Result<T, ParseError> {
+        Err(ParseError::Expected(keyword_syntax_error(
             self.mappings.iter().map(|(k, _)| k),
         )))
     }

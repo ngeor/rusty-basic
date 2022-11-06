@@ -1,14 +1,17 @@
 use crate::converter::expr_rules::*;
 use crate::converter::types::ExprContext;
+use crate::error::{LintError, LintErrorPos};
 use crate::type_resolver::{IntoQualified, IntoTypeQualifier};
-use crate::{qualifier_of_const_variant, HasSubs};
+use crate::{
+    qualifier_of_const_variant, qualify_name, try_built_in_function, try_qualify, HasSubs,
+};
 use rusty_variant::Variant;
 
 pub fn convert(
     ctx: &mut PosExprState,
     name: Name,
     variable_info: VariableInfo,
-) -> Result<Expression, QErrorPos> {
+) -> Result<Expression, LintErrorPos> {
     // validation rules
     validate(ctx, &name)?;
 
@@ -39,9 +42,9 @@ pub fn convert(
     }
 }
 
-fn validate(ctx: &Context, name: &Name) -> Result<(), QErrorPos> {
+fn validate(ctx: &Context, name: &Name) -> Result<(), LintErrorPos> {
     if ctx.subs().contains_key(name.bare_name()) {
-        return Err(QError::DuplicateDefinition).with_err_no_pos();
+        return Err(LintError::DuplicateDefinition).with_err_no_pos();
     }
 
     Ok(())
@@ -74,7 +77,7 @@ pub fn add_as_new_implicit_var(ctx: &mut PosExprState, name: Name) -> Expression
 pub trait VarResolve {
     fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool;
 
-    fn resolve(&self, ctx: &PosExprState, name: Name) -> Result<Expression, QErrorPos>;
+    fn resolve(&self, ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos>;
 }
 
 #[derive(Default)]
@@ -95,10 +98,10 @@ impl VarResolve for ExistingVar {
         }
     }
 
-    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, QErrorPos> {
+    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
         let variable_info = self.var_info.clone().unwrap();
         let expression_type = &variable_info.expression_type;
-        let converted_name = expression_type.qualify_name(name).with_err_no_pos()?;
+        let converted_name = qualify_name(expression_type, name).with_err_no_pos()?;
         Ok(Expression::Variable(converted_name, variable_info))
     }
 }
@@ -138,14 +141,14 @@ impl VarResolve for ExistingConst {
         self.opt_v.is_some()
     }
 
-    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, QErrorPos> {
+    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
         let v = self.opt_v.clone().unwrap();
         let q = qualifier_of_const_variant(&v);
         if name.is_bare_or_of_type(q) {
             // resolve to literal expression
             Ok(const_variant_to_expression(v))
         } else {
-            Err(QError::DuplicateDefinition).with_err_no_pos()
+            Err(LintError::DuplicateDefinition).with_err_no_pos()
         }
     }
 }
@@ -178,15 +181,15 @@ impl VarResolve for AssignToFunction {
         }
     }
 
-    fn resolve(&self, ctx: &PosExprState, name: Name) -> Result<Expression, QErrorPos> {
+    fn resolve(&self, ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
         let function_qualifier = self.function_qualifier.unwrap();
         if ctx.names.is_in_function(name.bare_name()) {
-            let converted_name = name.try_qualify(function_qualifier).with_err_no_pos()?;
+            let converted_name = try_qualify(name, function_qualifier).with_err_no_pos()?;
             let expr_type = ExpressionType::BuiltIn(function_qualifier);
             let expr = Expression::Variable(converted_name, VariableInfo::new_local(expr_type));
             Ok(expr)
         } else {
-            Err(QError::DuplicateDefinition).with_err_no_pos()
+            Err(LintError::DuplicateDefinition).with_err_no_pos()
         }
     }
 }
@@ -202,8 +205,8 @@ impl VarResolve for VarAsBuiltInFunctionCall {
         self.built_in_function.is_some()
     }
 
-    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, QErrorPos> {
-        match Option::<BuiltInFunction>::try_from(&name).with_err_no_pos()? {
+    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
+        match try_built_in_function(&name).with_err_no_pos()? {
             Some(built_in_function) => {
                 Ok(Expression::BuiltInFunctionCall(built_in_function, vec![]))
             }
@@ -223,9 +226,9 @@ impl VarResolve for VarAsUserDefinedFunctionCall {
         self.function_qualifier.is_some()
     }
 
-    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, QErrorPos> {
+    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
         let q = self.function_qualifier.unwrap();
-        let converted_name = name.try_qualify(q).with_err_no_pos()?;
+        let converted_name = try_qualify(name, q).with_err_no_pos()?;
         Ok(Expression::FunctionCall(converted_name, vec![]))
     }
 }

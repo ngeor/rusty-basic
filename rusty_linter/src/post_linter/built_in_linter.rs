@@ -1,5 +1,6 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::built_ins::{lint_function_call, lint_sub_call};
+use crate::error::LintErrorPos;
 use crate::NameContext;
 use rusty_common::*;
 use rusty_parser::{
@@ -23,14 +24,14 @@ impl PostConversionLinter for BuiltInLinter {
     fn visit_function_implementation(
         &mut self,
         f: &FunctionImplementation,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         self.name_context = NameContext::Function;
         let result = self.visit_statements(&f.body);
         self.name_context = NameContext::Global;
         result
     }
 
-    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorPos> {
+    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), LintErrorPos> {
         self.name_context = NameContext::Sub;
         let result = self.visit_statements(&s.body);
         self.name_context = NameContext::Global;
@@ -41,12 +42,12 @@ impl PostConversionLinter for BuiltInLinter {
         &mut self,
         built_in_sub: &BuiltInSub,
         args: &Expressions,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         self.visit_expressions(args)?;
         lint_sub_call(built_in_sub, args, self.name_context)
     }
 
-    fn visit_expression(&mut self, expr_pos: &ExpressionPos) -> Result<(), QErrorPos> {
+    fn visit_expression(&mut self, expr_pos: &ExpressionPos) -> Result<(), LintErrorPos> {
         let pos = expr_pos.pos();
         match &expr_pos.element {
             Expression::BuiltInFunctionCall(built_in_function, args) => {

@@ -3,7 +3,7 @@ use crate::pc::*;
 use crate::pc_specific::*;
 use crate::statements::*;
 use crate::types::*;
-use rusty_common::*;
+use crate::ParseError;
 
 pub fn while_wend_p() -> impl Parser<Output = Statement> {
     seq4(
@@ -11,9 +11,9 @@ pub fn while_wend_p() -> impl Parser<Output = Statement> {
         ws_expr_pos_p().or_syntax_error("Expected: expression after WHILE"),
         ZeroOrMoreStatements::new_with_custom_error(
             keyword(Keyword::Wend),
-            QError::WhileWithoutWend,
+            ParseError::WhileWithoutWend,
         ),
-        keyword(Keyword::Wend).or_fail(QError::WhileWithoutWend),
+        keyword(Keyword::Wend).or_fail(ParseError::WhileWithoutWend),
         |_, condition, statements, _| {
             Statement::While(ConditionalBlock {
                 condition,
@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn test_wend_without_while() {
         let input = "WEND";
-        assert_parser_err!(input, QError::WendWithoutWhile);
+        assert_parser_err!(input, ParseError::WendWithoutWhile);
     }
 
     #[test]
@@ -123,7 +123,7 @@ mod tests {
         WHILE X > 0
         PRINT X
         "#;
-        assert_parser_err!(input, QError::WhileWithoutWend);
+        assert_parser_err!(input, ParseError::WhileWithoutWend);
     }
 
     #[test]
@@ -161,7 +161,7 @@ mod tests {
         "#;
         assert_parser_err!(
             input,
-            QError::syntax_error("Expected: statement separator"),
+            ParseError::syntax_error("Expected: statement separator"),
             3,
             21
         );

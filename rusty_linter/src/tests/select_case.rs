@@ -1,5 +1,5 @@
 use crate::assert_linter_err;
-use rusty_common::*;
+use crate::LintError;
 
 #[test]
 fn test_select_wrong_type_in_simple_case() {
@@ -9,7 +9,7 @@ fn test_select_wrong_type_in_simple_case() {
                 PRINT "hi"
         END SELECT
         "#;
-    assert_linter_err!(input, QError::TypeMismatch, 3, 18);
+    assert_linter_err!(input, LintError::TypeMismatch, 3, 18);
 }
 
 #[test]
@@ -20,7 +20,7 @@ fn test_select_wrong_type_in_range_case_upper() {
                 PRINT "hi"
         END SELECT
         "#;
-    assert_linter_err!(input, QError::TypeMismatch, 3, 23);
+    assert_linter_err!(input, LintError::TypeMismatch, 3, 23);
 }
 
 #[test]
@@ -31,7 +31,7 @@ fn test_select_wrong_type_in_range_case_lower() {
                 PRINT "hi"
         END SELECT
         "#;
-    assert_linter_err!(input, QError::TypeMismatch, 3, 18);
+    assert_linter_err!(input, LintError::TypeMismatch, 3, 18);
 }
 
 #[test]
@@ -42,7 +42,7 @@ fn test_select_wrong_type_in_range_case_both() {
                 PRINT "hi"
         END SELECT
         "#;
-    assert_linter_err!(input, QError::TypeMismatch, 3, 18);
+    assert_linter_err!(input, LintError::TypeMismatch, 3, 18);
 }
 
 #[test]
@@ -53,5 +53,5 @@ fn test_select_wrong_type_in_is() {
                 PRINT "hi"
         END SELECT
         "#;
-    assert_linter_err!(input, QError::TypeMismatch, 3, 24);
+    assert_linter_err!(input, LintError::TypeMismatch, 3, 24);
 }

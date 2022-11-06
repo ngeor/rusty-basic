@@ -1,6 +1,5 @@
-use crate::parser_declaration;
 use crate::pc::{Parser, Tokenizer, Undo};
-use rusty_common::*;
+use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct FilterParser<predicate: F>);
 
@@ -12,13 +11,13 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         let result = self.parser.parse(tokenizer)?;
         if (self.predicate)(&result) {
             Ok(result)
         } else {
             result.undo(tokenizer);
-            Err(QError::Incomplete)
+            Err(ParseError::Incomplete)
         }
     }
 }
@@ -33,13 +32,13 @@ where
 {
     type Output = U;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         let result = self.parser.parse(tokenizer)?;
         match (self.mapper)(&result) {
             Some(value) => Ok(value),
             None => {
                 result.undo(tokenizer);
-                Err(QError::Incomplete)
+                Err(ParseError::Incomplete)
             }
         }
     }

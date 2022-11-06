@@ -1,14 +1,14 @@
 use crate::converter::context::Context;
-use rusty_common::QErrorPos;
+use crate::error::LintErrorPos;
 
 pub trait Convertible<C = Context, O = Self>: Sized {
-    fn convert(self, ctx: &mut C) -> Result<O, QErrorPos>;
+    fn convert(self, ctx: &mut C) -> Result<O, LintErrorPos>;
 
     fn convert_in<'a, ParentContext, U>(
         self,
         parent_ctx: &'a mut ParentContext,
         value: U,
-    ) -> Result<O, QErrorPos>
+    ) -> Result<O, LintErrorPos>
     where
         C: FromParentContext<'a, ParentContext, U>,
     {
@@ -19,7 +19,7 @@ pub trait Convertible<C = Context, O = Self>: Sized {
     fn convert_in_default<'a, ParentContext, U>(
         self,
         parent_ctx: &'a mut ParentContext,
-    ) -> Result<O, QErrorPos>
+    ) -> Result<O, LintErrorPos>
     where
         C: FromParentContext<'a, ParentContext, U>,
         U: Default,
@@ -32,7 +32,7 @@ impl<C, T> Convertible<C> for Option<T>
 where
     T: Convertible<C, T>,
 {
-    fn convert(self, ctx: &mut C) -> Result<Self, QErrorPos> {
+    fn convert(self, ctx: &mut C) -> Result<Self, LintErrorPos> {
         match self {
             Some(t) => t.convert(ctx).map(Some),
             None => Ok(None),
@@ -44,7 +44,7 @@ impl<C, T> Convertible<C> for Vec<T>
 where
     T: Convertible<C, T>,
 {
-    fn convert(self, ctx: &mut C) -> Result<Self, QErrorPos> {
+    fn convert(self, ctx: &mut C) -> Result<Self, LintErrorPos> {
         self.into_iter().map(|t| t.convert(ctx)).collect()
     }
 }

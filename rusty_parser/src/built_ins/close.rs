@@ -106,7 +106,7 @@ mod tests {
     #[test]
     fn test_one_file_number_with_hash_no_leading_space() {
         let input = "CLOSE#1";
-        assert_parser_err!(input, QError::syntax_error("No separator: #"), 1, 7);
+        assert_parser_err!(input, ParseError::syntax_error("No separator: #"), 1, 7);
     }
 
     #[test]
@@ -114,7 +114,7 @@ mod tests {
         let input = "CLOSE (#1)";
         assert_parser_err!(
             input,
-            QError::syntax_error("Expected: expression inside parenthesis"),
+            ParseError::syntax_error("Expected: expression inside parenthesis"),
             1,
             8
         );
@@ -125,7 +125,7 @@ mod tests {
         let input = "CLOSE(#1)";
         assert_parser_err!(
             input,
-            QError::syntax_error("Expected: expression inside parenthesis"),
+            ParseError::syntax_error("Expected: expression inside parenthesis"),
             1,
             7
         );

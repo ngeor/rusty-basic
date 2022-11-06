@@ -172,18 +172,21 @@ mod tests {
 
     #[test]
     fn test_numeric_assignment_to_keyword_not_allowed() {
-        assert_parser_err!("FOR = 42", QError::syntax_error("Expected: name after FOR"));
+        assert_parser_err!(
+            "FOR = 42",
+            ParseError::syntax_error("Expected: name after FOR")
+        );
     }
 
     #[test]
     fn test_identifier_too_long() {
         assert_parser_err!(
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMN = 42",
-            QError::IdentifierTooLong
+            ParseError::IdentifierTooLong
         );
         assert_parser_err!(
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMN% = 42",
-            QError::IdentifierTooLong
+            ParseError::IdentifierTooLong
         );
     }
 
@@ -307,7 +310,7 @@ mod tests {
             let left_sides = ["DIM", "DIM%", "DIM&", "DIM!", "DIM#"];
             for left_side in &left_sides {
                 let input = format!("{} = 42", left_side);
-                assert!(matches!(parse_err(&input), QError::SyntaxError(_)));
+                assert!(matches!(parse_err(&input), ParseError::SyntaxError(_)));
             }
         }
     }

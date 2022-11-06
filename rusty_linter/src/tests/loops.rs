@@ -1,5 +1,5 @@
 use crate::assert_linter_err;
-use rusty_common::*;
+use crate::LintError;
 
 #[test]
 fn test_for_loop_with_wrong_next_counter() {
@@ -8,7 +8,7 @@ fn test_for_loop_with_wrong_next_counter() {
         PRINT i%
     NEXT i
     ";
-    assert_linter_err!(input, QError::NextWithoutFor, 4, 10);
+    assert_linter_err!(input, LintError::NextWithoutFor, 4, 10);
 }
 
 #[test]
@@ -17,7 +17,7 @@ fn test_for_loop_with_string_variable() {
     FOR a$ = 1 TO 5
     NEXT
     ";
-    assert_linter_err!(input, QError::TypeMismatch, 2, 5);
+    assert_linter_err!(input, LintError::TypeMismatch, 2, 5);
 }
 
 #[test]
@@ -30,7 +30,7 @@ fn test_for_loop_var_name_cannot_include_period_if_variable_of_user_defined_type
     NEXT
     DIM A AS Card
     "#;
-    assert_linter_err!(input, QError::DotClash, 5, 9);
+    assert_linter_err!(input, LintError::DotClash, 5, 9);
 }
 
 #[test]
@@ -39,7 +39,7 @@ fn do_loop_condition_cannot_be_string() {
     DO WHILE A$
     LOOP
     "#;
-    assert_linter_err!(input, QError::TypeMismatch, 2, 14);
+    assert_linter_err!(input, LintError::TypeMismatch, 2, 14);
 }
 
 #[test]
@@ -48,5 +48,5 @@ fn while_condition_cannot_be_string() {
     WHILE A$
     WEND
     "#;
-    assert_linter_err!(input, QError::TypeMismatch, 2, 11);
+    assert_linter_err!(input, LintError::TypeMismatch, 2, 11);
 }

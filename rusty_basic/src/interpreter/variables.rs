@@ -3,7 +3,8 @@ use crate::interpreter::arguments::{ArgumentInfo, Arguments};
 use crate::interpreter::byte_size::QByteSize;
 use crate::interpreter::context::{PeekByte, PokeByte};
 use crate::interpreter::handlers::allocation::allocate_built_in;
-use rusty_common::{IndexedMap, QError};
+use crate::RuntimeError;
+use rusty_common::IndexedMap;
 use rusty_parser::{BareName, DimType, DimVar, Name, ParamType, Parameter, TypeQualifier};
 use rusty_variant::{Variant, V_FALSE};
 
@@ -219,7 +220,7 @@ impl Variables {
             .filter(move |key| self.map.get(*key).unwrap().value.is_array())
     }
 
-    pub fn peek_non_array(&self, address: usize) -> Result<u8, QError> {
+    pub fn peek_non_array(&self, address: usize) -> Result<u8, RuntimeError> {
         let mut offset: usize = 0;
         for RuntimeVariableInfo { value, .. } in self.map.values() {
             if !value.is_array() {
@@ -231,12 +232,10 @@ impl Variables {
                 offset += len;
             }
         }
-        Err(QError::InternalError(
-            "Could not find variable at address".to_string(),
-        ))
+        panic!("Could not find variable at address {}", address)
     }
 
-    pub fn poke_non_array(&mut self, address: usize, byte_value: u8) -> Result<(), QError> {
+    pub fn poke_non_array(&mut self, address: usize, byte_value: u8) -> Result<(), RuntimeError> {
         let mut offset: usize = 0;
         for RuntimeVariableInfo { value, .. } in self.map.values_mut() {
             if !value.is_array() {
@@ -248,9 +247,7 @@ impl Variables {
                 offset += len;
             }
         }
-        Err(QError::InternalError(
-            "Could not find variable at address".to_string(),
-        ))
+        panic!("Could not find variable at address {}", address)
     }
 }
 

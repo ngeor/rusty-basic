@@ -1,4 +1,3 @@
-use crate::QError;
 use std::convert::TryFrom;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -102,13 +101,14 @@ impl From<FileHandle> for i32 {
 }
 
 impl TryFrom<i32> for FileHandle {
-    type Error = QError;
+    type Error = ();
 
     fn try_from(i: i32) -> Result<Self, Self::Error> {
         if (1..=255).contains(&i) {
             Ok((i as u8).into())
         } else {
-            Err(QError::BadFileNameOrNumber)
+            // was BadFileNameOrNumber TODO move to interpreter
+            Err(())
         }
     }
 }

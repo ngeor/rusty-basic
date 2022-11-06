@@ -1,6 +1,5 @@
-use crate::binary_parser_declaration;
 use crate::pc::{Parser, ParserOnce, Tokenizer};
-use rusty_common::*;
+use crate::{binary_parser_declaration, ParseError};
 
 binary_parser_declaration!(pub struct ChainParser);
 
@@ -12,7 +11,7 @@ where
 {
     type Output = <R as ParserOnce>::Output;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         let first = self.left.parse(tokenizer)?;
         let right_parser = (self.right)(first);
         right_parser.parse(tokenizer)

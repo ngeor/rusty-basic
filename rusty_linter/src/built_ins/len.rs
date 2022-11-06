@@ -1,12 +1,13 @@
+use crate::error::{LintError, LintErrorPos};
 use crate::CanCastTo;
-use rusty_common::{QError, QErrorPos, WithErrAt, WithErrNoPos};
+use rusty_common::{WithErrAt, WithErrNoPos};
 use rusty_parser::{
     ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType, TypeQualifier,
 };
 
-pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
+pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     if args.len() != 1 {
-        Err(QError::ArgumentCountMismatch).with_err_no_pos()
+        Err(LintError::ArgumentCountMismatch).with_err_no_pos()
     } else {
         let arg: &ExpressionPos = &args[0];
         if arg.is_by_ref() {
@@ -14,12 +15,12 @@ pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
                 // QBasic actually accepts LEN(A) where A is an array,
                 // but its results don't make much sense
                 ExpressionType::Unresolved | ExpressionType::Array(_) => {
-                    Err(QError::ArgumentTypeMismatch).with_err_at(arg)
+                    Err(LintError::ArgumentTypeMismatch).with_err_at(arg)
                 }
                 _ => Ok(()),
             }
         } else if !arg.can_cast_to(&TypeQualifier::DollarString) {
-            Err(QError::VariableRequired).with_err_at(arg)
+            Err(LintError::VariableRequired).with_err_at(arg)
         } else {
             Ok(())
         }
@@ -29,12 +30,12 @@ pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
-    use rusty_common::*;
+    use crate::LintError;
 
     #[test]
     fn test_len_integer_expression_error() {
         let program = "PRINT LEN(42)";
-        assert_linter_err!(program, QError::VariableRequired, 1, 11);
+        assert_linter_err!(program, LintError::VariableRequired, 1, 11);
     }
 
     #[test]
@@ -43,13 +44,13 @@ mod tests {
             CONST X = 42
             PRINT LEN(X)
             ";
-        assert_linter_err!(program, QError::VariableRequired, 3, 23);
+        assert_linter_err!(program, LintError::VariableRequired, 3, 23);
     }
 
     #[test]
     fn test_len_two_arguments_error() {
         let program = r#"PRINT LEN("a", "b")"#;
-        assert_linter_err!(program, QError::ArgumentCountMismatch, 1, 7);
+        assert_linter_err!(program, LintError::ArgumentCountMismatch, 1, 7);
     }
 
     #[test]
@@ -59,6 +60,6 @@ mod tests {
         PRINT LEN(A)
         "#;
         // QBasic actually seems to be printing "4" regardless of the array type
-        assert_linter_err!(program, QError::ArgumentTypeMismatch);
+        assert_linter_err!(program, LintError::ArgumentTypeMismatch);
     }
 }

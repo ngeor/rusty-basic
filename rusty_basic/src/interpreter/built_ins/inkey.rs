@@ -1,10 +1,10 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::RuntimeError;
 use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
-use rusty_common::*;
 use rusty_parser::BuiltInFunction;
 use std::time::Duration;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let s: String = poll_one()?;
     interpreter
         .context_mut()
@@ -12,7 +12,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     Ok(())
 }
 
-fn poll_one() -> Result<String, QError> {
+fn poll_one() -> Result<String, RuntimeError> {
     if poll(Duration::from_millis(100))? {
         let event = read()?;
         Ok(handle_event(event))

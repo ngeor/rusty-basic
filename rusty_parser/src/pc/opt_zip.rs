@@ -1,8 +1,7 @@
 // Mixed type or
 
-use crate::binary_parser_declaration;
 use crate::pc::{Parser, Tokenizer};
-use rusty_common::*;
+use crate::{binary_parser_declaration, ParseError};
 
 pub enum ZipValue<L, R> {
     Left(L),
@@ -54,7 +53,7 @@ where
     R: Parser,
 {
     type Output = ZipValue<L::Output, R::Output>;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         let opt_left = self.left.parse_opt(tokenizer)?;
         let opt_right = self.right.parse_opt(tokenizer)?;
         match opt_left {
@@ -64,7 +63,7 @@ where
             },
             None => match opt_right {
                 Some(right) => Ok(ZipValue::Right(right)),
-                _ => Err(QError::Incomplete),
+                _ => Err(ParseError::Incomplete),
             },
         }
     }

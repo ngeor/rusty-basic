@@ -4,6 +4,7 @@ mod byte_size;
 mod context;
 mod data_segment;
 mod default_stdlib;
+pub mod error;
 mod handlers;
 mod interpreter;
 mod interpreter_trait;

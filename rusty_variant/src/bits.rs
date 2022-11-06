@@ -1,4 +1,3 @@
-use rusty_common::QError;
 use std::fmt::Write;
 
 const INT_BITS: usize = 16;
@@ -20,6 +19,8 @@ pub struct BitVec {
     // msb -> lsb
     v: Vec<bool>,
 }
+
+pub struct OverflowError;
 
 impl BitVec {
     pub fn new() -> Self {
@@ -49,7 +50,7 @@ impl BitVec {
         self.v.push(u & 1 == 1);
     }
 
-    pub fn convert_to_int_or_long_expr(mut self) -> Result<BitVecIntOrLong, QError> {
+    pub fn convert_to_int_or_long_expr(mut self) -> Result<BitVecIntOrLong, OverflowError> {
         match Self::find_first_non_zero_bit(&self.v) {
             Some(idx) => {
                 let bit_count = self.len() - idx;
@@ -72,7 +73,7 @@ impl BitVec {
                     let l: i64 = bits_to_i64(&self.v[idx..]);
                     Ok(BitVecIntOrLong::Long(l))
                 } else {
-                    Err(QError::Overflow)
+                    Err(OverflowError)
                 }
             }
             None => Ok(BitVecIntOrLong::Int(0)),

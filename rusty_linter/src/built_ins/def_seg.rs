@@ -1,8 +1,8 @@
 use crate::arg_validation::ArgValidation;
-use rusty_common::QErrorPos;
+use crate::error::LintErrorPos;
 use rusty_parser::Expressions;
 
-pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
+pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     if args.is_empty() {
         Ok(())
     } else {
@@ -13,11 +13,11 @@ pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
-    use rusty_common::*;
+    use crate::LintError;
 
     #[test]
     fn address_cannot_be_string() {
         let input = "DEF SEG = A$";
-        assert_linter_err!(input, QError::ArgumentTypeMismatch);
+        assert_linter_err!(input, LintError::ArgumentTypeMismatch);
     }
 }

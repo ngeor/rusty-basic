@@ -1,7 +1,8 @@
 use crate::assert_prints;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::test_utils::mock_interpreter_for_input;
-use rusty_common::{Position, QError, QErrorPos};
+use crate::{RuntimeError, RuntimeErrorPos};
+use rusty_common::Position;
 
 #[test]
 fn on_error_go_to_label() {
@@ -45,7 +46,7 @@ fn reset_error_handler() {
     let err = result.unwrap_err();
     assert_eq!(
         err,
-        QErrorPos::Pos(QError::DivisionByZero, Position::new(5, 13))
+        RuntimeErrorPos::Pos(RuntimeError::DivisionByZero, Position::new(5, 13))
     );
     assert_eq!(interpreter.stdout().output(), "oops");
 }

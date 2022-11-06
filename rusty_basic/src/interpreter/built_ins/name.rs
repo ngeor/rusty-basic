@@ -1,11 +1,11 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
-use rusty_common::*;
+use crate::RuntimeError;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let old_file_name: &str = interpreter.context()[0].to_str_unchecked();
     let new_file_name: &str = interpreter.context()[1].to_str_unchecked();
-    std::fs::rename(old_file_name, new_file_name).map_err(QError::from)
+    std::fs::rename(old_file_name, new_file_name).map_err(RuntimeError::from)
 }
 
 #[cfg(test)]

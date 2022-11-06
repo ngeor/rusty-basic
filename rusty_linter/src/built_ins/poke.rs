@@ -1,10 +1,11 @@
 use crate::arg_validation::ArgValidation;
-use rusty_common::{QError, QErrorPos, WithErrNoPos};
+use crate::error::{LintError, LintErrorPos};
+use rusty_common::WithErrNoPos;
 use rusty_parser::Expressions;
 
-pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
+pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     if args.len() != 2 {
-        Err(QError::ArgumentCountMismatch).with_err_no_pos()
+        Err(LintError::ArgumentCountMismatch).with_err_no_pos()
     } else {
         for i in 0..args.len() {
             args.require_integer_argument(i)?;
@@ -15,36 +16,36 @@ pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_linter_err;
-    use rusty_common::*;
 
     #[test]
     fn must_have_arguments() {
         let input = "POKE";
-        assert_linter_err!(input, QError::ArgumentCountMismatch);
+        assert_linter_err!(input, LintError::ArgumentCountMismatch);
     }
 
     #[test]
     fn one_argument() {
         let input = "POKE 42";
-        assert_linter_err!(input, QError::ArgumentCountMismatch);
+        assert_linter_err!(input, LintError::ArgumentCountMismatch);
     }
 
     #[test]
     fn three_arguments() {
         let input = "POKE 1, 2, 3";
-        assert_linter_err!(input, QError::ArgumentCountMismatch);
+        assert_linter_err!(input, LintError::ArgumentCountMismatch);
     }
 
     #[test]
     fn string_first_argument() {
         let input = "POKE A$, 1";
-        assert_linter_err!(input, QError::ArgumentTypeMismatch);
+        assert_linter_err!(input, LintError::ArgumentTypeMismatch);
     }
 
     #[test]
     fn string_second_argument() {
         let input = "POKE 1, A$";
-        assert_linter_err!(input, QError::ArgumentTypeMismatch);
+        assert_linter_err!(input, LintError::ArgumentTypeMismatch);
     }
 }

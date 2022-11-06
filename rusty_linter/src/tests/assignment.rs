@@ -1,6 +1,7 @@
 use crate::assert_linter_err;
 use crate::assert_linter_ok_global_statements;
-use rusty_common::*;
+use crate::LintError;
+use rusty_common::AtPos;
 use rusty_parser::{DimVar, Expression, ExpressionType, Operator, Statement, TypeQualifier};
 
 #[test]
@@ -12,19 +13,19 @@ fn name_clashes_with_other_sub_name() {
             Hello = 2
             END SUB
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 5, 13);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 5, 13);
 }
 
 #[test]
 fn literals_type_mismatch() {
-    assert_linter_err!("X = \"hello\"", QError::TypeMismatch, 1, 5);
-    assert_linter_err!("X! = \"hello\"", QError::TypeMismatch, 1, 6);
-    assert_linter_err!("X# = \"hello\"", QError::TypeMismatch, 1, 6);
-    assert_linter_err!("A$ = 1.0", QError::TypeMismatch, 1, 6);
-    assert_linter_err!("A$ = 1", QError::TypeMismatch, 1, 6);
-    assert_linter_err!("A$ = -1", QError::TypeMismatch, 1, 6);
-    assert_linter_err!("X% = \"hello\"", QError::TypeMismatch, 1, 6);
-    assert_linter_err!("X& = \"hello\"", QError::TypeMismatch, 1, 6);
+    assert_linter_err!("X = \"hello\"", LintError::TypeMismatch, 1, 5);
+    assert_linter_err!("X! = \"hello\"", LintError::TypeMismatch, 1, 6);
+    assert_linter_err!("X# = \"hello\"", LintError::TypeMismatch, 1, 6);
+    assert_linter_err!("A$ = 1.0", LintError::TypeMismatch, 1, 6);
+    assert_linter_err!("A$ = 1", LintError::TypeMismatch, 1, 6);
+    assert_linter_err!("A$ = -1", LintError::TypeMismatch, 1, 6);
+    assert_linter_err!("X% = \"hello\"", LintError::TypeMismatch, 1, 6);
+    assert_linter_err!("X& = \"hello\"", LintError::TypeMismatch, 1, 6);
 }
 
 #[test]
@@ -33,7 +34,7 @@ fn assign_to_const() {
             CONST X = 3.14
             X = 6.28
             ";
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 13);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 13);
 }
 
 #[test]
@@ -44,7 +45,7 @@ fn assign_to_parent_const() {
             X = 3
             END SUB
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 4, 13);
 }
 
 #[test]
@@ -54,7 +55,7 @@ fn assign_integer_to_extended_string() {
             IF X = 0 THEN DIM A AS STRING
             A = 42
             "#;
-    assert_linter_err!(program, QError::TypeMismatch, 4, 17);
+    assert_linter_err!(program, LintError::TypeMismatch, 4, 17);
 }
 
 #[test]

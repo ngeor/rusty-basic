@@ -2,9 +2,8 @@
 // Map
 //
 
-use crate::parser_declaration;
 use crate::pc::{NonOptParser, Parser, ParserOnce, Tokenizer};
-use rusty_common::*;
+use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct FnMapper<mapper: F>);
 
@@ -16,7 +15,7 @@ where
     F: Fn(P::Output) -> U,
 {
     type Output = U;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(&self.mapper)
     }
 }
@@ -27,7 +26,7 @@ where
     F: FnOnce(P::Output) -> U,
 {
     type Output = U;
-    fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(self.mapper)
     }
 }
@@ -50,7 +49,7 @@ where
     P: Parser<Output = (L, R)>,
 {
     type Output = L;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(|(l, _)| l)
     }
 }
@@ -68,7 +67,7 @@ where
     P: Parser<Output = (L, R)>,
 {
     type Output = R;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(|(_, r)| r)
     }
 }

@@ -1,6 +1,6 @@
 use crate::instruction_generator::{Path, RootPath};
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_linter::QBNumberCast;
 use rusty_parser::BareName;
 use rusty_variant::Variant;
@@ -33,29 +33,31 @@ pub fn var_path_property<T: InterpreterTrait>(interpreter: &mut T, property_name
     ));
 }
 
-pub fn copy_a_to_var_path<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
+pub fn copy_a_to_var_path<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), RuntimeError> {
     let a = interpreter.registers().get_a();
     let v = resolve_name_ptr_mut(interpreter)?;
     *v = a;
     Ok(())
 }
 
-pub fn copy_var_path_to_a<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
+pub fn copy_var_path_to_a<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), RuntimeError> {
     let v = resolve_name_ptr_mut(interpreter)?;
     let v_copy = v.clone();
     interpreter.registers_mut().set_a(v_copy);
     Ok(())
 }
 
-pub fn pop_var_path<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
+pub fn pop_var_path<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), RuntimeError> {
     interpreter
         .var_path_stack()
         .pop_back()
-        .ok_or(QError::Overflow)
+        .ok_or(RuntimeError::Overflow)
         .map(|_| ())
 }
 
-fn resolve_name_ptr_mut<T: InterpreterTrait>(interpreter: &mut T) -> Result<&mut Variant, QError> {
+fn resolve_name_ptr_mut<T: InterpreterTrait>(
+    interpreter: &mut T,
+) -> Result<&mut Variant, RuntimeError> {
     match interpreter.var_path_stack().pop_back() {
         Some(n) => {
             interpreter.var_path_stack().push_back(n.clone());
@@ -68,7 +70,7 @@ fn resolve_name_ptr_mut<T: InterpreterTrait>(interpreter: &mut T) -> Result<&mut
 fn resolve_some_name_ptr_mut<T: InterpreterTrait>(
     interpreter: &mut T,
     name_ptr: Path,
-) -> Result<&mut Variant, QError> {
+) -> Result<&mut Variant, RuntimeError> {
     match name_ptr {
         Path::Root(RootPath { name, shared }) => {
             let variables = if shared {
@@ -89,11 +91,13 @@ fn resolve_some_name_ptr_mut<T: InterpreterTrait>(
     }
 }
 
-fn resolve_array_mut(v: &mut Variant, indices: Vec<Variant>) -> Result<&mut Variant, QError> {
+fn resolve_array_mut(v: &mut Variant, indices: Vec<Variant>) -> Result<&mut Variant, RuntimeError> {
     match v {
         Variant::VArray(v_array) => {
             let int_indices: Vec<i32> = indices.try_cast()?;
-            v_array.get_element_mut(&int_indices)
+            v_array
+                .get_element_mut(&int_indices)
+                .map_err(RuntimeError::from)
         }
         _ => panic!("Expected array, found {:?}", v),
     }

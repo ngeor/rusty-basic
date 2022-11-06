@@ -2,6 +2,7 @@ use crate::assert_prints;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::test_utils::*;
 use crate::interpreter::Stdlib;
+use crate::RuntimeError;
 use rusty_common::*;
 
 #[test]
@@ -106,7 +107,7 @@ fn test_stacktrace() {
     assert_eq!(
         interpret_err(program),
         ErrorEnvelope::Stacktrace(
-            QError::Other("Invalid expression. Must be name=value.".to_string()),
+            RuntimeError::Other("Invalid expression. Must be name=value.".to_string()),
             vec![
                 Position::new(10, 13), // "inside" Environ
                 Position::new(8, 13),  // at Hello N + 1

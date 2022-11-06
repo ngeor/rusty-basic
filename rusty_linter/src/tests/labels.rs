@@ -1,5 +1,5 @@
 use crate::assert_linter_err;
-use rusty_common::*;
+use crate::LintError;
 
 #[test]
 fn test_duplicate_global_label() {
@@ -11,7 +11,7 @@ fn test_duplicate_global_label() {
     PRINT "beta"
     "#;
 
-    assert_linter_err!(input, QError::DuplicateLabel, 5, 5);
+    assert_linter_err!(input, LintError::DuplicateLabel, 5, 5);
 }
 
 #[test]
@@ -26,7 +26,7 @@ fn test_duplicate_label_in_sub() {
     END SUB
     "#;
 
-    assert_linter_err!(input, QError::DuplicateLabel, 6, 9);
+    assert_linter_err!(input, LintError::DuplicateLabel, 6, 9);
 }
 
 #[test]
@@ -41,7 +41,7 @@ fn test_duplicate_label_in_function() {
     END FUNCTION
     "#;
 
-    assert_linter_err!(input, QError::DuplicateLabel, 6, 9);
+    assert_linter_err!(input, LintError::DuplicateLabel, 6, 9);
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn test_duplicate_label_global_and_sub() {
     END SUB
     "#;
 
-    assert_linter_err!(input, QError::DuplicateLabel, 8, 9);
+    assert_linter_err!(input, LintError::DuplicateLabel, 8, 9);
 }
 
 #[test]
@@ -77,5 +77,5 @@ fn test_duplicate_label_sub_and_sub() {
     END SUB
     "#;
 
-    assert_linter_err!(input, QError::DuplicateLabel, 10, 9);
+    assert_linter_err!(input, LintError::DuplicateLabel, 10, 9);
 }

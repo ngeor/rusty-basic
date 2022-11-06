@@ -1,6 +1,6 @@
-use rusty_common::QErrorPos;
+use crate::error::LintErrorPos;
 use rusty_parser::Expressions;
 
-pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
+pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     super::lbound::lint(args)
 }

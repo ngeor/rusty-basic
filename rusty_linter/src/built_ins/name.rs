@@ -1,10 +1,11 @@
 use crate::arg_validation::ArgValidation;
-use rusty_common::{QError, QErrorPos, WithErrNoPos};
+use crate::error::{LintError, LintErrorPos};
+use rusty_common::WithErrNoPos;
 use rusty_parser::Expressions;
 
-pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
+pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     if args.len() != 2 {
-        Err(QError::ArgumentCountMismatch).with_err_no_pos()
+        Err(LintError::ArgumentCountMismatch).with_err_no_pos()
     } else {
         args.require_string_argument(0)?;
         args.require_string_argument(1)
@@ -14,11 +15,11 @@ pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
-    use rusty_common::*;
+    use crate::LintError;
 
     #[test]
     fn test_name_linter_err() {
-        assert_linter_err!(r#"NAME 1 AS "boo""#, QError::ArgumentTypeMismatch, 1, 6);
-        assert_linter_err!(r#"NAME "boo" AS 2"#, QError::ArgumentTypeMismatch, 1, 15);
+        assert_linter_err!(r#"NAME 1 AS "boo""#, LintError::ArgumentTypeMismatch, 1, 6);
+        assert_linter_err!(r#"NAME "boo" AS 2"#, LintError::ArgumentTypeMismatch, 1, 15);
     }
 }

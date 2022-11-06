@@ -2,7 +2,6 @@
 //! the rest must succeed.
 
 use crate::pc::*;
-use rusty_common::*;
 
 // When in opt-parser: if the first succeeds, all the rest must succeed.
 // When in non-opt-parser: all parts must succeed.
@@ -35,7 +34,7 @@ macro_rules! seq_pc {
             type Output = ($first_type::Output, $(<$generic_type as Parser>::Output),+ );
 
             #[allow(non_snake_case)]
-            fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+            fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, $crate::ParseError> {
                 // the first is allowed to return incomplete
                 let $first_type = self.$first_type.parse(tokenizer)?;
                 $(

@@ -4,10 +4,9 @@ use crate::name::{bare_name_without_dots, name_with_dots};
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::{
-    BareName, Keyword, Name, TypeQualifier, TypedName, VarTypeNewBuiltInCompact,
+    BareName, Keyword, Name, ParseError, TypeQualifier, TypedName, VarTypeNewBuiltInCompact,
     VarTypeNewUserDefined, VarTypeToArray,
 };
-use rusty_common::*;
 
 /// Parses a variable name (dim name or param name).
 ///
@@ -100,7 +99,7 @@ where
 {
     built_in_parser
         .or(user_defined_type())
-        .map_incomplete_err(QError::expected(
+        .map_incomplete_err(ParseError::expected(
             "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
         ))
 }

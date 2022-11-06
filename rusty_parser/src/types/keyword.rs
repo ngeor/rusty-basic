@@ -1,7 +1,6 @@
 use crate::pc::Token;
 use crate::pc_specific::TokenType;
-use rusty_common::{CaseInsensitiveStr, QError};
-use std::str::FromStr;
+use rusty_common::CaseInsensitiveStr;
 
 // From the internets:
 // Doc comments are secretly just attributes,
@@ -218,18 +217,18 @@ impl PartialEq<Token> for Keyword {
     }
 }
 
-impl FromStr for Keyword {
-    type Err = QError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let temp = CaseInsensitiveStr::new(s);
-        Self::try_from(temp).map_err(|_| QError::InternalError(format!("Not a keyword: {}", s)))
+impl From<&Token> for Keyword {
+    fn from(token: &Token) -> Self {
+        debug_assert_eq!(token.kind, TokenType::Keyword.into());
+        let temp = CaseInsensitiveStr::new(&token.text);
+        Self::try_from(temp).expect("Token keyword not found in keywords!")
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rusty_common::Position;
 
     #[test]
     fn keyword_sanity_checks() {
@@ -242,18 +241,19 @@ mod tests {
                 SORTED_KEYWORDS_STR[i].to_uppercase()
             );
             // can parse string to keyword
-            assert_eq!(
-                SORTED_KEYWORDS_STR[i].parse::<Keyword>().unwrap(),
-                SORTED_KEYWORDS[i],
-            );
+            let token = Token {
+                kind: TokenType::Keyword.into(),
+                text: SORTED_KEYWORDS_STR[i].to_string(),
+                pos: Position::start(),
+            };
+            assert_eq!(Keyword::from(&token), SORTED_KEYWORDS[i],);
             // can parse lowercase string to keyword
-            assert_eq!(
-                SORTED_KEYWORDS_STR[i]
-                    .to_lowercase()
-                    .parse::<Keyword>()
-                    .unwrap(),
-                SORTED_KEYWORDS[i]
-            );
+            let token = Token {
+                kind: TokenType::Keyword.into(),
+                text: SORTED_KEYWORDS_STR[i].to_lowercase().to_string(),
+                pos: Position::start(),
+            };
+            assert_eq!(Keyword::from(&token), SORTED_KEYWORDS[i],);
         }
         // sort order is correct
         for i in 1..SORTED_KEYWORDS.len() {
@@ -264,13 +264,5 @@ mod tests {
                 SORTED_KEYWORDS_STR[i - 1]
             );
         }
-    }
-
-    #[test]
-    fn test_from_string_not_a_keyword() {
-        assert_eq!(
-            QError::InternalError("Not a keyword: foo".to_string()),
-            "foo".parse::<Keyword>().unwrap_err()
-        );
     }
 }

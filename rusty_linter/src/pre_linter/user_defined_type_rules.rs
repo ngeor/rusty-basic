@@ -1,5 +1,6 @@
+use crate::error::{LintError, LintErrorPos};
 use crate::pre_linter::ConstantMap;
-use rusty_common::{AtPos, Positioned, QError, QErrorPos, WithErrAt, WithErrNoPos};
+use rusty_common::{AtPos, Positioned, WithErrAt, WithErrNoPos};
 use rusty_parser::{
     BareName, Element, ElementPos, ElementType, Expression, ExpressionPos, TypeQualifier,
     UserDefinedType, UserDefinedTypes,
@@ -11,11 +12,11 @@ pub fn user_defined_type(
     user_defined_types: &mut UserDefinedTypes,
     global_constants: &ConstantMap,
     user_defined_type: &UserDefinedType,
-) -> Result<(), QErrorPos> {
+) -> Result<(), LintErrorPos> {
     let type_name: &BareName = user_defined_type.bare_name();
     if user_defined_types.contains_key(type_name) {
         // duplicate type definition
-        Err(QError::DuplicateDefinition).with_err_no_pos()
+        Err(LintError::DuplicateDefinition).with_err_no_pos()
     } else {
         let mut resolved_elements: HashMap<BareName, ElementType> = HashMap::new();
         for Positioned {
@@ -30,7 +31,7 @@ pub fn user_defined_type(
         {
             if resolved_elements.contains_key(element_name) {
                 // duplicate element name within type
-                return Err(QError::DuplicateDefinition).with_err_at(pos);
+                return Err(LintError::DuplicateDefinition).with_err_at(pos);
             }
             let resolved_element_type = match element_type {
                 ElementType::Integer => ElementType::Integer,
@@ -50,7 +51,7 @@ pub fn user_defined_type(
                     pos,
                 }) => {
                     if !user_defined_types.contains_key(referred_name) {
-                        return Err(QError::TypeNotDefined).with_err_at(pos);
+                        return Err(LintError::TypeNotDefined).with_err_at(pos);
                     }
                     ElementType::UserDefined(referred_name.clone().at(pos))
                 }
@@ -77,7 +78,7 @@ pub fn user_defined_type(
 fn validate_element_type_str_len(
     global_constants: &ConstantMap,
     str_len_expression_pos: &ExpressionPos,
-) -> Result<u16, QErrorPos> {
+) -> Result<u16, LintErrorPos> {
     let Positioned {
         element: str_len_expression,
         pos,
@@ -102,17 +103,17 @@ fn validate_element_type_str_len(
                                     Ok(*i as u16)
                                 } else {
                                     // illegal string length or using wrong qualifier to reference the int constant
-                                    Err(QError::InvalidConstant).with_err_at(pos)
+                                    Err(LintError::InvalidConstant).with_err_at(pos)
                                 }
                             }
                             _ => {
                                 // only integer constants allowed
-                                Err(QError::InvalidConstant).with_err_at(pos)
+                                Err(LintError::InvalidConstant).with_err_at(pos)
                             }
                         }
                     }
                     // constant does not exist
-                    None => Err(QError::InvalidConstant).with_err_at(pos),
+                    None => Err(LintError::InvalidConstant).with_err_at(pos),
                 }
             } else {
                 // bare name constant
@@ -125,17 +126,17 @@ fn validate_element_type_str_len(
                                     Ok(*i as u16)
                                 } else {
                                     // illegal string length
-                                    Err(QError::InvalidConstant).with_err_at(pos)
+                                    Err(LintError::InvalidConstant).with_err_at(pos)
                                 }
                             }
                             _ => {
                                 // only integer constants allowed
-                                Err(QError::InvalidConstant).with_err_at(pos)
+                                Err(LintError::InvalidConstant).with_err_at(pos)
                             }
                         }
                     }
                     // constant does not exist
-                    None => Err(QError::InvalidConstant).with_err_at(pos),
+                    None => Err(LintError::InvalidConstant).with_err_at(pos),
                 }
             }
         }

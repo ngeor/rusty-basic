@@ -7,11 +7,11 @@ mod variable;
 
 use crate::converter::context::Context;
 use crate::converter::traits::Convertible;
+use crate::error::LintErrorPos;
 use expr_state::ExprState;
 use pos_expr_state::PosExprState;
 use rusty_common::*;
 use rusty_parser::*;
-use std::convert::TryFrom;
 
 mod expr_state {
     use crate::converter::context::Context;
@@ -111,7 +111,7 @@ mod pos_expr_state {
 //
 
 impl<'a> Convertible<ExprState<'a>> for ExpressionPos {
-    fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, QErrorPos> {
+    fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, LintErrorPos> {
         let Positioned { element: expr, pos } = self;
         match expr.convert_in(ctx, pos) {
             Ok(expr) => Ok(expr.at_pos(pos)),
@@ -121,7 +121,7 @@ impl<'a> Convertible<ExprState<'a>> for ExpressionPos {
 }
 
 impl<'a> Convertible<ExprState<'a>> for Box<ExpressionPos> {
-    fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, QErrorPos> {
+    fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, LintErrorPos> {
         let unboxed = *self;
         unboxed.convert(ctx).map(Box::new)
     }
@@ -132,7 +132,7 @@ impl<'a> Convertible<ExprState<'a>> for Box<ExpressionPos> {
 //
 
 impl<'a, 'b> Convertible<PosExprState<'a, 'b>> for Expression {
-    fn convert(self, ctx: &mut PosExprState<'a, 'b>) -> Result<Self, QErrorPos> {
+    fn convert(self, ctx: &mut PosExprState<'a, 'b>) -> Result<Self, LintErrorPos> {
         match self {
             // literals
             Expression::SingleLiteral(_)

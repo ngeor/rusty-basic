@@ -96,7 +96,7 @@ mod tests {
         let input = "DIM X AS AS";
         assert_parser_err!(
             input,
-            QError::SyntaxError(
+            ParseError::SyntaxError(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string()
             )
         );
@@ -105,13 +105,13 @@ mod tests {
     #[test]
     fn test_parse_dim_extended_with_qualified_name() {
         let input = "DIM A$ AS STRING";
-        assert_parser_err!(input, QError::syntax_error("No separator: AS"));
+        assert_parser_err!(input, ParseError::syntax_error("No separator: AS"));
     }
 
     #[test]
     fn test_parse_dim_user_defined_too_long() {
         let input = "DIM A AS ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO";
-        assert_parser_err!(input, QError::IdentifierTooLong);
+        assert_parser_err!(input, ParseError::IdentifierTooLong);
     }
 
     #[test]
@@ -126,7 +126,7 @@ mod tests {
     #[test]
     fn test_parse_dim_user_defined_type_cannot_include_period() {
         let input = "DIM Card AS A.B";
-        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
     }
 
     #[test]
@@ -236,7 +236,7 @@ mod tests {
             let left_sides = ["DIM", "DIM%", "DIM&", "DIM!", "DIM#"];
             for left_side in &left_sides {
                 let input = format!("DIM {}", left_side);
-                assert!(matches!(parse_err(&input), QError::SyntaxError(_)));
+                assert!(matches!(parse_err(&input), ParseError::SyntaxError(_)));
             }
         }
     }

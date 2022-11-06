@@ -1,6 +1,5 @@
 use crate::fit::FitToType;
 use crate::{qb_and, qb_or, UserDefinedTypeValue, VArray, MIN_INTEGER, MIN_LONG};
-use rusty_common::QError;
 use std::cmp::Ordering;
 use std::fmt::Display;
 
@@ -13,6 +12,13 @@ pub enum Variant {
     VLong(i64),
     VUserDefined(Box<UserDefinedTypeValue>),
     VArray(Box<VArray>),
+}
+
+#[derive(Debug)]
+pub enum VariantError {
+    DivisionByZero,
+    Overflow,
+    TypeMismatch,
 }
 
 pub const V_TRUE: Variant = Variant::VInteger(-1);
@@ -79,7 +85,7 @@ impl ApproximateEqToInt for f64 {
 macro_rules! div {
     ($nom:expr, $div:expr) => {
         if $div.approximate_eq(0) {
-            Err(QError::DivisionByZero)
+            Err($crate::VariantError::DivisionByZero)
         } else {
             Ok(($nom / $div).fit_to_type())
         }
@@ -87,7 +93,7 @@ macro_rules! div {
 
     ($nom:expr, $div:expr, $cast:tt) => {
         if $div.approximate_eq(0) {
-            Err(QError::DivisionByZero)
+            Err($crate::VariantError::DivisionByZero)
         } else {
             Ok(($nom as $cast / $div as $cast).fit_to_type())
         }
@@ -97,7 +103,7 @@ macro_rules! div {
 // TODO implement standard operators with panics, let the linter guarantee the type compatibility
 
 impl Variant {
-    pub fn try_cmp(&self, other: &Self) -> Result<Ordering, QError> {
+    pub fn try_cmp(&self, other: &Self) -> Result<Ordering, VariantError> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => Ok(ApproximateCmp::cmp(f_left, f_right)),
@@ -114,7 +120,7 @@ impl Variant {
             },
             Variant::VString(s_left) => match other {
                 Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VInteger(i_left) => match other {
                 Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
@@ -125,70 +131,70 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
                 _ => other.try_cmp(self).map(|x| x.reverse()),
             },
-            _ => Err(QError::TypeMismatch),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    fn cmp_same_type_only(&self, other: &Self) -> Result<Ordering, QError> {
+    fn cmp_same_type_only(&self, other: &Self) -> Result<Ordering, VariantError> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => Ok(ApproximateCmp::cmp(f_left, f_right)),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VDouble(d_left) => match other {
                 Variant::VDouble(d_right) => Ok(ApproximateCmp::cmp(d_left, d_right)),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VString(s_left) => match other {
                 Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VInteger(i_left) => match other {
                 Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VLong(l_left) => match other {
                 Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
-            _ => Err(QError::TypeMismatch),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn negate(self) -> Result<Self, QError> {
+    pub fn negate(self) -> Result<Self, VariantError> {
         match self {
             Variant::VSingle(n) => Ok(Variant::VSingle(-n)),
             Variant::VDouble(n) => Ok(Variant::VDouble(-n)),
             Variant::VInteger(n) => {
                 if n <= MIN_INTEGER {
                     // prevent converting -32768 to 32768
-                    Err(QError::Overflow)
+                    Err(VariantError::Overflow)
                 } else {
                     Ok(Variant::VInteger(-n))
                 }
             }
             Variant::VLong(n) => {
                 if n <= MIN_LONG {
-                    Err(QError::Overflow)
+                    Err(VariantError::Overflow)
                 } else {
                     Ok(Variant::VLong(-n))
                 }
             }
-            _ => Err(QError::TypeMismatch),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn unary_not(self) -> Result<Self, QError> {
+    pub fn unary_not(self) -> Result<Self, VariantError> {
         match self {
             Variant::VSingle(f) => Ok(Variant::VSingle(-f.round() - 1.0)),
             Variant::VDouble(d) => Ok(Variant::VDouble(-d.round() - 1.0)),
             Variant::VInteger(n) => Ok(Variant::VInteger(-n - 1)),
             Variant::VLong(n) => Ok(Variant::VLong(-n - 1)),
-            _ => Err(QError::TypeMismatch),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn plus(self, other: Self) -> Result<Self, QError> {
+    pub fn plus(self, other: Self) -> Result<Self, VariantError> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => Ok(Variant::VSingle(f_left + f_right)),
@@ -205,7 +211,7 @@ impl Variant {
             },
             Variant::VString(s_left) => match other {
                 Variant::VString(s_right) => Ok(Variant::VString(format!("{}{}", s_left, s_right))),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VInteger(i_left) => match other {
                 Variant::VInteger(i_right) => Ok(Variant::VInteger(i_left + i_right)),
@@ -216,11 +222,11 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(Variant::VLong(l_left + l_right)),
                 _ => other.plus(self),
             },
-            _ => Err(QError::TypeMismatch),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn minus(self, other: Self) -> Result<Self, QError> {
+    pub fn minus(self, other: Self) -> Result<Self, VariantError> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => Ok(Variant::VSingle(f_left - f_right)),
@@ -244,18 +250,18 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(Variant::VLong(l_left - l_right)),
                 _ => other.minus(self).and_then(|x| x.negate()),
             },
-            _ => Err(QError::TypeMismatch),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn multiply(self, other: Self) -> Result<Self, QError> {
+    pub fn multiply(self, other: Self) -> Result<Self, VariantError> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => Ok(Variant::VSingle(f_left * f_right)),
                 Variant::VDouble(d_right) => Ok(Variant::VDouble(f_left as f64 * d_right)),
                 Variant::VInteger(i_right) => Ok(Variant::VSingle(f_left * i_right as f32)),
                 Variant::VLong(l_right) => Ok(Variant::VSingle(f_left * l_right as f32)),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VDouble(d_left) => match other {
                 Variant::VDouble(d_right) => Ok(Variant::VDouble(d_left * d_right)),
@@ -272,98 +278,98 @@ impl Variant {
                 Variant::VLong(l_right) => Ok(Variant::VLong(l_left * l_right)),
                 _ => other.multiply(self),
             },
-            _ => Err(QError::TypeMismatch),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn divide(self, other: Self) -> Result<Self, QError> {
+    pub fn divide(self, other: Self) -> Result<Self, VariantError> {
         match self {
             Variant::VSingle(f_left) => match other {
                 Variant::VSingle(f_right) => div!(f_left, f_right),
                 Variant::VDouble(d_right) => div!(f_left, d_right, f64),
                 Variant::VInteger(i_right) => div!(f_left, i_right, f32),
                 Variant::VLong(l_right) => div!(f_left, l_right, f32),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VDouble(d_left) => match other {
                 Variant::VSingle(f_right) => div!(d_left, f_right, f64),
                 Variant::VDouble(d_right) => div!(d_left, d_right),
                 Variant::VInteger(i_right) => div!(d_left, i_right, f64),
                 Variant::VLong(l_right) => div!(d_left, l_right, f64),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VInteger(i_left) => match other {
                 Variant::VSingle(f_right) => div!(i_left, f_right, f32),
                 Variant::VDouble(d_right) => div!(i_left, d_right, f64),
                 Variant::VInteger(i_right) => div!(i_left, i_right, f32),
                 Variant::VLong(l_right) => div!(i_left, l_right, f32),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
             Variant::VLong(l_left) => match other {
                 Variant::VSingle(f_right) => div!(l_left, f_right, f32),
                 Variant::VDouble(d_right) => div!(l_left, d_right, f64),
                 Variant::VInteger(i_right) => div!(l_left, i_right, f32),
                 Variant::VLong(l_right) => div!(l_left, l_right, f32),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
-            _ => Err(QError::TypeMismatch),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn modulo(self, other: Self) -> Result<Self, QError> {
+    pub fn modulo(self, other: Self) -> Result<Self, VariantError> {
         let round_left = self.round()?;
         let round_right = other.round()?;
         if round_right.is_approximately_zero()? {
-            Err(QError::DivisionByZero)
+            Err(VariantError::DivisionByZero)
         } else {
             match round_left {
                 Variant::VInteger(i_left) => match round_right {
                     Variant::VInteger(i_right) => Ok(Variant::VInteger(i_left % i_right)),
-                    Variant::VLong(_) => Err(QError::Overflow),
-                    _ => Err(QError::TypeMismatch),
+                    Variant::VLong(_) => Err(VariantError::Overflow),
+                    _ => Err(VariantError::TypeMismatch),
                 },
-                Variant::VLong(_) => Err(QError::Overflow),
-                _ => Err(QError::TypeMismatch),
+                Variant::VLong(_) => Err(VariantError::Overflow),
+                _ => Err(VariantError::TypeMismatch),
             }
         }
     }
 
-    fn round(self) -> Result<Self, QError> {
+    fn round(self) -> Result<Self, VariantError> {
         match self {
             Variant::VSingle(f) => Ok(f.round().fit_to_type()),
             Variant::VDouble(d) => Ok(d.round().fit_to_type()),
             Variant::VInteger(_) | Variant::VLong(_) => Ok(self),
-            _ => Err(QError::TypeMismatch),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    fn is_approximately_zero(&self) -> Result<bool, QError> {
+    fn is_approximately_zero(&self) -> Result<bool, VariantError> {
         match self {
             Variant::VSingle(f) => Ok((*f).approximate_eq(0)),
             Variant::VDouble(d) => Ok((*d).approximate_eq(0)),
             Variant::VInteger(i) => Ok(*i == 0),
             Variant::VLong(l) => Ok(*l == 0),
-            _ => Err(QError::TypeMismatch),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn and(self, other: Self) -> Result<Self, QError> {
+    pub fn and(self, other: Self) -> Result<Self, VariantError> {
         match self {
             Variant::VInteger(a) => match other {
                 Variant::VInteger(b) => Ok(Variant::VInteger(qb_and(a, b))),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
-            _ => Err(QError::TypeMismatch),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 
-    pub fn or(self, other: Self) -> Result<Self, QError> {
+    pub fn or(self, other: Self) -> Result<Self, VariantError> {
         match self {
             Variant::VInteger(a) => match other {
                 Variant::VInteger(b) => Ok(Variant::VInteger(qb_or(a, b))),
-                _ => Err(QError::TypeMismatch),
+                _ => Err(VariantError::TypeMismatch),
             },
-            _ => Err(QError::TypeMismatch),
+            _ => Err(VariantError::TypeMismatch),
         }
     }
 

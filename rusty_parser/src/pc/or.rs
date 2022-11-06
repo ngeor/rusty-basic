@@ -1,5 +1,5 @@
 use crate::pc::*;
-use rusty_common::{ParserErrorTrait, QError};
+use crate::ParserErrorTrait;
 
 macro_rules! alt_pc {
     ($name:ident ; $($generics:tt),+) => {
@@ -28,7 +28,7 @@ macro_rules! alt_pc {
         // local ambiguity when calling macro `alt_pc`: multiple parsing options: built-in NTs tt ('last_type') or tt ('generics')
         impl <OUT, $($generics : Parser<Output=OUT>),+> Parser for $name <OUT, $($generics),+> {
             type Output = OUT;
-            fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<OUT, QError> {
+            fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<OUT, $crate::ParseError> {
                 $(
                     let result = self.$generics.parse(tokenizer);
                     match result {
@@ -41,13 +41,13 @@ macro_rules! alt_pc {
                         }
                     }
                 )+
-                Err(QError::Incomplete)
+                Err($crate::ParseError::Incomplete)
             }
         }
 
         impl <OUT, $($generics : ParserOnce<Output=OUT>),+> ParserOnce for $name <OUT, $($generics),+> {
             type Output = OUT;
-            fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<OUT, QError> {
+            fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<OUT, $crate::ParseError> {
                 $(
                     let result = self.$generics.parse(tokenizer);
                     match result {
@@ -60,7 +60,7 @@ macro_rules! alt_pc {
                         }
                     }
                 )+
-                Err(QError::Incomplete)
+                Err($crate::ParseError::Incomplete)
             }
         }
     }

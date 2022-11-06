@@ -1,11 +1,11 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
-use rusty_common::QError;
+use crate::RuntimeError;
 use rusty_linter::QBNumberCast;
 use rusty_parser::{FileAccess, FileHandle, FileMode};
 use rusty_variant::Variant;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let file_name: String = interpreter.context()[0].to_str_unchecked().to_owned(); // TODO fighting borrow checker
     let file_mode: FileMode = to_file_mode(&interpreter.context()[1]);
     let file_access: FileAccess = to_file_access(&interpreter.context()[2]);
@@ -30,11 +30,11 @@ fn to_file_access(v: &Variant) -> FileAccess {
     FileAccess::from(i as u8)
 }
 
-fn to_record_length(v: &Variant) -> Result<usize, QError> {
+fn to_record_length(v: &Variant) -> Result<usize, RuntimeError> {
     let i: i32 = v.try_cast()?;
     if i < 0 {
         // TODO make 0 invalid too, now 0 means no value. Afterwards, use VariantCasts trait.
-        Err(QError::BadRecordLength)
+        Err(RuntimeError::BadRecordLength)
     } else {
         Ok(i as usize)
     }
@@ -42,11 +42,11 @@ fn to_record_length(v: &Variant) -> Result<usize, QError> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_interpreter_err;
     use crate::assert_prints;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::test_utils::*;
-    use rusty_common::*;
 
     fn read_and_remove(filename: &str) -> String {
         let contents = std::fs::read_to_string(filename).unwrap_or_default();
@@ -127,7 +127,7 @@ mod tests {
         OPEN "TEST.TXT" FOR INPUT AS A
         CLOSE A
         "#;
-        assert_interpreter_err!(input, QError::BadFileNameOrNumber, 3, 9);
+        assert_interpreter_err!(input, RuntimeError::BadFileNameOrNumber, 3, 9);
     }
 
     #[test]
@@ -136,7 +136,7 @@ mod tests {
         OPEN "a.txt" FOR OUTPUT AS #1
         OPEN "a.txt" FOR OUTPUT AS #1
         "#;
-        assert_interpreter_err!(input, QError::FileAlreadyOpen, 3, 9);
+        assert_interpreter_err!(input, RuntimeError::FileAlreadyOpen, 3, 9);
         std::fs::remove_file("a.txt").unwrap_or(());
     }
 

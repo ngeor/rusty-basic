@@ -1,5 +1,5 @@
-use rusty_common::*;
 // TODO #[cfg(test)]
+use crate::ParseError;
 use std::convert::TryFrom;
 use std::fmt::Display;
 
@@ -23,9 +23,9 @@ pub enum TypeQualifier {
 
 // TODO #[cfg(test)]
 impl TryFrom<char> for TypeQualifier {
-    type Error = QError;
+    type Error = ParseError;
 
-    fn try_from(ch: char) -> Result<TypeQualifier, QError> {
+    fn try_from(ch: char) -> Result<TypeQualifier, ParseError> {
         if ch == '!' {
             Ok(TypeQualifier::BangSingle)
         } else if ch == '#' {
@@ -37,7 +37,7 @@ impl TryFrom<char> for TypeQualifier {
         } else if ch == '&' {
             Ok(TypeQualifier::AmpersandLong)
         } else {
-            Err(QError::syntax_error("Expected: %, &, !, # or $"))
+            Err(ParseError::syntax_error("Expected: %, &, !, # or $"))
         }
     }
 }

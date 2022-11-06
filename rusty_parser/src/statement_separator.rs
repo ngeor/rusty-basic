@@ -1,6 +1,7 @@
 use crate::comment::CommentAsString;
 use crate::pc::*;
 use crate::pc_specific::*;
+use crate::ParseError;
 use rusty_common::*;
 
 pub enum Separator {
@@ -17,7 +18,7 @@ pub enum Separator {
 
 impl Parser for Separator {
     type Output = ();
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         match self {
             Self::Comment => CommentSeparator.parse(tokenizer),
             Self::NonComment => CommonSeparator.parse(tokenizer),
@@ -29,7 +30,7 @@ struct CommentSeparator;
 
 impl Parser for CommentSeparator {
     type Output = ();
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         let mut tokens: TokenList = vec![];
         let mut found_eol = false;
         while let Some(token) = tokenizer.read()? {
@@ -49,7 +50,7 @@ impl Parser for CommentSeparator {
             Ok(())
         } else {
             tokens.undo(tokenizer);
-            Err(QError::Incomplete)
+            Err(ParseError::Incomplete)
         }
     }
 }
@@ -58,7 +59,7 @@ struct CommonSeparator;
 
 impl Parser for CommonSeparator {
     type Output = ();
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         let mut sep = TokenType::Unknown;
         while let Some(token) = tokenizer.read()? {
             if TokenType::Whitespace.matches(&token) {
@@ -90,7 +91,7 @@ impl Parser for CommonSeparator {
         if sep != TokenType::Unknown {
             Ok(())
         } else {
-            Err(QError::Incomplete)
+            Err(ParseError::Incomplete)
         }
     }
 }

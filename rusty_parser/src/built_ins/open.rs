@@ -242,7 +242,7 @@ mod tests {
         let input = r#"OPEN "FILE.TXT" ACCESS READ FOR INPUT AS #1"#;
         assert_parser_err!(
             input,
-            QError::syntax_error("Expected: AS file-number"),
+            ParseError::syntax_error("Expected: AS file-number"),
             1,
             29
         );

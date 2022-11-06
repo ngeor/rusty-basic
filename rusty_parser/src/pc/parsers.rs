@@ -6,7 +6,7 @@ use crate::pc::{
     FilterMapParser, FilterParser, GuardPC, LoopWhile, MapIncompleteErrParser, NegateParser,
     NoIncompleteParser, OrFailParser, ParserToParserOnceAdapter, PeekParser, Tokenizer, Undo,
 };
-use rusty_common::*;
+use crate::ParseError;
 
 // TODO make QError generic param too
 // TODO specific error types for Tokenizer and Parser libraries
@@ -25,7 +25,7 @@ use rusty_common::*;
 pub trait Parser {
     type Output;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError>;
 
     // TODO #[deprecated]
     fn and_opt<R>(self, right: R) -> AndOptPC<Self, R>
@@ -38,7 +38,7 @@ pub trait Parser {
     fn and_then<F, U>(self, mapper: F) -> AndThen<Self, F>
     where
         Self: Sized,
-        F: Fn(Self::Output) -> Result<U, QError>,
+        F: Fn(Self::Output) -> Result<U, ParseError>,
     {
         AndThen::new(self, mapper)
     }
@@ -77,14 +77,14 @@ pub trait Parser {
         FnMapper::new(self, mapper)
     }
 
-    fn map_incomplete_err(self, err: QError) -> MapIncompleteErrParser<Self>
+    fn map_incomplete_err(self, err: ParseError) -> MapIncompleteErrParser<Self>
     where
         Self: Sized,
     {
         MapIncompleteErrParser::new(self, err)
     }
 
-    fn or_fail(self, err: QError) -> OrFailParser<Self>
+    fn or_fail(self, err: ParseError) -> OrFailParser<Self>
     where
         Self: Sized,
     {
@@ -129,10 +129,13 @@ pub trait Parser {
     }
 
     // TODO #[deprecated]
-    fn parse_opt(&self, tokenizer: &mut impl Tokenizer) -> Result<Option<Self::Output>, QError> {
+    fn parse_opt(
+        &self,
+        tokenizer: &mut impl Tokenizer,
+    ) -> Result<Option<Self::Output>, ParseError> {
         match self.parse(tokenizer) {
             Ok(value) => Ok(Some(value)),
-            Err(QError::Incomplete) | Err(QError::Expected(_)) => Ok(None),
+            Err(ParseError::Incomplete) | Err(ParseError::Expected(_)) => Ok(None),
             Err(err) => Err(err),
         }
     }
@@ -238,7 +241,7 @@ pub trait NonOptParser: Parser {}
 pub trait ParserOnce {
     type Output;
 
-    fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError>;
+    fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError>;
 
     fn map<F, U>(self, mapper: F) -> FnMapper<Self, F>
     where

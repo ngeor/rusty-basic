@@ -1,3 +1,4 @@
+use crate::error::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::{Expression, ExpressionPos, Operator, TypeQualifier, UnaryOperator};
 use rusty_variant::Variant;
@@ -13,22 +14,22 @@ pub trait ConstValueResolver<T, E> {
     fn resolve_const(&self, item: &T) -> Result<Variant, E>;
 }
 
-impl<S> ConstValueResolver<CaseInsensitiveString, QError> for S
+impl<S> ConstValueResolver<CaseInsensitiveString, LintError> for S
 where
     S: ConstLookup,
 {
-    fn resolve_const(&self, item: &CaseInsensitiveString) -> Result<Variant, QError> {
+    fn resolve_const(&self, item: &CaseInsensitiveString) -> Result<Variant, LintError> {
         self.get_resolved_constant(item)
             .cloned()
-            .ok_or(QError::InvalidConstant)
+            .ok_or(LintError::InvalidConstant)
     }
 }
 
-impl<S> ConstValueResolver<Expression, QErrorPos> for S
+impl<S> ConstValueResolver<Expression, LintErrorPos> for S
 where
     S: ConstLookup,
 {
-    fn resolve_const(&self, expression: &Expression) -> Result<Variant, QErrorPos> {
+    fn resolve_const(&self, expression: &Expression) -> Result<Variant, LintErrorPos> {
         match expression {
             Expression::SingleLiteral(f) => Ok(Variant::VSingle(*f)),
             Expression::DoubleLiteral(d) => Ok(Variant::VDouble(*d)),
@@ -53,7 +54,7 @@ where
                     if v_q == qualifier {
                         Ok(v)
                     } else {
-                        Err(QError::TypeMismatch).with_err_no_pos()
+                        Err(LintError::TypeMismatch).with_err_no_pos()
                     }
                 } else {
                     Ok(v)
@@ -97,6 +98,7 @@ where
                     Operator::And => v_left.and(v_right),
                     Operator::Or => v_left.or(v_right),
                 })
+                .map_err(LintError::from)
                 .with_err_at(right)
             }
             Expression::UnaryExpression(op, child) => {
@@ -105,6 +107,7 @@ where
                     UnaryOperator::Minus => v.negate(),
                     UnaryOperator::Not => v.unary_not(),
                 })
+                .map_err(LintError::from)
                 .with_err_at(child)
             }
             Expression::Parenthesis(child) => self.resolve_const(child),
@@ -112,27 +115,27 @@ where
             | Expression::FunctionCall(_, _)
             | Expression::ArrayElement(_, _, _)
             | Expression::BuiltInFunctionCall(_, _) => {
-                Err(QError::InvalidConstant).with_err_no_pos()
+                Err(LintError::InvalidConstant).with_err_no_pos()
             }
         }
     }
 }
 
-impl<S> ConstValueResolver<ExpressionPos, QErrorPos> for S
+impl<S> ConstValueResolver<ExpressionPos, LintErrorPos> for S
 where
     S: ConstLookup,
 {
-    fn resolve_const(&self, expr_pos: &ExpressionPos) -> Result<Variant, QErrorPos> {
+    fn resolve_const(&self, expr_pos: &ExpressionPos) -> Result<Variant, LintErrorPos> {
         self.resolve_const(&expr_pos.element)
             .patch_err_pos(expr_pos)
     }
 }
 
-impl<S> ConstValueResolver<Box<ExpressionPos>, QErrorPos> for S
+impl<S> ConstValueResolver<Box<ExpressionPos>, LintErrorPos> for S
 where
     S: ConstLookup,
 {
-    fn resolve_const(&self, item: &Box<ExpressionPos>) -> Result<Variant, QErrorPos> {
+    fn resolve_const(&self, item: &Box<ExpressionPos>) -> Result<Variant, LintErrorPos> {
         self.resolve_const(item.as_ref())
     }
 }

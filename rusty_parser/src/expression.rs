@@ -2,7 +2,6 @@ use crate::lazy_parser;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::types::*;
-use rusty_common::*;
 
 /// `( expr [, expr]* )`
 pub fn in_parenthesis_csv_expressions_non_opt(
@@ -170,7 +169,6 @@ mod integer_or_long_literal {
     use crate::pc::*;
     use crate::pc_specific::{SpecificTrait, TokenType};
     use crate::*;
-    use rusty_common::*;
     use rusty_variant::{BitVec, BitVecIntOrLong, MAX_INTEGER, MAX_LONG};
 
     // result ::= <digits> | <hex-digits> | <oct-digits>
@@ -187,7 +185,7 @@ mod integer_or_long_literal {
             || TokenType::OctDigits.matches(token)
     }
 
-    fn process_token(token: Token) -> Result<Expression, QError> {
+    fn process_token(token: Token) -> Result<Expression, ParseError> {
         match TokenType::from_token(&token) {
             TokenType::Digits => process_dec(token),
             TokenType::HexDigits => process_hex(token),
@@ -196,7 +194,7 @@ mod integer_or_long_literal {
         }
     }
 
-    fn process_dec(token: Token) -> Result<Expression, QError> {
+    fn process_dec(token: Token) -> Result<Expression, ParseError> {
         match token.text.parse::<u32>() {
             Ok(u) => {
                 if u <= MAX_INTEGER as u32 {
@@ -211,7 +209,7 @@ mod integer_or_long_literal {
         }
     }
 
-    fn process_hex(token: Token) -> Result<Expression, QError> {
+    fn process_hex(token: Token) -> Result<Expression, ParseError> {
         // token text is &HFFFF or &H-FFFF
         let mut s: String = token.text;
         // remove &
@@ -219,7 +217,7 @@ mod integer_or_long_literal {
         // remove H
         s.remove(0);
         if s.starts_with('-') {
-            Err(QError::Overflow)
+            Err(ParseError::Overflow)
         } else {
             let mut result: BitVec = BitVec::new();
             for digit in s.chars().skip_while(|ch| *ch == '0') {
@@ -242,14 +240,14 @@ mod integer_or_long_literal {
         }
     }
 
-    fn process_oct(token: Token) -> Result<Expression, QError> {
+    fn process_oct(token: Token) -> Result<Expression, ParseError> {
         let mut s: String = token.text;
         // remove &
         s.remove(0);
         // remove O
         s.remove(0);
         if s.starts_with('-') {
-            Err(QError::Overflow)
+            Err(ParseError::Overflow)
         } else {
             let mut result: BitVec = BitVec::new();
             for digit in s.chars().skip_while(|ch| *ch == '0') {
@@ -268,11 +266,14 @@ mod integer_or_long_literal {
         }
     }
 
-    fn create_expression_from_bit_vec(bit_vec: BitVec) -> Result<Expression, QError> {
-        bit_vec.convert_to_int_or_long_expr().map(|x| match x {
-            BitVecIntOrLong::Int(i) => Expression::IntegerLiteral(i),
-            BitVecIntOrLong::Long(l) => Expression::LongLiteral(l),
-        })
+    fn create_expression_from_bit_vec(bit_vec: BitVec) -> Result<Expression, ParseError> {
+        bit_vec
+            .convert_to_int_or_long_expr()
+            .map(|x| match x {
+                BitVecIntOrLong::Int(i) => Expression::IntegerLiteral(i),
+                BitVecIntOrLong::Long(l) => Expression::LongLiteral(l),
+            })
+            .map_err(|_| ParseError::Overflow)
     }
 }
 
@@ -388,7 +389,6 @@ pub mod property {
     use crate::pc::*;
     use crate::pc_specific::{dot, SpecificTrait};
     use crate::*;
-    use rusty_common::*;
 
     // property ::= <expr> "." <property-name>
     // property-name ::= <identifier-without-dot>
@@ -400,7 +400,7 @@ pub mod property {
         Seq2::new(base_expr_pos_p(), dot_properties()).and_then(|(first_expr_pos, properties)| {
             if !properties.is_empty() && is_qualified(&first_expr_pos.element) {
                 // TODO do this check before parsing the properties
-                return Err(QError::syntax_error(
+                return Err(ParseError::syntax_error(
                     "Qualified name cannot have properties",
                 ));
             }
@@ -471,9 +471,11 @@ mod binary_expression {
     };
     use crate::pc::{any_token, Alt7, OptAndPC, Parser, Token, Tokenizer};
     use crate::pc_specific::{whitespace, SpecificTrait, TokenType};
-    use crate::{ExpressionPos, ExpressionPosTrait, ExpressionTrait, Keyword, Operator};
-    use rusty_common::{ParserErrorTrait, Positioned, QError};
-    use std::str::FromStr;
+    use crate::{
+        ExpressionPos, ExpressionPosTrait, ExpressionTrait, Keyword, Operator, ParseError,
+        ParserErrorTrait,
+    };
+    use rusty_common::Positioned;
 
     // result ::= <non-bin-expr> <operator> <expr>
     pub fn parser() -> impl Parser<Output = ExpressionPos> {
@@ -485,14 +487,14 @@ mod binary_expression {
     impl Parser for BinaryExprParser {
         type Output = ExpressionPos;
 
-        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
             self.do_parse(tokenizer)
                 .map(ExpressionPos::simplify_unary_minus_literals)
         }
     }
 
     impl BinaryExprParser {
-        fn do_parse(&self, tokenizer: &mut impl Tokenizer) -> Result<ExpressionPos, QError> {
+        fn do_parse(&self, tokenizer: &mut impl Tokenizer) -> Result<ExpressionPos, ParseError> {
             let first = Self::non_bin_expr().parse(tokenizer)?;
             let is_paren = first.is_parenthesis();
             match Self::operator(is_paren).parse(tokenizer) {
@@ -546,7 +548,7 @@ mod binary_expression {
                 if had_whitespace || is_paren || !needs_whitespace {
                     Ok(op_pos)
                 } else {
-                    Err(QError::SyntaxError(format!(
+                    Err(ParseError::SyntaxError(format!(
                         "Expected: parenthesis before operator {:?}",
                         op_pos.element()
                     )))
@@ -566,18 +568,12 @@ mod binary_expression {
                 TokenType::Minus => Some(Operator::Minus),
                 TokenType::Star => Some(Operator::Multiply),
                 TokenType::Slash => Some(Operator::Divide),
-                TokenType::Keyword => {
-                    if let Ok(keyword) = Keyword::from_str(&token.text) {
-                        match keyword {
-                            Keyword::Mod => Some(Operator::Modulo),
-                            Keyword::And => Some(Operator::And),
-                            Keyword::Or => Some(Operator::Or),
-                            _ => None,
-                        }
-                    } else {
-                        None
-                    }
-                }
+                TokenType::Keyword => match Keyword::from(token) {
+                    Keyword::Mod => Some(Operator::Modulo),
+                    Keyword::And => Some(Operator::And),
+                    Keyword::Or => Some(Operator::Or),
+                    _ => None,
+                },
                 _ => None,
             }
         }
@@ -630,7 +626,7 @@ pub mod file_handle {
     use crate::expression::ws_expr_pos_p;
     use crate::pc::*;
     use crate::pc_specific::*;
-    use crate::{Expression, ExpressionPos, FileHandle};
+    use crate::{Expression, ExpressionPos, FileHandle, ParseError};
     use rusty_common::*;
 
     pub fn file_handle_p() -> impl Parser<Output = Positioned<FileHandle>> {
@@ -643,23 +639,23 @@ pub mod file_handle {
 
     impl Parser for FileHandleParser {
         type Output = Positioned<FileHandle>;
-        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+        fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
             let pos = tokenizer.position();
             match tokenizer.read()? {
                 Some(token) if TokenType::Pound.matches(&token) => match tokenizer.read()? {
                     Some(token) if TokenType::Digits.matches(&token) => {
                         match token.text.parse::<u8>() {
                             Ok(d) if d > 0 => Ok(FileHandle::from(d).at_pos(pos)),
-                            _ => Err(QError::BadFileNameOrNumber),
+                            _ => Err(ParseError::BadFileNameOrNumber),
                         }
                     }
-                    _ => Err(QError::syntax_error("Expected: digits after #")),
+                    _ => Err(ParseError::syntax_error("Expected: digits after #")),
                 },
                 Some(token) => {
                     tokenizer.unread(token);
-                    Err(QError::Incomplete)
+                    Err(ParseError::Incomplete)
                 }
-                _ => Err(QError::Incomplete),
+                _ => Err(ParseError::Incomplete),
             }
         }
     }
@@ -683,7 +679,7 @@ pub mod file_handle {
 pub mod guard {
     use crate::pc::{Parser, Token, Tokenizer, Undo};
     use crate::pc_specific::{any_token_of, whitespace, TokenType};
-    use rusty_common::*;
+    use crate::ParseError;
 
     pub enum Guard {
         Peeked,
@@ -712,7 +708,7 @@ pub mod guard {
     pub fn parser() -> impl Parser<Output = Guard> {
         whitespace_guard()
             .or(lparen_guard())
-            .map_incomplete_err(QError::expected("Expected: whitespace or parenthesis"))
+            .map_incomplete_err(ParseError::expected("Expected: whitespace or parenthesis"))
     }
 
     fn whitespace_guard() -> impl Parser<Output = Guard> {
@@ -1338,7 +1334,7 @@ mod tests {
         );
         assert_parser_err!(
             "PRINT 1AND 2",
-            QError::syntax_error("Expected: parenthesis before operator And")
+            ParseError::syntax_error("Expected: parenthesis before operator And")
         );
         assert_expression!(
             "(1 OR 2)AND 3",
@@ -1371,7 +1367,7 @@ mod tests {
         );
         assert_parser_err!(
             "PRINT 1OR 2",
-            QError::syntax_error("Expected: parenthesis before operator Or")
+            ParseError::syntax_error("Expected: parenthesis before operator Or")
         );
         assert_expression!(
             "(1 AND 2)OR 3",
@@ -1425,19 +1421,19 @@ mod tests {
         #[test]
         fn test_file_handle_zero() {
             let input = "CLOSE #0";
-            assert_parser_err!(input, QError::BadFileNameOrNumber);
+            assert_parser_err!(input, ParseError::BadFileNameOrNumber);
         }
 
         #[test]
         fn test_file_handle_overflow() {
             let input = "CLOSE #256";
-            assert_parser_err!(input, QError::BadFileNameOrNumber);
+            assert_parser_err!(input, ParseError::BadFileNameOrNumber);
         }
 
         #[test]
         fn test_file_handle_negative() {
             let input = "CLOSE #-1";
-            assert_parser_err!(input, QError::syntax_error("Expected: digits after #"));
+            assert_parser_err!(input, ParseError::syntax_error("Expected: digits after #"));
         }
     }
 
@@ -1446,8 +1442,8 @@ mod tests {
 
         #[test]
         fn test_overflow() {
-            assert_parser_err!("PRINT &H-10", QError::Overflow);
-            assert_parser_err!("PRINT &H100000000", QError::Overflow);
+            assert_parser_err!("PRINT &H-10", ParseError::Overflow);
+            assert_parser_err!("PRINT &H100000000", ParseError::Overflow);
         }
     }
 
@@ -1456,8 +1452,8 @@ mod tests {
 
         #[test]
         fn test_overflow() {
-            assert_parser_err!("PRINT &O-10", QError::Overflow);
-            assert_parser_err!("PRINT &O40000000000", QError::Overflow);
+            assert_parser_err!("PRINT &O-10", ParseError::Overflow);
+            assert_parser_err!("PRINT &O40000000000", ParseError::Overflow);
         }
     }
 
@@ -1467,13 +1463,13 @@ mod tests {
         #[test]
         fn len_in_print_must_be_unqualified() {
             let program = r#"PRINT LEN!("hello")"#;
-            assert_parser_err!(program, QError::syntax_error("Expected: ("), 1, 10);
+            assert_parser_err!(program, ParseError::syntax_error("Expected: ("), 1, 10);
         }
 
         #[test]
         fn len_in_assignment_must_be_unqualified() {
             let program = r#"A = LEN!("hello")"#;
-            assert_parser_err!(program, QError::syntax_error("Expected: ("), 1, 8);
+            assert_parser_err!(program, ParseError::syntax_error("Expected: ("), 1, 8);
         }
     }
 
@@ -1542,13 +1538,13 @@ mod tests {
         #[test]
         fn test_dot_without_properties_is_error() {
             let input = "abc$.";
-            assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+            assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
         }
 
         #[test]
         fn test_dot_after_qualifier_is_error() {
             let input = "abc$.hello";
-            assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+            assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
         }
 
         #[test]
@@ -1560,7 +1556,7 @@ mod tests {
         #[test]
         fn test_bare_array_qualified_property_trailing_dot_is_not_allowed() {
             let input = "A(1).Suit$.";
-            assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+            assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
         }
 
         #[test]

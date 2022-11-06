@@ -1,10 +1,10 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
 use crate::interpreter::Stdlib;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_parser::BuiltInFunction;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let env_var_name: &str = interpreter.context()[0].to_str_unchecked();
     let result = interpreter.stdlib().get_env_var(env_var_name);
     interpreter

@@ -1,6 +1,5 @@
-use crate::binary_parser_declaration;
 use crate::pc::{Parser, Tokenizer};
-use rusty_common::*;
+use crate::{binary_parser_declaration, ParseError};
 //
 // The left side can be followed by an optional right.
 //
@@ -12,7 +11,7 @@ where
     R: Parser,
 {
     type Output = (L::Output, Option<R::Output>);
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         let left = self.left.parse(tokenizer)?;
         let opt_right = self.right.parse_opt(tokenizer)?;
         Ok((left, opt_right))

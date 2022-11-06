@@ -1,8 +1,8 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_linter::QBNumberCast;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     if interpreter.context().variables().len() == 0 {
         interpreter.set_def_seg(None);
         Ok(())
@@ -12,27 +12,27 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
             interpreter.set_def_seg(Some(address as usize));
             Ok(())
         } else {
-            Err(QError::IllegalFunctionCall)
+            Err(RuntimeError::IllegalFunctionCall)
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::{assert_interpreter_err, assert_prints};
-    use rusty_common::*;
 
     #[test]
     fn address_cannot_be_negative() {
         let input = "DEF SEG = -1";
-        assert_interpreter_err!(input, QError::IllegalFunctionCall, 1, 1);
+        assert_interpreter_err!(input, RuntimeError::IllegalFunctionCall, 1, 1);
     }
 
     #[test]
     fn address_cannot_exceed_65535() {
         let input = "DEF SEG = 65536";
-        assert_interpreter_err!(input, QError::IllegalFunctionCall, 1, 1);
+        assert_interpreter_err!(input, RuntimeError::IllegalFunctionCall, 1, 1);
     }
 
     #[test]

@@ -1,10 +1,10 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_parser::BuiltInFunction;
-use rusty_variant::{Variant, MAX_INTEGER, MAX_LONG};
+use rusty_variant::{Variant, VariantError, MAX_INTEGER, MAX_LONG};
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let v: &str = interpreter.context()[0].to_str_unchecked();
     let result: Variant = val(v)?;
     interpreter
@@ -13,7 +13,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     Ok(())
 }
 
-fn val(s: &str) -> Result<Variant, QError> {
+fn val(s: &str) -> Result<Variant, VariantError> {
     let mut is_positive = true;
     let mut value: f64 = 0.0;
     let mut fraction_power: i32 = 0;
@@ -38,7 +38,7 @@ fn val(s: &str) -> Result<Variant, QError> {
                 if fraction_power <= MAX_INTEGER {
                     fraction_power += 1;
                 } else {
-                    return Err(QError::Overflow);
+                    return Err(VariantError::Overflow);
                 }
                 value = (value * 10.0_f64.powi(fraction_power) + ((c as u8) - b'0') as f64)
                     / 10.0_f64.powi(fraction_power);

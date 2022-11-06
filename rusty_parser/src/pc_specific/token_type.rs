@@ -1,5 +1,5 @@
 use crate::pc::Token;
-use rusty_common::*;
+use crate::ParseError;
 
 macro_rules! enum_with_index {
     ($vis:vis enum $name:tt $all_members:tt { $($member:tt $(: $friendly:literal)?),+$(,)? }) => {
@@ -92,8 +92,8 @@ impl TokenType {
         Self::from_index(token.kind as usize)
     }
 
-    pub fn to_error(&self) -> QError {
-        QError::Expected(format!("Expected: {}", self.to_str()))
+    pub fn to_error(&self) -> ParseError {
+        ParseError::Expected(format!("Expected: {}", self.to_str()))
     }
 }
 

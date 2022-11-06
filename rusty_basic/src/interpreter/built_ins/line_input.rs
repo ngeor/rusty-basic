@@ -1,11 +1,11 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Input;
-use rusty_common::QError;
+use crate::RuntimeError;
 use rusty_parser::FileHandle;
 use rusty_variant::Variant;
 use std::convert::TryFrom;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let mut file_handle: FileHandle = FileHandle::default();
     let mut has_file_handle = false;
     for idx in 0..interpreter.context().variables().len() {
@@ -16,7 +16,8 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
                     has_file_handle = *f == 1;
                 } else if idx == 1 {
                     if has_file_handle {
-                        file_handle = FileHandle::try_from(*f)?;
+                        file_handle = FileHandle::try_from(*f)
+                            .map_err(|_| RuntimeError::BadFileNameOrNumber)?;
                     } else {
                         // input integer variable?
                         panic!("Linter should have caught this");
@@ -39,7 +40,7 @@ fn line_input_one<S: InterpreterTrait>(
     interpreter: &mut S,
     idx: usize,
     file_handle: &FileHandle,
-) -> Result<(), QError> {
+) -> Result<(), RuntimeError> {
     if file_handle.is_valid() {
         line_input_one_file(interpreter, idx, file_handle)
     } else {
@@ -51,7 +52,7 @@ fn line_input_one_file<S: InterpreterTrait>(
     interpreter: &mut S,
     idx: usize,
     file_handle: &FileHandle,
-) -> Result<(), QError> {
+) -> Result<(), RuntimeError> {
     let file_input = interpreter
         .file_manager()
         .try_get_file_info_input(file_handle)?;
@@ -63,7 +64,7 @@ fn line_input_one_file<S: InterpreterTrait>(
 fn line_input_one_stdin<S: InterpreterTrait>(
     interpreter: &mut S,
     idx: usize,
-) -> Result<(), QError> {
+) -> Result<(), RuntimeError> {
     let s = interpreter.stdin().input()?;
     interpreter.context_mut()[idx] = Variant::VString(s);
     Ok(())
@@ -71,10 +72,10 @@ fn line_input_one_stdin<S: InterpreterTrait>(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_interpreter_err;
     use crate::assert_prints;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use rusty_common::*;
 
     #[test]
     fn test_line_input_string_from_file_eof() {
@@ -93,7 +94,7 @@ mod tests {
         CLOSE
         "#;
 
-        assert_interpreter_err!(input, QError::InputPastEndOfFile, 5, 9);
+        assert_interpreter_err!(input, RuntimeError::InputPastEndOfFile, 5, 9);
         std::fs::remove_file("test_line_input_string_from_file_eof.txt").unwrap_or_default();
     }
 

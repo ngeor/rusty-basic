@@ -1,3 +1,4 @@
+use crate::error::LintErrorPos;
 use rusty_common::*;
 use rusty_parser::*;
 
@@ -10,12 +11,12 @@ use rusty_parser::*;
 /// Methods return Ok(()) to indicate an element passes the check or
 /// Err() to indicate a problem.
 pub trait PostConversionLinter {
-    fn visit_program(&mut self, p: &Program) -> Result<(), QErrorPos> {
+    fn visit_program(&mut self, p: &Program) -> Result<(), LintErrorPos> {
         // in case of overriding visit_program, use visit_global_statements to call the default functionality
         self.visit_global_statements(p)
     }
 
-    fn visit_global_statements(&mut self, p: &Program) -> Result<(), QErrorPos> {
+    fn visit_global_statements(&mut self, p: &Program) -> Result<(), LintErrorPos> {
         p.iter()
             .try_for_each(|t| self.visit_global_statement_pos(t))
     }
@@ -23,7 +24,7 @@ pub trait PostConversionLinter {
     fn visit_global_statement_pos(
         &mut self,
         global_statement_pos: &GlobalStatementPos,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         self.visit_global_statement(&global_statement_pos.element)
             .patch_err_pos(global_statement_pos)
     }
@@ -31,7 +32,7 @@ pub trait PostConversionLinter {
     fn visit_global_statement(
         &mut self,
         global_statement: &GlobalStatement,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         match global_statement {
             GlobalStatement::FunctionImplementation(f) => self.visit_function_implementation(f),
             GlobalStatement::SubImplementation(s) => self.visit_sub_implementation(s),
@@ -43,23 +44,23 @@ pub trait PostConversionLinter {
     fn visit_function_implementation(
         &mut self,
         f: &FunctionImplementation,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         self.visit_statements(&f.body)
     }
 
-    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorPos> {
+    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), LintErrorPos> {
         self.visit_statements(&s.body)
     }
 
-    fn visit_statements(&mut self, s: &Statements) -> Result<(), QErrorPos> {
+    fn visit_statements(&mut self, s: &Statements) -> Result<(), LintErrorPos> {
         s.iter().try_for_each(|x| self.visit_statement_pos(x))
     }
 
-    fn visit_statement_pos(&mut self, t: &StatementPos) -> Result<(), QErrorPos> {
+    fn visit_statement_pos(&mut self, t: &StatementPos) -> Result<(), LintErrorPos> {
         self.visit_statement(&t.element).patch_err_pos(t)
     }
 
-    fn visit_statement(&mut self, s: &Statement) -> Result<(), QErrorPos> {
+    fn visit_statement(&mut self, s: &Statement) -> Result<(), LintErrorPos> {
         match s {
             Statement::Assignment(left, right) => self.visit_assignment(left, right),
             Statement::Const(left, _) => {
@@ -86,39 +87,39 @@ pub trait PostConversionLinter {
         }
     }
 
-    fn visit_comment(&mut self, _comment: &str) -> Result<(), QErrorPos> {
+    fn visit_comment(&mut self, _comment: &str) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_dim(&mut self, _dim_list: &DimList) -> Result<(), QErrorPos> {
+    fn visit_dim(&mut self, _dim_list: &DimList) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_on_error(&mut self, _on_error_option: &OnErrorOption) -> Result<(), QErrorPos> {
+    fn visit_on_error(&mut self, _on_error_option: &OnErrorOption) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_label(&mut self, _label: &CaseInsensitiveString) -> Result<(), QErrorPos> {
+    fn visit_label(&mut self, _label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_go_to(&mut self, _label: &CaseInsensitiveString) -> Result<(), QErrorPos> {
+    fn visit_go_to(&mut self, _label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_go_sub(&mut self, _label: &CaseInsensitiveString) -> Result<(), QErrorPos> {
+    fn visit_go_sub(&mut self, _label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_resume(&mut self, _resume_option: &ResumeOption) -> Result<(), QErrorPos> {
+    fn visit_resume(&mut self, _resume_option: &ResumeOption) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_return(&mut self, _label: Option<&CaseInsensitiveString>) -> Result<(), QErrorPos> {
+    fn visit_return(&mut self, _label: Option<&CaseInsensitiveString>) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_exit(&mut self, _exit_object: ExitObject) -> Result<(), QErrorPos> {
+    fn visit_exit(&mut self, _exit_object: ExitObject) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
@@ -126,7 +127,7 @@ pub trait PostConversionLinter {
         &mut self,
         _name: &CaseInsensitiveString,
         args: &Expressions,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         self.visit_expressions(args)
     }
 
@@ -134,15 +135,19 @@ pub trait PostConversionLinter {
         &mut self,
         _name: &BuiltInSub,
         args: &Expressions,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         self.visit_expressions(args)
     }
 
-    fn visit_assignment(&mut self, _name: &Expression, v: &ExpressionPos) -> Result<(), QErrorPos> {
+    fn visit_assignment(
+        &mut self,
+        _name: &Expression,
+        v: &ExpressionPos,
+    ) -> Result<(), LintErrorPos> {
         self.visit_expression(v)
     }
 
-    fn visit_for_loop(&mut self, f: &ForLoop) -> Result<(), QErrorPos> {
+    fn visit_for_loop(&mut self, f: &ForLoop) -> Result<(), LintErrorPos> {
         self.visit_expression(&f.lower_bound)?;
         self.visit_expression(&f.upper_bound)?;
         match &f.step {
@@ -152,7 +157,7 @@ pub trait PostConversionLinter {
         self.visit_statements(&f.statements)
     }
 
-    fn visit_if_block(&mut self, i: &IfBlock) -> Result<(), QErrorPos> {
+    fn visit_if_block(&mut self, i: &IfBlock) -> Result<(), LintErrorPos> {
         self.visit_conditional_block(&i.if_block)?;
         for else_if_block in i.else_if_blocks.iter() {
             self.visit_conditional_block(else_if_block)?;
@@ -163,7 +168,7 @@ pub trait PostConversionLinter {
         }
     }
 
-    fn visit_select_case(&mut self, s: &SelectCase) -> Result<(), QErrorPos> {
+    fn visit_select_case(&mut self, s: &SelectCase) -> Result<(), LintErrorPos> {
         self.visit_expression(&s.expr)?;
         for case_block in s.case_blocks.iter() {
             self.visit_case_block(case_block, &s.expr)?;
@@ -178,7 +183,7 @@ pub trait PostConversionLinter {
         &mut self,
         case_block: &CaseBlock,
         select_expr: &ExpressionPos,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         for case_expr in &case_block.expression_list {
             self.visit_case_expression(case_expr, select_expr)?;
         }
@@ -189,7 +194,7 @@ pub trait PostConversionLinter {
         &mut self,
         case_expr: &CaseExpression,
         _select_expr: &ExpressionPos,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         match case_expr {
             CaseExpression::Simple(e) => self.visit_expression(e),
             CaseExpression::Is(_, e) => self.visit_expression(e),
@@ -200,25 +205,25 @@ pub trait PostConversionLinter {
         }
     }
 
-    fn visit_conditional_block(&mut self, c: &ConditionalBlock) -> Result<(), QErrorPos> {
+    fn visit_conditional_block(&mut self, c: &ConditionalBlock) -> Result<(), LintErrorPos> {
         self.visit_expression(&c.condition)?;
         self.visit_statements(&c.statements)
     }
 
-    fn visit_do_loop(&mut self, do_loop: &DoLoop) -> Result<(), QErrorPos> {
+    fn visit_do_loop(&mut self, do_loop: &DoLoop) -> Result<(), LintErrorPos> {
         self.visit_expression(&do_loop.condition)?;
         self.visit_statements(&do_loop.statements)
     }
 
-    fn visit_expression(&mut self, _e: &ExpressionPos) -> Result<(), QErrorPos> {
+    fn visit_expression(&mut self, _e: &ExpressionPos) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_expressions(&mut self, args: &Expressions) -> Result<(), QErrorPos> {
+    fn visit_expressions(&mut self, args: &Expressions) -> Result<(), LintErrorPos> {
         args.iter().try_for_each(|e| self.visit_expression(e))
     }
 
-    fn visit_print(&mut self, print: &Print) -> Result<(), QErrorPos> {
+    fn visit_print(&mut self, print: &Print) -> Result<(), LintErrorPos> {
         match &print.format_string {
             Some(f) => self.visit_expression(f)?,
             None => {}

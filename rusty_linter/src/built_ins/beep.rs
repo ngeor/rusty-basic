@@ -1,7 +1,7 @@
 use crate::arg_validation::ArgValidation;
-use rusty_common::QErrorPos;
+use crate::error::LintErrorPos;
 use rusty_parser::Expressions;
 
-pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
+pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     args.require_zero_arguments()
 }

@@ -12,10 +12,10 @@ pub fn parse() -> impl Parser<Output = Statement> {
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
-    use rusty_common::*;
+    use crate::ParseError;
 
     #[test]
     fn parse_must_have_at_least_one_argument() {
-        assert_parser_err!("READ", QError::syntax_error("Expected: variable"));
+        assert_parser_err!("READ", ParseError::syntax_error("Expected: variable"));
     }
 }

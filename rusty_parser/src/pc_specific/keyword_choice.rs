@@ -1,8 +1,6 @@
 use crate::pc::*;
 use crate::pc_specific::TokenType;
-use crate::Keyword;
-use rusty_common::*;
-use std::str::FromStr;
+use crate::{Keyword, ParseError};
 
 pub struct KeywordChoice<'a> {
     keywords: &'a [Keyword],
@@ -16,7 +14,7 @@ impl Undo for (Keyword, Token) {
 
 impl<'a> Parser for KeywordChoice<'a> {
     type Output = (Keyword, Token);
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         match tokenizer.read()? {
             Some(token) => match self.find_keyword(&token) {
                 Some(keyword) => Ok((keyword, token)),
@@ -33,8 +31,7 @@ impl<'a> Parser for KeywordChoice<'a> {
 impl<'a> KeywordChoice<'a> {
     fn find_keyword(&self, token: &Token) -> Option<Keyword> {
         if TokenType::Keyword.matches(token) {
-            // if it panics, it means the recognizer somehow has a bug
-            let needle = Keyword::from_str(&token.text).unwrap();
+            let needle = Keyword::from(token);
             if self.keywords.contains(&needle) {
                 Some(needle)
             } else {
@@ -45,8 +42,10 @@ impl<'a> KeywordChoice<'a> {
         }
     }
 
-    fn to_err(&self) -> Result<(Keyword, Token), QError> {
-        Err(QError::Expected(keyword_syntax_error(self.keywords.iter())))
+    fn to_err(&self) -> Result<(Keyword, Token), ParseError> {
+        Err(ParseError::Expected(keyword_syntax_error(
+            self.keywords.iter(),
+        )))
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::instruction_generator::PrinterType;
 use crate::interpreter::io::Printer;
 use crate::interpreter::string_utils::fix_length;
-use rusty_common::QError;
+use crate::RuntimeError;
 use rusty_parser::FileHandle;
 use rusty_variant::Variant;
 use std::fmt::Display;
@@ -66,7 +66,7 @@ impl PrintState {
     pub fn print_value_from_a(
         &mut self,
         v: Variant,
-    ) -> Result<(Option<String>, Option<Variant>), QError> {
+    ) -> Result<(Option<String>, Option<Variant>), RuntimeError> {
         self.should_skip_new_line = false;
         if self.format_string.is_some() {
             let s = self.print_value_with_format_string(v)?;
@@ -76,7 +76,7 @@ impl PrintState {
         }
     }
 
-    pub fn print_end(&mut self) -> Result<(Option<String>, bool), QError> {
+    pub fn print_end(&mut self) -> Result<(Option<String>, bool), RuntimeError> {
         let opt_remaining = if self.format_string.is_some() {
             Some(self.print_remaining_chars()?)
         } else {
@@ -91,7 +91,7 @@ impl PrintState {
         Ok((opt_remaining, should_print_new_line))
     }
 
-    fn print_remaining_chars(&mut self) -> Result<String, QError> {
+    fn print_remaining_chars(&mut self) -> Result<String, RuntimeError> {
         let format_string_chars: Vec<char> = self.format_string.as_ref().unwrap().chars().collect();
         print_remaining_non_formatting_chars(
             format_string_chars.as_slice(),
@@ -99,10 +99,10 @@ impl PrintState {
         )
     }
 
-    fn print_value_with_format_string(&mut self, v: Variant) -> Result<String, QError> {
+    fn print_value_with_format_string(&mut self, v: Variant) -> Result<String, RuntimeError> {
         let format_string_chars: Vec<char> = self.format_string.as_ref().unwrap().chars().collect();
         if format_string_chars.is_empty() {
-            return Err(QError::IllegalFunctionCall);
+            return Err(RuntimeError::IllegalFunctionCall);
         }
 
         // ensure we are in the range of chars
@@ -129,7 +129,7 @@ impl PrintState {
 fn print_non_formatting_chars(
     format_string_chars: &[char],
     idx: &mut usize,
-) -> Result<String, QError> {
+) -> Result<String, RuntimeError> {
     // copy from format_string until we hit a formatting character
     let mut buf: String = String::new();
     let starting_index = *idx;
@@ -139,7 +139,7 @@ fn print_non_formatting_chars(
         i = (i + 1) % format_string_chars.len();
         if i == starting_index {
             // looped over to the starting point without encountering a formatting character
-            return Err(QError::IllegalFunctionCall);
+            return Err(RuntimeError::IllegalFunctionCall);
         }
     }
     *idx = i;
@@ -153,7 +153,7 @@ fn is_formatting_char(ch: char) -> bool {
 fn print_remaining_non_formatting_chars(
     format_string_chars: &[char],
     idx: &mut usize,
-) -> Result<String, QError> {
+) -> Result<String, RuntimeError> {
     // copy from format_string until we hit a formatting character
     let mut buf: String = String::new();
     let starting_index = *idx;
@@ -170,12 +170,12 @@ fn print_formatting_chars(
     format_string_chars: &[char],
     idx: &mut usize,
     v: Variant,
-) -> Result<String, QError> {
+) -> Result<String, RuntimeError> {
     match format_string_chars[*idx] {
         '#' => numeric_formatting::print_digit_formatting_chars(format_string_chars, idx, v),
         '\\' => print_string_formatting_chars(format_string_chars, idx, v),
         '!' => print_first_char_formatting_chars(format_string_chars, idx, v),
-        _ => Err(QError::InternalError(format!(
+        _ => Err(RuntimeError::Other(format!(
             "Not a formatting character: {}",
             format_string_chars[*idx]
         ))),
@@ -185,14 +185,14 @@ fn print_formatting_chars(
 mod numeric_formatting {
     //! Handles formatting of numbers.
 
-    use rusty_common::*;
+    use crate::RuntimeError;
     use rusty_variant::Variant;
 
     pub fn print_digit_formatting_chars(
         format_string_chars: &[char],
         idx: &mut usize,
         v: Variant,
-    ) -> Result<String, QError> {
+    ) -> Result<String, RuntimeError> {
         debug_assert_eq!(format_string_chars[*idx], '#');
         // collect just the formatting chars e.g. ###,###.##
         let number_format_chars: &[char] = format_string_chars[*idx..]
@@ -206,27 +206,27 @@ mod numeric_formatting {
         let integer_part = decimal_split.next().unwrap();
         if integer_part.is_empty() {
             // leading dot
-            return Err(QError::IllegalFunctionCall);
+            return Err(RuntimeError::IllegalFunctionCall);
         }
         (match decimal_split.next() {
             Some(fractional_part) => {
                 if fractional_part.is_empty() {
                     // trailing dot
-                    Err(QError::IllegalFunctionCall)
+                    Err(RuntimeError::IllegalFunctionCall)
                 } else {
                     fmt_with_fractional_part(integer_part, fractional_part, v)
                 }
             }
             _ => fmt_without_fractional_part(integer_part, v),
         })
-        .map_err(QError::from)
+        .map_err(RuntimeError::from)
     }
 
     fn fmt_with_fractional_part(
         integer_fmt: &[char],
         fractional_fmt: &[char],
         v: Variant,
-    ) -> Result<String, QError> {
+    ) -> Result<String, RuntimeError> {
         let unformatted = format_variant(v, fractional_fmt.len())?;
         let mut unformatted_decimal_split = unformatted.split('.');
         let unformatted_integer = unformatted_decimal_split.next().unwrap();
@@ -245,12 +245,18 @@ mod numeric_formatting {
         Ok(result)
     }
 
-    fn fmt_without_fractional_part(integer_fmt: &[char], v: Variant) -> Result<String, QError> {
+    fn fmt_without_fractional_part(
+        integer_fmt: &[char],
+        v: Variant,
+    ) -> Result<String, RuntimeError> {
         let unformatted: String = format_variant(v, 0)?;
         fmt_integer_part(integer_fmt, &unformatted)
     }
 
-    fn fmt_integer_part(integer_fmt: &[char], unformatted_str: &str) -> Result<String, QError> {
+    fn fmt_integer_part(
+        integer_fmt: &[char],
+        unformatted_str: &str,
+    ) -> Result<String, RuntimeError> {
         let mut result: String = String::new();
         let unformatted: Vec<char> = unformatted_str.chars().collect();
         // start with the rightmost digit
@@ -272,7 +278,7 @@ mod numeric_formatting {
                     }
                     _ => {
                         // unsupported formatting character
-                        return Err(QError::IllegalFunctionCall);
+                        return Err(RuntimeError::IllegalFunctionCall);
                     }
                 }
                 i -= 1;
@@ -285,7 +291,7 @@ mod numeric_formatting {
         Ok(result)
     }
 
-    fn format_variant(v: Variant, fractional_digits: usize) -> Result<String, QError> {
+    fn format_variant(v: Variant, fractional_digits: usize) -> Result<String, RuntimeError> {
         match v {
             Variant::VSingle(f) => Ok(if fractional_digits > 0 {
                 format!("{:.1$}", f, fractional_digits)
@@ -301,7 +307,7 @@ mod numeric_formatting {
             }),
             Variant::VInteger(i) => Ok(i.to_string()),
             Variant::VLong(l) => Ok(l.to_string()),
-            _ => Err(QError::TypeMismatch),
+            _ => Err(RuntimeError::TypeMismatch),
         }
     }
 }
@@ -310,14 +316,14 @@ fn print_string_formatting_chars(
     format_string_chars: &[char],
     idx: &mut usize,
     v: Variant,
-) -> Result<String, QError> {
+) -> Result<String, RuntimeError> {
     debug_assert_eq!(format_string_chars[*idx], '\\');
     *idx += 1;
     let mut counter: usize = 2;
     while *idx < format_string_chars.len() && format_string_chars[*idx] != '\\' {
         if format_string_chars[*idx] != ' ' {
             // only spaces should be allowed within backslashes
-            return Err(QError::IllegalFunctionCall);
+            return Err(RuntimeError::IllegalFunctionCall);
         }
         *idx += 1;
         counter += 1;
@@ -328,11 +334,11 @@ fn print_string_formatting_chars(
             fix_length(&mut s, counter);
             Ok(s)
         } else {
-            Err(QError::TypeMismatch)
+            Err(RuntimeError::TypeMismatch)
         }
     } else {
         // did not find closing backslash
-        Err(QError::IllegalFunctionCall)
+        Err(RuntimeError::IllegalFunctionCall)
     }
 }
 
@@ -340,15 +346,15 @@ fn print_first_char_formatting_chars(
     format_string_chars: &[char],
     idx: &mut usize,
     v: Variant,
-) -> Result<String, QError> {
+) -> Result<String, RuntimeError> {
     debug_assert_eq!(format_string_chars[*idx], '!');
     if let Variant::VString(s) = v {
-        let ch = s.chars().next().ok_or(QError::IllegalFunctionCall)?;
+        let ch = s.chars().next().ok_or(RuntimeError::IllegalFunctionCall)?;
         let result = String::from(ch);
         *idx += 1;
         Ok(result)
     } else {
-        Err(QError::TypeMismatch)
+        Err(RuntimeError::TypeMismatch)
     }
 }
 
@@ -393,12 +399,12 @@ impl<T: Printer + ?Sized> PrintHelper for T {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_interpreter_err;
     use crate::assert_lprints_exact;
     use crate::assert_prints;
     use crate::assert_prints_exact;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use rusty_common::*;
 
     #[test]
     fn test_print_no_args() {
@@ -570,14 +576,19 @@ mod tests {
 
     #[test]
     fn test_print_using_empty_format_string_is_error() {
-        assert_interpreter_err!("PRINT USING \"\"; 0", QError::IllegalFunctionCall, 1, 17);
+        assert_interpreter_err!(
+            "PRINT USING \"\"; 0",
+            RuntimeError::IllegalFunctionCall,
+            1,
+            17
+        );
     }
 
     #[test]
     fn test_print_using_without_format_specifiers_is_error() {
         assert_interpreter_err!(
             "PRINT USING \"oops\"; 12",
-            QError::IllegalFunctionCall,
+            RuntimeError::IllegalFunctionCall,
             1,
             21
         );
@@ -585,12 +596,22 @@ mod tests {
 
     #[test]
     fn test_print_using_numeric_format_string_with_string_arg_is_error() {
-        assert_interpreter_err!("PRINT USING \"#.##\"; \"hi\"", QError::TypeMismatch, 1, 21);
+        assert_interpreter_err!(
+            "PRINT USING \"#.##\"; \"hi\"",
+            RuntimeError::TypeMismatch,
+            1,
+            21
+        );
     }
 
     #[test]
     fn test_print_using_integer_format_string_with_string_arg_is_error() {
-        assert_interpreter_err!("PRINT USING \"##\"; \"hi\"", QError::TypeMismatch, 1, 19);
+        assert_interpreter_err!(
+            "PRINT USING \"##\"; \"hi\"",
+            RuntimeError::TypeMismatch,
+            1,
+            19
+        );
     }
 
     #[test]

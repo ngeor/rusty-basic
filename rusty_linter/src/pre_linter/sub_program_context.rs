@@ -1,3 +1,4 @@
+use crate::error::{LintError, LintErrorPos};
 use crate::pre_linter::{FunctionSignature, ResolvedParamTypes, SubSignature};
 use crate::type_resolver::{IntoTypeQualifier, TypeResolver};
 use rusty_common::*;
@@ -20,17 +21,17 @@ where
     /// Returns an error if the signature doesn't match.
     /// Returns true if the definition already exists.
     /// Returns false if the definition doesn't exist.
-    fn check_signature(&self, name: &BareName, signature: &T) -> Result<bool, QError>;
+    fn check_signature(&self, name: &BareName, signature: &T) -> Result<bool, LintError>;
 }
 
 impl<T> CheckSignature<T> for HashMap<CaseInsensitiveString, Positioned<T>>
 where
     T: PartialEq,
 {
-    fn check_signature(&self, name: &BareName, signature: &T) -> Result<bool, QError> {
+    fn check_signature(&self, name: &BareName, signature: &T) -> Result<bool, LintError> {
         if let Some(Positioned { element, .. }) = self.get(name) {
             if element != signature {
-                Err(QError::TypeMismatch)
+                Err(LintError::TypeMismatch)
             } else {
                 Ok(true)
             }
@@ -92,7 +93,7 @@ where
         bare_name: &BareName,
         signature: T,
         declaration_pos: Position,
-    ) -> Result<(), QError> {
+    ) -> Result<(), LintError> {
         self.implementations
             .check_signature(bare_name, &signature)?;
         if !self.declarations.check_signature(bare_name, &signature)? {
@@ -107,9 +108,9 @@ where
         bare_name: &BareName,
         signature: T,
         implementation_pos: Position,
-    ) -> Result<(), QError> {
+    ) -> Result<(), LintError> {
         match self.implementations.get(bare_name) {
-            Some(_) => Err(QError::DuplicateDefinition),
+            Some(_) => Err(LintError::DuplicateDefinition),
             None => {
                 self.declarations.check_signature(bare_name, &signature)?;
                 self.implementations
@@ -123,22 +124,22 @@ where
         self.implementations
     }
 
-    fn ensure_declarations_are_implemented(&self) -> Result<(), QErrorPos> {
+    fn ensure_declarations_are_implemented(&self) -> Result<(), LintErrorPos> {
         for (k, v) in self.declarations.iter() {
             if !self.implementations.contains_key(k) {
-                return Err(QError::SubprogramNotDefined).with_err_at(v);
+                return Err(LintError::SubprogramNotDefined).with_err_at(v);
             }
         }
         Ok(())
     }
 
-    fn ensure_does_not_clash_with_built_in<F>(&self, is_built_in: F) -> Result<(), QErrorPos>
+    fn ensure_does_not_clash_with_built_in<F>(&self, is_built_in: F) -> Result<(), LintErrorPos>
     where
         F: Fn(&BareName) -> bool,
     {
         for (k, v) in self.implementations.iter() {
             if is_built_in(k) {
-                return Err(QError::DuplicateDefinition).with_err_at(v);
+                return Err(LintError::DuplicateDefinition).with_err_at(v);
             }
         }
 
@@ -147,14 +148,14 @@ where
 }
 
 impl FunctionContext {
-    pub fn post_visit(&self) -> Result<(), QErrorPos> {
+    pub fn post_visit(&self) -> Result<(), LintErrorPos> {
         self.ensure_declarations_are_implemented()?;
         self.ensure_does_not_clash_with_built_in(|name| BuiltInFunction::try_parse(name).is_some())
     }
 }
 
 impl SubContext {
-    pub fn post_visit(&self) -> Result<(), QErrorPos> {
+    pub fn post_visit(&self) -> Result<(), LintErrorPos> {
         // not checking if declarations are present, because in MONEY.BAS there
         // are two SUBs declared but not implemented (and not called either)
         self.ensure_does_not_clash_with_built_in(|name| {

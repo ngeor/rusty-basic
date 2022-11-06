@@ -1,4 +1,3 @@
-use crate::declaration;
 use crate::def_type;
 use crate::implementation;
 use crate::pc::*;
@@ -6,7 +5,7 @@ use crate::pc_specific::*;
 use crate::statement;
 use crate::types::*;
 use crate::user_defined_type;
-use rusty_common::*;
+use crate::{declaration, ParseError};
 
 pub struct ProgramParser;
 
@@ -18,7 +17,7 @@ impl ProgramParser {
 
 impl Parser for ProgramParser {
     type Output = Program;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         let mut read_separator = true; // we are at the beginning of the file
         let mut program: Program = vec![];
         let global_statement_parser = global_statement_pos_p();
@@ -35,7 +34,10 @@ impl Parser for ProgramParser {
                         // if it is a comment, we are allowed to read it without a separator
                         let can_read = token_type == TokenType::SingleQuote || read_separator;
                         if !can_read {
-                            return Err(QError::SyntaxError(format!("No separator: {}", ch.text)));
+                            return Err(ParseError::SyntaxError(format!(
+                                "No separator: {}",
+                                ch.text
+                            )));
                         }
                         tokenizer.unread(ch);
                         let opt_global_statement_pos =
@@ -46,7 +48,7 @@ impl Parser for ProgramParser {
                                 read_separator = false;
                             }
                             _ => {
-                                return Err(QError::syntax_error("Expected: top level token"));
+                                return Err(ParseError::syntax_error("Expected: top level token"));
                             }
                         }
                     }

@@ -4,7 +4,7 @@ use std::slice::Iter;
 use crate::types::{
     BareName, BareNamePos, ExpressionPos, ExpressionType, HasExpressionType, Name, TypeQualifier,
 };
-use rusty_common::{Positioned, QError};
+use rusty_common::Positioned;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UserDefinedType {
@@ -37,25 +37,6 @@ impl UserDefinedType {
 
     pub fn elements(&self) -> Iter<'_, ElementPos> {
         self.elements.iter()
-    }
-
-    fn find_element_type(&self, element_name: &BareName) -> Option<&ElementType> {
-        self.elements
-            .iter()
-            .map(|Positioned { element, .. }| element)
-            .find(|x| &x.name == element_name)
-            .map(|x| &x.element_type)
-    }
-
-    pub fn demand_element_by_name(&self, element_name: &Name) -> Result<&ElementType, QError> {
-        let element_type = self
-            .find_element_type(element_name.bare_name())
-            .ok_or(QError::ElementNotDefined)?;
-        if element_type.can_be_referenced_by_property_name(element_name) {
-            Ok(element_type)
-        } else {
-            Err(QError::TypeMismatch)
-        }
     }
 }
 

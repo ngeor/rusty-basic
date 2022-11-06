@@ -2,6 +2,7 @@ use super::post_conversion_linter::PostConversionLinter;
 use rusty_common::*;
 use rusty_parser::*;
 
+use crate::error::{LintError, LintErrorPos};
 use std::collections::HashSet;
 
 #[derive(Default)]
@@ -13,78 +14,78 @@ trait NoDotNamesCheck<T, E> {
     fn ensure_no_dots(&self, x: &T) -> Result<(), E>;
 }
 
-impl NoDotNamesCheck<FunctionImplementation, QErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &FunctionImplementation) -> Result<(), QErrorPos> {
+impl NoDotNamesCheck<FunctionImplementation, LintErrorPos> for DotsLinter {
+    fn ensure_no_dots(&self, x: &FunctionImplementation) -> Result<(), LintErrorPos> {
         self.ensure_no_dots(&x.name)?;
         self.ensure_no_dots(&x.params)
     }
 }
 
-impl NoDotNamesCheck<SubImplementation, QErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &SubImplementation) -> Result<(), QErrorPos> {
+impl NoDotNamesCheck<SubImplementation, LintErrorPos> for DotsLinter {
+    fn ensure_no_dots(&self, x: &SubImplementation) -> Result<(), LintErrorPos> {
         self.ensure_no_dots(&x.name)?;
         self.ensure_no_dots(&x.params)
     }
 }
 
-impl NoDotNamesCheck<Vec<Positioned<Parameter>>, QErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &Vec<Positioned<Parameter>>) -> Result<(), QErrorPos> {
+impl NoDotNamesCheck<Vec<Positioned<Parameter>>, LintErrorPos> for DotsLinter {
+    fn ensure_no_dots(&self, x: &Vec<Positioned<Parameter>>) -> Result<(), LintErrorPos> {
         x.iter().try_for_each(|x| self.ensure_no_dots(x))
     }
 }
 
-impl NoDotNamesCheck<Positioned<Parameter>, QErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &Positioned<Parameter>) -> Result<(), QErrorPos> {
+impl NoDotNamesCheck<Positioned<Parameter>, LintErrorPos> for DotsLinter {
+    fn ensure_no_dots(&self, x: &Positioned<Parameter>) -> Result<(), LintErrorPos> {
         let Positioned { element, pos } = x;
         self.ensure_no_dots(element).with_err_at(pos)
     }
 }
 
-impl NoDotNamesCheck<Parameter, QError> for DotsLinter {
-    fn ensure_no_dots(&self, x: &Parameter) -> Result<(), QError> {
+impl NoDotNamesCheck<Parameter, LintError> for DotsLinter {
+    fn ensure_no_dots(&self, x: &Parameter) -> Result<(), LintError> {
         self.ensure_no_dots(&x.bare_name)
     }
 }
 
-impl NoDotNamesCheck<DimVarPos, QErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &DimVarPos) -> Result<(), QErrorPos> {
+impl NoDotNamesCheck<DimVarPos, LintErrorPos> for DotsLinter {
+    fn ensure_no_dots(&self, x: &DimVarPos) -> Result<(), LintErrorPos> {
         let Positioned { element, pos } = x;
         self.ensure_no_dots(element).with_err_at(pos)
     }
 }
 
-impl NoDotNamesCheck<DimVar, QError> for DotsLinter {
-    fn ensure_no_dots(&self, x: &DimVar) -> Result<(), QError> {
+impl NoDotNamesCheck<DimVar, LintError> for DotsLinter {
+    fn ensure_no_dots(&self, x: &DimVar) -> Result<(), LintError> {
         self.ensure_no_dots(&x.bare_name)
     }
 }
 
-impl NoDotNamesCheck<NamePos, QErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &NamePos) -> Result<(), QErrorPos> {
+impl NoDotNamesCheck<NamePos, LintErrorPos> for DotsLinter {
+    fn ensure_no_dots(&self, x: &NamePos) -> Result<(), LintErrorPos> {
         let name = &x.element;
         self.ensure_no_dots(name).with_err_at(x)
     }
 }
 
-impl NoDotNamesCheck<Name, QError> for DotsLinter {
-    fn ensure_no_dots(&self, name: &Name) -> Result<(), QError> {
+impl NoDotNamesCheck<Name, LintError> for DotsLinter {
+    fn ensure_no_dots(&self, name: &Name) -> Result<(), LintError> {
         self.ensure_no_dots(name.bare_name())
     }
 }
 
-impl NoDotNamesCheck<BareNamePos, QErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &BareNamePos) -> Result<(), QErrorPos> {
+impl NoDotNamesCheck<BareNamePos, LintErrorPos> for DotsLinter {
+    fn ensure_no_dots(&self, x: &BareNamePos) -> Result<(), LintErrorPos> {
         let Positioned { element, pos } = x;
         self.ensure_no_dots(element).with_err_at(pos)
     }
 }
 
-impl NoDotNamesCheck<BareName, QError> for DotsLinter {
-    fn ensure_no_dots(&self, x: &BareName) -> Result<(), QError> {
+impl NoDotNamesCheck<BareName, LintError> for DotsLinter {
+    fn ensure_no_dots(&self, x: &BareName) -> Result<(), LintError> {
         match x.prefix('.') {
             Some(part_before_dot) => {
                 if self.user_defined_names.contains(part_before_dot) {
-                    Err(QError::DotClash)
+                    Err(LintError::DotClash)
                 } else {
                     Ok(())
                 }
@@ -94,21 +95,21 @@ impl NoDotNamesCheck<BareName, QError> for DotsLinter {
     }
 }
 
-impl NoDotNamesCheck<Expressions, QErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &Expressions) -> Result<(), QErrorPos> {
+impl NoDotNamesCheck<Expressions, LintErrorPos> for DotsLinter {
+    fn ensure_no_dots(&self, x: &Expressions) -> Result<(), LintErrorPos> {
         x.iter().try_for_each(|x| self.ensure_no_dots(x))
     }
 }
 
-impl NoDotNamesCheck<ExpressionPos, QErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &ExpressionPos) -> Result<(), QErrorPos> {
+impl NoDotNamesCheck<ExpressionPos, LintErrorPos> for DotsLinter {
+    fn ensure_no_dots(&self, x: &ExpressionPos) -> Result<(), LintErrorPos> {
         let Positioned { element, pos } = x;
         self.ensure_no_dots(element).patch_err_pos(pos)
     }
 }
 
-impl NoDotNamesCheck<Expression, QErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &Expression) -> Result<(), QErrorPos> {
+impl NoDotNamesCheck<Expression, LintErrorPos> for DotsLinter {
+    fn ensure_no_dots(&self, x: &Expression) -> Result<(), LintErrorPos> {
         match x {
             Expression::Variable(var_name, _) => self.ensure_no_dots(var_name).with_err_no_pos(),
             Expression::ArrayElement(var_name, indices, _) => {
@@ -133,7 +134,7 @@ impl NoDotNamesCheck<Expression, QErrorPos> for DotsLinter {
 }
 
 impl PostConversionLinter for DotsLinter {
-    fn visit_program(&mut self, p: &Program) -> Result<(), QErrorPos> {
+    fn visit_program(&mut self, p: &Program) -> Result<(), LintErrorPos> {
         let mut collector = UserDefinedNamesCollector::default();
         collector.visit_program(p)?;
         self.user_defined_names = collector.user_defined_names;
@@ -143,29 +144,33 @@ impl PostConversionLinter for DotsLinter {
     fn visit_function_implementation(
         &mut self,
         f: &FunctionImplementation,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         self.ensure_no_dots(f)?;
         self.visit_statements(&f.body)
     }
 
-    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorPos> {
+    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), LintErrorPos> {
         self.ensure_no_dots(s)?;
         self.visit_statements(&s.body)
     }
 
-    fn visit_dim(&mut self, dim_list: &DimList) -> Result<(), QErrorPos> {
+    fn visit_dim(&mut self, dim_list: &DimList) -> Result<(), LintErrorPos> {
         dim_list
             .variables
             .iter()
             .try_for_each(|dim_var_pos| self.ensure_no_dots(dim_var_pos))
     }
 
-    fn visit_assignment(&mut self, name: &Expression, v: &ExpressionPos) -> Result<(), QErrorPos> {
+    fn visit_assignment(
+        &mut self,
+        name: &Expression,
+        v: &ExpressionPos,
+    ) -> Result<(), LintErrorPos> {
         self.ensure_no_dots(name)?;
         self.visit_expression(v)
     }
 
-    fn visit_for_loop(&mut self, f: &ForLoop) -> Result<(), QErrorPos> {
+    fn visit_for_loop(&mut self, f: &ForLoop) -> Result<(), LintErrorPos> {
         // no need to test f.next_counter, as it is the same as variable_name if it exists
         self.ensure_no_dots(&f.variable_name)?;
         self.visit_expression(&f.lower_bound)?;
@@ -177,7 +182,7 @@ impl PostConversionLinter for DotsLinter {
         self.visit_statements(&f.statements)
     }
 
-    fn visit_expression(&mut self, e: &ExpressionPos) -> Result<(), QErrorPos> {
+    fn visit_expression(&mut self, e: &ExpressionPos) -> Result<(), LintErrorPos> {
         self.ensure_no_dots(e)
     }
 }
@@ -207,17 +212,17 @@ impl PostConversionLinter for UserDefinedNamesCollector {
     fn visit_function_implementation(
         &mut self,
         f: &FunctionImplementation,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         self.visit_names(&f.params);
         self.visit_statements(&f.body)
     }
 
-    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorPos> {
+    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), LintErrorPos> {
         self.visit_names(&s.params);
         self.visit_statements(&s.body)
     }
 
-    fn visit_dim(&mut self, dim_list: &DimList) -> Result<(), QErrorPos> {
+    fn visit_dim(&mut self, dim_list: &DimList) -> Result<(), LintErrorPos> {
         self.visit_names(&dim_list.variables);
         Ok(())
     }

@@ -1,8 +1,8 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_linter::{qualifier_of_variant, CastVariant};
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     // variables are passed by ref, so we can assign to them
     let len = interpreter.context().variables().len();
     for i in 0..len {
@@ -16,10 +16,10 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_interpreter_err;
     use crate::assert_prints;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use rusty_common::*;
 
     #[test]
     fn data_read_print() {
@@ -68,6 +68,6 @@ mod tests {
         DATA 42
         READ A$
         "#;
-        assert_interpreter_err!(input, QError::TypeMismatch, 3, 9);
+        assert_interpreter_err!(input, RuntimeError::TypeMismatch, 3, 9);
     }
 }

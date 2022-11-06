@@ -1,3 +1,4 @@
+use crate::error::{LintError, LintErrorPos};
 use crate::pre_linter::const_rules::global_const;
 use crate::pre_linter::sub_program_context::{FunctionContext, SubContext, ToSignature};
 use crate::pre_linter::{ConstantMap, PreLinterResult, ResolvedParamTypes};
@@ -16,7 +17,7 @@ pub struct MainContext {
     declaration_pos: Position,
 }
 
-pub fn pre_lint_program(program: &Program) -> Result<PreLinterResult, QErrorPos> {
+pub fn pre_lint_program(program: &Program) -> Result<PreLinterResult, LintErrorPos> {
     let mut ctx = MainContext {
         resolver: TypeResolverImpl::new(),
         user_defined_types: Default::default(),
@@ -41,7 +42,7 @@ pub fn pre_lint_program(program: &Program) -> Result<PreLinterResult, QErrorPos>
 // FUNCTION/SUB -> depends on resolver for resolving bare names and on user_defined_types to ensure types exist
 
 impl MainContext {
-    fn on_program(&mut self, program: &Program) -> Result<(), QErrorPos> {
+    fn on_program(&mut self, program: &Program) -> Result<(), LintErrorPos> {
         for Positioned { element, pos } in program {
             self.declaration_pos = *pos;
             match element {
@@ -80,7 +81,7 @@ impl MainContext {
         &mut self,
         name: &NamePos,
         params: &Parameters,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         let param_types: ResolvedParamTypes = self.on_parameters(params)?;
         let bare_name = name.element.bare_name();
         let signature = name.element.to_signature(&self.resolver, param_types);
@@ -89,7 +90,10 @@ impl MainContext {
             .with_err_at(name)
     }
 
-    fn on_function_implementation(&mut self, f: &FunctionImplementation) -> Result<(), QErrorPos> {
+    fn on_function_implementation(
+        &mut self,
+        f: &FunctionImplementation,
+    ) -> Result<(), LintErrorPos> {
         let FunctionImplementation { name, params, .. } = f;
         let param_types: ResolvedParamTypes = self.on_parameters(params)?;
         let bare_name = name.element.bare_name();
@@ -99,7 +103,7 @@ impl MainContext {
             .with_err_at(name)
     }
 
-    fn on_statement(&mut self, s: &Statement) -> Result<(), QErrorPos> {
+    fn on_statement(&mut self, s: &Statement) -> Result<(), LintErrorPos> {
         match s {
             Statement::Const(name, expr) => self.on_const(name, expr),
             _ => Ok(()),
@@ -110,7 +114,7 @@ impl MainContext {
         &mut self,
         name: &BareNamePos,
         params: &Parameters,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         let param_types: ResolvedParamTypes = self.on_parameters(params)?;
         let bare_name = &name.element;
         let signature = bare_name.to_signature(&self.resolver, param_types);
@@ -119,7 +123,7 @@ impl MainContext {
             .with_err_at(name)
     }
 
-    fn on_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorPos> {
+    fn on_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), LintErrorPos> {
         let SubImplementation { name, params, .. } = s;
         let param_types: ResolvedParamTypes = self.on_parameters(params)?;
         let bare_name = &name.element;
@@ -132,7 +136,7 @@ impl MainContext {
     fn on_user_defined_type(
         &mut self,
         user_defined_type: &UserDefinedType,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         super::user_defined_type_rules::user_defined_type(
             &mut self.user_defined_types,
             &self.global_constants,
@@ -140,11 +144,11 @@ impl MainContext {
         )
     }
 
-    fn on_const(&mut self, name: &NamePos, expr: &ExpressionPos) -> Result<(), QErrorPos> {
+    fn on_const(&mut self, name: &NamePos, expr: &ExpressionPos) -> Result<(), LintErrorPos> {
         global_const(&mut self.global_constants, name, expr)
     }
 
-    fn on_parameters(&self, parameters: &Parameters) -> Result<ResolvedParamTypes, QErrorPos> {
+    fn on_parameters(&self, parameters: &Parameters) -> Result<ResolvedParamTypes, LintErrorPos> {
         parameters
             .iter()
             .map(|p| self.on_parameter_pos(p))
@@ -154,12 +158,12 @@ impl MainContext {
     fn on_parameter_pos(
         &self,
         parameter_pos: &ParameterPos,
-    ) -> Result<ResolvedParamType, QErrorPos> {
+    ) -> Result<ResolvedParamType, LintErrorPos> {
         self.on_parameter(&parameter_pos.element)
             .with_err_at(parameter_pos)
     }
 
-    fn on_parameter(&self, parameter: &Parameter) -> Result<ResolvedParamType, QError> {
+    fn on_parameter(&self, parameter: &Parameter) -> Result<ResolvedParamType, LintError> {
         self.resolve_param_type(&parameter.bare_name, &parameter.var_type)
     }
 
@@ -167,7 +171,7 @@ impl MainContext {
         &self,
         bare_name: &BareName,
         param_type: &ParamType,
-    ) -> Result<ResolvedParamType, QError> {
+    ) -> Result<ResolvedParamType, LintError> {
         match param_type {
             ParamType::Bare => {
                 let q = bare_name.qualify(&self.resolver);
@@ -181,7 +185,7 @@ impl MainContext {
                 if self.user_defined_types.contains_key(type_name) {
                     Ok(ResolvedParamType::UserDefined(type_name.clone()))
                 } else {
-                    Err(QError::TypeNotDefined)
+                    Err(LintError::TypeNotDefined)
                 }
             }
             ParamType::Array(element_type) => {

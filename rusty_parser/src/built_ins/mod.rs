@@ -29,7 +29,7 @@ use crate::pc::*;
 use crate::pc_specific::*;
 use crate::{lazy_parser, FileHandle};
 use crate::{Expression, ExpressionPos, Expressions, Keyword, Statement};
-use rusty_common::{AtPos, Position, Positioned, QError};
+use rusty_common::{AtPos, Position, Positioned};
 
 // Parses built-in subs which have a special syntax.
 lazy_parser!(pub fn parse<Output=Statement> ; struct LazyParser ; Alt16::new(

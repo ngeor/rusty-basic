@@ -1,3 +1,4 @@
+use crate::error::LintErrorPos;
 use rusty_common::*;
 use rusty_parser::*;
 
@@ -5,7 +6,7 @@ use rusty_parser::*;
 ///
 /// The default implementation of the trait simply clones all visited elements.
 pub trait ExpressionReducer {
-    fn visit_program(&mut self, program: Program) -> Result<Program, QErrorPos> {
+    fn visit_program(&mut self, program: Program) -> Result<Program, LintErrorPos> {
         let mut result: Program = vec![];
         for global_statement_pos in program {
             let x = self.visit_global_statement_pos(global_statement_pos)?;
@@ -19,7 +20,7 @@ pub trait ExpressionReducer {
     fn visit_global_statement_pos(
         &mut self,
         global_statement_pos: GlobalStatementPos,
-    ) -> Result<Option<GlobalStatementPos>, QErrorPos> {
+    ) -> Result<Option<GlobalStatementPos>, LintErrorPos> {
         let Positioned {
             element: global_statement,
             pos,
@@ -32,7 +33,7 @@ pub trait ExpressionReducer {
     fn visit_global_statement(
         &mut self,
         global_statement: GlobalStatement,
-    ) -> Result<Option<GlobalStatement>, QErrorPos> {
+    ) -> Result<Option<GlobalStatement>, LintErrorPos> {
         match global_statement {
             GlobalStatement::FunctionImplementation(f) => self
                 .visit_function_implementation(f)
@@ -50,7 +51,7 @@ pub trait ExpressionReducer {
     fn visit_function_implementation(
         &mut self,
         f: FunctionImplementation,
-    ) -> Result<FunctionImplementation, QErrorPos> {
+    ) -> Result<FunctionImplementation, LintErrorPos> {
         Ok(FunctionImplementation {
             name: f.name,
             params: f.params,
@@ -62,7 +63,7 @@ pub trait ExpressionReducer {
     fn visit_sub_implementation(
         &mut self,
         s: SubImplementation,
-    ) -> Result<SubImplementation, QErrorPos> {
+    ) -> Result<SubImplementation, LintErrorPos> {
         Ok(SubImplementation {
             name: s.name,
             params: s.params,
@@ -71,7 +72,7 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn visit_statements(&mut self, statements: Statements) -> Result<Statements, QErrorPos> {
+    fn visit_statements(&mut self, statements: Statements) -> Result<Statements, LintErrorPos> {
         let mut result: Statements = vec![];
         for statement_pos in statements {
             let x = self.visit_statement_pos(statement_pos)?;
@@ -85,7 +86,7 @@ pub trait ExpressionReducer {
     fn visit_statement_pos(
         &mut self,
         statement_pos: StatementPos,
-    ) -> Result<Option<StatementPos>, QErrorPos> {
+    ) -> Result<Option<StatementPos>, LintErrorPos> {
         let Positioned {
             element: statement,
             pos,
@@ -95,11 +96,11 @@ pub trait ExpressionReducer {
             .patch_err_pos(&pos)
     }
 
-    fn visit_filter_statement(&mut self, s: Statement) -> Result<Option<Statement>, QErrorPos> {
+    fn visit_filter_statement(&mut self, s: Statement) -> Result<Option<Statement>, LintErrorPos> {
         self.visit_map_statement(s).map(Some)
     }
 
-    fn visit_map_statement(&mut self, s: Statement) -> Result<Statement, QErrorPos> {
+    fn visit_map_statement(&mut self, s: Statement) -> Result<Statement, LintErrorPos> {
         match s {
             Statement::Assignment(left, right) => {
                 self.visit_assignment(left, right)
@@ -142,7 +143,7 @@ pub trait ExpressionReducer {
         &mut self,
         name: CaseInsensitiveString,
         args: Expressions,
-    ) -> Result<(CaseInsensitiveString, Expressions), QErrorPos> {
+    ) -> Result<(CaseInsensitiveString, Expressions), LintErrorPos> {
         Ok((name, self.visit_expressions(args)?))
     }
 
@@ -150,7 +151,7 @@ pub trait ExpressionReducer {
         &mut self,
         name: BuiltInSub,
         args: Expressions,
-    ) -> Result<(BuiltInSub, Expressions), QErrorPos> {
+    ) -> Result<(BuiltInSub, Expressions), LintErrorPos> {
         Ok((name, self.visit_expressions(args)?))
     }
 
@@ -158,11 +159,11 @@ pub trait ExpressionReducer {
         &mut self,
         name: Expression,
         v: ExpressionPos,
-    ) -> Result<(Expression, ExpressionPos), QErrorPos> {
+    ) -> Result<(Expression, ExpressionPos), LintErrorPos> {
         Ok((name, self.visit_expression_pos(v)?))
     }
 
-    fn visit_for_loop(&mut self, f: ForLoop) -> Result<ForLoop, QErrorPos> {
+    fn visit_for_loop(&mut self, f: ForLoop) -> Result<ForLoop, LintErrorPos> {
         let lower_bound = self.visit_expression_pos(f.lower_bound)?;
         let upper_bound = self.visit_expression_pos(f.upper_bound)?;
         let step = match f.step {
@@ -180,13 +181,13 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn visit_if_block(&mut self, i: IfBlock) -> Result<IfBlock, QErrorPos> {
+    fn visit_if_block(&mut self, i: IfBlock) -> Result<IfBlock, LintErrorPos> {
         let if_block = self.visit_conditional_block(i.if_block)?;
         let else_if_blocks: Vec<ConditionalBlock> = i
             .else_if_blocks
             .into_iter()
             .map(|x| self.visit_conditional_block(x))
-            .collect::<Result<Vec<ConditionalBlock>, QErrorPos>>()?;
+            .collect::<Result<Vec<ConditionalBlock>, LintErrorPos>>()?;
         let else_block: Option<Statements> = match i.else_block {
             Some(x) => Some(self.visit_statements(x)?),
             None => None,
@@ -198,7 +199,7 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn visit_select_case(&mut self, s: SelectCase) -> Result<SelectCase, QErrorPos> {
+    fn visit_select_case(&mut self, s: SelectCase) -> Result<SelectCase, LintErrorPos> {
         let else_block: Option<Statements> = match s.else_block {
             Some(x) => Some(self.visit_statements(x)?),
             None => None,
@@ -207,7 +208,7 @@ pub trait ExpressionReducer {
             .case_blocks
             .into_iter()
             .map(|x| self.visit_case_block(x))
-            .collect::<Result<Vec<CaseBlock>, QErrorPos>>()?;
+            .collect::<Result<Vec<CaseBlock>, LintErrorPos>>()?;
         Ok(SelectCase {
             expr: self.visit_expression_pos(s.expr)?,
             case_blocks,
@@ -216,7 +217,7 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn visit_case_block(&mut self, s: CaseBlock) -> Result<CaseBlock, QErrorPos> {
+    fn visit_case_block(&mut self, s: CaseBlock) -> Result<CaseBlock, LintErrorPos> {
         let CaseBlock {
             expression_list,
             statements,
@@ -224,14 +225,14 @@ pub trait ExpressionReducer {
         let expression_list: Vec<CaseExpression> = expression_list
             .into_iter()
             .map(|case_expr| self.visit_case_expression(case_expr))
-            .collect::<Result<Vec<CaseExpression>, QErrorPos>>()?;
+            .collect::<Result<Vec<CaseExpression>, LintErrorPos>>()?;
         Ok(CaseBlock {
             expression_list,
             statements: self.visit_statements(statements)?,
         })
     }
 
-    fn visit_case_expression(&mut self, s: CaseExpression) -> Result<CaseExpression, QErrorPos> {
+    fn visit_case_expression(&mut self, s: CaseExpression) -> Result<CaseExpression, LintErrorPos> {
         match s {
             CaseExpression::Simple(e) => self.visit_expression_pos(e).map(CaseExpression::Simple),
             CaseExpression::Is(op, e) => self
@@ -244,7 +245,7 @@ pub trait ExpressionReducer {
         }
     }
 
-    fn visit_do_loop(&mut self, do_loop: DoLoop) -> Result<DoLoop, QErrorPos> {
+    fn visit_do_loop(&mut self, do_loop: DoLoop) -> Result<DoLoop, LintErrorPos> {
         Ok(DoLoop {
             condition: self.visit_expression_pos(do_loop.condition)?,
             statements: self.visit_statements(do_loop.statements)?,
@@ -256,7 +257,7 @@ pub trait ExpressionReducer {
     fn visit_conditional_block(
         &mut self,
         c: ConditionalBlock,
-    ) -> Result<ConditionalBlock, QErrorPos> {
+    ) -> Result<ConditionalBlock, LintErrorPos> {
         Ok(ConditionalBlock {
             condition: self.visit_expression_pos(c.condition)?,
             statements: self.visit_statements(c.statements)?,
@@ -266,24 +267,24 @@ pub trait ExpressionReducer {
     fn visit_expression_pos(
         &mut self,
         expr_pos: ExpressionPos,
-    ) -> Result<ExpressionPos, QErrorPos> {
+    ) -> Result<ExpressionPos, LintErrorPos> {
         let Positioned { element: expr, pos } = expr_pos;
         self.visit_expression(expr)
             .map(|x| x.at_pos(pos))
             .patch_err_pos(&pos)
     }
 
-    fn visit_expression(&mut self, expression: Expression) -> Result<Expression, QErrorPos> {
+    fn visit_expression(&mut self, expression: Expression) -> Result<Expression, LintErrorPos> {
         Ok(expression)
     }
 
-    fn visit_expressions(&mut self, args: Expressions) -> Result<Expressions, QErrorPos> {
+    fn visit_expressions(&mut self, args: Expressions) -> Result<Expressions, LintErrorPos> {
         args.into_iter()
             .map(|a| self.visit_expression_pos(a))
-            .collect::<Result<Expressions, QErrorPos>>()
+            .collect::<Result<Expressions, LintErrorPos>>()
     }
 
-    fn visit_print(&mut self, print: Print) -> Result<Print, QErrorPos> {
+    fn visit_print(&mut self, print: Print) -> Result<Print, LintErrorPos> {
         Ok(Print {
             file_number: print.file_number,
             lpt1: print.lpt1,
@@ -295,21 +296,24 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn visit_print_args(&mut self, print_args: Vec<PrintArg>) -> Result<Vec<PrintArg>, QErrorPos> {
+    fn visit_print_args(
+        &mut self,
+        print_args: Vec<PrintArg>,
+    ) -> Result<Vec<PrintArg>, LintErrorPos> {
         print_args
             .into_iter()
             .map(|a| self.visit_print_arg(a))
-            .collect::<Result<Vec<PrintArg>, QErrorPos>>()
+            .collect::<Result<Vec<PrintArg>, LintErrorPos>>()
     }
 
-    fn visit_print_arg(&mut self, print_arg: PrintArg) -> Result<PrintArg, QErrorPos> {
+    fn visit_print_arg(&mut self, print_arg: PrintArg) -> Result<PrintArg, LintErrorPos> {
         match print_arg {
             PrintArg::Expression(e) => self.visit_expression_pos(e).map(PrintArg::Expression),
             _ => Ok(print_arg),
         }
     }
 
-    fn visit_dim_list(&mut self, dim_list: DimList) -> Result<DimList, QErrorPos> {
+    fn visit_dim_list(&mut self, dim_list: DimList) -> Result<DimList, LintErrorPos> {
         let DimList { shared, variables } = dim_list;
         let converted_variables = self.dim_vars(variables)?;
         Ok(DimList {
@@ -318,14 +322,14 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn dim_vars(&mut self, dim_vars: DimVars) -> Result<DimVars, QErrorPos> {
+    fn dim_vars(&mut self, dim_vars: DimVars) -> Result<DimVars, LintErrorPos> {
         dim_vars
             .into_iter()
             .map(|d| self.visit_dim_var_pos(d))
             .collect()
     }
 
-    fn visit_dim_var_pos(&mut self, dim_var_pos: DimVarPos) -> Result<DimVarPos, QErrorPos> {
+    fn visit_dim_var_pos(&mut self, dim_var_pos: DimVarPos) -> Result<DimVarPos, LintErrorPos> {
         let DimVarPos {
             element:
                 DimVar {
@@ -344,7 +348,7 @@ pub trait ExpressionReducer {
         })
     }
 
-    fn visit_dim_type(&mut self, dim_type: DimType) -> Result<DimType, QErrorPos> {
+    fn visit_dim_type(&mut self, dim_type: DimType) -> Result<DimType, LintErrorPos> {
         match dim_type {
             DimType::Array(array_dimensions, element_type) => {
                 let converted_array_dimensions = self.visit_array_dimensions(array_dimensions)?;
@@ -357,7 +361,7 @@ pub trait ExpressionReducer {
     fn visit_array_dimensions(
         &mut self,
         array_dimensions: ArrayDimensions,
-    ) -> Result<ArrayDimensions, QErrorPos> {
+    ) -> Result<ArrayDimensions, LintErrorPos> {
         array_dimensions
             .into_iter()
             .map(|a| self.visit_array_dimension(a))
@@ -367,7 +371,7 @@ pub trait ExpressionReducer {
     fn visit_array_dimension(
         &mut self,
         array_dimension: ArrayDimension,
-    ) -> Result<ArrayDimension, QErrorPos> {
+    ) -> Result<ArrayDimension, LintErrorPos> {
         let ArrayDimension { lbound, ubound } = array_dimension;
         let converted_lbound = match lbound {
             Some(lbound) => Some(self.visit_expression_pos(lbound)?),

@@ -1,12 +1,12 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::keyboard::get_indicator_keys;
 use crate::interpreter::variant_casts::VariantCasts;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_parser::BuiltInFunction;
 
 pub const INDICATOR_KEYS_ADDRESS: usize = 1047;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let address: usize = interpreter.context()[0].to_non_negative_int()?;
     let seg = interpreter.get_def_seg_or_default();
     let peek_value: u8 = if seg == 0 {
@@ -21,7 +21,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     Ok(())
 }
 
-fn zero_seg(address: usize) -> Result<u8, QError> {
+fn zero_seg(address: usize) -> Result<u8, RuntimeError> {
     if address == INDICATOR_KEYS_ADDRESS {
         unsafe { get_indicator_keys() }
     } else {

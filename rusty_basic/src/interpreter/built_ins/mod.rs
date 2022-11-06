@@ -46,10 +46,13 @@ mod view_print;
 mod width;
 
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_parser::{BuiltInFunction, BuiltInSub};
 
-pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Result<(), QError> {
+pub fn run_sub<S: InterpreterTrait>(
+    s: &BuiltInSub,
+    interpreter: &mut S,
+) -> Result<(), RuntimeError> {
     match s {
         BuiltInSub::Beep => beep::run(interpreter),
         BuiltInSub::CallAbsolute => Ok(()),
@@ -80,7 +83,7 @@ pub fn run_sub<S: InterpreterTrait>(s: &BuiltInSub, interpreter: &mut S) -> Resu
 pub fn run_function<S: InterpreterTrait>(
     f: &BuiltInFunction,
     interpreter: &mut S,
-) -> Result<(), QError> {
+) -> Result<(), RuntimeError> {
     match f {
         BuiltInFunction::Chr => chr::run(interpreter),
         BuiltInFunction::Cvd => cvd::run(interpreter),

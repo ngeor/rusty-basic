@@ -1,8 +1,8 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
-use rusty_common::*;
+use crate::RuntimeError;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let mut iterator = interpreter.context().variables().iter();
     let flags: usize = iterator.next().unwrap().to_positive_int()?;
     let is_row_present = flags & 0x01 != 0;
@@ -31,7 +31,7 @@ fn move_to<S: InterpreterTrait>(
     interpreter: &S,
     row: Option<usize>,
     col: Option<usize>,
-) -> Result<(), QError> {
+) -> Result<(), RuntimeError> {
     if let Some(row) = row {
         if let Some(col) = col {
             interpreter
@@ -42,7 +42,7 @@ fn move_to<S: InterpreterTrait>(
         }
     } else if col.is_some() {
         // cannot move to a col because the current row is unknown
-        Err(QError::IllegalFunctionCall)
+        Err(RuntimeError::IllegalFunctionCall)
     } else {
         Ok(())
     }
@@ -51,11 +51,11 @@ fn move_to<S: InterpreterTrait>(
 fn show_hide_cursor<S: InterpreterTrait>(
     interpreter: &S,
     cursor: Option<usize>,
-) -> Result<(), QError> {
+) -> Result<(), RuntimeError> {
     match cursor {
         Some(1) => interpreter.screen().show_cursor(),
         Some(0) => interpreter.screen().hide_cursor(),
-        Some(_) => Err(QError::IllegalFunctionCall),
+        Some(_) => Err(RuntimeError::IllegalFunctionCall),
         None => Ok(()),
     }
 }

@@ -1,23 +1,23 @@
-use rusty_common::*;
+use crate::RuntimeError;
 
 #[cfg(windows)]
-pub unsafe fn get_indicator_keys() -> Result<u8, QError> {
+pub unsafe fn get_indicator_keys() -> Result<u8, RuntimeError> {
     windows_impl::get_indicator_keys()
 }
 
 #[cfg(windows)]
-pub unsafe fn set_indicator_keys(flags: u8) -> Result<(), QError> {
+pub unsafe fn set_indicator_keys(flags: u8) -> Result<(), RuntimeError> {
     windows_impl::set_indicator_keys(flags)
 }
 
 #[cfg(not(windows))]
-pub unsafe fn get_indicator_keys() -> Result<u8, QError> {
+pub unsafe fn get_indicator_keys() -> Result<u8, RuntimeError> {
     // TODO implement get_indicator_keys for other platforms
     Ok(0)
 }
 
 #[cfg(not(windows))]
-pub unsafe fn set_indicator_keys(_flags: u8) -> Result<(), QError> {
+pub unsafe fn set_indicator_keys(_flags: u8) -> Result<(), RuntimeError> {
     // TODO implement set_indicator_keys for other platforms
     Ok(())
 }
@@ -26,7 +26,7 @@ pub unsafe fn set_indicator_keys(_flags: u8) -> Result<(), QError> {
 mod windows_impl {
     extern crate winapi;
 
-    use rusty_common::*;
+    use crate::RuntimeError;
     use winapi::um::winuser::{
         GetKeyboardState, SendInput, INPUT, INPUT_KEYBOARD, KEYEVENTF_KEYUP, VK_CAPITAL,
         VK_NUMLOCK, VK_SCROLL,
@@ -34,7 +34,7 @@ mod windows_impl {
 
     const KEYS_FLAGS: [(i32, u8); 3] = [(VK_NUMLOCK, 1), (VK_CAPITAL, 2), (VK_SCROLL, 4)];
 
-    pub unsafe fn get_indicator_keys() -> Result<u8, QError> {
+    pub unsafe fn get_indicator_keys() -> Result<u8, RuntimeError> {
         let keyboard_state = get_keyboard_state()?;
         let mut result: u8 = 0;
         for (key, flag) in &KEYS_FLAGS {
@@ -45,7 +45,7 @@ mod windows_impl {
         Ok(result)
     }
 
-    pub unsafe fn set_indicator_keys(flags: u8) -> Result<(), QError> {
+    pub unsafe fn set_indicator_keys(flags: u8) -> Result<(), RuntimeError> {
         let keyboard_state = get_keyboard_state()?;
         let mut inputs: Vec<INPUT> = vec![];
         for (key, flag) in &KEYS_FLAGS {
@@ -64,13 +64,13 @@ mod windows_impl {
         Ok(())
     }
 
-    unsafe fn get_keyboard_state() -> Result<[u8; 256], QError> {
+    unsafe fn get_keyboard_state() -> Result<[u8; 256], RuntimeError> {
         let mut buf = [0_u8; 256];
         let result = GetKeyboardState(buf.as_mut_ptr());
         if result != 0 {
             Ok(buf)
         } else {
-            Err(QError::InternalError(
+            Err(RuntimeError::Other(
                 "Could not get keyboard state".to_owned(),
             ))
         }

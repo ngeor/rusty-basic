@@ -1,12 +1,12 @@
 use crate::assert_linter_err;
-use rusty_common::*;
+use crate::LintError;
 
 #[test]
 fn go_to_missing_label() {
     let input = "
     GOTO Jump
     ";
-    assert_linter_err!(input, QError::LabelNotDefined, 2, 5);
+    assert_linter_err!(input, LintError::LabelNotDefined, 2, 5);
 }
 
 #[test]
@@ -19,5 +19,5 @@ fn go_to_label_in_different_scope_not_allowed() {
     PRINT "hi"
     END SUB
     "#;
-    assert_linter_err!(input, QError::LabelNotDefined, 2, 5);
+    assert_linter_err!(input, LintError::LabelNotDefined, 2, 5);
 }

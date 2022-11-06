@@ -2,9 +2,14 @@ use crate::instruction_generator::label_resolver::LabelResolver;
 use crate::instruction_generator::subprogram_info::{
     SubprogramInfoCollector, SubprogramInfoRepository,
 };
-use rusty_common::{AtPos, CaseInsensitiveString, Position, Positioned, QError};
+use crate::RuntimeError;
+use rusty_common::{AtPos, CaseInsensitiveString, Position, Positioned};
 use rusty_linter::SubprogramName;
-use rusty_parser::*;
+use rusty_parser::{
+    BareName, BuiltInFunction, BuiltInSub, DimVar, Expression, ExpressionPos, ExpressionType,
+    FileHandle, FunctionImplementation, GlobalStatement, HasExpressionType, Name, Parameter,
+    Program, QualifiedName, Statement, Statements, SubImplementation, TypeQualifier,
+};
 use rusty_variant::Variant;
 
 /// Generates instructions for the given program.
@@ -180,7 +185,7 @@ pub enum Instruction {
     StashFunctionReturnValue(QualifiedName),
     UnStashFunctionReturnValue,
 
-    Throw(QError),
+    Throw(RuntimeError),
 
     OnErrorGoTo(AddressOrLabel),
     OnErrorResumeNext,

@@ -1,9 +1,8 @@
-use crate::expression;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::statements::ZeroOrMoreStatements;
 use crate::types::*;
-use rusty_common::*;
+use crate::{expression, ParseError};
 
 // FOR I = 0 TO 5 STEP 1
 // statements
@@ -13,7 +12,7 @@ pub fn for_loop_p() -> impl Parser<Output = Statement> {
     seq4(
         parse_for_step_p(),
         ZeroOrMoreStatements::new(keyword(Keyword::Next)),
-        keyword(Keyword::Next).or_fail(QError::ForWithoutNext),
+        keyword(Keyword::Next).or_fail(ParseError::ForWithoutNext),
         next_counter_p().allow_none(),
         |(variable_name, lower_bound, upper_bound, opt_step), statements, _, opt_next_name_pos| {
             Statement::ForLoop(ForLoop {
@@ -244,7 +243,7 @@ mod tests {
         ";
         assert_parser_err!(
             input,
-            QError::syntax_error("Expected: end-of-statement"),
+            ParseError::syntax_error("Expected: end-of-statement"),
             2,
             23
         );

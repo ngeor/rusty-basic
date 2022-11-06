@@ -1,9 +1,8 @@
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::statement;
 use crate::statement_separator::Separator;
 use crate::types::*;
-use rusty_common::*;
+use crate::{statement, ParseError};
 
 pub fn single_line_non_comment_statements_p() -> impl Parser<Output = Statements> {
     whitespace()
@@ -25,11 +24,11 @@ fn delimited_by_colon<P: Parser>(parser: P) -> impl Parser<Output = Vec<P::Outpu
     delimited_by(
         parser,
         colon_ws(),
-        QError::syntax_error("Error: trailing colon"),
+        ParseError::syntax_error("Error: trailing colon"),
     )
 }
 
-pub struct ZeroOrMoreStatements<S>(NegateParser<PeekParser<S>>, Option<QError>);
+pub struct ZeroOrMoreStatements<S>(NegateParser<PeekParser<S>>, Option<ParseError>);
 
 impl<S> ZeroOrMoreStatements<S>
 where
@@ -40,7 +39,7 @@ where
         Self(exit_source.peek().negate(), None)
     }
 
-    pub fn new_with_custom_error(exit_source: S, err: QError) -> Self {
+    pub fn new_with_custom_error(exit_source: S, err: ParseError) -> Self {
         Self(exit_source.peek().negate(), Some(err))
     }
 }
@@ -51,11 +50,11 @@ where
     S::Output: Undo,
 {
     type Output = Statements;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         // must start with a separator (e.g. after a WHILE condition)
         Separator::NonComment
             .parse_opt(tokenizer)?
-            .ok_or_else(|| QError::syntax_error("Expected: end-of-statement"))?;
+            .ok_or_else(|| ParseError::syntax_error("Expected: end-of-statement"))?;
         let mut result: Statements = vec![];
         // TODO rewrite the numeric state or add constants
         let mut state = 0;
@@ -71,7 +70,7 @@ where
                 } else {
                     return Err(match &self.1 {
                         Some(custom_error) => custom_error.clone(),
-                        _ => QError::syntax_error("Expected: statement"),
+                        _ => ParseError::syntax_error("Expected: statement"),
                     });
                 }
             } else if state == 1 {
@@ -86,7 +85,7 @@ where
                 if found_separator {
                     state = 2;
                 } else {
-                    return Err(QError::syntax_error("Expected: statement separator"));
+                    return Err(ParseError::syntax_error("Expected: statement separator"));
                 }
             } else {
                 panic!("Cannot happen")

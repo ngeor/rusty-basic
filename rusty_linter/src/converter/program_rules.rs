@@ -2,14 +2,15 @@ use crate::converter::context::Context;
 use crate::converter::pos_context::PosContext;
 use crate::converter::traits::Convertible;
 use crate::converter::types::Implicits;
-use rusty_common::{AtPos, HasPos, Positioned, QErrorPos};
+use crate::error::LintErrorPos;
+use rusty_common::{AtPos, HasPos, Positioned};
 use rusty_parser::{
     DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement,
     Statements, SubImplementation,
 };
 
 impl Convertible for Program {
-    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorPos> {
+    fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {
         let mut result: Program = vec![];
         for Positioned { element, pos } in self {
             let global_statements = element.convert_in(ctx, pos)?;
@@ -32,7 +33,7 @@ impl Convertible for Program {
 }
 
 impl<'a> Convertible<PosContext<'a>, Vec<GlobalStatementPos>> for GlobalStatement {
-    fn convert(self, ctx: &mut PosContext<'a>) -> Result<Vec<GlobalStatementPos>, QErrorPos> {
+    fn convert(self, ctx: &mut PosContext<'a>) -> Result<Vec<GlobalStatementPos>, LintErrorPos> {
         match self {
             Self::DefType(def_type) => {
                 ctx.resolver.set(&def_type);
@@ -53,7 +54,7 @@ impl<'a> Convertible<PosContext<'a>, Vec<GlobalStatementPos>> for GlobalStatemen
 fn on_function_implementation(
     function_implementation: FunctionImplementation,
     ctx: &mut PosContext,
-) -> Result<FunctionImplementation, QErrorPos> {
+) -> Result<FunctionImplementation, LintErrorPos> {
     let FunctionImplementation {
         name: Positioned {
             element: unresolved_function_name,
@@ -77,7 +78,7 @@ fn on_function_implementation(
 fn on_sub_implementation(
     sub_implementation: SubImplementation,
     ctx: &mut PosContext,
-) -> Result<SubImplementation, QErrorPos> {
+) -> Result<SubImplementation, LintErrorPos> {
     let SubImplementation {
         name,
         params,
@@ -106,7 +107,7 @@ fn on_sub_implementation(
 fn convert_block_hoisting_implicits(
     statements: Statements,
     ctx: &mut Context,
-) -> Result<Statements, QErrorPos> {
+) -> Result<Statements, LintErrorPos> {
     let mut result = statements.convert(ctx)?;
     let implicits = ctx.pop_context();
     let mut implicit_dim: Statements = implicits
@@ -126,7 +127,7 @@ fn convert_block_hoisting_implicits(
 fn on_statement(
     statement: Statement,
     ctx: &mut PosContext,
-) -> Result<Vec<GlobalStatementPos>, QErrorPos> {
+) -> Result<Vec<GlobalStatementPos>, LintErrorPos> {
     // a statement might be converted into multiple statements due to implicits
     let statements = vec![statement.at_pos(ctx.pos())];
     let statements = statements.convert(ctx)?;

@@ -1,8 +1,8 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_linter::QBNumberCast;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let flags: i32 = interpreter.context()[0].try_cast()?;
     let is_foreground_present = flags & 0x01 != 0;
     let is_background_present = flags & 0x02 != 0;

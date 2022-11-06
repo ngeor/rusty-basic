@@ -11,8 +11,7 @@ pub fn parse() -> impl Parser<Output = Statement> {
 mod tests {
     use crate::assert_parser_err;
     use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
-    use crate::{parse, BuiltInSub, Statement};
-    use rusty_common::*;
+    use crate::{parse, BuiltInSub, ParseError, Statement};
 
     #[test]
     fn parse_row() {
@@ -83,7 +82,7 @@ mod tests {
     fn cannot_have_trailing_comma() {
         assert_parser_err!(
             "LOCATE 1, 2,",
-            QError::syntax_error("Error: trailing comma")
+            ParseError::syntax_error("Error: trailing comma")
         );
     }
 }

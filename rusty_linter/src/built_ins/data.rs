@@ -1,30 +1,31 @@
+use crate::error::{LintError, LintErrorPos};
 use crate::NameContext;
-use rusty_common::{QError, QErrorPos, WithErrAt, WithErrNoPos};
+use rusty_common::{WithErrAt, WithErrNoPos};
 use rusty_parser::{Expression, ExpressionPos, Expressions};
 
-pub fn lint(args: &Expressions, name_context: NameContext) -> Result<(), QErrorPos> {
+pub fn lint(args: &Expressions, name_context: NameContext) -> Result<(), LintErrorPos> {
     if name_context == NameContext::Global {
         args.iter().try_for_each(require_constant)
     } else {
-        Err(QError::IllegalInSubFunction).with_err_no_pos()
+        Err(LintError::IllegalInSubFunction).with_err_no_pos()
     }
 }
 
-fn require_constant(arg: &ExpressionPos) -> Result<(), QErrorPos> {
+fn require_constant(arg: &ExpressionPos) -> Result<(), LintErrorPos> {
     match &arg.element {
         Expression::SingleLiteral(_)
         | Expression::DoubleLiteral(_)
         | Expression::StringLiteral(_)
         | Expression::IntegerLiteral(_)
         | Expression::LongLiteral(_) => Ok(()),
-        _ => Err(QError::InvalidConstant).with_err_at(arg),
+        _ => Err(LintError::InvalidConstant).with_err_at(arg),
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_linter_err;
-    use rusty_common::*;
 
     #[test]
     fn data_not_allowed_in_sub() {
@@ -33,7 +34,7 @@ mod tests {
             DATA 1, 2
         END SUB
         "#;
-        assert_linter_err!(input, QError::IllegalInSubFunction);
+        assert_linter_err!(input, LintError::IllegalInSubFunction);
     }
 
     #[test]
@@ -43,11 +44,11 @@ mod tests {
             DATA 1, 2
         END FUNCTION
         "#;
-        assert_linter_err!(input, QError::IllegalInSubFunction);
+        assert_linter_err!(input, LintError::IllegalInSubFunction);
     }
 
     #[test]
     fn data_must_be_constants() {
-        assert_linter_err!("DATA A", QError::InvalidConstant);
+        assert_linter_err!("DATA A", LintError::InvalidConstant);
     }
 }

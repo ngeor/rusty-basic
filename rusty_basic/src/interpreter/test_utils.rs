@@ -6,7 +6,7 @@ use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::screen::{CrossTermScreen, HeadlessScreen};
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
-use rusty_common::*;
+use crate::RuntimeErrorPos;
 use rusty_linter;
 use rusty_linter::{lint, HasUserDefinedTypes};
 use rusty_parser::{parse_main_file, Name};
@@ -94,7 +94,7 @@ pub fn interpret(input: &str) -> impl MockInterpreterTrait {
         .unwrap()
 }
 
-pub fn interpret_err(input: &str) -> QErrorPos {
+pub fn interpret_err(input: &str) -> RuntimeErrorPos {
     let (instruction_generator_result, mut interpreter) = mock_interpreter_for_input(input);
     interpreter
         .interpret(instruction_generator_result)
@@ -129,7 +129,7 @@ pub fn interpret_with_env(input: &str, stdlib: MockStdlib) -> impl MockInterpret
         .unwrap()
 }
 
-pub fn interpret_file(filename: &str) -> Result<impl MockInterpreterTrait, QErrorPos> {
+pub fn interpret_file(filename: &str) -> Result<impl MockInterpreterTrait, RuntimeErrorPos> {
     let file_path = format!("../fixtures/{}", filename);
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
@@ -144,7 +144,7 @@ pub fn interpret_file(filename: &str) -> Result<impl MockInterpreterTrait, QErro
 pub fn interpret_file_with_raw_input(
     filename: &str,
     raw_input: &str,
-) -> Result<impl MockInterpreterTrait, QErrorPos> {
+) -> Result<impl MockInterpreterTrait, RuntimeErrorPos> {
     let file_path = format!("../fixtures/{}", filename);
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
@@ -253,7 +253,7 @@ macro_rules! assert_interpreter_err {
     ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {
         assert_eq!(
             $crate::interpreter::test_utils::interpret_err($program),
-            ErrorEnvelope::Pos(
+            rusty_common::ErrorEnvelope::Pos(
                 $expected_err,
                 rusty_common::Position::new($expected_row, $expected_col)
             )

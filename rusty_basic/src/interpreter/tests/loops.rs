@@ -4,6 +4,7 @@ use crate::assert_prints_exact;
 use crate::assert_prints_nothing;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::test_utils::*;
+use crate::RuntimeError;
 use rusty_common::*;
 
 #[test]
@@ -74,7 +75,7 @@ fn test_for_loop_with_zero_step() {
     ";
     assert_eq!(
         interpret_err(input),
-        ErrorEnvelope::Pos(QError::ForLoopZeroStep, Position::new(2, 27))
+        ErrorEnvelope::Pos(RuntimeError::ForLoopZeroStep, Position::new(2, 27))
     );
 }
 

@@ -1,6 +1,5 @@
-use crate::parser_declaration;
 use crate::pc::{Parser, Tokenizer};
-use rusty_common::*;
+use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct LoopWhile<predicate: F>);
 
@@ -10,7 +9,7 @@ where
     F: Fn(&P::Output) -> bool,
 {
     type Output = Vec<P::Output>;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         let mut result: Vec<P::Output> = vec![];
         let mut keep_going = true;
         while keep_going {
@@ -26,7 +25,7 @@ where
             }
         }
         if result.is_empty() {
-            Err(QError::Incomplete)
+            Err(ParseError::Incomplete)
         } else {
             Ok(result)
         }

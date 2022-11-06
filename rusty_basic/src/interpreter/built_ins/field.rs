@@ -1,16 +1,17 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Field;
 use crate::interpreter::variant_casts::VariantCasts;
-use rusty_common::QError;
+use crate::RuntimeError;
 use rusty_parser::FileHandle;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let len = interpreter.context().variables().len();
     let file_handle: FileHandle = interpreter.context()[0].to_file_handle()?;
     let mut i: usize = 1;
     let mut fields: Vec<Field> = vec![];
     while i < len {
-        let width: usize = interpreter.context()[i].to_positive_int_or(QError::FieldOverflow)?;
+        let width: usize =
+            interpreter.context()[i].to_positive_int_or(RuntimeError::FieldOverflow)?;
         i += 1;
         // TODO would be great to have a pointer to a variable here, maybe revisit when implementing DEF SEG
         let name: &str = interpreter.context()[i].to_str_unchecked();

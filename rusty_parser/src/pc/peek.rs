@@ -1,6 +1,5 @@
-use crate::parser_declaration;
 use crate::pc::{Parser, Tokenizer, Undo};
-use rusty_common::*;
+use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct PeekParser);
 
@@ -11,7 +10,7 @@ where
 {
     type Output = ();
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(|item| {
             item.undo(tokenizer);
         })

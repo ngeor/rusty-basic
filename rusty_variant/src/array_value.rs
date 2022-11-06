@@ -1,11 +1,12 @@
 use crate::Variant;
-use rusty_common::QError;
 
 #[derive(Clone, Debug)]
 pub struct VArray {
     dimensions: Vec<(i32, i32)>,
     elements: Vec<Variant>,
 }
+
+pub struct SubscriptOutOfRangeError;
 
 impl VArray {
     pub fn new(dimensions: Vec<(i32, i32)>, default_variant: Variant) -> Self {
@@ -18,11 +19,11 @@ impl VArray {
         }
     }
 
-    pub fn get_element(&self, indices: &[i32]) -> Result<&Variant, QError> {
+    pub fn get_element(&self, indices: &[i32]) -> Result<&Variant, SubscriptOutOfRangeError> {
         let index = self.abs_index(indices)?;
         match self.elements.get(index) {
             Some(v) => Ok(v),
-            _ => Err(QError::SubscriptOutOfRange),
+            _ => Err(SubscriptOutOfRangeError),
         }
     }
 
@@ -34,19 +35,20 @@ impl VArray {
         self.elements.get_mut(index)
     }
 
-    pub fn get_element_mut(&mut self, indices: &[i32]) -> Result<&mut Variant, QError> {
+    pub fn get_element_mut(
+        &mut self,
+        indices: &[i32],
+    ) -> Result<&mut Variant, SubscriptOutOfRangeError> {
         let index = self.abs_index(indices)?;
         match self.elements.get_mut(index) {
             Some(v) => Ok(v),
-            _ => Err(QError::SubscriptOutOfRange),
+            _ => Err(SubscriptOutOfRangeError),
         }
     }
 
     /// Maps the indices of a multi-dimensional array element into a flat index.
-    pub fn abs_index(&self, indices: &[i32]) -> Result<usize, QError> {
-        if indices.len() != self.dimensions.len() {
-            return Err(QError::InternalError("Array indices mismatch".to_string()));
-        }
+    pub fn abs_index(&self, indices: &[i32]) -> Result<usize, SubscriptOutOfRangeError> {
+        debug_assert_eq!(indices.len(), self.dimensions.len());
         let mut index: i32 = 0;
         let mut i: i32 = indices.len() as i32 - 1;
         let mut multiplier: i32 = 1;
@@ -54,7 +56,7 @@ impl VArray {
             let arg = indices[i as usize];
             let (lbound, ubound) = self.dimensions[i as usize];
             if arg < lbound || arg > ubound {
-                return Err(QError::SubscriptOutOfRange);
+                return Err(SubscriptOutOfRangeError);
             }
 
             index += (arg - lbound) * multiplier;

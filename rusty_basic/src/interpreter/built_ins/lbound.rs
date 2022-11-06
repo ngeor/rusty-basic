@@ -1,13 +1,13 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_parser::BuiltInFunction;
 use rusty_variant::Variant;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let v: Variant = interpreter.context()[0].clone();
     let dimension: usize = match interpreter.context().variables().get(1) {
-        Some(v) => v.to_positive_int_or(QError::SubscriptOutOfRange)?,
+        Some(v) => v.to_positive_int_or(RuntimeError::SubscriptOutOfRange)?,
         _ => 1,
     };
     match v {
@@ -19,18 +19,18 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
                 );
                 Ok(())
             }
-            _ => Err(QError::SubscriptOutOfRange),
+            _ => Err(RuntimeError::SubscriptOutOfRange),
         },
-        _ => Err(QError::ArgumentTypeMismatch),
+        _ => Err(RuntimeError::TypeMismatch),
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_interpreter_err;
     use crate::assert_prints;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use rusty_common::*;
 
     #[test]
     fn test_explicit_lbound() {
@@ -74,7 +74,7 @@ mod tests {
         DIM choice$(1 TO 2, 3 TO 4)
         PRINT LBOUND(choice$, 3)
         "#;
-        assert_interpreter_err!(input, QError::SubscriptOutOfRange, 3, 15);
+        assert_interpreter_err!(input, RuntimeError::SubscriptOutOfRange, 3, 15);
     }
 
     #[test]
@@ -83,6 +83,6 @@ mod tests {
         DIM choice$(1 TO 2, 3 TO 4)
         PRINT LBOUND(choice$, 0)
         "#;
-        assert_interpreter_err!(input, QError::SubscriptOutOfRange, 3, 15);
+        assert_interpreter_err!(input, RuntimeError::SubscriptOutOfRange, 3, 15);
     }
 }

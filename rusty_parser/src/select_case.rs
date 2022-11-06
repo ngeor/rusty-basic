@@ -1,10 +1,9 @@
-use crate::expression;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::statement_separator::comments_and_whitespace_p;
 use crate::statements::ZeroOrMoreStatements;
 use crate::types::*;
-use rusty_common::*;
+use crate::{expression, ParseError};
 
 // SELECT CASE expr ' comment
 // CASE 1
@@ -77,7 +76,7 @@ struct CaseButNotElse;
 
 impl Parser for CaseButNotElse {
     type Output = ();
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         match tokenizer.read()? {
             Some(case_token) if Keyword::Case == case_token => match tokenizer.read()? {
                 Some(space_token) if TokenType::Whitespace.matches(&space_token) => {
@@ -86,13 +85,13 @@ impl Parser for CaseButNotElse {
                             tokenizer.unread(else_token);
                             tokenizer.unread(space_token);
                             tokenizer.unread(case_token);
-                            Err(QError::Incomplete)
+                            Err(ParseError::Incomplete)
                         }
                         Some(other_token) => {
                             tokenizer.unread(other_token);
                             Ok(())
                         }
-                        None => Err(QError::syntax_error(
+                        None => Err(ParseError::syntax_error(
                             "Expected: ELSE or expression after CASE",
                         )),
                     }
@@ -101,15 +100,15 @@ impl Parser for CaseButNotElse {
                     tokenizer.unread(paren_token);
                     Ok(())
                 }
-                _ => Err(QError::syntax_error(
+                _ => Err(ParseError::syntax_error(
                     "Expected: whitespace or parenthesis after CASE",
                 )),
             },
             Some(token) => {
                 tokenizer.unread(token);
-                Err(QError::Incomplete)
+                Err(ParseError::Incomplete)
             }
-            None => Err(QError::Incomplete),
+            None => Err(ParseError::Incomplete),
         }
     }
 }
@@ -338,7 +337,7 @@ mod tests {
         let input = "
         SELECT CASE1
         END SELECT";
-        assert_parser_err!(input, QError::syntax_error("Expected: CASE"), 2, 16);
+        assert_parser_err!(input, ParseError::syntax_error("Expected: CASE"), 2, 16);
     }
 
     #[test]
@@ -347,7 +346,7 @@ mod tests {
         SELECT CASE X
         CASE1
         END SELECT";
-        assert_parser_err!(input, QError::syntax_error("Expected: END"), 3, 9);
+        assert_parser_err!(input, ParseError::syntax_error("Expected: END"), 3, 9);
     }
 
     #[test]
@@ -358,7 +357,7 @@ mod tests {
         END SELECT";
         assert_parser_err!(
             input,
-            QError::syntax_error("Expected: expression after TO"),
+            ParseError::syntax_error("Expected: expression after TO"),
             3,
             18
         );
@@ -372,7 +371,7 @@ mod tests {
         END SELECT";
         assert_parser_err!(
             input,
-            QError::syntax_error("Expected: end-of-statement"),
+            ParseError::syntax_error("Expected: end-of-statement"),
             3,
             15
         );
@@ -386,7 +385,7 @@ mod tests {
         END SELECT";
         assert_parser_err!(
             input,
-            QError::syntax_error("Expected: end-of-statement"),
+            ParseError::syntax_error("Expected: end-of-statement"),
             3,
             15
         );
@@ -400,7 +399,7 @@ mod tests {
         END SELECT";
         assert_parser_err!(
             input,
-            QError::syntax_error("Expected: end-of-statement"),
+            ParseError::syntax_error("Expected: end-of-statement"),
             3,
             16
         );
@@ -414,7 +413,7 @@ mod tests {
         END SELECT";
         assert_parser_err!(
             input,
-            QError::syntax_error("Expected: end-of-statement"),
+            ParseError::syntax_error("Expected: end-of-statement"),
             3,
             15
         );

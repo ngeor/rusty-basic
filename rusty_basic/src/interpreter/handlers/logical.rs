@@ -1,9 +1,9 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_linter::CastVariant;
 use rusty_parser::TypeQualifier;
 
-pub fn and<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
+pub fn and<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), RuntimeError> {
     let a = interpreter
         .registers()
         .get_a()
@@ -16,7 +16,7 @@ pub fn and<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
     Ok(())
 }
 
-pub fn or<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
+pub fn or<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), RuntimeError> {
     let a = interpreter
         .registers()
         .get_a()
@@ -29,14 +29,14 @@ pub fn or<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
     Ok(())
 }
 
-pub fn negate_a<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
+pub fn negate_a<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), RuntimeError> {
     let a = interpreter.registers().get_a();
     let n = a.negate()?;
     interpreter.registers_mut().set_a(n);
     Ok(())
 }
 
-pub fn not_a<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), QError> {
+pub fn not_a<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), RuntimeError> {
     let a = interpreter.registers().get_a();
     let n = a.unary_not()?;
     interpreter.registers_mut().set_a(n);

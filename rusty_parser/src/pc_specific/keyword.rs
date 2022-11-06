@@ -1,7 +1,6 @@
 use crate::pc::{any_token, Parser, Seq2, Seq3, Token};
 use crate::pc_specific::{any_token_of, dollar_sign, whitespace, TokenType};
-use crate::Keyword;
-use rusty_common::*;
+use crate::{Keyword, ParseError};
 
 // TODO review usages of TokenType::Keyword
 
@@ -18,7 +17,7 @@ pub fn keyword(k: Keyword) -> impl Parser<Output = Token> {
 fn keyword_unchecked(k: Keyword) -> impl Parser<Output = Token> {
     any_token()
         .filter(move |token| &k == token)
-        .map_incomplete_err(QError::Expected(format!("Expected: {}", k)))
+        .map_incomplete_err(ParseError::Expected(format!("Expected: {}", k)))
 }
 
 // TODO 1. rename to keyword_ws like expressions 2. add ws_keyword and ws_keyword_ws

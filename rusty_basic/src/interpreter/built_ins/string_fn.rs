@@ -1,11 +1,11 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_linter::QBNumberCast;
 use rusty_parser::BuiltInFunction;
 use rusty_variant::Variant;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let count: usize = interpreter.context()[0].to_non_negative_int()?;
     let v = &interpreter.context()[1];
     let s = run_with_variant(count, v)?;
@@ -15,7 +15,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     Ok(())
 }
 
-fn run_with_variant(count: usize, v: &Variant) -> Result<String, QError> {
+fn run_with_variant(count: usize, v: &Variant) -> Result<String, RuntimeError> {
     if let Variant::VString(s) = v {
         run_with_string_argument(count, s)
     } else {
@@ -24,30 +24,30 @@ fn run_with_variant(count: usize, v: &Variant) -> Result<String, QError> {
     }
 }
 
-fn run_with_string_argument(count: usize, s: &str) -> Result<String, QError> {
-    let first_char = s.chars().next().ok_or(QError::IllegalFunctionCall)?;
+fn run_with_string_argument(count: usize, s: &str) -> Result<String, RuntimeError> {
+    let first_char = s.chars().next().ok_or(RuntimeError::IllegalFunctionCall)?;
     run_with_char(count, first_char)
 }
 
-fn run_with_ascii_code_argument(count: usize, ascii: i32) -> Result<String, QError> {
+fn run_with_ascii_code_argument(count: usize, ascii: i32) -> Result<String, RuntimeError> {
     if (0..=255).contains(&ascii) {
         let u: u8 = ascii as u8;
         run_with_char(count, u as char)
     } else {
-        Err(QError::IllegalFunctionCall)
+        Err(RuntimeError::IllegalFunctionCall)
     }
 }
 
-fn run_with_char(count: usize, ch: char) -> Result<String, QError> {
+fn run_with_char(count: usize, ch: char) -> Result<String, RuntimeError> {
     Ok(std::iter::repeat(ch).take(count).collect())
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_interpreter_err;
     use crate::assert_prints;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use rusty_common::*;
 
     #[test]
     fn string_with_ascii_code() {
@@ -61,7 +61,12 @@ mod tests {
 
     #[test]
     fn string_with_empty_string_argument() {
-        assert_interpreter_err!(r#"PRINT STRING$(5, "")"#, QError::IllegalFunctionCall, 1, 7);
+        assert_interpreter_err!(
+            r#"PRINT STRING$(5, "")"#,
+            RuntimeError::IllegalFunctionCall,
+            1,
+            7
+        );
     }
 
     #[test]
@@ -73,7 +78,7 @@ mod tests {
     fn string_with_negative_count() {
         assert_interpreter_err!(
             r#"PRINT STRING$(-1, "hello")"#,
-            QError::IllegalFunctionCall,
+            RuntimeError::IllegalFunctionCall,
             1,
             7
         );
@@ -81,11 +86,21 @@ mod tests {
 
     #[test]
     fn string_with_negative_ascii_code() {
-        assert_interpreter_err!("PRINT STRING$(10, -1)", QError::IllegalFunctionCall, 1, 7);
+        assert_interpreter_err!(
+            "PRINT STRING$(10, -1)",
+            RuntimeError::IllegalFunctionCall,
+            1,
+            7
+        );
     }
 
     #[test]
     fn string_with_too_big_ascii_code() {
-        assert_interpreter_err!("PRINT STRING$(10, 256)", QError::IllegalFunctionCall, 1, 7);
+        assert_interpreter_err!(
+            "PRINT STRING$(10, 256)",
+            RuntimeError::IllegalFunctionCall,
+            1,
+            7
+        );
     }
 }

@@ -1,6 +1,6 @@
 use crate::pc::{OrFailParser, Parser};
 use crate::pc_specific::WithPosMapper;
-use rusty_common::*;
+use crate::ParseError;
 
 pub trait SpecificTrait: Parser
 where
@@ -18,7 +18,7 @@ where
     S: Parser,
 {
     fn or_syntax_error(self, msg: &str) -> OrFailParser<Self> {
-        self.or_fail(QError::syntax_error(msg))
+        self.or_fail(ParseError::syntax_error(msg))
     }
 
     fn with_pos(self) -> WithPosMapper<Self> {

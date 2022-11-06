@@ -3,10 +3,10 @@ use std::fs::File;
 use crate::pc::{Parser, Tokenizer};
 use crate::pc_specific::create_string_tokenizer;
 use crate::types::*;
-use crate::{parse, parse_main_file, parse_main_str};
+use crate::{parse, parse_main_file, parse_main_str, ParseError, ParseErrorPos};
 use rusty_common::*;
 
-pub fn parse_something<P>(input: &str, parser: impl Parser<Output = P>) -> Result<P, QError> {
+pub fn parse_something<P>(input: &str, parser: impl Parser<Output = P>) -> Result<P, ParseError> {
     let mut tokenizer = create_string_tokenizer(input);
     parser.parse(&mut tokenizer)
 }
@@ -49,7 +49,7 @@ pub fn parse_file_no_pos(filename: &str) -> Vec<GlobalStatement> {
 /// # Panics
 ///
 /// If the parser does not have an error.
-pub fn parse_err_pos(input: &str) -> QErrorPos {
+pub fn parse_err_pos(input: &str) -> ParseErrorPos {
     parse_main_str(input).expect_err("Parser should have failed")
 }
 
@@ -59,7 +59,7 @@ pub fn parse_err_pos(input: &str) -> QErrorPos {
 /// # Panics
 ///
 /// If the parser does not have an error.
-pub fn parse_err(input: &str) -> QError {
+pub fn parse_err(input: &str) -> ParseError {
     parse_err_pos(input).into_err()
 }
 
@@ -259,7 +259,7 @@ macro_rules! assert_literal_expression {
 macro_rules! assert_parser_err {
     // TODO use this more for syntax errors
     ($input:expr, $expected_err:literal) => {
-        $crate::assert_parser_err!($input, QError::syntax_error($expected_err));
+        $crate::assert_parser_err!($input, $crate::ParseError::syntax_error($expected_err));
     };
 
     ($input:expr, $expected_err:expr) => {
@@ -269,7 +269,7 @@ macro_rules! assert_parser_err {
     ($input:expr, $expected_err:expr, $row:expr, $col:expr) => {
         assert_eq!(
             $crate::test_utils::parse_err_pos($input),
-            QErrorPos::Pos($expected_err, rusty_common::Position::new($row, $col))
+            $crate::ParseErrorPos::Pos($expected_err, rusty_common::Position::new($row, $col))
         );
     };
 }

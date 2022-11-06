@@ -1,12 +1,12 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Input;
-use rusty_common::QError;
+use crate::RuntimeError;
 use rusty_linter::qualifier_of_variant;
 use rusty_parser::{FileHandle, TypeQualifier};
 use rusty_variant::Variant;
 use std::convert::TryFrom;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let mut file_handle: FileHandle = FileHandle::default();
     let mut has_file_handle = false;
     for idx in 0..interpreter.context().variables().len() {
@@ -17,7 +17,8 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
                     has_file_handle = *f == 1;
                 } else if idx == 1 {
                     if has_file_handle {
-                        file_handle = FileHandle::try_from(*f)?;
+                        file_handle = FileHandle::try_from(*f)
+                            .map_err(|_| RuntimeError::BadFileNameOrNumber)?;
                     } else {
                         // input integer variable
                         do_input_one_var(interpreter, idx, file_handle)?;
@@ -39,7 +40,7 @@ fn do_input_one_var<S: InterpreterTrait>(
     interpreter: &mut S,
     idx: usize,
     file_handle: FileHandle,
-) -> Result<(), QError> {
+) -> Result<(), RuntimeError> {
     let raw_input: String = raw_input(interpreter, file_handle)?;
     let q: TypeQualifier = qualifier(interpreter, idx)?;
     let new_value: Variant = match q {
@@ -55,48 +56,51 @@ fn do_input_one_var<S: InterpreterTrait>(
 fn raw_input<S: InterpreterTrait>(
     interpreter: &mut S,
     file_handle: FileHandle,
-) -> Result<String, QError> {
+) -> Result<String, RuntimeError> {
     if file_handle.is_valid() {
         let file_input = interpreter
             .file_manager()
             .try_get_file_info_input(&file_handle)?;
-        file_input.input().map_err(QError::from)
+        file_input.input().map_err(RuntimeError::from)
     } else {
-        interpreter.stdin().input().map_err(QError::from)
+        interpreter.stdin().input().map_err(RuntimeError::from)
     }
 }
 
-fn qualifier<S: InterpreterTrait>(interpreter: &S, idx: usize) -> Result<TypeQualifier, QError> {
-    qualifier_of_variant(&interpreter.context()[idx])
+fn qualifier<S: InterpreterTrait>(
+    interpreter: &S,
+    idx: usize,
+) -> Result<TypeQualifier, RuntimeError> {
+    qualifier_of_variant(&interpreter.context()[idx]).map_err(RuntimeError::from)
 }
 
-fn parse_single_input(s: String) -> Result<f32, QError> {
+fn parse_single_input(s: String) -> Result<f32, RuntimeError> {
     if s.is_empty() {
         Ok(0.0)
     } else {
         s.parse::<f32>()
-            .map_err(|e| format!("Could not parse {} as float: {}", s, e).into())
+            .map_err(|e| RuntimeError::Other(format!("Could not parse {} as float: {}", s, e)))
     }
 }
 
-fn parse_int_input(s: String) -> Result<i32, QError> {
+fn parse_int_input(s: String) -> Result<i32, RuntimeError> {
     if s.is_empty() {
         Ok(0)
     } else {
         s.parse::<i32>()
-            .map_err(|e| format!("Could not parse {} as int: {}", s, e).into())
+            .map_err(|e| RuntimeError::Other(format!("Could not parse {} as int: {}", s, e)))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_has_variable;
     use crate::assert_interpreter_err;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::test_utils::{
         interpret, interpret_with_raw_input, MockInterpreterTrait,
     };
-    use rusty_common::*;
     use rusty_variant::Variant;
 
     fn assert_input<T>(
@@ -301,7 +305,7 @@ mod tests {
         CLOSE
         "#;
 
-        assert_interpreter_err!(input, QError::InputPastEndOfFile, 5, 9);
+        assert_interpreter_err!(input, RuntimeError::InputPastEndOfFile, 5, 9);
         std::fs::remove_file("test_input_string_from_file_eof.txt").unwrap_or_default();
     }
 }

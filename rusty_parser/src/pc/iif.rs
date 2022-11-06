@@ -1,5 +1,5 @@
 use crate::pc::{Parser, Tokenizer};
-use rusty_common::*;
+use crate::ParseError;
 
 pub fn iif_p<L, R>(condition: bool, left: L, right: R) -> IIfParser<L, R> {
     IIfParser::new(condition, left, right)
@@ -28,7 +28,7 @@ where
 {
     type Output = L::Output;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         if self.condition {
             self.left.parse(tokenizer)
         } else {

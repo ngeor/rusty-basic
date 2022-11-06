@@ -18,10 +18,13 @@ pub fn statement_exit_p() -> impl Parser<Output = Statement> {
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
-    use rusty_common::*;
+    use crate::ParseError;
 
     #[test]
     fn exit_without_object() {
-        assert_parser_err!("EXIT ", QError::syntax_error("Expected: FUNCTION or SUB"));
+        assert_parser_err!(
+            "EXIT ",
+            ParseError::syntax_error("Expected: FUNCTION or SUB")
+        );
     }
 }

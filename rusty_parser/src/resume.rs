@@ -40,13 +40,13 @@ fn resume_label() -> impl Parser<Output = ResumeOption> {
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
-    use rusty_common::*;
+    use crate::ParseError;
 
     #[test]
     fn resume_with_invalid_option() {
         assert_parser_err!(
             "RESUME FOR",
-            QError::syntax_error("Expected: label or NEXT or end-of-statement")
+            ParseError::syntax_error("Expected: label or NEXT or end-of-statement")
         );
     }
 }

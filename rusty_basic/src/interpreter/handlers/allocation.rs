@@ -1,4 +1,5 @@
-use rusty_common::{CaseInsensitiveString, IndexedMap, Positioned, QError};
+use crate::RuntimeError;
+use rusty_common::{CaseInsensitiveString, IndexedMap, Positioned};
 use rusty_parser::{
     BareName, Element, ElementType, ExpressionType, TypeQualifier, UserDefinedTypes,
 };
@@ -27,7 +28,7 @@ pub fn allocate_array(
     dimension_args: Vec<i32>,
     element_type: &ExpressionType,
     types: &UserDefinedTypes,
-) -> Result<Variant, QError> {
+) -> Result<Variant, RuntimeError> {
     let dimensions = to_dimensions(dimension_args)?;
     Ok(Variant::VArray(Box::new(VArray::new(
         dimensions,
@@ -35,7 +36,7 @@ pub fn allocate_array(
     ))))
 }
 
-fn to_dimensions(dimension_args: Vec<i32>) -> Result<Vec<(i32, i32)>, QError> {
+fn to_dimensions(dimension_args: Vec<i32>) -> Result<Vec<(i32, i32)>, RuntimeError> {
     let mut dimensions: Vec<(i32, i32)> = vec![];
     let mut i: usize = 0;
     while i < dimension_args.len() {
@@ -43,7 +44,7 @@ fn to_dimensions(dimension_args: Vec<i32>) -> Result<Vec<(i32, i32)>, QError> {
         i += 1;
         let ubound = dimension_args[i];
         if ubound < lbound {
-            return Err(QError::SubscriptOutOfRange);
+            return Err(RuntimeError::SubscriptOutOfRange);
         }
         i += 1;
         dimensions.push((lbound, ubound));

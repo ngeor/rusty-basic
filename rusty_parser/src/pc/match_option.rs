@@ -1,5 +1,5 @@
 use crate::pc::{ParserOnce, Tokenizer};
-use rusty_common::*;
+use crate::ParseError;
 
 pub fn match_option_p<T, LF, RF>(
     value: Option<T>,
@@ -34,7 +34,7 @@ where
 {
     type Output = L::Output;
 
-    fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         match self.value {
             Some(value) => {
                 let parser = (self.left_factory)(value);

@@ -1,6 +1,6 @@
 use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::write_printer::WritePrinter;
-use rusty_common::QError;
+use crate::RuntimeError;
 use rusty_parser::{FileAccess, FileHandle, FileMode};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
@@ -84,7 +84,7 @@ impl FileInfo {
         }
     }
 
-    pub fn get_record(&mut self, record_number: usize) -> Result<Vec<u8>, QError> {
+    pub fn get_record(&mut self, record_number: usize) -> Result<Vec<u8>, RuntimeError> {
         debug_assert!(record_number > 0);
         self.ensure_random()?;
         let offset = ((record_number - 1) * self.rec_len) as u64;
@@ -101,7 +101,7 @@ impl FileInfo {
         Ok(buffer)
     }
 
-    pub fn put_record(&mut self, record_number: usize, bytes: &[u8]) -> Result<(), QError> {
+    pub fn put_record(&mut self, record_number: usize, bytes: &[u8]) -> Result<(), RuntimeError> {
         debug_assert!(record_number > 0);
         self.ensure_random()?;
         let offset = ((record_number - 1) * self.rec_len) as u64;
@@ -111,13 +111,13 @@ impl FileInfo {
         Ok(())
     }
 
-    fn ensure_random(&self) -> Result<(), QError> {
+    fn ensure_random(&self) -> Result<(), RuntimeError> {
         if self.random.is_none() {
-            Err(QError::BadFileMode)
+            Err(RuntimeError::BadFileMode)
         } else if self.rec_len > 0 {
             Ok(())
         } else {
-            Err(QError::BadRecordLength)
+            Err(RuntimeError::BadRecordLength)
         }
     }
 }
@@ -149,9 +149,9 @@ impl FileManager {
         file_mode: FileMode,
         _file_access: FileAccess,
         rec_len: usize,
-    ) -> Result<(), QError> {
+    ) -> Result<(), RuntimeError> {
         if self.handle_map.contains_key(&handle) {
-            return Err(QError::FileAlreadyOpen);
+            return Err(RuntimeError::FileAlreadyOpen);
         }
 
         match file_mode {
@@ -183,34 +183,43 @@ impl FileManager {
         Ok(())
     }
 
-    pub fn try_get_file_info(&mut self, handle: &FileHandle) -> Result<&mut FileInfo, QError> {
-        self.handle_map.get_mut(handle).ok_or(QError::FileNotFound)
+    pub fn try_get_file_info(
+        &mut self,
+        handle: &FileHandle,
+    ) -> Result<&mut FileInfo, RuntimeError> {
+        self.handle_map
+            .get_mut(handle)
+            .ok_or(RuntimeError::FileNotFound)
     }
 
     pub fn try_get_file_info_input(
         &mut self,
         handle: &FileHandle,
-    ) -> Result<&mut FileInfoInput, QError> {
+    ) -> Result<&mut FileInfoInput, RuntimeError> {
         let file_info = self.try_get_file_info(handle)?;
-        file_info.input.as_mut().ok_or(QError::BadFileMode)
+        file_info.input.as_mut().ok_or(RuntimeError::BadFileMode)
     }
 
     pub fn try_get_file_info_output(
         &mut self,
         handle: &FileHandle,
-    ) -> Result<&mut FileInfoOutput, QError> {
+    ) -> Result<&mut FileInfoOutput, RuntimeError> {
         let file_info = self.try_get_file_info(handle)?;
-        file_info.output.as_mut().ok_or(QError::BadFileMode)
+        file_info.output.as_mut().ok_or(RuntimeError::BadFileMode)
     }
 
-    pub fn add_field_list(&mut self, handle: FileHandle, fields: Vec<Field>) -> Result<(), QError> {
+    pub fn add_field_list(
+        &mut self,
+        handle: FileHandle,
+        fields: Vec<Field>,
+    ) -> Result<(), RuntimeError> {
         // TODO if sum(field width) > rec_len, throw error
         let file_info = self.try_get_file_info(&handle)?;
         file_info.add_field_list(fields);
         Ok(())
     }
 
-    pub fn mark_current_field_list(&mut self, variable_name: &str) -> Result<(), QError> {
+    pub fn mark_current_field_list(&mut self, variable_name: &str) -> Result<(), RuntimeError> {
         for file_info in self.handle_map.values_mut() {
             for i in 0..file_info.field_lists.len() {
                 let field_list = &file_info.field_lists[i];
@@ -223,7 +232,7 @@ impl FileManager {
                 }
             }
         }
-        Err(QError::Other(format!(
+        Err(RuntimeError::Other(format!(
             "Variable {} not used in FIELD",
             variable_name
         )))

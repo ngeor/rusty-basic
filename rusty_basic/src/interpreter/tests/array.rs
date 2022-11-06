@@ -1,7 +1,7 @@
 use crate::assert_interpreter_err;
 use crate::assert_prints;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use rusty_common::*;
+use crate::RuntimeError;
 
 #[test]
 fn test_assign_one_element_bare() {
@@ -53,7 +53,7 @@ fn test_subscript_out_of_range_low_bound() {
     DIM A(1 TO 3)
     PRINT A(0)
     "#;
-    assert_interpreter_err!(input, QError::SubscriptOutOfRange, 3, 11);
+    assert_interpreter_err!(input, RuntimeError::SubscriptOutOfRange, 3, 11);
 }
 
 #[test]
@@ -62,7 +62,7 @@ fn test_subscript_out_of_range_upper_bound() {
     DIM A(3)
     PRINT A(4)
     "#;
-    assert_interpreter_err!(input, QError::SubscriptOutOfRange, 3, 11);
+    assert_interpreter_err!(input, RuntimeError::SubscriptOutOfRange, 3, 11);
 }
 
 #[test]

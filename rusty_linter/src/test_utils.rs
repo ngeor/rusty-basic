@@ -1,5 +1,4 @@
-use crate::{lint, HasUserDefinedTypes};
-use rusty_common::QErrorPos;
+use crate::{lint, HasUserDefinedTypes, LintErrorPos};
 use rusty_parser::{parse, Program};
 
 /// Lints the given string and returns the results.
@@ -26,7 +25,7 @@ pub fn linter_ok(input: &str) -> Program {
 /// # Panics
 ///
 /// If the parser has an error or if the linter did not have an error.
-pub fn linter_err(input: &str, msg: &str) -> QErrorPos {
+pub fn linter_err(input: &str, msg: &str) -> LintErrorPos {
     let program = parse(input);
     match lint(program) {
         Ok(_) => panic!("Linter should fail {}", msg),
@@ -38,7 +37,7 @@ pub fn linter_err(input: &str, msg: &str) -> QErrorPos {
 macro_rules! assert_linter_err {
     ($program:expr, $expected_err:expr) => {
         match $crate::test_utils::linter_err($program, "") {
-            QErrorPos::Pos(actual_err, _) => {
+            $crate::LintErrorPos::Pos(actual_err, _) => {
                 assert_eq!(actual_err, $expected_err);
             }
             _ => panic!("Should have an error position"),
@@ -47,7 +46,7 @@ macro_rules! assert_linter_err {
 
     ($program:expr, $expected_err:expr, $msg:expr) => {
         match $crate::test_utils::linter_err($program, format!("{}", $msg).as_ref()) {
-            QErrorPos::Pos(actual_err, _) => {
+            $crate::LintErrorPos::Pos(actual_err, _) => {
                 assert_eq!(
                     actual_err, $expected_err,
                     "'{}' failed, expected {:?} but was {:?}",
@@ -60,7 +59,7 @@ macro_rules! assert_linter_err {
 
     ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {
         match $crate::test_utils::linter_err($program, "") {
-            QErrorPos::Pos(actual_err, actual_pos) => {
+            $crate::LintErrorPos::Pos(actual_err, actual_pos) => {
                 assert_eq!(actual_err, $expected_err);
                 assert_eq!(
                     actual_pos,

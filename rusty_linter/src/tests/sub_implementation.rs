@@ -1,5 +1,5 @@
 use crate::assert_linter_err;
-use rusty_common::*;
+use crate::LintError;
 
 #[test]
 fn test_sub_param_clashing_sub_name() {
@@ -7,7 +7,7 @@ fn test_sub_param_clashing_sub_name() {
             SUB Hello(Hello)
             END SUB
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 2, 23);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 2, 23);
 }
 
 #[test]
@@ -18,7 +18,7 @@ fn test_sub_param_clashing_other_sub_name_declared_earlier() {
             SUB Goodbye(Hello)
             END SUB
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 4, 25);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 4, 25);
 }
 
 #[test]
@@ -29,7 +29,7 @@ fn test_sub_param_clashing_other_sub_name_declared_later() {
             SUB Hello
             END SUB
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 2, 25);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 2, 25);
 }
 
 #[test]
@@ -38,7 +38,7 @@ fn test_sub_param_duplicate() {
             SUB Hello(A, A)
             END SUB
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 2, 26);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 2, 26);
 }
 
 #[test]
@@ -47,7 +47,7 @@ fn test_sub_param_extended_duplicate() {
             SUB Hello(A AS INTEGER, A AS STRING)
             END SUB
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 2, 37);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 2, 37);
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn test_cannot_override_built_in_sub_with_declaration() {
             SUB Environ
             END SUB
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 4, 13);
 }
 
 #[test]
@@ -68,7 +68,7 @@ fn test_cannot_override_built_in_sub_without_declaration() {
             SUB Environ
             END SUB
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 13);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 13);
 }
 
 #[test]
@@ -81,7 +81,7 @@ fn test_by_ref_parameter_type_mismatch() {
                 N = N + 1
             END SUB
             ";
-    assert_linter_err!(program, QError::ArgumentTypeMismatch, 4, 19);
+    assert_linter_err!(program, LintError::ArgumentTypeMismatch, 4, 19);
 }
 
 #[test]
@@ -97,7 +97,7 @@ fn test_by_ref_parameter_type_mismatch_user_defined_type() {
             SUB Test(N)
             END SUB
             ";
-    assert_linter_err!(input, QError::ArgumentTypeMismatch, 7, 18);
+    assert_linter_err!(input, LintError::ArgumentTypeMismatch, 7, 18);
 }
 
 #[test]
@@ -113,7 +113,7 @@ fn test_sub_dotted_name_clashes_variable_of_user_defined_type() {
             END SUB
             ";
     // QBasic actually reports the error on the dot
-    assert_linter_err!(input, QError::DotClash, 8, 17);
+    assert_linter_err!(input, LintError::DotClash, 8, 17);
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn test_sub_dotted_name_clashes_variable_of_user_defined_type_in_other_sub() {
                 DIM A AS Card
             END SUB
             ";
-    assert_linter_err!(input, QError::DotClash, 6, 17);
+    assert_linter_err!(input, LintError::DotClash, 6, 17);
 }
 
 #[test]
@@ -147,7 +147,7 @@ fn test_sub_dotted_name_clashes_variable_of_user_defined_type_in_other_sub_follo
             SUB C.D
             END SUB
             ";
-    assert_linter_err!(input, QError::DotClash, 10, 17);
+    assert_linter_err!(input, LintError::DotClash, 10, 17);
 }
 
 #[test]
@@ -164,7 +164,7 @@ fn test_sub_param_dotted_name_clashes_variable_of_user_defined_type_in_other_sub
             SUB Oops(C.D AS INTEGER)
             END SUB
             ";
-    assert_linter_err!(input, QError::DotClash, 10, 22);
+    assert_linter_err!(input, LintError::DotClash, 10, 22);
 }
 
 #[test]
@@ -180,7 +180,7 @@ fn test_sub_param_dotted_name_clashes_param_of_user_defined_type_in_other_sub_fo
             SUB Oops(C.D AS INTEGER)
             END SUB
             ";
-    assert_linter_err!(input, QError::DotClash, 9, 22);
+    assert_linter_err!(input, LintError::DotClash, 9, 22);
 }
 
 #[test]
@@ -198,5 +198,5 @@ fn test_sub_variable_dotted_name_clashes_variable_of_user_defined_type_in_other_
                 DIM X.Y AS INTEGER
             END SUB
             ";
-    assert_linter_err!(input, QError::DotClash, 11, 21);
+    assert_linter_err!(input, LintError::DotClash, 11, 21);
 }

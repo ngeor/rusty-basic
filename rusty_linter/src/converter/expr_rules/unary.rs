@@ -1,10 +1,11 @@
 use crate::converter::expr_rules::*;
+use crate::error::{LintError, LintErrorPos};
 
 pub fn convert(
     ctx: &mut PosExprState,
     unary_operator: UnaryOperator,
     child: ExpressionPos,
-) -> Result<Expression, QErrorPos> {
+) -> Result<Expression, LintErrorPos> {
     // convert child (recursion)
     let converted_child = child.convert(ctx)?;
     // ensure operator applies to converted expr
@@ -13,7 +14,7 @@ pub fn convert(
         let unary_expr = Expression::UnaryExpression(unary_operator, Box::new(converted_child));
         Ok(unary_expr)
     } else {
-        Err(QError::TypeMismatch).with_err_at(&converted_child)
+        Err(LintError::TypeMismatch).with_err_at(&converted_child)
     }
 }
 

@@ -2,11 +2,11 @@ use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Field;
 use crate::interpreter::string_utils::to_ascii_string;
 use crate::interpreter::variant_casts::VariantCasts;
-use rusty_common::QError;
+use crate::RuntimeError;
 use rusty_parser::{BareName, FileHandle, TypeQualifier};
 use rusty_variant::Variant;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let handle: FileHandle = interpreter.context()[0].to_file_handle()?;
     let record_number: usize = interpreter.context()[1].to_record_number()?;
     let file_info = interpreter.file_manager().try_get_file_info(&handle)?;

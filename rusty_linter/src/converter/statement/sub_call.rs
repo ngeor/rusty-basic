@@ -1,7 +1,7 @@
 use crate::converter::context::Context;
 use crate::converter::traits::Convertible;
 use crate::converter::types::ExprContext;
-use rusty_common::QErrorPos;
+use crate::error::LintErrorPos;
 use rusty_parser::{BareName, BuiltInSub, Expressions, Statement};
 
 impl Context {
@@ -9,7 +9,7 @@ impl Context {
         &mut self,
         sub_name: BareName,
         args: Expressions,
-    ) -> Result<Statement, QErrorPos> {
+    ) -> Result<Statement, LintErrorPos> {
         let converted_args = args.convert_in(self, ExprContext::Argument)?;
         let opt_built_in: Option<BuiltInSub> = BuiltInSub::parse_non_keyword_sub(sub_name.as_ref());
         match opt_built_in {

@@ -11,12 +11,13 @@ use crate::converter::context::Context;
 use crate::converter::pos_context::PosContext;
 use crate::converter::traits::Convertible;
 use crate::converter::types::{DimContext, ExprContext};
+use crate::error::{LintError, LintErrorPos};
 use crate::NameContext;
 use rusty_common::*;
 use rusty_parser::{ExitObject, Statement, StatementPos, Statements};
 
 impl Convertible<Context, Option<StatementPos>> for StatementPos {
-    fn convert(self, ctx: &mut Context) -> Result<Option<StatementPos>, QErrorPos> {
+    fn convert(self, ctx: &mut Context) -> Result<Option<StatementPos>, LintErrorPos> {
         let Positioned {
             element: statement,
             pos,
@@ -30,7 +31,7 @@ impl Convertible<Context, Option<StatementPos>> for StatementPos {
 }
 
 impl<'a> Convertible<PosContext<'a>, Option<Statement>> for Statement {
-    fn convert(self, ctx: &mut PosContext) -> Result<Option<Statement>, QErrorPos> {
+    fn convert(self, ctx: &mut PosContext) -> Result<Option<Statement>, LintErrorPos> {
         match self {
             Statement::Assignment(n, e) => assignment::on_assignment(n, e, ctx).map(Some),
             // CONST is mapped to None and is filtered out
@@ -48,34 +49,32 @@ impl<'a> Convertible<PosContext<'a>, Option<Statement>> for Statement {
             Statement::Return(opt_label) => {
                 if opt_label.is_some() && ctx.is_in_subprogram() {
                     // cannot have RETURN with explicit label inside subprogram
-                    Err(QError::IllegalInSubFunction).with_err_no_pos()
+                    Err(LintError::IllegalInSubFunction).with_err_no_pos()
                 } else {
                     Ok(Statement::Return(opt_label)).map(Some)
                 }
             }
             Statement::Resume(resume_option) => {
                 if ctx.is_in_subprogram() {
-                    Err(QError::IllegalInSubFunction).with_err_no_pos()
+                    Err(LintError::IllegalInSubFunction).with_err_no_pos()
                 } else {
                     Ok(Statement::Resume(resume_option)).map(Some)
                 }
             }
             Statement::Exit(exit_object) => match ctx.names.get_name_context() {
-                NameContext::Global => {
-                    Err(QError::syntax_error("Illegal outside of subprogram")).with_err_no_pos()
-                }
+                NameContext::Global => Err(LintError::IllegalOutsideSubFunction).with_err_no_pos(),
                 NameContext::Sub => {
                     if exit_object == ExitObject::Sub {
                         Ok(Statement::Exit(exit_object)).map(Some)
                     } else {
-                        Err(QError::syntax_error("Illegal inside sub")).with_err_no_pos()
+                        Err(LintError::IllegalInSubFunction).with_err_no_pos()
                     }
                 }
                 NameContext::Function => {
                     if exit_object == ExitObject::Function {
                         Ok(Statement::Exit(exit_object)).map(Some)
                     } else {
-                        Err(QError::syntax_error("Illegal inside function")).with_err_no_pos()
+                        Err(LintError::IllegalInSubFunction).with_err_no_pos()
                     }
                 }
             },
@@ -100,7 +99,7 @@ impl<'a> Convertible<PosContext<'a>, Option<Statement>> for Statement {
 }
 
 impl Convertible for Statements {
-    fn convert(self, ctx: &mut Context) -> Result<Self, QErrorPos> {
+    fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {
         self.into_iter()
             .map(|s| s.convert(ctx))
             .map(|res| match res {

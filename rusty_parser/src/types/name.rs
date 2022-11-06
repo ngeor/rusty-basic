@@ -1,5 +1,5 @@
 use crate::types::{BareName, ExpressionType, HasExpressionType, QualifiedName, TypeQualifier};
-use rusty_common::{Positioned, QError};
+use rusty_common::Positioned;
 #[cfg(test)]
 use std::convert::TryFrom;
 
@@ -71,16 +71,6 @@ impl Name {
         left.push('.');
         left.push_str(right.as_ref());
         left
-    }
-
-    /// Tries to convert this name into a qualified name.
-    /// Fails if the name is already qualified with a different qualifier.
-    pub fn try_qualify(self, qualifier: TypeQualifier) -> Result<Self, QError> {
-        match self {
-            Self::Bare(bare_name) => Ok(Self::Qualified(bare_name, qualifier)),
-            Self::Qualified(_, q) if q != qualifier => Err(QError::DuplicateDefinition),
-            _ => Ok(self),
-        }
     }
 
     pub fn demand_bare(self) -> BareName {

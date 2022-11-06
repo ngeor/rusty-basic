@@ -1,5 +1,6 @@
+use crate::error::{LintError, LintErrorPos};
 use crate::post_linter::post_conversion_linter::PostConversionLinter;
-use rusty_common::{QError, QErrorPos, WithErrAt};
+use rusty_common::WithErrAt;
 use rusty_parser::{
     ConditionalBlock, DoLoop, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier,
 };
@@ -8,27 +9,27 @@ use rusty_parser::{
 pub struct ConditionTypeLinter {}
 
 impl ConditionTypeLinter {
-    fn ensure_expression_is_condition(expr_pos: &ExpressionPos) -> Result<(), QErrorPos> {
+    fn ensure_expression_is_condition(expr_pos: &ExpressionPos) -> Result<(), LintErrorPos> {
         match expr_pos.expression_type() {
             ExpressionType::BuiltIn(q) => {
                 if q == TypeQualifier::DollarString {
-                    Err(QError::TypeMismatch).with_err_at(expr_pos)
+                    Err(LintError::TypeMismatch).with_err_at(expr_pos)
                 } else {
                     Ok(())
                 }
             }
-            _ => Err(QError::TypeMismatch).with_err_at(expr_pos),
+            _ => Err(LintError::TypeMismatch).with_err_at(expr_pos),
         }
     }
 }
 
 impl PostConversionLinter for ConditionTypeLinter {
-    fn visit_conditional_block(&mut self, c: &ConditionalBlock) -> Result<(), QErrorPos> {
+    fn visit_conditional_block(&mut self, c: &ConditionalBlock) -> Result<(), LintErrorPos> {
         self.visit_statements(&c.statements)?;
         Self::ensure_expression_is_condition(&c.condition)
     }
 
-    fn visit_do_loop(&mut self, do_loop: &DoLoop) -> Result<(), QErrorPos> {
+    fn visit_do_loop(&mut self, do_loop: &DoLoop) -> Result<(), LintErrorPos> {
         self.visit_statements(&do_loop.statements)?;
         Self::ensure_expression_is_condition(&do_loop.condition)
     }

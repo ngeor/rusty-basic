@@ -1,5 +1,5 @@
 use crate::assert_linter_err;
-use rusty_common::*;
+use crate::LintError;
 
 #[test]
 fn test_function_param_clashing_sub_name_declared_earlier() {
@@ -10,7 +10,7 @@ fn test_function_param_clashing_sub_name_declared_earlier() {
             FUNCTION Adding(Hello)
             END FUNCTION
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 5, 29);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 5, 29);
 }
 
 #[test]
@@ -22,7 +22,7 @@ fn test_function_param_clashing_sub_name_declared_later() {
             SUB Hello
             END SUB
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 2, 29);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 2, 29);
 }
 
 #[test]
@@ -31,7 +31,7 @@ fn test_function_param_of_different_type_clashing_function_name() {
             FUNCTION Adding(Adding$)
             END FUNCTION
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 2, 29);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 2, 29);
 }
 
 #[test]
@@ -40,7 +40,7 @@ fn test_function_param_clashing_function_name_extended_same_type() {
             FUNCTION Adding(Adding AS SINGLE)
             END FUNCTION
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 2, 29);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 2, 29);
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn test_function_param_duplicate() {
             FUNCTION Adding(Adding, Adding)
             END FUNCTION
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 2, 37);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 2, 37);
 }
 
 #[test]
@@ -63,7 +63,7 @@ fn test_no_args_function_call_cannot_assign_to_variable() {
                 GetAction$ = "hello"
             END FUNCTION
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 4, 13);
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn test_function_call_without_implementation() {
             DECLARE FUNCTION Add(A, B)
             X = Add(1, 2)
             ";
-    assert_linter_err!(program, QError::SubprogramNotDefined, 2, 13);
+    assert_linter_err!(program, LintError::SubprogramNotDefined, 2, 13);
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn test_cannot_override_built_in_function_with_declaration() {
             FUNCTION Environ$
             END FUNCTION
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 4, 13);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 4, 13);
 }
 
 #[test]
@@ -93,7 +93,7 @@ fn test_cannot_override_built_in_function_without_declaration() {
             FUNCTION Environ$
             END FUNCTION
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 13);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 13);
 }
 
 #[test]
@@ -101,7 +101,7 @@ fn test_cannot_call_built_in_function_with_wrong_type() {
     let program = r#"
             PRINT "Hello", Environ%("oops")
             "#;
-    assert_linter_err!(program, QError::TypeMismatch, 2, 28);
+    assert_linter_err!(program, LintError::TypeMismatch, 2, 28);
 }
 
 #[test]
@@ -109,7 +109,7 @@ fn test_function_call_missing_with_string_arguments_gives_type_mismatch() {
     let program = "
             X = Add(\"1\", \"2\")
             ";
-    assert_linter_err!(program, QError::ArgumentTypeMismatch, 2, 21);
+    assert_linter_err!(program, LintError::ArgumentTypeMismatch, 2, 21);
 }
 
 #[test]
@@ -124,7 +124,7 @@ fn test_function_dotted_name_clashes_variable_of_user_defined_type() {
             FUNCTION A.B
             END FUNCTION
             ";
-    assert_linter_err!(input, QError::DotClash, 8, 22);
+    assert_linter_err!(input, LintError::DotClash, 8, 22);
 }
 
 #[test]
@@ -141,7 +141,7 @@ fn test_function_dotted_name_clashes_variable_of_user_defined_type_in_other_func
                 DIM A AS Card
             END FUNCTION
             ";
-    assert_linter_err!(input, QError::DotClash, 6, 22);
+    assert_linter_err!(input, LintError::DotClash, 6, 22);
 }
 
 #[test]
@@ -158,7 +158,7 @@ fn test_function_dotted_name_clashes_variable_of_user_defined_type_in_other_func
             FUNCTION C.D
             END FUNCTION
             ";
-    assert_linter_err!(input, QError::DotClash, 10, 22);
+    assert_linter_err!(input, LintError::DotClash, 10, 22);
 }
 
 #[test]
@@ -173,7 +173,7 @@ fn test_dotted_function_param_clashes_variable_of_user_defined_type() {
 
             DIM A AS Card
             "#;
-    assert_linter_err!(input, QError::DotClash, 6, 25);
+    assert_linter_err!(input, LintError::DotClash, 6, 25);
 }
 
 #[test]
@@ -188,5 +188,5 @@ fn test_user_defined_function_param_clashes_dotted_variable() {
 
             DIM A.B
             "#;
-    assert_linter_err!(input, QError::DotClash, 9, 17);
+    assert_linter_err!(input, LintError::DotClash, 9, 17);
 }

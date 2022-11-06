@@ -1,13 +1,15 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
 use crate::interpreter::Stdlib;
-use rusty_common::*;
+use crate::RuntimeError;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let s: &str = interpreter.context()[0].to_str_unchecked();
     let parts: Vec<&str> = s.split('=').collect();
     if parts.len() != 2 {
-        Err(QError::from("Invalid expression. Must be name=value."))
+        Err(RuntimeError::Other(
+            "Invalid expression. Must be name=value.".to_string(),
+        ))
     } else {
         let name = parts[0].to_string();
         let value = parts[1].to_string();

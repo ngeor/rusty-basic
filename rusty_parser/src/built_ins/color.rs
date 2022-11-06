@@ -11,7 +11,6 @@ mod tests {
     use crate::assert_parser_err;
     use crate::test_utils::*;
     use crate::*;
-    use rusty_common::*;
 
     #[test]
     fn parse_foreground_only() {
@@ -59,6 +58,11 @@ mod tests {
     #[test]
     fn parse_no_args() {
         let input = "COLOR";
-        assert_parser_err!(input, QError::syntax_error("Expected: whitespace"), 1, 6);
+        assert_parser_err!(
+            input,
+            ParseError::syntax_error("Expected: whitespace"),
+            1,
+            6
+        );
     }
 }

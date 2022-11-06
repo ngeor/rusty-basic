@@ -16,6 +16,7 @@ use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::screen::{CrossTermScreen, Screen};
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
+use crate::{RuntimeError, RuntimeErrorPos};
 use rusty_common::*;
 use rusty_linter::{HasUserDefinedTypes, QBNumberCast};
 use rusty_parser::UserDefinedTypes;
@@ -188,7 +189,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
     fn interpret(
         &mut self,
         instruction_generator_result: InstructionGeneratorResult,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), RuntimeErrorPos> {
         let InstructionGeneratorResult {
             instructions,
             statement_addresses,
@@ -296,7 +297,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
         instruction: &Instruction,
         pos: Position,
         ctx: &mut InterpretOneContext,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), RuntimeErrorPos> {
         match instruction {
             Instruction::OnErrorGoTo(address_or_label) => {
                 ctx.error_handler = ErrorHandler::Address(address_or_label.address());
@@ -387,7 +388,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
             }
             Instruction::JumpIfFalse(address_or_label) => {
                 let a = self.registers().get_a();
-                let is_true: bool = a.try_cast().with_err_at(&pos)?;
+                let is_true: bool = a.try_cast().map_err(RuntimeError::from).with_err_at(&pos)?;
                 if !is_true {
                     ctx.opt_next_index = Some(address_or_label.address());
                 }
@@ -463,7 +464,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                     });
                 }
                 _ => {
-                    return Err(QError::ReturnWithoutGoSub).with_err_at(&pos);
+                    return Err(RuntimeError::ReturnWithoutGoSub).with_err_at(&pos);
                 }
             },
             Instruction::Resume => {
@@ -500,10 +501,11 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
             Instruction::AllocateArrayIntoA(element_type) => {
                 // TODO review, too long
                 let arguments = self.context_mut().drop_arguments_for_array_allocation();
-                let r_args: Result<Vec<i32>, QError> = arguments
+                let r_args: Result<Vec<i32>, RuntimeError> = arguments
                     .iter()
                     .map(|ArgumentInfo { value, .. }| value)
                     .map(QBNumberCast::try_cast)
+                    .map(|res| res.map_err(RuntimeError::from))
                     .collect();
                 let args = r_args.with_err_at(&pos)?;
                 let v = allocate_array(args, element_type, self.user_defined_types())
@@ -557,7 +559,9 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                     });
             }
             Instruction::PrintComma => {
-                self.print_comma().map_err(QError::from).with_err_at(&pos)?;
+                self.print_comma()
+                    .map_err(RuntimeError::from)
+                    .with_err_at(&pos)?;
             }
             Instruction::PrintSemicolon => {
                 self.print_state.print_semicolon();
@@ -601,7 +605,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
         printer.move_to_next_print_zone()
     }
 
-    fn print_value_from_a(&mut self) -> Result<(), QError> {
+    fn print_value_from_a(&mut self) -> Result<(), RuntimeError> {
         let v = self.registers().get_a();
         match self.print_state.print_value_from_a(v)? {
             (Some(s), _) => {
@@ -617,7 +621,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
         Ok(())
     }
 
-    fn print_end(&mut self) -> Result<(), QError> {
+    fn print_end(&mut self) -> Result<(), RuntimeError> {
         let (opt_remaining, should_print_new_line) = self.print_state.print_end()?;
         let printer = self.choose_printer();
         if let Some(remaining) = opt_remaining {
@@ -631,11 +635,11 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
 
     /// Gets the instruction address where the most recent error occurred.
     /// Clears that address and also clears the most recent error code.
-    fn take_last_error_address(&mut self) -> Result<usize, QError> {
+    fn take_last_error_address(&mut self) -> Result<usize, RuntimeError> {
         self.last_error_code = None;
         match self.last_error_address.take() {
             Some(a) => Ok(a),
-            None => Err(QError::ResumeWithoutError),
+            None => Err(RuntimeError::ResumeWithoutError),
         }
     }
 }

@@ -2,6 +2,7 @@ use crate::converter::context::Context;
 use crate::converter::dim_rules::dim_name_state::DimNameState;
 use crate::converter::dim_rules::string_length::resolve_string_length;
 use crate::converter::traits::Convertible;
+use crate::error::{LintError, LintErrorPos};
 use crate::type_resolver::IntoTypeQualifier;
 use rusty_common::*;
 use rusty_parser::*;
@@ -10,7 +11,7 @@ pub fn on_redim_type<'a, 'b>(
     var_type: DimType,
     bare_name: &BareName,
     ctx: &mut DimNameState<'a, 'b>,
-) -> Result<(DimType, Option<RedimInfo>), QErrorPos> {
+) -> Result<(DimType, Option<RedimInfo>), LintErrorPos> {
     if let DimType::Array(array_dimensions, element_type) = var_type {
         let dimension_count = array_dimensions.len();
         let converted_array_dimensions: ArrayDimensions = array_dimensions.convert(ctx)?;
@@ -30,7 +31,7 @@ fn to_dim_type<'a, 'b>(
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
     element_dim_type: DimType,
-) -> Result<DimType, QErrorPos> {
+) -> Result<DimType, LintErrorPos> {
     match element_dim_type {
         DimType::Bare => bare_to_dim_type(ctx, bare_name, array_dimensions).with_err_no_pos(),
         DimType::BuiltIn(q, built_in_style) => {
@@ -57,14 +58,14 @@ fn bare_to_dim_type<'a, 'b>(
     ctx: &mut DimNameState<'a, 'b>,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
-) -> Result<DimType, QError> {
+) -> Result<DimType, LintError> {
     let mut found: Option<(BuiltInStyle, &VariableInfo)> = None;
     let q = bare_name.qualify(ctx);
     for (built_in_style, variable_info) in ctx.names.find_name_or_shared_in_parent(bare_name) {
         match &variable_info.redim_info {
             Some(r) => {
                 if r.dimension_count != array_dimensions.len() {
-                    return Err(QError::WrongNumberOfDimensions);
+                    return Err(LintError::WrongNumberOfDimensions);
                 }
 
                 match built_in_style {
@@ -84,7 +85,7 @@ fn bare_to_dim_type<'a, 'b>(
                 }
             }
             _ => {
-                return Err(QError::DuplicateDefinition);
+                return Err(LintError::DuplicateDefinition);
             }
         }
     }
@@ -117,7 +118,7 @@ fn built_in_to_dim_type(
     array_dimensions: &ArrayDimensions,
     q: TypeQualifier,
     built_in_style: BuiltInStyle,
-) -> Result<DimType, QError> {
+) -> Result<DimType, LintError> {
     let mut it = ctx
         .names
         .find_name_or_shared_in_parent(bare_name)
@@ -125,7 +126,7 @@ fn built_in_to_dim_type(
     if built_in_style == BuiltInStyle::Compact {
         it.try_for_each(|(built_in_style, variable_info)| {
             if built_in_style == BuiltInStyle::Extended {
-                return Err(QError::DuplicateDefinition);
+                return Err(LintError::DuplicateDefinition);
             }
             let opt_q = variable_info.expression_type.opt_qualifier();
             if opt_q.expect("Should be qualified") == q {
@@ -137,7 +138,7 @@ fn built_in_to_dim_type(
     } else {
         it.try_for_each(|(built_in_style, variable_info)| {
             if built_in_style == BuiltInStyle::Compact {
-                return Err(QError::DuplicateDefinition);
+                return Err(LintError::DuplicateDefinition);
             }
             require_built_in_array(variable_info, q)?;
             require_dimension_count(variable_info, array_dimensions.len())
@@ -146,7 +147,7 @@ fn built_in_to_dim_type(
     Ok(DimType::BuiltIn(q, built_in_style))
 }
 
-fn require_built_in_array(variable_info: &VariableInfo, q: TypeQualifier) -> Result<(), QError> {
+fn require_built_in_array(variable_info: &VariableInfo, q: TypeQualifier) -> Result<(), LintError> {
     if let ExpressionType::Array(element_type) = &variable_info.expression_type {
         if let ExpressionType::BuiltIn(existing_q) = element_type.as_ref() {
             if q == *existing_q {
@@ -154,7 +155,7 @@ fn require_built_in_array(variable_info: &VariableInfo, q: TypeQualifier) -> Res
             }
         }
     }
-    Err(QError::DuplicateDefinition)
+    Err(LintError::DuplicateDefinition)
 }
 
 fn fixed_length_string_to_dim_type<'a, 'b>(
@@ -162,14 +163,14 @@ fn fixed_length_string_to_dim_type<'a, 'b>(
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
     length_expression: &ExpressionPos,
-) -> Result<DimType, QErrorPos> {
+) -> Result<DimType, LintErrorPos> {
     let string_length: u16 = resolve_string_length(ctx, length_expression)?;
     ctx.names
         .find_name_or_shared_in_parent(bare_name)
         .into_iter()
         .try_for_each(|(built_in_style, variable_info)| {
             if built_in_style == BuiltInStyle::Compact {
-                Err(QError::DuplicateDefinition)
+                Err(LintError::DuplicateDefinition)
             } else {
                 require_fixed_length_string_array(variable_info, string_length)?;
                 require_dimension_count(variable_info, array_dimensions.len())
@@ -179,7 +180,10 @@ fn fixed_length_string_to_dim_type<'a, 'b>(
     Ok(DimType::fixed_length_string(string_length, ctx.pos()))
 }
 
-fn require_fixed_length_string_array(variable_info: &VariableInfo, len: u16) -> Result<(), QError> {
+fn require_fixed_length_string_array(
+    variable_info: &VariableInfo,
+    len: u16,
+) -> Result<(), LintError> {
     if let ExpressionType::Array(element_type) = &variable_info.expression_type {
         if let ExpressionType::FixedLengthString(existing_len) = element_type.as_ref() {
             if len == *existing_len {
@@ -187,7 +191,7 @@ fn require_fixed_length_string_array(variable_info: &VariableInfo, len: u16) -> 
             }
         }
     }
-    Err(QError::DuplicateDefinition)
+    Err(LintError::DuplicateDefinition)
 }
 
 fn user_defined_type_to_dim_type(
@@ -195,13 +199,13 @@ fn user_defined_type_to_dim_type(
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
     user_defined_type: BareNamePos,
-) -> Result<DimType, QError> {
+) -> Result<DimType, LintError> {
     ctx.names
         .find_name_or_shared_in_parent(bare_name)
         .into_iter()
         .try_for_each(|(built_in_style, variable_info)| {
             if built_in_style == BuiltInStyle::Compact {
-                Err(QError::DuplicateDefinition)
+                Err(LintError::DuplicateDefinition)
             } else {
                 require_dimension_count(variable_info, array_dimensions.len()).and_then(|_| {
                     require_user_defined_array(variable_info, &user_defined_type.element)
@@ -214,27 +218,27 @@ fn user_defined_type_to_dim_type(
 fn require_dimension_count(
     variable_info: &VariableInfo,
     dimension_count: usize,
-) -> Result<(), QError> {
+) -> Result<(), LintError> {
     if let ExpressionType::Array(_) = &variable_info.expression_type {
         match &variable_info.redim_info {
             Some(redim_info) => {
                 if redim_info.dimension_count == dimension_count {
                     Ok(())
                 } else {
-                    Err(QError::WrongNumberOfDimensions)
+                    Err(LintError::WrongNumberOfDimensions)
                 }
             }
-            _ => Err(QError::ArrayAlreadyDimensioned),
+            _ => Err(LintError::ArrayAlreadyDimensioned),
         }
     } else {
-        Err(QError::DuplicateDefinition)
+        Err(LintError::DuplicateDefinition)
     }
 }
 
 fn require_user_defined_array(
     variable_info: &VariableInfo,
     user_defined_type: &BareName,
-) -> Result<(), QError> {
+) -> Result<(), LintError> {
     if let ExpressionType::Array(element_type) = &variable_info.expression_type {
         if let ExpressionType::UserDefined(u) = element_type.as_ref() {
             if u == user_defined_type {
@@ -242,5 +246,5 @@ fn require_user_defined_array(
             }
         }
     }
-    Err(QError::DuplicateDefinition)
+    Err(LintError::DuplicateDefinition)
 }

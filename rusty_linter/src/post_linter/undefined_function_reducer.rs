@@ -1,7 +1,7 @@
 use super::expression_reducer::*;
 use crate::casting::binary_cast;
+use crate::error::LintErrorPos;
 use crate::HasFunctions;
-use rusty_common::*;
 use rusty_parser::Expression;
 
 /// Finds undefined functions and converts them to zeroes.
@@ -13,7 +13,7 @@ impl<'a, R> ExpressionReducer for UndefinedFunctionReducer<'a, R>
 where
     R: HasFunctions,
 {
-    fn visit_expression(&mut self, expression: Expression) -> Result<Expression, QErrorPos> {
+    fn visit_expression(&mut self, expression: Expression) -> Result<Expression, LintErrorPos> {
         match expression {
             Expression::BinaryExpression(op, left, right, _) => {
                 let mapped_left = self.visit_expression_pos(*left)?;

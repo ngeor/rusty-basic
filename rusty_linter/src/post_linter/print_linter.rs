@@ -1,21 +1,22 @@
 use super::post_conversion_linter::PostConversionLinter;
+use crate::error::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::{ExpressionType, HasExpressionType, Print, PrintArg, TypeQualifier};
 
 pub struct PrintLinter;
 
 impl PostConversionLinter for PrintLinter {
-    fn visit_print(&mut self, print: &Print) -> Result<(), QErrorPos> {
+    fn visit_print(&mut self, print: &Print) -> Result<(), LintErrorPos> {
         if let Some(f) = &print.format_string {
             if f.expression_type() != ExpressionType::BuiltIn(TypeQualifier::DollarString) {
-                return Err(QError::TypeMismatch).with_err_at(f);
+                return Err(LintError::TypeMismatch).with_err_at(f);
             }
         }
         for print_arg in &print.args {
             if let PrintArg::Expression(expr_pos) = print_arg {
                 let type_definition = expr_pos.expression_type();
                 if let ExpressionType::UserDefined(_) = type_definition {
-                    return Err(QError::TypeMismatch).with_err_at(expr_pos);
+                    return Err(LintError::TypeMismatch).with_err_at(expr_pos);
                 }
             }
         }
@@ -38,6 +39,6 @@ mod tests {
 
         DIM c AS Card
         PRINT c";
-        assert_linter_err!(input, QError::TypeMismatch, 8, 15);
+        assert_linter_err!(input, LintError::TypeMismatch, 8, 15);
     }
 }

@@ -1,5 +1,6 @@
 use super::post_conversion_linter::PostConversionLinter;
 use super::user_defined_function_linter::lint_call_args;
+use crate::error::{LintError, LintErrorPos};
 use crate::HasSubs;
 use rusty_common::*;
 use rusty_parser::Expressions;
@@ -16,12 +17,12 @@ where
         &mut self,
         name: &CaseInsensitiveString,
         args: &Expressions,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         match self.context.subs().get(name) {
             Some(sub_signature_pos) => {
                 lint_call_args(args, sub_signature_pos.element.param_types())
             }
-            None => Err(QError::SubprogramNotDefined).with_err_no_pos(),
+            None => Err(LintError::SubprogramNotDefined).with_err_no_pos(),
         }
     }
 }

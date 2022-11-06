@@ -1,4 +1,5 @@
 use super::{Instruction, InstructionGenerator, Visitor};
+use crate::RuntimeError;
 use rusty_common::*;
 use rusty_parser::{
     ConditionalBlock, DoLoop, DoLoopConditionKind, DoLoopConditionPosition, Expression,
@@ -93,7 +94,7 @@ impl InstructionGenerator {
                 self.jump("out-of-for", pos);
                 // Zero step
                 self.label("zero", pos);
-                self.push(Instruction::Throw(QError::ForLoopZeroStep), step_pos);
+                self.push(Instruction::Throw(RuntimeError::ForLoopZeroStep), step_pos);
                 self.label("out-of-for", pos);
             }
             None => {

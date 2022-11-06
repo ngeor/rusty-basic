@@ -4,13 +4,14 @@ use crate::converter::expr_rules::variable::{
 };
 use crate::converter::expr_rules::*;
 use crate::converter::types::ExprContext;
+use crate::error::{LintError, LintErrorPos};
 use crate::HasUserDefinedTypes;
 
 pub fn convert(
     ctx: &mut PosExprState,
     left_side: Box<Expression>,
     property_name: Name,
-) -> Result<Expression, QErrorPos> {
+) -> Result<Expression, LintErrorPos> {
     // can we fold it into a name?
     let opt_folded_name = try_fold(&left_side, property_name.clone());
     if let Some(folded_name) = opt_folded_name {
@@ -87,7 +88,7 @@ pub fn convert(
         }
         _ => {
             // this cannot possibly have a dot property
-            Err(QError::TypeMismatch).with_err_no_pos()
+            Err(LintError::TypeMismatch).with_err_no_pos()
         }
     }
 }
@@ -105,7 +106,7 @@ fn existing_property_expression_type(
     expression_type: &ExpressionType,
     property_name: Name,
     allow_unresolved: bool,
-) -> Result<Expression, QErrorPos> {
+) -> Result<Expression, LintErrorPos> {
     match expression_type {
         ExpressionType::UserDefined(user_defined_type_name) => {
             existing_property_user_defined_type_name(
@@ -119,13 +120,13 @@ fn existing_property_expression_type(
             if allow_unresolved {
                 match try_fold(&resolved_left_side, property_name) {
                     Some(folded_name) => Ok(add_as_new_implicit_var(ctx, folded_name)),
-                    _ => Err(QError::TypeMismatch).with_err_no_pos(),
+                    _ => Err(LintError::TypeMismatch).with_err_no_pos(),
                 }
             } else {
-                Err(QError::TypeMismatch).with_err_no_pos()
+                Err(LintError::TypeMismatch).with_err_no_pos()
             }
         }
-        _ => Err(QError::TypeMismatch).with_err_no_pos(),
+        _ => Err(LintError::TypeMismatch).with_err_no_pos(),
     }
 }
 
@@ -134,14 +135,14 @@ fn existing_property_user_defined_type_name(
     resolved_left_side: Expression,
     user_defined_type_name: &BareName,
     property_name: Name,
-) -> Result<Expression, QErrorPos> {
+) -> Result<Expression, LintErrorPos> {
     match ctx.user_defined_types().get(user_defined_type_name) {
         Some(user_defined_type) => existing_property_user_defined_type(
             resolved_left_side,
             user_defined_type,
             property_name,
         ),
-        _ => Err(QError::TypeNotDefined).with_err_no_pos(),
+        _ => Err(LintError::TypeNotDefined).with_err_no_pos(),
     }
 }
 
@@ -149,12 +150,12 @@ fn existing_property_user_defined_type(
     resolved_left_side: Expression,
     user_defined_type: &UserDefinedType,
     property_name: Name,
-) -> Result<Expression, QErrorPos> {
-    match user_defined_type.demand_element_by_name(&property_name) {
+) -> Result<Expression, LintErrorPos> {
+    match demand_element_by_name(user_defined_type, &property_name) {
         Ok(element_type) => {
             existing_property_element_type(resolved_left_side, element_type, property_name)
         }
-        Err(e) => Err(e).with_err_no_pos(),
+        Err(e) => Err(LintError::from(e)).with_err_no_pos(),
     }
 }
 
@@ -162,7 +163,7 @@ fn existing_property_element_type(
     resolved_left_side: Expression,
     element_type: &ElementType,
     property_name: Name,
-) -> Result<Expression, QErrorPos> {
+) -> Result<Expression, LintErrorPos> {
     let bare_name = property_name.into();
     let property_name = Name::Bare(bare_name);
     Ok(Expression::Property(
@@ -170,4 +171,28 @@ fn existing_property_element_type(
         property_name,
         element_type.expression_type(),
     ))
+}
+
+fn demand_element_by_name<'a>(
+    user_defined_type: &'a UserDefinedType,
+    element_name: &Name,
+) -> Result<&'a ElementType, LintError> {
+    let element_type = find_element_type(user_defined_type, element_name.bare_name())
+        .ok_or(LintError::ElementNotDefined)?;
+    if element_type.can_be_referenced_by_property_name(element_name) {
+        Ok(element_type)
+    } else {
+        Err(LintError::TypeMismatch)
+    }
+}
+
+fn find_element_type<'a>(
+    user_defined_type: &'a UserDefinedType,
+    element_name: &BareName,
+) -> Option<&'a ElementType> {
+    user_defined_type
+        .elements()
+        .map(|Positioned { element, .. }| element)
+        .find(|x| &x.name == element_name)
+        .map(|x| &x.element_type)
 }

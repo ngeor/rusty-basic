@@ -1,23 +1,22 @@
-use crate::parser_declaration;
 use crate::pc::{NonOptParser, Parser, Tokenizer};
-use rusty_common::{ParserErrorTrait, QError};
+use crate::{parser_declaration, ParseError, ParserErrorTrait};
 
 struct StaticErrorMapper {
-    target: QError,
+    target: ParseError,
 }
 
 impl StaticErrorMapper {
-    pub fn ensure_complete(target: QError) -> Self {
+    pub fn ensure_complete(target: ParseError) -> Self {
         debug_assert!(!target.is_incomplete());
         Self { target }
     }
 
-    pub fn ensure_incomplete(target: QError) -> Self {
+    pub fn ensure_incomplete(target: ParseError) -> Self {
         debug_assert!(target.is_incomplete());
         Self { target }
     }
 
-    fn map_err(&self, err: QError) -> QError {
+    fn map_err(&self, err: ParseError) -> ParseError {
         if err.is_incomplete() {
             self.target.clone()
         } else {
@@ -32,7 +31,7 @@ pub struct MapIncompleteErrParser<P> {
 }
 
 impl<P> MapIncompleteErrParser<P> {
-    pub fn new(parser: P, err: QError) -> Self {
+    pub fn new(parser: P, err: ParseError) -> Self {
         Self {
             parser,
             static_error_mapper: StaticErrorMapper::ensure_incomplete(err),
@@ -46,7 +45,7 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         self.parser
             .parse(tokenizer)
             .map_err(|err| self.static_error_mapper.map_err(err))
@@ -59,7 +58,7 @@ pub struct OrFailParser<P> {
 }
 
 impl<P> OrFailParser<P> {
-    pub fn new(parser: P, err: QError) -> Self {
+    pub fn new(parser: P, err: ParseError) -> Self {
         Self {
             parser,
             static_error_mapper: StaticErrorMapper::ensure_complete(err),
@@ -73,7 +72,7 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         self.parser
             .parse(tokenizer)
             .map_err(|err| self.static_error_mapper.map_err(err))
@@ -90,7 +89,7 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         self.parser
             .parse(tokenizer)
             .map_err(ParserErrorTrait::no_incomplete)

@@ -1,12 +1,12 @@
 use crate::assert_linter_err;
-use rusty_common::*;
+use crate::LintError;
 
 #[test]
 fn exit_function_not_allowed_in_global_module() {
     let input = "
     EXIT FUNCTION
     ";
-    assert_linter_err!(input, QError::syntax_error("Illegal outside of subprogram"));
+    assert_linter_err!(input, LintError::IllegalOutsideSubFunction);
 }
 
 #[test]
@@ -16,7 +16,7 @@ fn exit_sub_not_allowed_in_function() {
     EXIT SUB
     END FUNCTION
     ";
-    assert_linter_err!(input, QError::syntax_error("Illegal inside function"));
+    assert_linter_err!(input, LintError::IllegalInSubFunction);
 }
 
 #[test]
@@ -24,7 +24,7 @@ fn exit_sub_not_allowed_in_global_module() {
     let input = "
     EXIT SUB
     ";
-    assert_linter_err!(input, QError::syntax_error("Illegal outside of subprogram"));
+    assert_linter_err!(input, LintError::IllegalOutsideSubFunction);
 }
 
 #[test]
@@ -34,5 +34,5 @@ fn exit_function_not_allowed_in_sub() {
     EXIT FUNCTION
     END SUB
     ";
-    assert_linter_err!(input, QError::syntax_error("Illegal inside sub"));
+    assert_linter_err!(input, LintError::IllegalInSubFunction);
 }

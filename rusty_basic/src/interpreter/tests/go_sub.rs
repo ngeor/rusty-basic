@@ -2,7 +2,7 @@ use crate::assert_interpreter_err;
 use crate::assert_prints;
 use crate::assert_prints_exact;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use rusty_common::*;
+use crate::RuntimeError;
 
 #[test]
 fn go_sub() {
@@ -74,7 +74,7 @@ fn return_without_go_sub() {
     Alpha:
     PRINT "hi"
     "#;
-    assert_interpreter_err!(input, QError::ReturnWithoutGoSub, 2, 5);
+    assert_interpreter_err!(input, RuntimeError::ReturnWithoutGoSub, 2, 5);
 }
 
 #[test]

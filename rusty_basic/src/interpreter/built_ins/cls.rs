@@ -1,8 +1,8 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Printer;
-use rusty_common::*;
+use crate::RuntimeError;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     match interpreter.screen().get_view_print() {
         Some((start_row, end_row)) => {
             // we don't have a better way of doing this

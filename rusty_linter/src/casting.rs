@@ -1,5 +1,6 @@
+use crate::error::{LintError, LintErrorPos};
 use crate::CanCastTo;
-use rusty_common::{QError, QErrorPos, WithErrAt};
+use rusty_common::WithErrAt;
 use rusty_parser::{
     Expression, ExpressionPos, ExpressionType, HasExpressionType, Operator, TypeQualifier,
 };
@@ -8,7 +9,7 @@ pub fn binary_cast(
     left: ExpressionPos,
     right: ExpressionPos,
     op: Operator,
-) -> Result<Expression, QErrorPos> {
+) -> Result<Expression, LintErrorPos> {
     // get the types
     let t_left = left.expression_type();
     let t_right = right.expression_type();
@@ -20,7 +21,7 @@ pub fn binary_cast(
             Box::new(right),
             type_definition,
         )),
-        None => Err(QError::TypeMismatch).with_err_at(&right),
+        None => Err(LintError::TypeMismatch).with_err_at(&right),
     }
 }
 

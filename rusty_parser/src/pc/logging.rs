@@ -1,7 +1,6 @@
-use crate::parser_declaration;
 use crate::pc::parsers::Parser;
 use crate::pc::tokenizers::Tokenizer;
-use rusty_common::*;
+use crate::{parser_declaration, ParseError};
 
 parser_declaration!(
     #[allow(dead_code)]
@@ -27,7 +26,7 @@ where
     P: Parser,
 {
     type Output = P::Output;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         println!(
             "{}{} Parsing non-opt current position {:?} peek token {}",
             indentation(),

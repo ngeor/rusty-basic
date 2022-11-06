@@ -1,12 +1,12 @@
 use crate::assert_linter_err;
-use rusty_common::*;
+use crate::LintError;
 
 #[test]
 fn on_error_go_to_missing_label() {
     let input = r#"
     ON ERROR GOTO ErrTrap
     "#;
-    assert_linter_err!(input, QError::LabelNotDefined, 2, 5);
+    assert_linter_err!(input, LintError::LabelNotDefined, 2, 5);
 }
 
 #[test]
@@ -19,5 +19,5 @@ fn on_error_must_use_global_label() {
             SYSTEM
     END SUB
     "#;
-    assert_linter_err!(input, QError::LabelNotDefined, 3, 9);
+    assert_linter_err!(input, LintError::LabelNotDefined, 3, 9);
 }

@@ -2,10 +2,10 @@ use super::peek::INDICATOR_KEYS_ADDRESS;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::keyboard::set_indicator_keys;
 use crate::interpreter::variant_casts::VariantCasts;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_linter::QBNumberCast;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let address: usize = interpreter.context()[0].to_non_negative_int()?;
     let value: i32 = interpreter.context()[1].try_cast()?;
     if (0..256).contains(&value) {
@@ -17,11 +17,11 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
             interpreter.context_mut().poke(seg, address, b)
         }
     } else {
-        Err(QError::IllegalFunctionCall)
+        Err(RuntimeError::IllegalFunctionCall)
     }
 }
 
-fn zero_seg(address: usize, value: u8) -> Result<(), QError> {
+fn zero_seg(address: usize, value: u8) -> Result<(), RuntimeError> {
     if address == INDICATOR_KEYS_ADDRESS {
         unsafe { set_indicator_keys(value) }
     } else {

@@ -1,6 +1,5 @@
-use crate::parser_declaration;
 use crate::pc::{Parser, Tokenizer};
-use rusty_common::{ParserErrorTrait, QError};
+use crate::{parser_declaration, ParseError, ParserErrorTrait};
 parser_declaration!(pub struct NegateParser);
 
 impl<P> Parser for NegateParser<P>
@@ -9,9 +8,9 @@ where
 {
     type Output = ();
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
-            Ok(_) => Err(QError::Incomplete),
+            Ok(_) => Err(ParseError::Incomplete),
             Err(err) if err.is_incomplete() => Ok(()),
             Err(err) => Err(err),
         }

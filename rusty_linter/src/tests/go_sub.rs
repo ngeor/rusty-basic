@@ -1,5 +1,5 @@
 use crate::assert_linter_err;
-use rusty_common::*;
+use crate::LintError;
 
 #[test]
 fn return_with_explicit_label_is_illegal_in_sub() {
@@ -13,7 +13,7 @@ fn return_with_explicit_label_is_illegal_in_sub() {
 
     END SUB
     "#;
-    assert_linter_err!(input, QError::IllegalInSubFunction, 7, 5);
+    assert_linter_err!(input, LintError::IllegalInSubFunction, 7, 5);
 }
 
 #[test]
@@ -21,7 +21,7 @@ fn go_sub_missing_label() {
     let input = r#"
     GOSUB Alpha
     "#;
-    assert_linter_err!(input, QError::LabelNotDefined, 2, 5);
+    assert_linter_err!(input, LintError::LabelNotDefined, 2, 5);
 }
 
 #[test]
@@ -29,5 +29,5 @@ fn return_missing_label() {
     let input = r#"
     RETURN Alpha
     "#;
-    assert_linter_err!(input, QError::LabelNotDefined, 2, 5);
+    assert_linter_err!(input, LintError::LabelNotDefined, 2, 5);
 }

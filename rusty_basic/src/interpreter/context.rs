@@ -2,6 +2,7 @@ use crate::instruction_generator::{Path, RootPath};
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::byte_size::QByteSize;
 use crate::interpreter::variables::Variables;
+use crate::RuntimeError;
 use rusty_common::*;
 use rusty_linter::{QBNumberCast, SubprogramName};
 use rusty_parser::{BareName, BuiltInFunction, TypeQualifier};
@@ -214,7 +215,7 @@ impl Context {
         self.memory_blocks[memory_block_index].decrease_ref_count()
     }
 
-    pub fn calculate_varptr(&self, path: &Path) -> Result<usize, QError> {
+    pub fn calculate_varptr(&self, path: &Path) -> Result<usize, RuntimeError> {
         match path {
             Path::Root(RootPath { name, shared }) => {
                 // figure out the memory block where the variable lives
@@ -257,7 +258,7 @@ impl Context {
         }
     }
 
-    fn find_value_in_caller_context(&self, path: &Path) -> Result<&Variant, QError> {
+    fn find_value_in_caller_context(&self, path: &Path) -> Result<&Variant, RuntimeError> {
         match path {
             Path::Root(RootPath { name, shared }) => {
                 let memory_block_index = if *shared {
@@ -268,22 +269,22 @@ impl Context {
                 self.memory_blocks[memory_block_index]
                     .variables
                     .get_by_name(name)
-                    .ok_or(QError::VariableRequired)
+                    .ok_or(RuntimeError::VariableRequired)
             }
             Path::ArrayElement(parent_path, indices) => {
                 match self.find_value_in_caller_context(parent_path.as_ref())? {
                     Variant::VArray(v_arr) => {
                         let int_indices: Vec<i32> = indices.try_cast()?;
-                        v_arr.get_element(&int_indices)
+                        v_arr.get_element(&int_indices).map_err(RuntimeError::from)
                     }
                     _ => panic!("Expected array"),
                 }
             }
             Path::Property(parent_path, property_name) => {
                 match self.find_value_in_caller_context(parent_path.as_ref())? {
-                    Variant::VUserDefined(v_u) => {
-                        v_u.get(property_name).ok_or(QError::ElementNotDefined)
-                    }
+                    Variant::VUserDefined(v_u) => v_u
+                        .get(property_name)
+                        .ok_or(RuntimeError::ElementNotDefined),
                     _ => panic!("Expected user defined type"),
                 }
             }
@@ -329,9 +330,9 @@ impl Context {
         }
     }
 
-    pub fn peek(&self, seg: usize, address: usize) -> Result<u8, QError> {
+    pub fn peek(&self, seg: usize, address: usize) -> Result<u8, RuntimeError> {
         if !(VAR_SEG_BASE..65_536).contains(&seg) {
-            return Err(QError::SubscriptOutOfRange);
+            return Err(RuntimeError::SubscriptOutOfRange);
         }
         if seg == VAR_SEG_BASE {
             // not an array element
@@ -362,12 +363,12 @@ impl Context {
                 }
             }
         }
-        Err(QError::SubscriptOutOfRange)
+        Err(RuntimeError::SubscriptOutOfRange)
     }
 
-    pub fn poke(&mut self, seg: usize, address: usize, byte_value: u8) -> Result<(), QError> {
+    pub fn poke(&mut self, seg: usize, address: usize, byte_value: u8) -> Result<(), RuntimeError> {
         if !(VAR_SEG_BASE..65_536).contains(&seg) {
-            return Err(QError::SubscriptOutOfRange);
+            return Err(RuntimeError::SubscriptOutOfRange);
         }
         if seg == VAR_SEG_BASE {
             // not an array element
@@ -397,7 +398,7 @@ impl Context {
                 }
             }
         }
-        Err(QError::SubscriptOutOfRange)
+        Err(RuntimeError::SubscriptOutOfRange)
     }
 }
 
@@ -492,9 +493,10 @@ impl MemoryBlock {
     }
 }
 
-fn address_offset_of_element(v: &VArray, indices: &[i32]) -> Result<usize, QError> {
+fn address_offset_of_element(v: &VArray, indices: &[i32]) -> Result<usize, RuntimeError> {
     v.abs_index(indices)
         .map(|abs_index| abs_index * v.byte_size() / v.len())
+        .map_err(RuntimeError::from)
 }
 
 fn address_offset_of_property(v: &UserDefinedTypeValue, name: &CaseInsensitiveString) -> usize {
@@ -507,11 +509,11 @@ fn address_offset_of_property(v: &UserDefinedTypeValue, name: &CaseInsensitiveSt
 
 pub trait PeekByte {
     /// Gets the byte stored at the specific relative address in the given value.
-    fn peek_byte(&self, address: usize) -> Result<u8, QError>;
+    fn peek_byte(&self, address: usize) -> Result<u8, RuntimeError>;
 }
 
 impl PeekByte for Variant {
-    fn peek_byte(&self, address: usize) -> Result<u8, QError> {
+    fn peek_byte(&self, address: usize) -> Result<u8, RuntimeError> {
         match self {
             Self::VInteger(i) => {
                 let bytes = i32_to_bytes(*i);
@@ -523,22 +525,24 @@ impl PeekByte for Variant {
 }
 
 impl PeekByte for VArray {
-    fn peek_byte(&self, address: usize) -> Result<u8, QError> {
+    fn peek_byte(&self, address: usize) -> Result<u8, RuntimeError> {
         let element_size = self.byte_size() / self.len();
         debug_assert!(element_size > 0);
         let element_index = address / element_size;
         let offset = address % element_size;
-        let element = self.get(element_index).ok_or(QError::SubscriptOutOfRange)?;
+        let element = self
+            .get(element_index)
+            .ok_or(RuntimeError::SubscriptOutOfRange)?;
         element.peek_byte(offset)
     }
 }
 
 pub trait PokeByte {
-    fn poke_byte(&mut self, address: usize, value: u8) -> Result<(), QError>;
+    fn poke_byte(&mut self, address: usize, value: u8) -> Result<(), RuntimeError>;
 }
 
 impl PokeByte for Variant {
-    fn poke_byte(&mut self, address: usize, value: u8) -> Result<(), QError> {
+    fn poke_byte(&mut self, address: usize, value: u8) -> Result<(), RuntimeError> {
         match self {
             Self::VInteger(i) => {
                 let mut bytes = i32_to_bytes(*i);
@@ -552,14 +556,14 @@ impl PokeByte for Variant {
 }
 
 impl PokeByte for VArray {
-    fn poke_byte(&mut self, address: usize, value: u8) -> Result<(), QError> {
+    fn poke_byte(&mut self, address: usize, value: u8) -> Result<(), RuntimeError> {
         let element_size = self.byte_size() / self.len();
         debug_assert!(element_size > 0);
         let element_index = address / element_size;
         let offset = address % element_size;
         let element = self
             .get_mut(element_index)
-            .ok_or(QError::SubscriptOutOfRange)?;
+            .ok_or(RuntimeError::SubscriptOutOfRange)?;
         element.poke_byte(offset, value)
     }
 }

@@ -1,7 +1,6 @@
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::{DefType, Keyword, LetterRange, TypeQualifier};
-use rusty_common::*;
+use crate::{DefType, Keyword, LetterRange, ParseError, TypeQualifier};
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>
 // DefKeyword   ::= DEFSNG|DEFDBL|DEFSTR|DEFINT|DEFLNG
@@ -41,7 +40,7 @@ fn letter_range() -> impl Parser<Output = LetterRange> {
                 if l < r {
                     Ok(LetterRange::Range(l, r))
                 } else {
-                    Err(QError::syntax_error("Invalid letter range"))
+                    Err(ParseError::syntax_error("Invalid letter range"))
                 }
             }
             None => Ok(LetterRange::Single(l)),
@@ -52,7 +51,7 @@ fn letter() -> impl Parser<Output = char> {
     any_token_of(TokenType::Identifier)
         .filter(|token| token.text.chars().count() == 1)
         .map(token_to_char)
-        .map_incomplete_err(QError::expected("Expected: letter"))
+        .map_incomplete_err(ParseError::expected("Expected: letter"))
 }
 
 fn token_to_char(token: Token) -> char {
@@ -61,7 +60,6 @@ fn token_to_char(token: Token) -> char {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::test_utils::*;
     use crate::*;
     use crate::{assert_def_type, assert_parser_err};
@@ -112,14 +110,23 @@ mod tests {
 
     #[test]
     fn test_parse_def_int_word_instead_of_letter() {
-        assert_parser_err!("DEFINT HELLO", QError::syntax_error("Expected: letter"));
-        assert_parser_err!("DEFINT HELLO,Z", QError::syntax_error("Expected: letter"));
-        assert_parser_err!("DEFINT A,HELLO", QError::syntax_error("Expected: letter"));
+        assert_parser_err!("DEFINT HELLO", ParseError::syntax_error("Expected: letter"));
+        assert_parser_err!(
+            "DEFINT HELLO,Z",
+            ParseError::syntax_error("Expected: letter")
+        );
+        assert_parser_err!(
+            "DEFINT A,HELLO",
+            ParseError::syntax_error("Expected: letter")
+        );
     }
 
     #[test]
     fn test_parse_def_int_reverse_range() {
-        assert_parser_err!("DEFINT Z-A", QError::syntax_error("Invalid letter range"));
+        assert_parser_err!(
+            "DEFINT Z-A",
+            ParseError::syntax_error("Invalid letter range")
+        );
     }
 
     #[test]

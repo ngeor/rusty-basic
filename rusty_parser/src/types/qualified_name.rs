@@ -1,6 +1,7 @@
 use crate::types::{BareName, Name, TypeQualifier};
 use rusty_common::*;
 // TODO #[cfg(test)]
+use crate::ParseError;
 use std::convert::TryFrom;
 
 /// A qualified name is a bare name followed by a built-in type qualifier.
@@ -32,8 +33,8 @@ impl From<QualifiedName> for Name {
 
 // TODO #[cfg(test)]
 impl TryFrom<&str> for QualifiedName {
-    type Error = QError;
-    fn try_from(s: &str) -> Result<QualifiedName, QError> {
+    type Error = ParseError;
+    fn try_from(s: &str) -> Result<QualifiedName, ParseError> {
         let mut buf = s.to_owned();
         let last_ch: char = buf.pop().unwrap();
         TypeQualifier::try_from(last_ch).map(|q| QualifiedName::new(BareName::new(buf), q))

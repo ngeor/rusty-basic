@@ -1,15 +1,15 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
-use rusty_common::QError;
+use crate::RuntimeError;
 use rusty_parser::FileHandle;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let file_handles: Vec<FileHandle> = interpreter
         .context()
         .variables()
         .iter()
         .map(VariantCasts::to_file_handle)
-        .collect::<Result<Vec<FileHandle>, QError>>()?;
+        .collect::<Result<Vec<FileHandle>, RuntimeError>>()?;
     if file_handles.is_empty() {
         interpreter.file_manager().close_all();
     } else {

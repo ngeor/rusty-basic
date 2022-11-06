@@ -1,6 +1,5 @@
-use crate::binary_parser_declaration;
 use crate::pc::*;
-use rusty_common::*;
+use crate::{binary_parser_declaration, ParseError};
 
 binary_parser_declaration!(pub struct GuardPC);
 
@@ -10,7 +9,7 @@ where
     R: Parser + NonOptParser,
 {
     type Output = <R as Parser>::Output;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         self.left.parse(tokenizer)?;
         self.right.parse(tokenizer)
     }

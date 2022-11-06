@@ -129,13 +129,13 @@ mod tests {
     #[test]
     fn test_string_fixed_length_function_param_not_allowed() {
         let input = "DECLARE FUNCTION Echo(X AS STRING * 5)";
-        assert_parser_err!(input, QError::syntax_error("Expected: )"));
+        assert_parser_err!(input, ParseError::syntax_error("Expected: )"));
     }
 
     #[test]
     fn test_string_fixed_length_sub_param_not_allowed() {
         let input = "DECLARE SUB Echo(X AS STRING * 5)";
-        assert_parser_err!(input, QError::syntax_error("Expected: )"));
+        assert_parser_err!(input, ParseError::syntax_error("Expected: )"));
     }
 
     #[test]
@@ -159,7 +159,7 @@ mod tests {
             "DECLARE SUB Echo(XY AS Ca.rd)",
         ];
         for input in inputs {
-            assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+            assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
         }
     }
 

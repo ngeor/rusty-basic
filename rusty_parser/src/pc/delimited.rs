@@ -1,5 +1,5 @@
 use crate::pc::{Parser, ZipValue};
-use rusty_common::*;
+use crate::ParseError;
 
 /// Represents a value that has is followed by optional delimiter.
 pub trait Delimited<T> {
@@ -37,7 +37,7 @@ impl<L, R> Delimited<L> for (L, Option<R>) {
 pub fn delimited_by<P: Parser, D: Parser>(
     parser: P,
     delimiter: D,
-    trailing_error: QError,
+    trailing_error: ParseError,
 ) -> impl Parser<Output = Vec<P::Output>> {
     parse_delimited_to_items(parser.and_opt(delimiter), trailing_error)
 }
@@ -47,7 +47,7 @@ pub fn delimited_by<P: Parser, D: Parser>(
 /// Public because needed by built_ins to implement csv_allow_missing.
 pub fn parse_delimited_to_items<P, L>(
     parser: P,
-    trailing_error: QError,
+    trailing_error: ParseError,
 ) -> impl Parser<Output = Vec<L>>
 where
     P: Parser,
@@ -58,7 +58,7 @@ where
         .and_then(move |items| map_items(items, trailing_error.clone()))
 }
 
-fn map_items<P, T>(items: Vec<P>, trailing_error: QError) -> Result<Vec<T>, QError>
+fn map_items<P, T>(items: Vec<P>, trailing_error: ParseError) -> Result<Vec<T>, ParseError>
 where
     P: Delimited<T>,
 {

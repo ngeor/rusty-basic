@@ -1,10 +1,8 @@
 use crate::assert_linter_err;
 use crate::test_utils::linter_ok;
+use crate::LintError;
 use rusty_common::*;
-use rusty_parser::{
-    ArrayDimension, BareName, BuiltInStyle, DimNameBuilder, DimType, DimVar, Expression,
-    GlobalStatement, Statement, TypeQualifier,
-};
+use rusty_parser::*;
 
 #[test]
 fn test_dim_duplicate_definition_same_builtin_type() {
@@ -12,7 +10,7 @@ fn test_dim_duplicate_definition_same_builtin_type() {
             DIM A AS STRING
             DIM A AS STRING
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 17);
 }
 
 #[test]
@@ -21,7 +19,7 @@ fn test_dim_duplicate_definition_different_builtin_type() {
             DIM A AS STRING
             DIM A AS INTEGER
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 17);
 }
 
 #[test]
@@ -30,7 +28,7 @@ fn test_dim_after_const_duplicate_definition() {
             CONST A = "hello"
             DIM A AS STRING
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 17);
 }
 
 #[test]
@@ -39,7 +37,7 @@ fn test_dim_after_variable_assignment_duplicate_definition() {
             A = 42
             DIM A AS INTEGER
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 17);
 }
 
 #[test]
@@ -48,7 +46,7 @@ fn test_dim_compact_string_duplicate_definition() {
             DIM A$
             DIM A$
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 17);
 }
 
 #[test]
@@ -57,7 +55,7 @@ fn test_dim_compact_bare_duplicate_definition() {
             DIM A
             DIM A
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 17);
 }
 
 #[test]
@@ -67,7 +65,7 @@ fn test_dim_compact_single_bare_duplicate_definition() {
             DIM A!
             DIM A
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 17);
 }
 
 #[test]
@@ -77,7 +75,7 @@ fn test_dim_compact_bare_single_duplicate_definition() {
             DIM A
             DIM A!
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 17);
 }
 
 #[test]
@@ -87,7 +85,7 @@ fn test_dim_compact_bare_integer_duplicate_definition() {
             DIM A
             DIM A%
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 4, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 4, 17);
 }
 
 #[test]
@@ -97,7 +95,7 @@ fn test_dim_extended_inside_sub_name_clashing_sub_name() {
             Dim Hello AS STRING
             END SUB
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 17);
 }
 
 #[test]
@@ -110,7 +108,7 @@ fn test_dim_bare_inside_sub_name_clashing_other_sub_name() {
             Dim Oops
             END SUB
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 6, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 6, 17);
 }
 
 #[test]
@@ -120,7 +118,7 @@ fn test_dim_extended_inside_sub_name_clashing_param_name() {
             Dim Oops AS STRING
             END SUB
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 17);
 }
 
 #[test]
@@ -130,7 +128,7 @@ fn test_dim_extended_inside_function_name_clashing_function_name() {
             Dim Hello AS STRING
             END FUNCTION
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 17);
 }
 
 #[test]
@@ -142,7 +140,7 @@ fn test_dim_extended_inside_function_name_clashing_other_function_name() {
             FUNCTION Bar
             END Function
             "#;
-    assert_linter_err!(program, QError::DuplicateDefinition, 3, 17);
+    assert_linter_err!(program, LintError::DuplicateDefinition, 3, 17);
 }
 
 #[test]
@@ -351,7 +349,7 @@ mod dot_clash {
         DIM A AS Card
         DIM A.B
         "#;
-        assert_linter_err!(input, QError::DotClash, 6, 13);
+        assert_linter_err!(input, LintError::DotClash, 6, 13);
     }
 
     #[test]
@@ -383,7 +381,7 @@ mod dim_shared {
             DIM SHARED A
         END FUNCTION
         "#;
-        assert_linter_err!(program, QError::IllegalInSubFunction, 3, 24);
+        assert_linter_err!(program, LintError::IllegalInSubFunction, 3, 24);
     }
 
     #[test]
@@ -393,7 +391,7 @@ mod dim_shared {
             DIM SHARED A
         END SUB
         "#;
-        assert_linter_err!(program, QError::IllegalInSubFunction, 3, 24);
+        assert_linter_err!(program, LintError::IllegalInSubFunction, 3, 24);
     }
 
     #[test]
@@ -404,7 +402,7 @@ mod dim_shared {
             DIM A AS STRING
         END FUNCTION
         "#;
-        assert_linter_err!(program, QError::DuplicateDefinition, 4, 17);
+        assert_linter_err!(program, LintError::DuplicateDefinition, 4, 17);
     }
 
     #[test]
@@ -415,7 +413,7 @@ mod dim_shared {
             DIM A AS STRING
         END SUB
         "#;
-        assert_linter_err!(program, QError::DuplicateDefinition, 4, 17);
+        assert_linter_err!(program, LintError::DuplicateDefinition, 4, 17);
     }
 
     #[test]
@@ -426,7 +424,7 @@ mod dim_shared {
             CONST A = "hello"
         END FUNCTION
         "#;
-        assert_linter_err!(program, QError::DuplicateDefinition, 4, 19);
+        assert_linter_err!(program, LintError::DuplicateDefinition, 4, 19);
     }
 
     #[test]
@@ -437,7 +435,7 @@ mod dim_shared {
             CONST A = "hello"
         END SUB
         "#;
-        assert_linter_err!(program, QError::DuplicateDefinition, 4, 19);
+        assert_linter_err!(program, LintError::DuplicateDefinition, 4, 19);
     }
 }
 
@@ -453,7 +451,7 @@ mod redim {
             CONST A = 42
             REDIM A(1 TO 5)
             "#;
-            assert_linter_err!(input, QError::DuplicateDefinition);
+            assert_linter_err!(input, LintError::DuplicateDefinition);
         }
 
         #[test]
@@ -466,7 +464,7 @@ mod redim {
                     "#,
                     ch
                 );
-                assert_linter_err!(&input, QError::DuplicateDefinition);
+                assert_linter_err!(&input, LintError::DuplicateDefinition);
             }
         }
 
@@ -492,7 +490,7 @@ mod redim {
                     "#,
                     s
                 );
-                assert_linter_err!(&input, QError::DuplicateDefinition, s);
+                assert_linter_err!(&input, LintError::DuplicateDefinition, s);
             }
         }
     }
@@ -523,7 +521,7 @@ mod redim {
                 "#,
                     s
                 );
-                assert_linter_err!(&input, QError::DuplicateDefinition, s);
+                assert_linter_err!(&input, LintError::DuplicateDefinition, s);
             }
         }
 
@@ -537,7 +535,7 @@ mod redim {
                 "#,
                     ch, ch
                 );
-                assert_linter_err!(&input, QError::DuplicateDefinition, ch);
+                assert_linter_err!(&input, LintError::DuplicateDefinition, ch);
             }
         }
 
@@ -563,7 +561,7 @@ mod redim {
                     "#,
                         s, ch
                     );
-                    assert_linter_err!(&input, QError::DuplicateDefinition);
+                    assert_linter_err!(&input, LintError::DuplicateDefinition);
                 }
             }
         }
@@ -590,7 +588,7 @@ mod redim {
                     "#,
                         ch, s
                     );
-                    assert_linter_err!(&input, QError::DuplicateDefinition);
+                    assert_linter_err!(&input, LintError::DuplicateDefinition);
                 }
             }
         }
@@ -627,7 +625,7 @@ mod redim {
                     );
                     assert_linter_err!(
                         &input,
-                        QError::DuplicateDefinition,
+                        LintError::DuplicateDefinition,
                         format!("{} -> {}", s, s2)
                     );
                 }
@@ -648,7 +646,7 @@ mod redim {
                 "#,
                     ch, ch
                 );
-                assert_linter_err!(&input, QError::ArrayAlreadyDimensioned);
+                assert_linter_err!(&input, LintError::ArrayAlreadyDimensioned);
             }
         }
 
@@ -673,7 +671,7 @@ mod redim {
                 "#,
                     s, s
                 );
-                assert_linter_err!(&input, QError::ArrayAlreadyDimensioned, s);
+                assert_linter_err!(&input, LintError::ArrayAlreadyDimensioned, s);
             }
         }
     }
@@ -691,7 +689,7 @@ mod redim {
                 "#,
                     ch, ch
                 );
-                assert_linter_err!(&input, QError::WrongNumberOfDimensions);
+                assert_linter_err!(&input, LintError::WrongNumberOfDimensions);
             }
         }
 
@@ -716,7 +714,7 @@ mod redim {
                 "#,
                     s, s
                 );
-                assert_linter_err!(&input, QError::WrongNumberOfDimensions, s);
+                assert_linter_err!(&input, LintError::WrongNumberOfDimensions, s);
             }
         }
     }
@@ -757,7 +755,7 @@ mod redim {
                         );
                         assert_linter_err!(
                             &input,
-                            QError::DuplicateDefinition,
+                            LintError::DuplicateDefinition,
                             format!("REDIM {} to {}", a, b).as_str()
                         );
                     }

@@ -1,6 +1,5 @@
-use crate::binary_parser_declaration;
 use crate::pc::{Parser, Tokenizer};
-use rusty_common::*;
+use crate::{binary_parser_declaration, ParseError};
 
 binary_parser_declaration!(pub struct AccumulateParser);
 
@@ -11,7 +10,7 @@ where
 {
     type Output = Vec<L::Output>;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         let first = self.left.parse(tokenizer)?;
         let mut result: Vec<L::Output> = vec![];
         result.push(first);

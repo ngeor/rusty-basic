@@ -4,6 +4,7 @@ use crate::expression::{expression_pos_p, ws_expr_pos_p};
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::types::*;
+use crate::{ParseError, ParserErrorTrait};
 use rusty_common::*;
 
 /// See [Print] for the definition.
@@ -64,7 +65,7 @@ fn opt_file_handle_comma_p() -> impl Parser<Output = Option<Positioned<FileHandl
 pub struct PrintArgsParser;
 
 impl PrintArgsParser {
-    fn next(tokenizer: &mut impl Tokenizer, allow_expr: bool) -> Result<PrintArg, QError> {
+    fn next(tokenizer: &mut impl Tokenizer, allow_expr: bool) -> Result<PrintArg, ParseError> {
         if allow_expr {
             Self::any_print_arg().parse(tokenizer)
         } else {
@@ -88,7 +89,7 @@ impl PrintArgsParser {
 impl Parser for PrintArgsParser {
     type Output = Vec<PrintArg>;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         let mut result: Vec<PrintArg> = vec![];
         let mut last_one_was_expression = false;
         loop {
@@ -313,7 +314,7 @@ mod tests {
     #[test]
     fn test_print_file_no_args_no_comma() {
         let input = "PRINT #1";
-        assert_parser_err!(input, QError::syntax_error("Expected: ,"), 1, 9);
+        assert_parser_err!(input, ParseError::syntax_error("Expected: ,"), 1, 9);
     }
 
     #[test]
@@ -349,7 +350,7 @@ mod tests {
     #[test]
     fn test_print_file_semicolon_after_file_number_err() {
         let input = "PRINT #1; 42";
-        assert_parser_err!(input, QError::syntax_error("Expected: ,"), 1, 9);
+        assert_parser_err!(input, ParseError::syntax_error("Expected: ,"), 1, 9);
     }
 
     #[test]
@@ -444,13 +445,13 @@ mod tests {
     #[test]
     fn test_print_using_no_args_missing_semicolon() {
         let input = "PRINT USING \"#\"";
-        assert_parser_err!(input, QError::syntax_error("Expected: ;"), 1, 16);
+        assert_parser_err!(input, ParseError::syntax_error("Expected: ;"), 1, 16);
     }
 
     #[test]
     fn test_lprint_using_no_args_missing_semicolon() {
         let input = "LPRINT USING \"#\"";
-        assert_parser_err!(input, QError::syntax_error("Expected: ;"), 1, 17);
+        assert_parser_err!(input, ParseError::syntax_error("Expected: ;"), 1, 17);
     }
 
     #[test]
@@ -516,6 +517,6 @@ mod tests {
     #[test]
     fn test_lprint_no_comma_between_expressions_is_error() {
         let input = "LPRINT 1 2";
-        assert_parser_err!(input, QError::syntax_error("No separator: 2"), 1, 11);
+        assert_parser_err!(input, ParseError::syntax_error("No separator: 2"), 1, 11);
     }
 }

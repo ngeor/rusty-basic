@@ -2,8 +2,7 @@ use crate::expression::ws_expr_pos_p;
 use crate::pc::{Parser, ParserOnce};
 use crate::pc_specific::{keyword, whitespace};
 use crate::types::Keyword;
-use crate::{ExpressionPos, ExpressionTrait};
-use rusty_common::*;
+use crate::{ExpressionPos, ExpressionTrait, ParseError};
 
 /// Finds the rightmost expression of a given type,
 /// so that it can be determined if it ended in parenthesis or not.
@@ -42,6 +41,6 @@ fn parse_second(k: Keyword, is_paren: bool) -> impl Parser<Output = Option<Expre
         .allow_none()
 }
 
-fn err(keyword: Keyword) -> QError {
-    QError::SyntaxError(format!("Expected: expression after {}", keyword))
+fn err(keyword: Keyword) -> ParseError {
+    ParseError::SyntaxError(format!("Expected: expression after {}", keyword))
 }

@@ -26,7 +26,6 @@ mod tests {
     use crate::assert_parser_err;
     use crate::test_utils::*;
     use crate::*;
-    use rusty_common::*;
 
     #[test]
     fn test_parse_one_variable() {
@@ -54,7 +53,7 @@ mod tests {
     #[test]
     fn test_no_whitespace_after_input() {
         let input = "INPUT";
-        assert_parser_err!(input, QError::syntax_error("Expected: whitespace"));
+        assert_parser_err!(input, ParseError::syntax_error("Expected: whitespace"));
     }
 
     #[test]
@@ -62,7 +61,7 @@ mod tests {
         let input = "INPUT ";
         assert_parser_err!(
             input,
-            QError::syntax_error("Expected: #file-number or variable")
+            ParseError::syntax_error("Expected: #file-number or variable")
         );
     }
 

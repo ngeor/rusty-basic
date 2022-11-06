@@ -1,7 +1,6 @@
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::{BareName, Name, TypeQualifier};
-use rusty_common::*;
+use crate::{BareName, Name, ParseError, TypeQualifier};
 
 const MAX_LENGTH: usize = 40;
 
@@ -35,9 +34,9 @@ fn is_type_qualifier(token: &Token) -> bool {
         || TokenType::Ampersand.matches(token)
 }
 
-fn ensure_token_length(token: Token) -> Result<Token, QError> {
+fn ensure_token_length(token: Token) -> Result<Token, ParseError> {
     if token.text.chars().count() > MAX_LENGTH {
-        Err(QError::IdentifierTooLong)
+        Err(ParseError::IdentifierTooLong)
     } else {
         Ok(token)
     }
@@ -100,14 +99,14 @@ fn identifier_or_keyword_or_dot() -> impl Parser<Output = Token> {
 }
 
 // TODO add test: max length of 40 characters applies both to parts and the full string
-fn ensure_token_list_length(tokens: TokenList) -> Result<TokenList, QError> {
+fn ensure_token_list_length(tokens: TokenList) -> Result<TokenList, ParseError> {
     if tokens
         .iter()
         .map(|token| token.text.chars().count())
         .sum::<usize>()
         > MAX_LENGTH
     {
-        Err(QError::IdentifierTooLong)
+        Err(ParseError::IdentifierTooLong)
     } else {
         Ok(tokens)
     }
@@ -150,7 +149,7 @@ fn ensure_no_trailing_dot<P>(parser: impl Parser<Output = P>) -> impl Parser<Out
         dot()
             .peek()
             .negate()
-            .or_fail(QError::IdentifierCannotIncludePeriod),
+            .or_fail(ParseError::IdentifierCannotIncludePeriod),
         |l, _| l,
     )
 }
@@ -218,7 +217,7 @@ mod tests {
             for input in &["Hell.o", "Hello."] {
                 assert_eq!(
                     parse_something(input, bare_name_without_dots()).expect_err("Should fail"),
-                    QError::IdentifierCannotIncludePeriod
+                    ParseError::IdentifierCannotIncludePeriod
                 );
             }
         }
@@ -228,7 +227,7 @@ mod tests {
             for input in &["Hello!", "Hello#", "Hello$", "Hello%", "Hello&"] {
                 assert_eq!(
                     parse_something(input, bare_name_without_dots()).expect_err("Should fail"),
-                    QError::syntax_error("Identifier cannot end with %, &, !, #, or $")
+                    ParseError::syntax_error("Identifier cannot end with %, &, !, #, or $")
                 );
             }
         }
@@ -239,7 +238,7 @@ mod tests {
             assert_eq!(input.len(), 41);
             assert_eq!(
                 parse_something(input, bare_name_without_dots()).expect_err("Should fail"),
-                QError::IdentifierTooLong
+                ParseError::IdentifierTooLong
             );
         }
     }
@@ -260,7 +259,7 @@ mod tests {
             assert_eq!(input.len(), 41);
             assert_eq!(
                 parse_something(input, identifier()).expect_err("Should fail"),
-                QError::IdentifierTooLong
+                ParseError::IdentifierTooLong
             );
         }
     }

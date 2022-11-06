@@ -1,5 +1,6 @@
 use crate::assert_linter_err;
 use crate::test_utils::linter_ok;
+use crate::LintError;
 use rusty_common::*;
 use rusty_parser::*;
 
@@ -14,7 +15,7 @@ fn test_passing_array_parameter_without_parenthesis() {
     END SUB
     "#;
 
-    assert_linter_err!(input, QError::ArgumentTypeMismatch, 4, 10);
+    assert_linter_err!(input, LintError::ArgumentTypeMismatch, 4, 10);
 }
 
 #[test]

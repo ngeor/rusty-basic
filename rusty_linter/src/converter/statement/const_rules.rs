@@ -1,5 +1,6 @@
 use crate::const_value_resolver::ConstValueResolver;
 use crate::converter::context::Context;
+use crate::error::{LintError, LintErrorPos};
 use crate::{qualifier_of_const_variant, CastVariant, HasFunctions, HasSubs};
 use rusty_common::*;
 use rusty_parser::*;
@@ -8,7 +9,7 @@ pub fn on_const(
     ctx: &mut Context,
     left_side: NamePos,
     right_side: ExpressionPos,
-) -> Result<(), QErrorPos> {
+) -> Result<(), LintErrorPos> {
     const_cannot_clash_with_existing_names(ctx, &left_side)?;
     new_const(ctx, left_side, right_side)
 }
@@ -16,7 +17,7 @@ pub fn on_const(
 fn const_cannot_clash_with_existing_names(
     ctx: &mut Context,
     left_side: &NamePos,
-) -> Result<(), QErrorPos> {
+) -> Result<(), LintErrorPos> {
     let Positioned {
         element: const_name,
         pos: const_name_pos,
@@ -27,7 +28,7 @@ fn const_cannot_clash_with_existing_names(
         || ctx.subs().contains_key(const_name.bare_name())
         || ctx.functions().contains_key(const_name.bare_name())
     {
-        Err(QError::DuplicateDefinition).with_err_at(const_name_pos)
+        Err(LintError::DuplicateDefinition).with_err_at(const_name_pos)
     } else {
         Ok(())
     }
@@ -37,7 +38,7 @@ fn new_const(
     ctx: &mut Context,
     left_side: NamePos,
     right_side: ExpressionPos,
-) -> Result<(), QErrorPos> {
+) -> Result<(), LintErrorPos> {
     let Positioned {
         element: const_name,
         ..

@@ -23,10 +23,10 @@ pub fn statement_return_p() -> impl Parser<Output = Statement> {
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
-    use rusty_common::*;
+    use crate::ParseError;
 
     #[test]
     fn go_sub_without_label() {
-        assert_parser_err!("GOSUB ", QError::syntax_error("Expected: label"));
+        assert_parser_err!("GOSUB ", ParseError::syntax_error("Expected: label"));
     }
 }

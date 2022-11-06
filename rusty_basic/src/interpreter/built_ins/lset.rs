@@ -1,9 +1,9 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_variant::Variant;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let name: String = interpreter.context()[0].to_str_unchecked().to_owned(); // TODO fighting borrow checker
     let value: Variant = interpreter.context()[2].clone();
     // find which file number is associated with this name and find the width

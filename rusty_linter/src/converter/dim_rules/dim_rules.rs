@@ -5,11 +5,13 @@ use crate::converter::dim_rules::redim::on_redim_type;
 use crate::converter::dim_rules::validation;
 use crate::converter::traits::Convertible;
 use crate::converter::types::DimContext;
+use crate::error::LintErrorPos;
+use crate::LintError;
 use rusty_common::*;
 use rusty_parser::*;
 
 impl<'a> Convertible<DimListState<'a>> for DimList {
-    fn convert(self, ctx: &mut DimListState<'a>) -> Result<Self, QErrorPos> {
+    fn convert(self, ctx: &mut DimListState<'a>) -> Result<Self, LintErrorPos> {
         let Self { variables, shared } = self;
         let mut new_variables = DimVars::new();
         for Positioned { element, pos } in variables {
@@ -25,7 +27,7 @@ impl<'a> Convertible<DimListState<'a>> for DimList {
 }
 
 impl<'a, 'b> Convertible<DimNameState<'a, 'b>> for DimVar {
-    fn convert(self, ctx: &mut DimNameState<'a, 'b>) -> Result<Self, QErrorPos> {
+    fn convert(self, ctx: &mut DimNameState<'a, 'b>) -> Result<Self, LintErrorPos> {
         validation::validate(&self, ctx)?;
         shared_illegal_in_sub_function(ctx).with_err_no_pos()?;
         let Self {
@@ -45,9 +47,9 @@ impl<'a, 'b> Convertible<DimNameState<'a, 'b>> for DimVar {
     }
 }
 
-fn shared_illegal_in_sub_function(ctx: &DimNameState) -> Result<(), QError> {
+fn shared_illegal_in_sub_function(ctx: &DimNameState) -> Result<(), LintError> {
     if ctx.is_shared() && ctx.is_in_subprogram() {
-        Err(QError::IllegalInSubFunction)
+        Err(LintError::IllegalInSubFunction)
     } else {
         Ok(())
     }

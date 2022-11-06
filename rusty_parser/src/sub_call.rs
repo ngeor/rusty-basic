@@ -1,7 +1,7 @@
-use crate::expression;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::types::*;
+use crate::{expression, ParseError};
 use rusty_common::*;
 
 // SubCall                  ::= SubCallNoArgs | SubCallArgsNoParenthesis | SubCallArgsParenthesis
@@ -17,7 +17,7 @@ struct SubCallOrAssignment;
 
 impl Parser for SubCallOrAssignment {
     type Output = Statement;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         let (
             Positioned {
                 element: name_expr, ..
@@ -54,7 +54,7 @@ impl SubCallOrAssignment {
 /// the sub already has parenthesis). For other cases arguments are resolved later.
 fn expr_to_bare_name_args(
     name_expr: Expression,
-) -> Result<(BareName, Option<Expressions>), QError> {
+) -> Result<(BareName, Option<Expressions>), ParseError> {
     match name_expr {
         // A(1,2) or A$(1,2)
         Expression::FunctionCall(name, args) => {
@@ -73,21 +73,21 @@ fn expr_to_bare_name_args(
     }
 }
 
-fn demand_unqualified(name: Name) -> Result<BareName, QError> {
+fn demand_unqualified(name: Name) -> Result<BareName, ParseError> {
     match name {
         Name::Bare(bare_name) => Ok(bare_name),
-        _ => Err(QError::syntax_error("Sub cannot be qualified")),
+        _ => Err(ParseError::syntax_error("Sub cannot be qualified")),
     }
 }
 
-fn fold_to_bare_name(expr: Expression) -> Result<BareName, QError> {
+fn fold_to_bare_name(expr: Expression) -> Result<BareName, ParseError> {
     match expr {
         Expression::Variable(Name::Bare(bare_name), _) => Ok(bare_name),
         Expression::Property(boxed_left_side, Name::Bare(bare_name), _) => {
             let left_side_name = fold_to_bare_name(*boxed_left_side)?;
             Ok(Name::dot_concat(left_side_name, bare_name))
         }
-        _ => Err(QError::syntax_error("Illegal sub name")),
+        _ => Err(ParseError::syntax_error("Illegal sub name")),
     }
 }
 

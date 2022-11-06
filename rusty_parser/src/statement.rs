@@ -1,4 +1,3 @@
-use crate::comment;
 use crate::constant;
 use crate::dim;
 use crate::do_loop;
@@ -17,7 +16,7 @@ use crate::select_case;
 use crate::sub_call;
 use crate::types::*;
 use crate::while_wend;
-use rusty_common::*;
+use crate::{comment, ParseError};
 
 lazy_parser!(pub fn statement_p<Output = Statement> ; struct LazyStatementP ; Alt8::new(
     statement_label_p(),
@@ -72,9 +71,10 @@ fn statement_go_to_p() -> impl Parser<Output = Statement> {
 /// A parser that fails if an illegal starting keyword is found.
 fn illegal_starting_keywords() -> impl Parser<Output = Statement> + 'static {
     keyword_map(&[
-        (Keyword::Wend, QError::WendWithoutWhile),
-        (Keyword::Else, QError::ElseWithoutIf),
-        (Keyword::Loop, QError::syntax_error("LOOP without DO")),
+        (Keyword::Wend, ParseError::WendWithoutWhile),
+        (Keyword::Else, ParseError::ElseWithoutIf),
+        (Keyword::Loop, ParseError::LoopWithoutDo),
+        (Keyword::Next, ParseError::NextWithoutFor),
     ])
     .and_then(Err)
 }
@@ -132,13 +132,13 @@ mod end {
     #[cfg(test)]
     mod tests {
         use crate::assert_parser_err;
-        use rusty_common::*;
+        use crate::ParseError;
 
         #[test]
         fn test_sub_call_end_no_args_allowed() {
             assert_parser_err!(
                 "END 42",
-                QError::syntax_error(
+                ParseError::syntax_error(
                     "Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement"
                 )
             );
@@ -164,13 +164,13 @@ mod system {
     #[cfg(test)]
     mod tests {
         use crate::assert_parser_err;
-        use rusty_common::*;
+        use crate::ParseError;
 
         #[test]
         fn test_sub_call_system_no_args_allowed() {
             assert_parser_err!(
                 "SYSTEM 42",
-                QError::syntax_error("Expected: end-of-statement"),
+                ParseError::syntax_error("Expected: end-of-statement"),
                 1,
                 7
             );

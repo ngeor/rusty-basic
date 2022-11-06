@@ -1,10 +1,10 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
-use rusty_common::*;
+use crate::RuntimeError;
 use rusty_parser::BuiltInFunction;
 use rusty_variant::Variant;
 
-pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
+pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let a: &Variant = &interpreter.context()[0];
     let b: &Variant = &interpreter.context()[1];
     let result: i32 = match interpreter.context().variables().get(2) {
@@ -21,7 +21,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), QError> {
     Ok(())
 }
 
-fn do_instr(start: usize, hay: &str, needle: &str) -> Result<i32, QError> {
+fn do_instr(start: usize, hay: &str, needle: &str) -> Result<i32, RuntimeError> {
     debug_assert!(start >= 1);
     if hay.is_empty() {
         Ok(0)
@@ -42,10 +42,11 @@ fn do_instr(start: usize, hay: &str, needle: &str) -> Result<i32, QError> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_prints;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::test_utils::interpret_err;
-    use rusty_common::*;
+    use rusty_common::{ErrorEnvelope, Position};
 
     #[test]
     fn test_instr_happy_flow() {
@@ -64,7 +65,7 @@ mod tests {
         assert_prints!(r#"PRINT INSTR("", "")"#, "0");
         assert_eq!(
             interpret_err(r#"PRINT INSTR(0, "oops", "zero")"#),
-            ErrorEnvelope::Pos(QError::IllegalFunctionCall, Position::new(1, 7))
+            ErrorEnvelope::Pos(RuntimeError::IllegalFunctionCall, Position::new(1, 7))
         );
     }
 }

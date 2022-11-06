@@ -1,3 +1,4 @@
+use crate::error::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::{Expression, ExpressionType, ForLoop, TypeQualifier, VariableInfo};
 
@@ -6,7 +7,7 @@ use super::post_conversion_linter::*;
 pub struct ForNextCounterMatch;
 
 impl ForNextCounterMatch {
-    fn ensure_numeric_variable(&self, f: &ForLoop) -> Result<(), QErrorPos> {
+    fn ensure_numeric_variable(&self, f: &ForLoop) -> Result<(), LintErrorPos> {
         let Positioned {
             element: var_expr, ..
         } = &f.variable_name;
@@ -19,16 +20,16 @@ impl ForNextCounterMatch {
                 },
             ) => match var_type {
                 ExpressionType::BuiltIn(TypeQualifier::DollarString) => {
-                    Err(QError::TypeMismatch).with_err_no_pos()
+                    Err(LintError::TypeMismatch).with_err_no_pos()
                 }
                 ExpressionType::BuiltIn(_) => Ok(()),
-                _ => Err(QError::TypeMismatch).with_err_no_pos(),
+                _ => Err(LintError::TypeMismatch).with_err_no_pos(),
             },
             _ => unimplemented!(),
         }
     }
 
-    fn ensure_for_next_counter_match(&self, f: &ForLoop) -> Result<(), QErrorPos> {
+    fn ensure_for_next_counter_match(&self, f: &ForLoop) -> Result<(), LintErrorPos> {
         let Positioned {
             element: var_expr, ..
         } = &f.variable_name;
@@ -43,7 +44,7 @@ impl ForNextCounterMatch {
                         if var_name == next_var_name {
                             Ok(())
                         } else {
-                            Err(QError::NextWithoutFor).with_err_at(pos)
+                            Err(LintError::NextWithoutFor).with_err_at(pos)
                         }
                     }
                     _ => unimplemented!(),
@@ -58,7 +59,7 @@ impl ForNextCounterMatch {
 }
 
 impl PostConversionLinter for ForNextCounterMatch {
-    fn visit_for_loop(&mut self, f: &ForLoop) -> Result<(), QErrorPos> {
+    fn visit_for_loop(&mut self, f: &ForLoop) -> Result<(), LintErrorPos> {
         self.visit_statements(&f.statements)?;
         self.ensure_numeric_variable(f)?;
         self.ensure_for_next_counter_match(f)

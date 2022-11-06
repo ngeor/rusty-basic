@@ -1,11 +1,12 @@
 use crate::arg_validation::ArgValidation;
+use crate::error::{LintError, LintErrorPos};
 use crate::CanCastTo;
-use rusty_common::{QError, QErrorPos, WithErrAt, WithErrNoPos};
+use rusty_common::{WithErrAt, WithErrNoPos};
 use rusty_parser::{Expressions, TypeQualifier};
 
-pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
+pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     if args.len() != 2 {
-        Err(QError::ArgumentCountMismatch).with_err_no_pos()
+        Err(LintError::ArgumentCountMismatch).with_err_no_pos()
     } else {
         args.require_integer_argument(0)?;
         if args[1].can_cast_to(&TypeQualifier::PercentInteger)
@@ -13,36 +14,36 @@ pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
         {
             Ok(())
         } else {
-            Err(QError::ArgumentTypeMismatch).with_err_at(&args[1])
+            Err(LintError::ArgumentTypeMismatch).with_err_at(&args[1])
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_linter_err;
-    use rusty_common::*;
 
     #[test]
     fn string_without_args() {
-        assert_linter_err!("PRINT STRING$()", QError::FunctionNeedsArguments);
+        assert_linter_err!("PRINT STRING$()", LintError::FunctionNeedsArguments);
     }
 
     #[test]
     fn string_with_only_one_arg() {
-        assert_linter_err!("PRINT STRING$(5)", QError::ArgumentCountMismatch);
+        assert_linter_err!("PRINT STRING$(5)", LintError::ArgumentCountMismatch);
     }
 
     #[test]
     fn string_with_three_arguments() {
-        assert_linter_err!("PRINT STRING$(1, 2, 3)", QError::ArgumentCountMismatch);
+        assert_linter_err!("PRINT STRING$(1, 2, 3)", LintError::ArgumentCountMismatch);
     }
 
     #[test]
     fn string_with_string_first_argument() {
         assert_linter_err!(
             r#"PRINT STRING$("oops", "oops")"#,
-            QError::ArgumentTypeMismatch
+            LintError::ArgumentTypeMismatch
         );
     }
 }

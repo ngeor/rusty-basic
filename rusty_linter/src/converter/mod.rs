@@ -13,13 +13,13 @@ mod types;
 use crate::converter::context::Context;
 use crate::converter::traits::Convertible;
 use crate::pre_linter::PreLinterResult;
-use rusty_common::QErrorPos;
+use crate::LintErrorPos;
 use rusty_parser::Program;
 
 pub fn convert(
     program: Program,
     pre_linter_result: PreLinterResult,
-) -> Result<(PreLinterResult, Program), QErrorPos> {
+) -> Result<(PreLinterResult, Program), LintErrorPos> {
     let mut context = Context::new(pre_linter_result);
     program
         .convert(&mut context)

@@ -45,15 +45,15 @@ mod varseg;
 mod view_print;
 mod width;
 
+use crate::error::LintErrorPos;
 use crate::NameContext;
-use rusty_common::QErrorPos;
 use rusty_parser::{BuiltInFunction, BuiltInSub, Expressions};
 
 pub fn lint_sub_call(
     built_in_sub: &BuiltInSub,
     args: &Expressions,
     name_context: NameContext,
-) -> Result<(), QErrorPos> {
+) -> Result<(), LintErrorPos> {
     match built_in_sub {
         BuiltInSub::Beep => beep::lint(args),
         BuiltInSub::CallAbsolute => Ok(()),
@@ -81,7 +81,10 @@ pub fn lint_sub_call(
     }
 }
 
-pub fn lint_function_call(built_in: &BuiltInFunction, args: &Expressions) -> Result<(), QErrorPos> {
+pub fn lint_function_call(
+    built_in: &BuiltInFunction,
+    args: &Expressions,
+) -> Result<(), LintErrorPos> {
     match built_in {
         BuiltInFunction::Chr => chr::lint(args),
         BuiltInFunction::Cvd => cvd::lint(args),

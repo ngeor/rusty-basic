@@ -3,7 +3,7 @@ use crate::assert_interpreter_err;
 use crate::assert_prints;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::test_utils::*;
-use rusty_common::*;
+use crate::RuntimeError;
 
 macro_rules! assert_assign_ok {
     ($program:expr, $expected_variable_name:expr, $expected_value:expr) => {
@@ -222,9 +222,9 @@ fn test_assign_with_def_str() {
 #[test]
 fn test_assign_integer_overflow() {
     assert_assign_ok!("A% = 32767", "A%", 32767_i32);
-    assert_interpreter_err!("A% = 32768", QError::Overflow, 1, 6);
+    assert_interpreter_err!("A% = 32768", RuntimeError::Overflow, 1, 6);
     assert_assign_ok!("A% = -32768", "A%", -32768_i32);
-    assert_interpreter_err!("A% = -32769", QError::Overflow, 1, 6);
+    assert_interpreter_err!("A% = -32769", RuntimeError::Overflow, 1, 6);
 }
 
 #[test]
@@ -235,8 +235,8 @@ fn test_assign_long_overflow_ok() {
 
 #[test]
 fn test_assign_long_overflow_err() {
-    assert_interpreter_err!("A& = 2147483648", QError::Overflow, 1, 6);
-    assert_interpreter_err!("A& = -2147483649", QError::Overflow, 1, 6);
+    assert_interpreter_err!("A& = 2147483648", RuntimeError::Overflow, 1, 6);
+    assert_interpreter_err!("A& = -2147483649", RuntimeError::Overflow, 1, 6);
 }
 
 #[test]

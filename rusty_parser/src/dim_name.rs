@@ -66,12 +66,11 @@ mod type_definition {
     use crate::pc::*;
     use crate::pc_specific::*;
     use crate::*;
-    use rusty_common::*;
 
     pub fn built_in_extended_type() -> impl Parser<Output = DimType> {
-        Alt2::new(built_in_numeric_type(), built_in_string()).map_incomplete_err(QError::expected(
-            "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING",
-        ))
+        Alt2::new(built_in_numeric_type(), built_in_string()).map_incomplete_err(
+            ParseError::expected("Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING"),
+        )
     }
 
     fn built_in_numeric_type() -> impl Parser<Output = DimType> {

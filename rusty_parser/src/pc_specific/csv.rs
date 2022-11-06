@@ -1,6 +1,6 @@
 use crate::pc::*;
 use crate::pc_specific::*;
-use rusty_common::*;
+use crate::ParseError;
 
 /// Comma separated list of items.
 pub fn csv<L: Parser>(parser: L) -> impl Parser<Output = Vec<L::Output>> {
@@ -14,6 +14,6 @@ pub fn csv_non_opt<P: Parser>(
     csv(parser).or_syntax_error(err)
 }
 
-pub fn trailing_comma_error() -> QError {
-    QError::syntax_error("Error: trailing comma")
+pub fn trailing_comma_error() -> ParseError {
+    ParseError::syntax_error("Error: trailing comma")
 }

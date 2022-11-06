@@ -1,10 +1,11 @@
 use crate::arg_validation::ArgValidation;
-use rusty_common::{QError, QErrorPos, WithErrNoPos};
+use crate::error::{LintError, LintErrorPos};
+use rusty_common::WithErrNoPos;
 use rusty_parser::Expressions;
 
-pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
+pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     if args.is_empty() {
-        Err(QError::ArgumentCountMismatch).with_err_no_pos()
+        Err(LintError::ArgumentCountMismatch).with_err_no_pos()
     } else {
         for i in 0..args.len() {
             args.require_variable_of_built_in_type(i)?;
@@ -15,32 +16,32 @@ pub fn lint(args: &Expressions) -> Result<(), QErrorPos> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::assert_linter_err;
-    use rusty_common::*;
 
     #[test]
     fn single_literal_argument_not_allowed() {
-        assert_linter_err!("READ 3.14", QError::VariableRequired);
+        assert_linter_err!("READ 3.14", LintError::VariableRequired);
     }
 
     #[test]
     fn double_literal_argument_not_allowed() {
-        assert_linter_err!("READ 3.14#", QError::VariableRequired);
+        assert_linter_err!("READ 3.14#", LintError::VariableRequired);
     }
 
     #[test]
     fn string_literal_argument_not_allowed() {
-        assert_linter_err!("READ \"hello\"", QError::VariableRequired);
+        assert_linter_err!("READ \"hello\"", LintError::VariableRequired);
     }
 
     #[test]
     fn integer_literal_argument_not_allowed() {
-        assert_linter_err!("READ 42", QError::VariableRequired);
+        assert_linter_err!("READ 42", LintError::VariableRequired);
     }
 
     #[test]
     fn long_literal_argument_not_allowed() {
-        assert_linter_err!("READ 65536", QError::VariableRequired);
+        assert_linter_err!("READ 65536", LintError::VariableRequired);
     }
 
     #[test]
@@ -50,27 +51,27 @@ mod tests {
         FUNCTION Hello(A)
         END FUNCTION
         "#;
-        assert_linter_err!(input, QError::VariableRequired);
+        assert_linter_err!(input, LintError::VariableRequired);
     }
 
     #[test]
     fn built_in_function_call_argument_not_allowed() {
-        assert_linter_err!("READ LEN(A)", QError::VariableRequired);
+        assert_linter_err!("READ LEN(A)", LintError::VariableRequired);
     }
 
     #[test]
     fn binary_expression_argument_not_allowed() {
-        assert_linter_err!("READ A + B", QError::VariableRequired);
+        assert_linter_err!("READ A + B", LintError::VariableRequired);
     }
 
     #[test]
     fn unary_expression_argument_not_allowed() {
-        assert_linter_err!("READ NOT A", QError::VariableRequired);
+        assert_linter_err!("READ NOT A", LintError::VariableRequired);
     }
 
     #[test]
     fn parenthesis_expression_argument_not_allowed() {
-        assert_linter_err!("READ (A)", QError::VariableRequired);
+        assert_linter_err!("READ (A)", LintError::VariableRequired);
     }
 
     #[test]
@@ -79,7 +80,7 @@ mod tests {
         DIM A(1 TO 5)
         READ A
         "#;
-        assert_linter_err!(input, QError::ArgumentTypeMismatch);
+        assert_linter_err!(input, LintError::ArgumentTypeMismatch);
     }
 
     #[test]
@@ -91,6 +92,6 @@ mod tests {
         DIM C AS Card
         READ C
         "#;
-        assert_linter_err!(input, QError::ArgumentTypeMismatch);
+        assert_linter_err!(input, LintError::ArgumentTypeMismatch);
     }
 }

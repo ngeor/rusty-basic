@@ -25,8 +25,7 @@ fn map_arg(arg: Option<ExpressionPos>) -> Expressions {
 mod tests {
     use crate::assert_parser_err;
     use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
-    use crate::{parse, BuiltInSub, Statement};
-    use rusty_common::*;
+    use crate::{parse, BuiltInSub, ParseError, Statement};
 
     #[test]
     fn parse_row_col() {
@@ -65,6 +64,9 @@ mod tests {
 
     #[test]
     fn cannot_have_trailing_comma() {
-        assert_parser_err!("WIDTH 1, 2,", QError::syntax_error("Error: trailing comma"));
+        assert_parser_err!(
+            "WIDTH 1, 2,",
+            ParseError::syntax_error("Error: trailing comma")
+        );
     }
 }

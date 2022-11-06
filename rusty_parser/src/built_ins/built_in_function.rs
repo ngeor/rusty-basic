@@ -1,5 +1,5 @@
 use crate::keyword_enum;
-use crate::{Name, QualifiedName, TypeQualifier};
+use crate::{QualifiedName, TypeQualifier};
 use rusty_common::*;
 use std::borrow::Borrow;
 use std::convert::TryFrom;
@@ -168,83 +168,5 @@ impl BuiltInFunction {
         S: Borrow<CaseInsensitiveStr>,
     {
         Self::try_from(s.borrow()).ok()
-    }
-}
-
-// Name -> BuiltInFunction
-
-impl TryFrom<&Name> for Option<BuiltInFunction> {
-    type Error = QError;
-    fn try_from(n: &Name) -> Result<Option<BuiltInFunction>, Self::Error> {
-        let opt_built_in: Option<BuiltInFunction> = BuiltInFunction::try_parse(n.bare_name());
-        match opt_built_in {
-            Some(b) => match b {
-                BuiltInFunction::Cvd
-                | BuiltInFunction::Eof
-                | BuiltInFunction::Err
-                | BuiltInFunction::InStr
-                | BuiltInFunction::Len
-                | BuiltInFunction::Peek
-                | BuiltInFunction::LBound
-                | BuiltInFunction::UBound
-                | BuiltInFunction::Val
-                | BuiltInFunction::VarPtr
-                | BuiltInFunction::VarSeg => demand_unqualified(b, n),
-                BuiltInFunction::Environ
-                | BuiltInFunction::InKey
-                | BuiltInFunction::LCase
-                | BuiltInFunction::Left
-                | BuiltInFunction::LTrim
-                | BuiltInFunction::Mid
-                | BuiltInFunction::Mkd
-                | BuiltInFunction::Right
-                | BuiltInFunction::RTrim
-                | BuiltInFunction::Space
-                | BuiltInFunction::UCase => {
-                    // ENVIRON$ must be qualified
-                    match n {
-                        Name::Bare(_) => Err(QError::SyntaxError(format!(
-                            "Function {:?} must be qualified",
-                            n
-                        ))),
-                        Name::Qualified(_, qualifier) => {
-                            if *qualifier == TypeQualifier::DollarString {
-                                Ok(Some(b))
-                            } else {
-                                Err(QError::TypeMismatch)
-                            }
-                        }
-                    }
-                }
-                BuiltInFunction::Chr | BuiltInFunction::Str | BuiltInFunction::String => {
-                    // STR$ or otherwise it's undefined
-                    match n {
-                        // confirmed that even with DEFSTR A-Z it won't work as unqualified
-                        Name::Bare(_) => Ok(None),
-                        Name::Qualified(_, qualifier) => {
-                            if *qualifier == TypeQualifier::DollarString {
-                                Ok(Some(b))
-                            } else {
-                                Ok(None)
-                            }
-                        }
-                    }
-                }
-            },
-            None => Ok(None),
-        }
-    }
-}
-
-fn demand_unqualified(
-    built_in: BuiltInFunction,
-    n: &Name,
-) -> Result<Option<BuiltInFunction>, QError> {
-    match n {
-        Name::Bare(_) => Ok(Some(built_in)),
-        _ => Err(QError::SyntaxError(format!(
-            "Function {:?} must be unqualified",
-            built_in
-        ))),
     }
 }

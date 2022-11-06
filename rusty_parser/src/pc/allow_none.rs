@@ -1,6 +1,5 @@
-use crate::parser_declaration;
 use crate::pc::{NonOptParser, Parser, Tokenizer};
-use rusty_common::{ParserErrorTrait, QError};
+use crate::{parser_declaration, ParseError, ParserErrorTrait};
 parser_declaration!(pub struct AllowNoneParser);
 
 impl<P> Parser for AllowNoneParser<P>
@@ -9,7 +8,7 @@ where
 {
     type Output = Option<P::Output>;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, QError> {
+    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             Ok(value) => Ok(Some(value)),
             Err(err) if err.is_incomplete() => Ok(None),

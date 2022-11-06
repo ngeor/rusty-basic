@@ -50,7 +50,8 @@ use crate::statement_separator::comments_and_whitespace_p;
 use crate::types::{
     Element, ElementPos, ElementType, Expression, ExpressionPos, Keyword, UserDefinedType,
 };
-use rusty_common::{Positioned, QError};
+use crate::ParseError;
+use rusty_common::Positioned;
 use rusty_variant::MAX_INTEGER;
 
 pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
@@ -67,7 +68,7 @@ pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
 fn elements_p() -> impl Parser<Output = Vec<ElementPos>> + NonOptParser {
     element_pos_p()
         .one_or_more()
-        .or_fail(QError::ElementNotDefined)
+        .or_fail(ParseError::ElementNotDefined)
 }
 
 fn element_pos_p() -> impl Parser<Output = ElementPos> {
@@ -110,14 +111,14 @@ fn demand_string_length_p() -> impl Parser<Output = ExpressionPos> + NonOptParse
                 if i > 0 && i < MAX_INTEGER {
                     Ok(Positioned::new(element, pos))
                 } else {
-                    Err(QError::syntax_error("String length out of range"))
+                    Err(ParseError::syntax_error("String length out of range"))
                 }
             }
             Expression::Variable(_, _) => {
                 // allow it, in case it is a CONST
                 Ok(Positioned::new(element, pos))
             }
-            _ => Err(QError::syntax_error("Illegal string length")),
+            _ => Err(ParseError::syntax_error("Illegal string length")),
         })
         .or_syntax_error("Expected: string length")
 }
@@ -194,7 +195,7 @@ mod tests {
         TYPE Card
         END TYPE
         ";
-        assert_parser_err!(input, QError::ElementNotDefined);
+        assert_parser_err!(input, ParseError::ElementNotDefined);
     }
 
     #[test]
@@ -215,7 +216,7 @@ mod tests {
                 END TYPE",
                 e
             );
-            assert_parser_err!(&input, QError::syntax_error("Illegal string length"));
+            assert_parser_err!(&input, ParseError::syntax_error("Illegal string length"));
         }
     }
 
@@ -230,7 +231,10 @@ mod tests {
                 END TYPE",
                 e
             );
-            assert_parser_err!(&input, QError::syntax_error("String length out of range"));
+            assert_parser_err!(
+                &input,
+                ParseError::syntax_error("String length out of range")
+            );
         }
     }
 
@@ -242,7 +246,7 @@ mod tests {
             Value AS INTEGER
         END TYPE
         ";
-        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
     }
 
     #[test]
@@ -253,6 +257,6 @@ mod tests {
             Value AS INTEGER
         END TYPE
         ";
-        assert_parser_err!(input, QError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
     }
 }

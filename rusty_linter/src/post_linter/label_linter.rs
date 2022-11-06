@@ -1,4 +1,5 @@
 use super::post_conversion_linter::*;
+use crate::error::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::*;
 use std::collections::{HashMap, HashSet};
@@ -34,26 +35,26 @@ impl LabelLinter {
         &self,
         label: &CaseInsensitiveString,
         label_owner: &LabelOwner,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         self.labels
             .get(label_owner)
             .and_then(|set| set.get(label))
             .map(|_| ())
-            .ok_or_else(|| QError::LabelNotDefined)
+            .ok_or_else(|| LintError::LabelNotDefined)
             .with_err_no_pos()
     }
 
-    fn ensure_is_global_label(&self, label: &CaseInsensitiveString) -> Result<(), QErrorPos> {
+    fn ensure_is_global_label(&self, label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
         self.ensure_label_is_defined(label, &LabelOwner::Global)
     }
 
-    fn ensure_is_current_label(&self, label: &CaseInsensitiveString) -> Result<(), QErrorPos> {
+    fn ensure_is_current_label(&self, label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
         self.ensure_label_is_defined(label, &self.current_label_owner)
     }
 }
 
 impl PostConversionLinter for LabelLinter {
-    fn visit_program(&mut self, p: &Program) -> Result<(), QErrorPos> {
+    fn visit_program(&mut self, p: &Program) -> Result<(), LintErrorPos> {
         let mut collector = LabelCollector::default();
         collector.visit_program(p)?;
         self.labels = collector.labels;
@@ -63,30 +64,30 @@ impl PostConversionLinter for LabelLinter {
     fn visit_function_implementation(
         &mut self,
         f: &FunctionImplementation,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         self.on_function(f)
     }
 
-    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorPos> {
+    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), LintErrorPos> {
         self.on_sub(s)
     }
 
-    fn visit_on_error(&mut self, on_error_option: &OnErrorOption) -> Result<(), QErrorPos> {
+    fn visit_on_error(&mut self, on_error_option: &OnErrorOption) -> Result<(), LintErrorPos> {
         match on_error_option {
             OnErrorOption::Label(label) => self.ensure_is_global_label(label),
             _ => Ok(()),
         }
     }
 
-    fn visit_go_to(&mut self, label: &CaseInsensitiveString) -> Result<(), QErrorPos> {
+    fn visit_go_to(&mut self, label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
         self.ensure_is_current_label(label)
     }
 
-    fn visit_go_sub(&mut self, label: &CaseInsensitiveString) -> Result<(), QErrorPos> {
+    fn visit_go_sub(&mut self, label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
         self.ensure_is_current_label(label)
     }
 
-    fn visit_resume(&mut self, resume_option: &ResumeOption) -> Result<(), QErrorPos> {
+    fn visit_resume(&mut self, resume_option: &ResumeOption) -> Result<(), LintErrorPos> {
         if let ResumeOption::Label(label) = resume_option {
             self.ensure_is_current_label(label)
         } else {
@@ -94,7 +95,10 @@ impl PostConversionLinter for LabelLinter {
         }
     }
 
-    fn visit_return(&mut self, opt_label: Option<&CaseInsensitiveString>) -> Result<(), QErrorPos> {
+    fn visit_return(
+        &mut self,
+        opt_label: Option<&CaseInsensitiveString>,
+    ) -> Result<(), LintErrorPos> {
         match opt_label {
             Some(label) => self.ensure_is_current_label(label),
             _ => Ok(()),
@@ -106,18 +110,18 @@ impl PostConversionLinter for LabelCollector {
     fn visit_function_implementation(
         &mut self,
         f: &FunctionImplementation,
-    ) -> Result<(), QErrorPos> {
+    ) -> Result<(), LintErrorPos> {
         self.on_function(f)
     }
 
-    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), QErrorPos> {
+    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), LintErrorPos> {
         self.on_sub(s)
     }
 
-    fn visit_label(&mut self, label: &CaseInsensitiveString) -> Result<(), QErrorPos> {
+    fn visit_label(&mut self, label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
         if self.labels.values().any(|s| s.contains(label)) {
             // labels need to be unique across all scopes
-            Err(QError::DuplicateLabel).with_err_no_pos()
+            Err(LintError::DuplicateLabel).with_err_no_pos()
         } else {
             // TODO prevent clone for key and value?
             self.labels
@@ -132,7 +136,7 @@ impl PostConversionLinter for LabelCollector {
 trait LabelOwnerHolder: PostConversionLinter {
     fn set_label_owner(&mut self, label_owner: LabelOwner);
 
-    fn on_function(&mut self, f: &FunctionImplementation) -> Result<(), QErrorPos> {
+    fn on_function(&mut self, f: &FunctionImplementation) -> Result<(), LintErrorPos> {
         let Positioned {
             element: function_name,
             ..
@@ -143,7 +147,7 @@ trait LabelOwnerHolder: PostConversionLinter {
         Ok(())
     }
 
-    fn on_sub(&mut self, s: &SubImplementation) -> Result<(), QErrorPos> {
+    fn on_sub(&mut self, s: &SubImplementation) -> Result<(), LintErrorPos> {
         self.set_label_owner(LabelOwner::Sub(s.name.element.clone()));
         self.visit_statements(&s.body)?;
         self.set_label_owner(LabelOwner::Global);

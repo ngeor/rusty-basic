@@ -1,11 +1,11 @@
 use crate::converter::names::Names;
 use crate::converter::traits::Convertible;
 use crate::converter::types::Implicits;
+use crate::error::LintErrorPos;
 use crate::pre_linter::PreLinterResult;
 use crate::type_resolver::{IntoQualified, TypeResolver};
 use crate::type_resolver_impl::TypeResolverImpl;
 use crate::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, SubMap};
-use rusty_common::*;
 use rusty_parser::*;
 
 pub struct Context {
@@ -47,7 +47,7 @@ impl Context {
         }
     }
 
-    pub fn push_sub_context(&mut self, params: Parameters) -> Result<Parameters, QErrorPos> {
+    pub fn push_sub_context(&mut self, params: Parameters) -> Result<Parameters, LintErrorPos> {
         let temp_dummy = Names::new_root();
         let old_names = std::mem::replace(&mut self.names, temp_dummy);
         self.names = Names::new(Some(Box::new(old_names)), None);
@@ -58,7 +58,7 @@ impl Context {
         &mut self,
         name: Name,
         params: Parameters,
-    ) -> Result<(Name, Parameters), QErrorPos> {
+    ) -> Result<(Name, Parameters), LintErrorPos> {
         let temp_dummy = Names::new_root();
         let old_names = std::mem::replace(&mut self.names, temp_dummy);
         self.names = Names::new(Some(Box::new(old_names)), Some(name.bare_name().clone()));

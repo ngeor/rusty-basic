@@ -6,5 +6,4 @@ mod dim_type_rules;
 mod param_rules;
 mod param_type_rules;
 mod redim;
-mod string_length;
 mod validation;

@@ -1,11 +1,10 @@
 use crate::error::{LintError, LintErrorPos};
 use crate::pre_linter::ConstantMap;
+use crate::string_length::validate_string_length;
 use rusty_common::{AtPos, Positioned};
 use rusty_parser::{
-    BareName, Element, ElementPos, ElementType, Expression, ExpressionPos, TypeQualifier,
-    UserDefinedType, UserDefinedTypes,
+    BareName, Element, ElementPos, ElementType, Expression, UserDefinedType, UserDefinedTypes,
 };
-use rusty_variant::{Variant, MAX_INTEGER};
 use std::collections::HashMap;
 
 pub fn user_defined_type(
@@ -39,8 +38,7 @@ pub fn user_defined_type(
                 ElementType::Single => ElementType::Single,
                 ElementType::Double => ElementType::Double,
                 ElementType::FixedLengthString(str_len_expression_pos, _) => {
-                    let l: u16 =
-                        validate_element_type_str_len(global_constants, str_len_expression_pos)?;
+                    let l: u16 = validate_string_length(str_len_expression_pos, global_constants)?;
                     ElementType::FixedLengthString(
                         Expression::IntegerLiteral(l as i32).at(str_len_expression_pos),
                         l,
@@ -72,74 +70,5 @@ pub fn user_defined_type(
             UserDefinedType::new(type_name.clone(), vec![], elements),
         );
         Ok(())
-    }
-}
-
-fn validate_element_type_str_len(
-    global_constants: &ConstantMap,
-    str_len_expression_pos: &ExpressionPos,
-) -> Result<u16, LintErrorPos> {
-    let Positioned {
-        element: str_len_expression,
-        pos,
-    } = str_len_expression_pos;
-    match str_len_expression {
-        Expression::IntegerLiteral(i) => {
-            // parser already covers that i is between 1..MAX_INT
-            Ok(*i as u16)
-        }
-        Expression::Variable(name_expr, _) => {
-            // only constants allowed
-            if let Some(qualifier) = name_expr.qualifier() {
-                match global_constants.get(name_expr.bare_name()) {
-                    // constant exists
-                    Some(const_value) => {
-                        match const_value {
-                            Variant::VInteger(i) => {
-                                if qualifier == TypeQualifier::PercentInteger
-                                    && *i >= 1
-                                    && *i <= MAX_INTEGER
-                                {
-                                    Ok(*i as u16)
-                                } else {
-                                    // illegal string length or using wrong qualifier to reference the int constant
-                                    Err(LintError::InvalidConstant.at(pos))
-                                }
-                            }
-                            _ => {
-                                // only integer constants allowed
-                                Err(LintError::InvalidConstant.at(pos))
-                            }
-                        }
-                    }
-                    // constant does not exist
-                    None => Err(LintError::InvalidConstant.at(pos)),
-                }
-            } else {
-                // bare name constant
-                match global_constants.get(name_expr.bare_name()) {
-                    // constant exists
-                    Some(const_value) => {
-                        match const_value {
-                            Variant::VInteger(i) => {
-                                if *i >= 1 && *i <= MAX_INTEGER {
-                                    Ok(*i as u16)
-                                } else {
-                                    // illegal string length
-                                    Err(LintError::InvalidConstant.at(pos))
-                                }
-                            }
-                            _ => {
-                                // only integer constants allowed
-                                Err(LintError::InvalidConstant.at(pos))
-                            }
-                        }
-                    }
-                    // constant does not exist
-                    None => Err(LintError::InvalidConstant.at(pos)),
-                }
-            }
-        }
-        _ => panic!("Unexpected string length {:?}", str_len_expression),
     }
 }

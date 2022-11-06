@@ -47,6 +47,15 @@ fn test_dim_string_fixed_length() {
 }
 
 #[test]
+fn test_dim_string_max_fixed_length() {
+    let program = r#"
+    DIM X AS STRING * 32767
+    PRINT LEN(X)
+    "#;
+    assert_prints!(program, "32767");
+}
+
+#[test]
 fn test_dim_string_fixed_length_length_declared_as_const() {
     let program = r#"
     CONST A = 5

@@ -1,9 +1,9 @@
 use crate::converter::context::*;
 use crate::converter::dim_rules::dim_name_state::DimNameState;
-use crate::converter::dim_rules::string_length::resolve_string_length;
 use crate::converter::traits::Convertible;
 use crate::converter::types::DimContext;
 use crate::error::{LintError, LintErrorPos};
+use crate::string_length::validate_string_length;
 use crate::type_resolver::IntoTypeQualifier;
 use crate::LintResult;
 use rusty_common::*;
@@ -92,7 +92,7 @@ fn fixed_length_string_to_dim_type(
     length_expression: &ExpressionPos,
 ) -> Result<DimType, LintErrorPos> {
     require_extended_can_be_defined(ctx, bare_name)?;
-    let string_length: u16 = resolve_string_length(ctx, length_expression)?;
+    let string_length: u16 = validate_string_length(length_expression, &ctx.names)?;
     Ok(DimType::fixed_length_string(
         string_length,
         length_expression.pos(),

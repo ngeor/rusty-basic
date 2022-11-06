@@ -47,12 +47,8 @@ use crate::name::bare_name_without_dots;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::statement_separator::comments_and_whitespace_p;
-use crate::types::{
-    Element, ElementPos, ElementType, Expression, ExpressionPos, Keyword, UserDefinedType,
-};
+use crate::types::{Element, ElementPos, ElementType, ExpressionPos, Keyword, UserDefinedType};
 use crate::ParseError;
-use rusty_common::Positioned;
-use rusty_variant::MAX_INTEGER;
 
 pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
     seq5(
@@ -105,22 +101,7 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
 }
 
 fn demand_string_length_p() -> impl Parser<Output = ExpressionPos> + NonOptParser {
-    expression_pos_p()
-        .and_then(|Positioned { element, pos }| match element {
-            Expression::IntegerLiteral(i) => {
-                if i > 0 && i < MAX_INTEGER {
-                    Ok(Positioned::new(element, pos))
-                } else {
-                    Err(ParseError::syntax_error("String length out of range"))
-                }
-            }
-            Expression::Variable(_, _) => {
-                // allow it, in case it is a CONST
-                Ok(Positioned::new(element, pos))
-            }
-            _ => Err(ParseError::syntax_error("Illegal string length")),
-        })
-        .or_syntax_error("Expected: string length")
+    expression_pos_p().or_syntax_error("Expected: string length")
 }
 
 #[cfg(test)]
@@ -196,46 +177,6 @@ mod tests {
         END TYPE
         ";
         assert_parser_err!(input, ParseError::ElementNotDefined);
-    }
-
-    #[test]
-    fn string_length_wrong_type() {
-        let illegal_expressions = [
-            "3.14",
-            "6.28#",
-            "\"hello\"",
-            "(1+1)",
-            "Foo(1)",
-            "32768", /* MAX_INT (32767) + 1*/
-        ];
-        for e in &illegal_expressions {
-            let input = format!(
-                "
-                TYPE Invalid
-                    ZeroString AS STRING * {}
-                END TYPE",
-                e
-            );
-            assert_parser_err!(&input, ParseError::syntax_error("Illegal string length"));
-        }
-    }
-
-    #[test]
-    fn string_length_out_of_range() {
-        let illegal_expressions = ["0", "-1"];
-        for e in &illegal_expressions {
-            let input = format!(
-                "
-                TYPE Invalid
-                    ZeroString AS STRING * {}
-                END TYPE",
-                e
-            );
-            assert_parser_err!(
-                &input,
-                ParseError::syntax_error("String length out of range")
-            );
-        }
     }
 
     #[test]

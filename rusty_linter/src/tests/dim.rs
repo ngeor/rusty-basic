@@ -764,3 +764,37 @@ mod redim {
         }
     }
 }
+
+#[test]
+fn string_length_must_be_constant() {
+    let input = "
+    DIM M AS STRING * A
+    ";
+    assert_linter_err!(input, LintError::InvalidConstant, 2, 23);
+}
+
+#[test]
+fn string_length_must_be_constant_const_cannot_follow_type() {
+    let input = "
+    DIM N AS STRING * A
+    CONST A = 10";
+    assert_linter_err!(input, LintError::InvalidConstant, 2, 23);
+}
+
+#[test]
+fn string_length_illegal_expression() {
+    let illegal_expressions = [
+        "0",
+        "-1",
+        "3.14",
+        "6.28#",
+        "\"hello\"",
+        "Foo(1)",
+        "(1+1)",
+        "32768", /* MAX_INT (32767) + 1*/
+    ];
+    for e in &illegal_expressions {
+        let input = format!("DIM ZeroString AS STRING * {}", e);
+        assert_linter_err!(&input, LintError::InvalidConstant);
+    }
+}

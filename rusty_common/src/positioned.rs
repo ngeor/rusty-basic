@@ -29,6 +29,16 @@ impl<T> Positioned<T> {
             pos,
         }
     }
+
+    /// Converts this instance to a result, given the specified function.
+    /// The function acts on the element of this instance and returns
+    /// the result. The error of the result is converted to a [Positioned] error.
+    pub fn try_map<F, U, E>(&self, op: F) -> Result<U, Positioned<E>>
+    where
+        F: FnOnce(&T) -> Result<U, E>,
+    {
+        (op)(&self.element).map_err(|e| e.at_pos(self.pos))
+    }
 }
 
 // AtPos

@@ -321,3 +321,15 @@ fn test_assign_element_type_assign_unqualified_use_qualified() {
     "#;
     assert_prints_exact!(input, "9876", "");
 }
+
+#[test]
+fn test_max_length_string() {
+    let input = r#"
+    TYPE PostCode
+        Prefix AS STRING * 32767
+    END TYPE
+    DIM p AS PostCode
+    PRINT LEN(p)
+    "#;
+    assert_prints_exact!(input, " 32767 ", "");
+}

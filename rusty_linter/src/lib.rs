@@ -8,6 +8,7 @@ mod linter;
 mod post_linter;
 mod pre_linter;
 mod qb_casting;
+mod string_length;
 mod traits;
 mod type_resolver;
 mod type_resolver_impl;

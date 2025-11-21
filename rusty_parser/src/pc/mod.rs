@@ -32,6 +32,7 @@ mod peek;
 mod recognizers;
 mod row_col_view;
 mod seq;
+mod string_view;
 mod tokenizers;
 mod undo;
 

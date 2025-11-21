@@ -30,6 +30,7 @@ mod parser_to_parser_once_adapter;
 mod parsers;
 mod peek;
 mod recognizers;
+mod row_col_view;
 mod seq;
 mod tokenizers;
 mod undo;

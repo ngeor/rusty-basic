@@ -6,7 +6,7 @@ use crate::*;
 
 // INPUT variable-list
 // INPUT #file-number%, variable-list
-pub fn parse() -> impl Parser<Output = Statement> {
+pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq4(
         keyword(Keyword::Input),
         whitespace().no_incomplete(),

@@ -25,16 +25,16 @@ use crate::{
 /// - `T`: The type of the variable (e.g. [DimType], [ParamType])
 /// - `A`: The type of the array indicator
 /// - `P`: The parser that parses `T` for extended built-in types.
-pub fn var_name<T, A, P>(
-    array_p: impl Parser<Output = A> + NonOptParser,
+pub fn var_name<I: Tokenizer + 'static, T, A, P>(
+    array_p: impl Parser<I, Output = A> + NonOptParser<I>,
     built_in_extended_factory: fn() -> P,
-) -> impl Parser<Output = TypedName<T>>
+) -> impl Parser<I, Output = TypedName<T>>
 where
     T: Default,
     T: VarTypeNewBuiltInCompact,
     T: VarTypeNewUserDefined,
     T: VarTypeToArray<ArrayType = A>,
-    P: Parser<Output = T> + 'static,
+    P: Parser<I, Output = T> + 'static,
 {
     Seq2::new(name_with_dots(), array_p)
         .chain(move |(name, array)| name_chain(name, array, built_in_extended_factory))
@@ -50,17 +50,17 @@ where
 ///
 /// The parameters `name` and `array_param` have already been parsed by [var_name].
 /// The `built_in_extended_factory` parses extended types (but only built-in).
-fn name_chain<A, T, F, P>(
+fn name_chain<I: Tokenizer + 'static, A, T, F, P>(
     name: Name,
     array_param: A,
     built_in_extended_factory: F,
-) -> impl ParserOnce<Output = (Name, A, T)>
+) -> impl ParserOnce<I, Output = (Name, A, T)>
 where
     T: Default,
     T: VarTypeNewBuiltInCompact,
     T: VarTypeNewUserDefined,
     F: Fn() -> P,
-    P: Parser<Output = T>,
+    P: Parser<I, Output = T>,
 {
     let has_dots = name.bare_name().contains('.');
     match_option_p(
@@ -85,7 +85,7 @@ where
     .map(|param_type| (name, array_param, param_type))
 }
 
-fn as_clause() -> impl Parser<Output = (Token, Token, Token)> {
+fn as_clause<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Token, Token, Token)> {
     seq2(
         whitespace().and(keyword(Keyword::As)),
         whitespace().no_incomplete(),
@@ -93,7 +93,9 @@ fn as_clause() -> impl Parser<Output = (Token, Token, Token)> {
     )
 }
 
-fn any_extended<T>(built_in_parser: impl Parser<Output = T>) -> impl Parser<Output = T>
+fn any_extended<I: Tokenizer + 'static, T>(
+    built_in_parser: impl Parser<I, Output = T>,
+) -> impl Parser<I, Output = T>
 where
     T: VarTypeNewUserDefined,
 {
@@ -104,7 +106,7 @@ where
         ))
 }
 
-fn user_defined_type<T>() -> impl Parser<Output = T>
+fn user_defined_type<I: Tokenizer + 'static, T>() -> impl Parser<I, Output = T>
 where
     T: VarTypeNewUserDefined,
 {

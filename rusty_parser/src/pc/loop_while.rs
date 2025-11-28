@@ -3,13 +3,13 @@ use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct LoopWhile<predicate: F>);
 
-impl<P, F> Parser for LoopWhile<P, F>
+impl<I: Tokenizer + 'static, P, F> Parser<I> for LoopWhile<P, F>
 where
-    P: Parser,
+    P: Parser<I>,
     F: Fn(&P::Output) -> bool,
 {
     type Output = Vec<P::Output>;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         let mut result: Vec<P::Output> = vec![];
         let mut keep_going = true;
         while keep_going {

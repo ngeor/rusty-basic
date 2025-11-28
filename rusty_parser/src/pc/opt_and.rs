@@ -6,13 +6,13 @@ use crate::{binary_parser_declaration, ParseError, ParserErrorTrait};
 
 binary_parser_declaration!(pub struct OptAndPC);
 
-impl<L, R> Parser for OptAndPC<L, R>
+impl<I: Tokenizer + 'static, L, R> Parser<I> for OptAndPC<L, R>
 where
-    L: Parser<Output = Token>,
-    R: Parser,
+    L: Parser<I, Output = Token>,
+    R: Parser<I>,
 {
     type Output = (Option<Token>, R::Output);
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         let opt_leading = self.left.parse_opt(tokenizer)?;
         match self.right.parse(tokenizer) {
             Ok(value) => Ok((opt_leading, value)),
@@ -26,9 +26,9 @@ where
     }
 }
 
-impl<L, R> NonOptParser for OptAndPC<L, R>
+impl<I: Tokenizer + 'static, L, R> NonOptParser<I> for OptAndPC<L, R>
 where
-    L: Parser<Output = Token>,
-    R: NonOptParser,
+    L: Parser<I, Output = Token>,
+    R: NonOptParser<I>,
 {
 }

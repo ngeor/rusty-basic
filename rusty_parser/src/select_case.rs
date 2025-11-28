@@ -17,7 +17,7 @@ use crate::{expression, ParseError};
 // CASE <ws+> IS <Operator> <expr>
 // CASE <expr>
 
-pub fn select_case_p() -> impl Parser<Output = Statement> {
+pub fn select_case_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq5(
         select_case_expr_p(),
         comments_and_whitespace_p(),
@@ -36,7 +36,7 @@ pub fn select_case_p() -> impl Parser<Output = Statement> {
 }
 
 /// Parses the `SELECT CASE expression` part
-fn select_case_expr_p() -> impl Parser<Output = ExpressionPos> {
+fn select_case_expr_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
     keyword_pair(Keyword::Select, Keyword::Case)
         .then_demand(expression::ws_expr_pos_p().or_syntax_error("Expected: expression after CASE"))
 }
@@ -59,11 +59,12 @@ fn select_case_expr_p() -> impl Parser<Output = ExpressionPos> {
 //
 // For range-expression, no space is needed before TO if the first expression is in parenthesis
 
-fn case_blocks() -> impl Parser<Output = Vec<CaseBlock>> + NonOptParser {
+fn case_blocks<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<CaseBlock>> + NonOptParser<I>
+{
     case_block().zero_or_more()
 }
 
-fn case_block() -> impl Parser<Output = CaseBlock> {
+fn case_block<I: Tokenizer + 'static>() -> impl Parser<I, Output = CaseBlock> {
     // CASE
     CaseButNotElse.then_demand(
         OptAndPC::new(whitespace(), continue_after_case())
@@ -74,9 +75,9 @@ fn case_block() -> impl Parser<Output = CaseBlock> {
 
 struct CaseButNotElse;
 
-impl Parser for CaseButNotElse {
+impl<I: Tokenizer + 'static> Parser<I> for CaseButNotElse {
     type Output = ();
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         match tokenizer.read()? {
             Some(case_token) if Keyword::Case == case_token => match tokenizer.read()? {
                 Some(space_token) if TokenType::Whitespace.matches(&space_token) => {
@@ -113,7 +114,7 @@ impl Parser for CaseButNotElse {
     }
 }
 
-fn continue_after_case() -> impl Parser<Output = CaseBlock> {
+fn continue_after_case<I: Tokenizer + 'static>() -> impl Parser<I, Output = CaseBlock> {
     seq2(
         case_expression_list(),
         ZeroOrMoreStatements::new(keyword_choice(&[Keyword::Case, Keyword::End])),
@@ -124,7 +125,7 @@ fn continue_after_case() -> impl Parser<Output = CaseBlock> {
     )
 }
 
-fn case_expression_list() -> impl Parser<Output = Vec<CaseExpression>> {
+fn case_expression_list<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<CaseExpression>> {
     csv(case_expression_parser::parser())
 }
 
@@ -135,11 +136,11 @@ mod case_expression_parser {
     use crate::{CaseExpression, Keyword, Operator};
     use rusty_common::Positioned;
 
-    pub fn parser() -> impl Parser<Output = CaseExpression> {
+    pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = CaseExpression> {
         case_is().or(simple_or_range())
     }
 
-    fn case_is() -> impl Parser<Output = CaseExpression> {
+    fn case_is<I: Tokenizer + 'static>() -> impl Parser<I, Output = CaseExpression> {
         seq3(
             keyword(Keyword::Is),
             OptAndPC::new(whitespace(), relational_operator_p())
@@ -152,7 +153,8 @@ mod case_expression_parser {
         )
     }
 
-    fn relational_operator_p() -> impl Parser<Output = Positioned<Operator>> {
+    fn relational_operator_p<I: Tokenizer + 'static>(
+    ) -> impl Parser<I, Output = Positioned<Operator>> {
         any_token()
             .filter_map(|token| match TokenType::from_token(token) {
                 TokenType::LessEquals => Some(Operator::LessOrEqual),
@@ -166,7 +168,7 @@ mod case_expression_parser {
             .with_pos()
     }
 
-    fn simple_or_range() -> impl Parser<Output = CaseExpression> {
+    fn simple_or_range<I: Tokenizer + 'static>() -> impl Parser<I, Output = CaseExpression> {
         opt_second_expression_after_keyword(expression_pos_p(), Keyword::To).map(
             |(left, opt_right)| match opt_right {
                 Some(right) => CaseExpression::Range(left, right),
@@ -176,7 +178,7 @@ mod case_expression_parser {
     }
 }
 
-fn case_else() -> impl Parser<Output = Statements> {
+fn case_else<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statements> {
     keyword_pair(Keyword::Case, Keyword::Else)
         .then_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
 }

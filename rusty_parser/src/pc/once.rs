@@ -8,10 +8,10 @@ pub fn once_p<V>(value: V) -> Once<V> {
 
 pub struct Once<V>(V);
 
-impl<V> ParserOnce for Once<V> {
+impl<I: Tokenizer + 'static, V> ParserOnce<I> for Once<V> {
     type Output = V;
 
-    fn parse(self, _: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(self, _: &mut I) -> Result<Self::Output, ParseError> {
         Ok(self.0)
     }
 }

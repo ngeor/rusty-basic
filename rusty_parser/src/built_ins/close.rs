@@ -11,7 +11,7 @@ use crate::*;
 // next_file_handles ::= <file_handle> | <file_handle> <opt-ws> "," <opt-ws> <next_file_handles>
 // first_file_handle ::= "(" <file_handle> ")" | <ws> <file_handle>
 // file_handle ::= "#" <digits> | <expr>
-pub fn parse() -> impl Parser<Output = Statement> {
+pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq2(
         keyword(Keyword::Close),
         file_handles(),
@@ -19,7 +19,8 @@ pub fn parse() -> impl Parser<Output = Statement> {
     )
 }
 
-fn file_handles() -> impl Parser<Output = Expressions> + NonOptParser {
+fn file_handles<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expressions> + NonOptParser<I>
+{
     AccumulateParser::new(
         guarded_file_handle_or_expression_p(),
         comma().then_demand(file_handle_or_expression_p()),
@@ -27,7 +28,8 @@ fn file_handles() -> impl Parser<Output = Expressions> + NonOptParser {
     .allow_default()
 }
 
-fn file_handle_or_expression_p() -> impl Parser<Output = ExpressionPos> + NonOptParser {
+fn file_handle_or_expression_p<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = ExpressionPos> + NonOptParser<I> {
     file_handle_as_expression_pos_p()
         .or(expression_pos_p())
         .or_syntax_error("Expected: file handle")

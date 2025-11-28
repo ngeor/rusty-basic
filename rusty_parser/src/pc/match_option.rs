@@ -25,16 +25,16 @@ impl<T, LF, RF> MatchOption<T, LF, RF> {
     }
 }
 
-impl<T, LF, RF, L, R> ParserOnce for MatchOption<T, LF, RF>
+impl<I: Tokenizer + 'static, T, LF, RF, L, R> ParserOnce<I> for MatchOption<T, LF, RF>
 where
     LF: FnOnce(T) -> L,
-    L: ParserOnce,
+    L: ParserOnce<I>,
     RF: FnOnce() -> R,
-    R: ParserOnce<Output = L::Output>,
+    R: ParserOnce<I, Output = L::Output>,
 {
     type Output = L::Output;
 
-    fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         match self.value {
             Some(value) => {
                 let parser = (self.left_factory)(value);

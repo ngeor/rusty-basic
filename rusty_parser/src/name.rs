@@ -11,18 +11,18 @@ const MAX_LENGTH: usize = 40;
 /// Errors if it exceeds the maximum length of identifiers.
 ///
 /// Use case: user defined type elements or types.
-pub fn bare_name_without_dots() -> impl Parser<Output = BareName> {
+pub fn bare_name_without_dots<I: Tokenizer + 'static>() -> impl Parser<I, Output = BareName> {
     ensure_no_trailing_dot_or_qualifier(identifier()).map(BareName::from)
 }
 
 /// Parses an identifier token.
 /// Errors if it exceeds the maximum length of identifiers.
-pub fn identifier() -> impl Parser<Output = Token> {
+pub fn identifier<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of(TokenType::Identifier).and_then(ensure_token_length)
 }
 
 /// Parses a type qualifier character.
-fn type_qualifier_unchecked() -> impl Parser<Output = Token> {
+fn type_qualifier_unchecked<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token().filter(is_type_qualifier)
 }
 
@@ -53,7 +53,7 @@ fn ensure_token_length(token: Token) -> Result<Token, ParseError> {
 /// of the name (e.g. `VIEW.PRINT` is a valid result).
 ///
 /// Usages: SUB name and labels.
-pub fn bare_name_with_dots() -> impl Parser<Output = BareName> {
+pub fn bare_name_with_dots<I: Tokenizer + 'static>() -> impl Parser<I, Output = BareName> {
     ensure_no_trailing_qualifier(identifier_with_dots()).map(token_list_to_bare_name)
 }
 
@@ -66,7 +66,7 @@ pub fn bare_name_with_dots() -> impl Parser<Output = BareName> {
 /// of the name (e.g. `VIEW.PRINT` is a valid result).
 ///
 /// Usage: label declaration (but also used internally in the module).
-pub fn identifier_with_dots() -> impl Parser<Output = TokenList> {
+pub fn identifier_with_dots<I: Tokenizer + 'static>() -> impl Parser<I, Output = TokenList> {
     Alt2::new(
         // to allow keywords, there must be at least one dot
         seq2(
@@ -85,12 +85,12 @@ pub fn identifier_with_dots() -> impl Parser<Output = TokenList> {
     )
 }
 
-fn identifier_or_keyword() -> impl Parser<Output = Token> {
+fn identifier_or_keyword<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token()
         .filter(|token| TokenType::Identifier.matches(token) || TokenType::Keyword.matches(token))
 }
 
-fn identifier_or_keyword_or_dot() -> impl Parser<Output = Token> {
+fn identifier_or_keyword_or_dot<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token().filter(|token| {
         TokenType::Identifier.matches(token)
             || TokenType::Dot.matches(token)
@@ -117,11 +117,11 @@ fn ensure_token_list_length(tokens: TokenList) -> Result<TokenList, ParseError> 
 /// If a type qualifier exists, it cannot be followed by a dot or a second type qualifier.
 ///
 /// It can also be a keyword followed by the dollar sign (e.g. `END$` is a valid result).
-pub fn name_with_dots() -> impl Parser<Output = Name> {
+pub fn name_with_dots<I: Tokenizer + 'static>() -> impl Parser<I, Output = Name> {
     name_with_dots_as_tokens().map(Name::from)
 }
 
-pub fn name_with_dots_as_tokens() -> impl Parser<Output = NameAsTokens> {
+pub fn name_with_dots_as_tokens<I: Tokenizer + 'static>() -> impl Parser<I, Output = NameAsTokens> {
     Alt2::new(
         identifier_with_dots().and_opt(type_qualifier()),
         ensure_no_trailing_dot_or_qualifier(any_keyword_with_dollar_sign())
@@ -131,19 +131,21 @@ pub fn name_with_dots_as_tokens() -> impl Parser<Output = NameAsTokens> {
 
 /// Parses a type qualifier character.
 /// Fails if the qualifier is followed by a dot or an additional qualifier.
-pub fn type_qualifier() -> impl Parser<Output = Token> {
+pub fn type_qualifier<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     ensure_no_trailing_dot_or_qualifier(type_qualifier_unchecked())
 }
 
-fn ensure_no_trailing_dot_or_qualifier<P>(
-    parser: impl Parser<Output = P>,
-) -> impl Parser<Output = P> {
+fn ensure_no_trailing_dot_or_qualifier<I: Tokenizer + 'static, P>(
+    parser: impl Parser<I, Output = P>,
+) -> impl Parser<I, Output = P> {
     ensure_no_trailing_qualifier(ensure_no_trailing_dot(parser))
 }
 
 /// Returns the result of the given parser,
 /// but it gives an error if it is followed by a dot.
-fn ensure_no_trailing_dot<P>(parser: impl Parser<Output = P>) -> impl Parser<Output = P> {
+fn ensure_no_trailing_dot<I: Tokenizer + 'static, P>(
+    parser: impl Parser<I, Output = P>,
+) -> impl Parser<I, Output = P> {
     seq2(
         parser,
         dot()
@@ -156,7 +158,9 @@ fn ensure_no_trailing_dot<P>(parser: impl Parser<Output = P>) -> impl Parser<Out
 
 /// Returns the result of the given parser,
 /// but it gives an error if it is followed by a type qualifier character.
-fn ensure_no_trailing_qualifier<P>(parser: impl Parser<Output = P>) -> impl Parser<Output = P> {
+fn ensure_no_trailing_qualifier<I: Tokenizer + 'static, P>(
+    parser: impl Parser<I, Output = P>,
+) -> impl Parser<I, Output = P> {
     seq2(
         parser,
         type_qualifier_unchecked()
@@ -199,24 +203,37 @@ pub fn token_to_type_qualifier(token: &Token) -> TypeQualifier {
 mod tests {
     use super::*;
     use crate::parametric_test;
-    use crate::test_utils::*;
+    use crate::pc::{Parser, Tokenizer};
+    use crate::pc_specific::create_string_tokenizer;
 
     mod bare_name_without_dots {
         use super::*;
 
+        fn parse_something_completely(input: &str) -> BareName {
+            let mut tokenizer = create_string_tokenizer(input.to_owned());
+            let result = bare_name_without_dots()
+                .parse(&mut tokenizer)
+                .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
+            assert!(
+                tokenizer.read().expect("Should read EOF token").is_none(),
+                "Should have parsed {} completely",
+                input
+            );
+            result
+        }
+
         #[test]
         fn can_parse_identifier() {
-            assert_eq!(
-                parse_something_completely("Hello", bare_name_without_dots()),
-                BareName::from("Hello")
-            )
+            assert_eq!(parse_something_completely("Hello"), BareName::from("Hello"))
         }
 
         #[test]
         fn cannot_have_dots() {
-            for input in &["Hell.o", "Hello."] {
+            for input in ["Hell.o", "Hello."] {
+                let input: String = String::from(input);
+                let result = bare_name_with_dots().parse(&mut create_string_tokenizer(input));
                 assert_eq!(
-                    parse_something(input, bare_name_without_dots()).expect_err("Should fail"),
+                    result.expect_err("Should fail"),
                     ParseError::IdentifierCannotIncludePeriod
                 );
             }
@@ -224,9 +241,11 @@ mod tests {
 
         #[test]
         fn cannot_have_trailing_qualifier() {
-            for input in &["Hello!", "Hello#", "Hello$", "Hello%", "Hello&"] {
+            for input in ["Hello!", "Hello#", "Hello$", "Hello%", "Hello&"] {
+                let input: String = String::from(input);
+                let result = bare_name_with_dots().parse(&mut create_string_tokenizer(input));
                 assert_eq!(
-                    parse_something(input, bare_name_without_dots()).expect_err("Should fail"),
+                    result.expect_err("Should fail"),
                     ParseError::syntax_error("Identifier cannot end with %, &, !, #, or $")
                 );
             }
@@ -234,10 +253,11 @@ mod tests {
 
         #[test]
         fn cannot_exceed_max_length() {
-            let input = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO";
+            let input = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO".to_owned();
             assert_eq!(input.len(), 41);
+            let result = bare_name_with_dots().parse(&mut create_string_tokenizer(input));
             assert_eq!(
-                parse_something(input, bare_name_without_dots()).expect_err("Should fail"),
+                result.expect_err("Should fail"),
                 ParseError::IdentifierTooLong
             );
         }
@@ -246,19 +266,33 @@ mod tests {
     mod identifier {
         use super::*;
 
+        fn parse_something_completely(input: &str) -> Token {
+            let mut tokenizer = create_string_tokenizer(input.to_owned());
+            let result = identifier()
+                .parse(&mut tokenizer)
+                .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
+            assert!(
+                tokenizer.read().expect("Should read EOF token").is_none(),
+                "Should have parsed {} completely",
+                input
+            );
+            result
+        }
+
         #[test]
         fn can_parse_identifier() {
-            let token = parse_something_completely("Hello", identifier());
+            let token = parse_something_completely("Hello");
             assert!(TokenType::Identifier.matches(&token));
             assert_eq!(token.text, "Hello");
         }
 
         #[test]
         fn cannot_exceed_max_length() {
-            let input = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO";
+            let input = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO".to_owned();
             assert_eq!(input.len(), 41);
+            let result = identifier().parse(&mut create_string_tokenizer(input));
             assert_eq!(
-                parse_something(input, identifier()).expect_err("Should fail"),
+                result.expect_err("Should fail"),
                 ParseError::IdentifierTooLong
             );
         }
@@ -267,9 +301,21 @@ mod tests {
     mod bare_name_with_dots {
         use super::*;
 
+        fn parse_something_completely(input: &str) -> BareName {
+            let mut tokenizer = create_string_tokenizer(input.to_owned());
+            let result = bare_name_with_dots()
+                .parse(&mut tokenizer)
+                .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
+            assert!(
+                tokenizer.read().expect("Should read EOF token").is_none(),
+                "Should have parsed {} completely",
+                input
+            );
+            result
+        }
+
         fn happy_flow(input: &str) {
-            let parser = bare_name_with_dots();
-            let result = parse_something_completely(input, parser);
+            let result = parse_something_completely(input);
             assert_eq!(result, BareName::from(input));
         }
 
@@ -295,9 +341,21 @@ mod tests {
     mod name_with_dots {
         use super::*;
 
+        fn parse_something_completely(input: &str) -> Name {
+            let mut tokenizer = create_string_tokenizer(input.to_owned());
+            let result = name_with_dots()
+                .parse(&mut tokenizer)
+                .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
+            assert!(
+                tokenizer.read().expect("Should read EOF token").is_none(),
+                "Should have parsed {} completely",
+                input
+            );
+            result
+        }
+
         fn happy_flow(input: &str) {
-            let parser = name_with_dots();
-            let result = parse_something_completely(input, parser);
+            let result = parse_something_completely(input);
             assert_eq!(result, Name::from(input));
         }
 

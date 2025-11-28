@@ -52,22 +52,22 @@ macro_rules! binary_parser_declaration {
 #[macro_export]
 macro_rules! lazy_parser {
     ($fn_vis:vis fn $fn_name:ident<Output=$output_type:tt> ; $struct_vis:vis struct $struct_name:ident ; $body:expr) => {
-        $fn_vis fn $fn_name()  -> impl Parser<Output=$output_type> {
+        $fn_vis fn $fn_name<I: Tokenizer + 'static>()  -> impl Parser<I, Output=$output_type> {
             $struct_name
         }
 
         struct $struct_name;
 
         impl $struct_name {
-            fn create_parser() -> impl Parser<Output=$output_type> {
+            fn create_parser<I: Tokenizer + 'static>() -> impl Parser<I, Output=$output_type> {
                 $body
             }
         }
 
-        impl Parser for $struct_name {
+        impl<I: Tokenizer + 'static> Parser<I> for $struct_name {
             type Output = $output_type;
 
-            fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<$output_type, $crate::ParseError> {
+            fn parse(&self, tokenizer: &mut I) -> Result<$output_type, $crate::ParseError> {
                 let parser = Self::create_parser();
                 parser.parse(tokenizer)
             }

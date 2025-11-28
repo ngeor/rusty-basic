@@ -5,13 +5,13 @@ use crate::{binary_parser_declaration, ParseError};
 //
 binary_parser_declaration!(pub struct AndOptPC);
 
-impl<L, R> Parser for AndOptPC<L, R>
+impl<I: Tokenizer + 'static, L, R> Parser<I> for AndOptPC<L, R>
 where
-    L: Parser,
-    R: Parser,
+    L: Parser<I>,
+    R: Parser<I>,
 {
     type Output = (L::Output, Option<R::Output>);
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         let left = self.left.parse(tokenizer)?;
         let opt_right = self.right.parse_opt(tokenizer)?;
         Ok((left, opt_right))

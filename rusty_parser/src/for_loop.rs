@@ -8,7 +8,7 @@ use crate::{expression, ParseError};
 // statements
 // NEXT (I)
 
-pub fn for_loop_p() -> impl Parser<Output = Statement> {
+pub fn for_loop_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq4(
         parse_for_step_p(),
         ZeroOrMoreStatements::new(keyword(Keyword::Next)),
@@ -28,7 +28,8 @@ pub fn for_loop_p() -> impl Parser<Output = Statement> {
 }
 
 /// Parses the "FOR I = 1 TO 2 [STEP X]" part
-fn parse_for_step_p() -> impl Parser<
+fn parse_for_step_p<I: Tokenizer + 'static>() -> impl Parser<
+    I,
     Output = (
         ExpressionPos,
         ExpressionPos,
@@ -47,7 +48,8 @@ impl ExtractExpression for (ExpressionPos, ExpressionPos, ExpressionPos) {
 }
 
 /// Parses the "FOR I = 1 TO 2" part
-fn parse_for_p() -> impl Parser<Output = (ExpressionPos, ExpressionPos, ExpressionPos)> {
+fn parse_for_p<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = (ExpressionPos, ExpressionPos, ExpressionPos)> {
     seq6(
         keyword_followed_by_whitespace_p(Keyword::For),
         expression::property::parser().or_syntax_error("Expected: name after FOR"),
@@ -59,7 +61,7 @@ fn parse_for_p() -> impl Parser<Output = (ExpressionPos, ExpressionPos, Expressi
     )
 }
 
-fn next_counter_p() -> impl Parser<Output = ExpressionPos> {
+fn next_counter_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
     whitespace()
         .and(expression::property::parser())
         .keep_right()

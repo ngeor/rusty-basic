@@ -22,10 +22,10 @@ mod tests {
             fn test_whitespace_around_equals_is_optional() {
                 let var_name = "A";
                 let value = 42;
-                assert_global_assignment!(&format!("{} = {}", var_name, value), var_name, value);
-                assert_global_assignment!(&format!("{}={}", var_name, value), var_name, value);
-                assert_global_assignment!(&format!("{}= {}", var_name, value), var_name, value);
-                assert_global_assignment!(&format!("{} ={}", var_name, value), var_name, value);
+                assert_global_assignment!(format!("{} = {}", var_name, value), var_name, value);
+                assert_global_assignment!(format!("{}={}", var_name, value), var_name, value);
+                assert_global_assignment!(format!("{}= {}", var_name, value), var_name, value);
+                assert_global_assignment!(format!("{} ={}", var_name, value), var_name, value);
             }
 
             #[test]

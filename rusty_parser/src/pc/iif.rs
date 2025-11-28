@@ -21,14 +21,14 @@ impl<L, R> IIfParser<L, R> {
     }
 }
 
-impl<L, R> Parser for IIfParser<L, R>
+impl<I: Tokenizer + 'static, L, R> Parser<I> for IIfParser<L, R>
 where
-    L: Parser,
-    R: Parser<Output = L::Output>,
+    L: Parser<I>,
+    R: Parser<I, Output = L::Output>,
 {
     type Output = L::Output;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         if self.condition {
             self.left.parse(tokenizer)
         } else {

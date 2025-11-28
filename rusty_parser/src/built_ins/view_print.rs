@@ -3,13 +3,13 @@ use crate::pc::*;
 use crate::pc_specific::*;
 use crate::*;
 
-pub fn parse() -> impl Parser<Output = Statement> {
+pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     keyword_pair(Keyword::View, Keyword::Print)
         .then_demand(parse_args().allow_default())
         .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::ViewPrint, opt_args))
 }
 
-fn parse_args() -> impl Parser<Output = Expressions> {
+fn parse_args<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expressions> {
     seq3(
         ws_expr_pos_ws_p(),
         keyword(Keyword::To).no_incomplete(),

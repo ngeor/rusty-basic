@@ -8,7 +8,7 @@ use crate::{DefType, Keyword, LetterRange, ParseError, TypeQualifier};
 // LetterRange  ::= <Letter> | <Letter>-<Letter>
 // Letter       ::= [a-zA-Z]
 
-pub fn def_type_p() -> impl Parser<Output = DefType> {
+pub fn def_type_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = DefType> {
     seq3(
         def_keyword_p(),
         whitespace().no_incomplete(),
@@ -17,7 +17,7 @@ pub fn def_type_p() -> impl Parser<Output = DefType> {
     )
 }
 
-fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
+fn def_keyword_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = TypeQualifier> {
     keyword_map(&[
         (Keyword::DefInt, TypeQualifier::PercentInteger),
         (Keyword::DefLng, TypeQualifier::AmpersandLong),
@@ -27,11 +27,12 @@ fn def_keyword_p() -> impl Parser<Output = TypeQualifier> {
     ])
 }
 
-fn letter_ranges() -> impl Parser<Output = Vec<LetterRange>> + NonOptParser {
+fn letter_ranges<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = Vec<LetterRange>> + NonOptParser<I> {
     csv_non_opt(letter_range(), "Expected: letter ranges")
 }
 
-fn letter_range() -> impl Parser<Output = LetterRange> {
+fn letter_range<I: Tokenizer + 'static>() -> impl Parser<I, Output = LetterRange> {
     letter()
         .no_incomplete()
         .and_opt(minus_sign().and(letter()))
@@ -47,7 +48,7 @@ fn letter_range() -> impl Parser<Output = LetterRange> {
         })
 }
 
-fn letter() -> impl Parser<Output = char> {
+fn letter<I: Tokenizer + 'static>() -> impl Parser<I, Output = char> {
     any_token_of(TokenType::Identifier)
         .filter(|token| token.text.chars().count() == 1)
         .map(token_to_char)

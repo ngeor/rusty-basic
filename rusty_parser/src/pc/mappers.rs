@@ -9,31 +9,31 @@ parser_declaration!(pub struct FnMapper<mapper: F>);
 
 // TODO: question, can a macro reduce the repetition of the impl traits
 
-impl<P, F, U> Parser for FnMapper<P, F>
+impl<I: Tokenizer + 'static, P, F, U> Parser<I> for FnMapper<P, F>
 where
-    P: Parser,
+    P: Parser<I>,
     F: Fn(P::Output) -> U,
 {
     type Output = U;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(&self.mapper)
     }
 }
 
-impl<P, F, U> ParserOnce for FnMapper<P, F>
+impl<I: Tokenizer + 'static, P, F, U> ParserOnce<I> for FnMapper<P, F>
 where
-    P: ParserOnce,
+    P: ParserOnce<I>,
     F: FnOnce(P::Output) -> U,
 {
     type Output = U;
-    fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(self.mapper)
     }
 }
 
-impl<P, F, U> NonOptParser for FnMapper<P, F>
+impl<I: Tokenizer + 'static, P, F, U> NonOptParser<I> for FnMapper<P, F>
 where
-    P: NonOptParser,
+    P: NonOptParser<I>,
     F: Fn(P::Output) -> U,
 {
 }
@@ -44,17 +44,20 @@ where
 
 parser_declaration!(pub struct KeepLeftMapper);
 
-impl<P, L, R> Parser for KeepLeftMapper<P>
+impl<I: Tokenizer + 'static, P, L, R> Parser<I> for KeepLeftMapper<P>
 where
-    P: Parser<Output = (L, R)>,
+    P: Parser<I, Output = (L, R)>,
 {
     type Output = L;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(|(l, _)| l)
     }
 }
 
-impl<P, L, R> NonOptParser for KeepLeftMapper<P> where P: NonOptParser<Output = (L, R)> {}
+impl<I: Tokenizer + 'static, P, L, R> NonOptParser<I> for KeepLeftMapper<P> where
+    P: NonOptParser<I, Output = (L, R)>
+{
+}
 
 //
 // Keep Right
@@ -62,14 +65,17 @@ impl<P, L, R> NonOptParser for KeepLeftMapper<P> where P: NonOptParser<Output = 
 
 parser_declaration!(pub struct KeepRightMapper);
 
-impl<P, L, R> Parser for KeepRightMapper<P>
+impl<I: Tokenizer + 'static, P, L, R> Parser<I> for KeepRightMapper<P>
 where
-    P: Parser<Output = (L, R)>,
+    P: Parser<I, Output = (L, R)>,
 {
     type Output = R;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(|(_, r)| r)
     }
 }
 
-impl<P, L, R> NonOptParser for KeepRightMapper<P> where P: NonOptParser<Output = (L, R)> {}
+impl<I: Tokenizer + 'static, P, L, R> NonOptParser<I> for KeepRightMapper<P> where
+    P: NonOptParser<I, Output = (L, R)>
+{
+}

@@ -3,7 +3,7 @@ use crate::pc::*;
 use crate::pc_specific::*;
 use crate::*;
 
-pub fn parse() -> impl Parser<Output = Statement> {
+pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq4(
         keyword(Keyword::Name),
         ws_expr_pos_ws_p().or_syntax_error("Expected: old file name"),

@@ -3,13 +3,13 @@ use crate::{binary_parser_declaration, ParseError};
 
 binary_parser_declaration!(pub struct GuardPC);
 
-impl<L, R> Parser for GuardPC<L, R>
+impl<I: Tokenizer + 'static, L, R> Parser<I> for GuardPC<L, R>
 where
-    L: Parser,
-    R: Parser + NonOptParser,
+    L: Parser<I>,
+    R: Parser<I> + NonOptParser<I>,
 {
-    type Output = <R as Parser>::Output;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    type Output = <R as Parser<I>>::Output;
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         self.left.parse(tokenizer)?;
         self.right.parse(tokenizer)
     }

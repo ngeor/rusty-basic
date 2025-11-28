@@ -47,13 +47,13 @@ pub fn opt_zip<L, R>(left: L, right: R) -> OptZip<L, R> {
     OptZip::new(left, right)
 }
 
-impl<L, R> Parser for OptZip<L, R>
+impl<I: Tokenizer + 'static, L, R> Parser<I> for OptZip<L, R>
 where
-    L: Parser,
-    R: Parser,
+    L: Parser<I>,
+    R: Parser<I>,
 {
     type Output = ZipValue<L::Output, R::Output>;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         let opt_left = self.left.parse_opt(tokenizer)?;
         let opt_right = self.right.parse_opt(tokenizer)?;
         match opt_left {

@@ -16,16 +16,10 @@ use crate::ParseError;
 /// There are two different types of failures:
 /// - incomplete: another parser might be able to succeed
 /// - fatal: all parsing should stop
-///
-/// The [Tokenizer] is available through a `mut impl` parameter on the method
-/// [Parser::parse]. This choice has some pros and cons. The `impl Tokenizer`
-/// means that this is in reality a generic method, meaning that the Parser
-/// can't be converted into a `dyn object`. On the positive side, the type
-/// is simpler, with no extra generic parameters polluting the definitions.
-pub trait Parser {
+pub trait Parser<I: Tokenizer + 'static> {
     type Output;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError>;
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError>;
 
     // TODO #[deprecated]
     fn and_opt<R>(self, right: R) -> AndOptPC<Self, R>
@@ -100,22 +94,22 @@ pub trait Parser {
 
     fn keep_left<L, R>(self) -> KeepLeftMapper<Self>
     where
-        Self: Sized + Parser<Output = (L, R)>,
+        Self: Sized + Parser<I, Output = (L, R)>,
     {
         KeepLeftMapper::new(self)
     }
 
     fn keep_right<L, R>(self) -> KeepRightMapper<Self>
     where
-        Self: Sized + Parser<Output = (L, R)>,
+        Self: Sized + Parser<I, Output = (L, R)>,
     {
         KeepRightMapper::new(self)
     }
 
     fn or<O, R>(self, right: R) -> Alt2<O, Self, R>
     where
-        Self: Sized + Parser<Output = O>,
-        R: Parser<Output = O>,
+        Self: Sized + Parser<I, Output = O>,
+        R: Parser<I, Output = O>,
     {
         Alt2::new(self, right)
     }
@@ -129,10 +123,7 @@ pub trait Parser {
     }
 
     // TODO #[deprecated]
-    fn parse_opt(
-        &self,
-        tokenizer: &mut impl Tokenizer,
-    ) -> Result<Option<Self::Output>, ParseError> {
+    fn parse_opt(&self, tokenizer: &mut I) -> Result<Option<Self::Output>, ParseError> {
         match self.parse(tokenizer) {
             Ok(value) => Ok(Some(value)),
             Err(ParseError::Incomplete) | Err(ParseError::Expected(_)) => Ok(None),
@@ -166,7 +157,7 @@ pub trait Parser {
     where
         Self: Sized,
         Self::Output: Undo,
-        R: Parser,
+        R: Parser<I>,
     {
         AndPC::new(self, right)
     }
@@ -174,7 +165,7 @@ pub trait Parser {
     fn then_demand<R>(self, other: R) -> GuardPC<Self, R>
     where
         Self: Sized,
-        R: Parser + NonOptParser,
+        R: Parser<I> + NonOptParser<I>,
     {
         GuardPC::new(self, other)
     }
@@ -212,7 +203,7 @@ pub trait Parser {
     where
         Self: Sized,
         RF: Fn(Self::Output) -> R,
-        R: ParserOnce,
+        R: ParserOnce<I>,
     {
         ChainParser::new(self, right_factory)
     }
@@ -232,16 +223,16 @@ pub trait Parser {
 /// A parser that returns a successful result or a fatal error.
 /// This parser will never return an error that is "incomplete".
 /// TODO: review all direct impl NonOptParser outside the core parsers, as implementing a marker trait doesn't guarantee much
-pub trait NonOptParser: Parser {}
+pub trait NonOptParser<I: Tokenizer + 'static>: Parser<I> {}
 
 // TODO try an OptParser trait which has the conversions to NonOptParser methods such as or_syntax_error
 // TODO mimic the std::iter functions to create new parsers from simpler blocks
 
 /// A parser that can only be used once. Similar to `FnOnce`.
-pub trait ParserOnce {
+pub trait ParserOnce<I: Tokenizer + 'static> {
     type Output;
 
-    fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError>;
+    fn parse(self, tokenizer: &mut I) -> Result<Self::Output, ParseError>;
 
     fn map<F, U>(self, mapper: F) -> FnMapper<Self, F>
     where
@@ -253,8 +244,8 @@ pub trait ParserOnce {
 
     fn or<O, R>(self, right: R) -> Alt2<O, Self, R>
     where
-        Self: Sized + ParserOnce<Output = O>,
-        R: ParserOnce<Output = O>,
+        Self: Sized + ParserOnce<I, Output = O>,
+        R: ParserOnce<I, Output = O>,
     {
         Alt2::new(self, right)
     }

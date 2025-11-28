@@ -50,7 +50,7 @@ use crate::statement_separator::comments_and_whitespace_p;
 use crate::types::{Element, ElementPos, ElementType, ExpressionPos, Keyword, UserDefinedType};
 use crate::ParseError;
 
-pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
+pub fn user_defined_type_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = UserDefinedType> {
     seq5(
         keyword_followed_by_whitespace_p(Keyword::Type),
         bare_name_without_dots().or_syntax_error("Expected: name after TYPE"),
@@ -61,13 +61,14 @@ pub fn user_defined_type_p() -> impl Parser<Output = UserDefinedType> {
     )
 }
 
-fn elements_p() -> impl Parser<Output = Vec<ElementPos>> + NonOptParser {
+fn elements_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<ElementPos>> + NonOptParser<I>
+{
     element_pos_p()
         .one_or_more()
         .or_fail(ParseError::ElementNotDefined)
 }
 
-fn element_pos_p() -> impl Parser<Output = ElementPos> {
+fn element_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ElementPos> {
     seq6(
         bare_name_without_dots(),
         whitespace().no_incomplete(),
@@ -80,7 +81,7 @@ fn element_pos_p() -> impl Parser<Output = ElementPos> {
     .with_pos()
 }
 
-fn element_type_p() -> impl Parser<Output = ElementType> {
+fn element_type_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ElementType> {
     Alt3::new(
         keyword_map(&[
             (Keyword::Integer, ElementType::Integer),
@@ -100,7 +101,8 @@ fn element_type_p() -> impl Parser<Output = ElementType> {
     )
 }
 
-fn demand_string_length_p() -> impl Parser<Output = ExpressionPos> + NonOptParser {
+fn demand_string_length_p<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = ExpressionPos> + NonOptParser<I> {
     expression_pos_p().or_syntax_error("Expected: string length")
 }
 

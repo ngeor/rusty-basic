@@ -2,7 +2,7 @@ use crate::built_ins::parse_built_in_sub_with_opt_args;
 use crate::pc::*;
 use crate::*;
 
-pub fn parse() -> impl Parser<Output = Statement> {
+pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     // TODO limit to 2 args here so linter can be removed
     parse_built_in_sub_with_opt_args(Keyword::Locate, BuiltInSub::Locate)
 }

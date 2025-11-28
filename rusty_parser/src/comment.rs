@@ -4,15 +4,19 @@ use crate::types::*;
 use crate::ParseError;
 
 /// Tries to read a comment.
-pub fn comment_p() -> impl Parser<Output = Statement> {
-    CommentAsString.map(Statement::Comment)
+pub fn comment_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+    comment_as_string_p().map(Statement::Comment)
 }
 
-pub struct CommentAsString;
+pub fn comment_as_string_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = String> {
+    CommentAsString
+}
 
-impl Parser for CommentAsString {
+struct CommentAsString;
+
+impl<I: Tokenizer + 'static> Parser<I> for CommentAsString {
     type Output = String;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         match tokenizer.read()? {
             Some(token) if TokenType::SingleQuote.matches(&token) => {
                 let mut result = String::new();

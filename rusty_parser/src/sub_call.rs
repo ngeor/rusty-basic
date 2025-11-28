@@ -9,15 +9,15 @@ use rusty_common::*;
 // SubCallArgsNoParenthesis ::= BareName<ws+>Expressions
 // SubCallArgsParenthesis   ::= BareName(Expressions)
 
-pub fn sub_call_or_assignment_p() -> impl Parser<Output = Statement> {
+pub fn sub_call_or_assignment_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     SubCallOrAssignment
 }
 
 struct SubCallOrAssignment;
 
-impl Parser for SubCallOrAssignment {
+impl<I: Tokenizer + 'static> Parser<I> for SubCallOrAssignment {
     type Output = Statement;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         let (
             Positioned {
                 element: name_expr, ..
@@ -44,7 +44,8 @@ impl Parser for SubCallOrAssignment {
 }
 
 impl SubCallOrAssignment {
-    fn name_and_opt_eq_sign() -> impl Parser<Output = (ExpressionPos, Option<Token>)> {
+    fn name_and_opt_eq_sign<I: Tokenizer + 'static>(
+    ) -> impl Parser<I, Output = (ExpressionPos, Option<Token>)> {
         expression::property::parser().and_opt(equal_sign())
     }
 }

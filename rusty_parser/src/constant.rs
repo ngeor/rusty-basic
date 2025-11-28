@@ -4,7 +4,7 @@ use crate::pc::*;
 use crate::pc_specific::*;
 use crate::types::{Keyword, Statement};
 
-pub fn constant_p() -> impl Parser<Output = Statement> {
+pub fn constant_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq5(
         keyword(Keyword::Const),
         whitespace().no_incomplete(),

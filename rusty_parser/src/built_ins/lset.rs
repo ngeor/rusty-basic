@@ -4,7 +4,7 @@ use crate::pc_specific::*;
 use crate::*;
 use rusty_common::*;
 
-pub fn parse() -> impl Parser<Output = Statement> {
+pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq5(
         keyword(Keyword::LSet),
         whitespace().no_incomplete(),

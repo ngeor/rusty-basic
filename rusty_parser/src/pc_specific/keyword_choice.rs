@@ -12,9 +12,9 @@ impl Undo for (Keyword, Token) {
     }
 }
 
-impl<'a> Parser for KeywordChoice<'a> {
+impl<I: Tokenizer + 'static> Parser<I> for KeywordChoice<'_> {
     type Output = (Keyword, Token);
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         match tokenizer.read()? {
             Some(token) => match self.find_keyword(&token) {
                 Some(keyword) => Ok((keyword, token)),
@@ -49,7 +49,9 @@ impl<'a> KeywordChoice<'a> {
     }
 }
 
-pub fn keyword_choice(keywords: &[Keyword]) -> impl Parser<Output = (Keyword, Token)> + '_ {
+pub fn keyword_choice<I: Tokenizer + 'static>(
+    keywords: &[Keyword],
+) -> impl Parser<I, Output = (Keyword, Token)> + '_ {
     KeywordChoice { keywords }
 }
 

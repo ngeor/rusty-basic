@@ -7,11 +7,11 @@ use crate::types::*;
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
 
-pub fn implementation_p() -> impl Parser<Output = GlobalStatement> {
+pub fn implementation_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalStatement> {
     function_implementation_p().or(sub_implementation_p())
 }
 
-fn function_implementation_p() -> impl Parser<Output = GlobalStatement> {
+fn function_implementation_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalStatement> {
     seq3(
         static_declaration_p(declaration::function_declaration_p()),
         ZeroOrMoreStatements::new(keyword(Keyword::End)),
@@ -27,7 +27,7 @@ fn function_implementation_p() -> impl Parser<Output = GlobalStatement> {
     )
 }
 
-fn sub_implementation_p() -> impl Parser<Output = GlobalStatement> {
+fn sub_implementation_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalStatement> {
     seq3(
         static_declaration_p(declaration::sub_declaration_p()),
         ZeroOrMoreStatements::new(keyword(Keyword::End)),
@@ -43,9 +43,11 @@ fn sub_implementation_p() -> impl Parser<Output = GlobalStatement> {
     )
 }
 
-fn static_declaration_p<P, T>(parser: P) -> impl Parser<Output = (T, bool)>
+fn static_declaration_p<I: Tokenizer + 'static, P, T>(
+    parser: P,
+) -> impl Parser<I, Output = (T, bool)>
 where
-    P: Parser<Output = T> + 'static,
+    P: Parser<I, Output = T> + 'static,
 {
     parser
         .and_opt(OptAndPC::new(whitespace(), keyword(Keyword::Static)))

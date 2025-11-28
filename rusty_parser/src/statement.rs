@@ -50,11 +50,11 @@ lazy_parser!(pub fn single_line_non_comment_statement_p<Output = Statement> ; st
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
-pub fn single_line_statement_p() -> impl Parser<Output = Statement> {
+pub fn single_line_statement_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     comment::comment_p().or(single_line_non_comment_statement_p())
 }
 
-fn statement_label_p() -> impl Parser<Output = Statement> {
+fn statement_label_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     // labels can have dots
     identifier_with_dots()
         .and(colon())
@@ -62,14 +62,15 @@ fn statement_label_p() -> impl Parser<Output = Statement> {
         .map(|tokens| Statement::Label(token_list_to_bare_name(tokens)))
 }
 
-fn statement_go_to_p() -> impl Parser<Output = Statement> {
+fn statement_go_to_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
         .then_demand(bare_name_with_dots().or_syntax_error("Expected: label"))
         .map(Statement::GoTo)
 }
 
 /// A parser that fails if an illegal starting keyword is found.
-fn illegal_starting_keywords() -> impl Parser<Output = Statement> + 'static {
+fn illegal_starting_keywords<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = Statement> + 'static {
     keyword_map(&[
         (Keyword::Wend, ParseError::WendWithoutWhile),
         (Keyword::Else, ParseError::ElseWithoutIf),
@@ -85,7 +86,7 @@ mod end {
     use crate::statement_separator::peek_eof_or_statement_separator;
     use crate::{Keyword, Statement};
 
-    pub fn parse_end_p() -> impl Parser<Output = Statement> {
+    pub fn parse_end_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
         keyword(Keyword::End)
             .then_demand(after_end_separator())
             .map(|_| Statement::End)
@@ -94,7 +95,8 @@ mod end {
     /// Parses the next token after END. If it is one of the valid keywords that
     /// can follow END, it is undone so that the entire parsing will be undone.
     /// Otherwise, it demands that we find an end-of-statement terminator.
-    fn after_end_separator() -> impl Parser<Output = ()> + NonOptParser {
+    fn after_end_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> + NonOptParser<I>
+    {
         Alt2::new(
             whitespace_and_allowed_keyword_after_end(),
             opt_ws_and_eof_or_statement_separator(),
@@ -106,13 +108,15 @@ mod end {
     }
 
     // Vec to be able to undo
-    fn whitespace_and_allowed_keyword_after_end() -> impl Parser<Output = TokenList> {
+    fn whitespace_and_allowed_keyword_after_end<I: Tokenizer + 'static>(
+    ) -> impl Parser<I, Output = TokenList> {
         whitespace()
             .and(allowed_keywords_after_end())
             .map(|(l, (_, r))| vec![l, r])
     }
 
-    fn allowed_keywords_after_end() -> impl Parser<Output = (Keyword, Token)> {
+    fn allowed_keywords_after_end<I: Tokenizer + 'static>(
+    ) -> impl Parser<I, Output = (Keyword, Token)> {
         keyword_choice(&[
             Keyword::Function,
             Keyword::If,
@@ -122,7 +126,8 @@ mod end {
         ])
     }
 
-    fn opt_ws_and_eof_or_statement_separator() -> impl Parser<Output = TokenList> {
+    fn opt_ws_and_eof_or_statement_separator<I: Tokenizer + 'static>(
+    ) -> impl Parser<I, Output = TokenList> {
         whitespace()
             .allow_none()
             .and(peek_eof_or_statement_separator())
@@ -152,7 +157,7 @@ mod system {
     use crate::statement_separator::peek_eof_or_statement_separator;
     use crate::{Keyword, Statement};
 
-    pub fn parse_system_p() -> impl Parser<Output = Statement> {
+    pub fn parse_system_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
         keyword(Keyword::System)
             .then_demand(
                 OptAndPC::new(whitespace(), peek_eof_or_statement_separator())

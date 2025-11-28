@@ -2,7 +2,7 @@ use crate::pc::*;
 use crate::pc_specific::*;
 use crate::{ExitObject, Keyword, Statement};
 
-pub fn statement_exit_p() -> impl Parser<Output = Statement> {
+pub fn statement_exit_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq3(
         keyword(Keyword::Exit),
         whitespace().no_incomplete(),

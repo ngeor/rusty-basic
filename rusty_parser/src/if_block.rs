@@ -7,7 +7,7 @@ use crate::statements::{
 };
 use crate::types::*;
 
-pub fn if_block_p() -> impl Parser<Output = Statement> {
+pub fn if_block_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq2(
         if_expr_then_p(),
         single_line_if_else_p()
@@ -31,7 +31,7 @@ pub fn if_block_p() -> impl Parser<Output = Statement> {
 // single line else ::= ELSE non-comment-statements-separated-by-colon comment-statement
 // multi line if    ::= statements else-if-blocks else-block END IF
 
-fn if_expr_then_p() -> impl Parser<Output = ExpressionPos> {
+fn if_expr_then_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
     seq3(
         keyword(Keyword::If),
         expression::ws_expr_pos_ws_p().or_syntax_error("Expected: expression after IF"),
@@ -40,8 +40,8 @@ fn if_expr_then_p() -> impl Parser<Output = ExpressionPos> {
     )
 }
 
-fn single_line_if_else_p(
-) -> impl Parser<Output = (Statements, Vec<ConditionalBlock>, Option<Statements>)> {
+fn single_line_if_else_p<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = (Statements, Vec<ConditionalBlock>, Option<Statements>)> {
     single_line_non_comment_statements_p()
         .and_opt(
             // comment or ELSE
@@ -54,14 +54,14 @@ fn single_line_if_else_p(
         .map(|(l, r)| (l, vec![], r))
 }
 
-fn single_line_else_p() -> impl Parser<Output = Statements> {
+fn single_line_else_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statements> {
     whitespace().and(keyword(Keyword::Else)).then_demand(
         single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
     )
 }
 
-fn multi_line_if_p() -> impl Parser<Output = (Statements, Vec<ConditionalBlock>, Option<Statements>)>
-{
+fn multi_line_if_p<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = (Statements, Vec<ConditionalBlock>, Option<Statements>)> {
     seq4(
         ZeroOrMoreStatements::new(keyword_choice(&[
             Keyword::End,
@@ -75,7 +75,7 @@ fn multi_line_if_p() -> impl Parser<Output = (Statements, Vec<ConditionalBlock>,
     )
 }
 
-fn else_if_expr_then_p() -> impl Parser<Output = ExpressionPos> {
+fn else_if_expr_then_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
     seq3(
         keyword(Keyword::ElseIf),
         expression::ws_expr_pos_ws_p().or_syntax_error("Expected: expression after ELSEIF"),
@@ -84,7 +84,7 @@ fn else_if_expr_then_p() -> impl Parser<Output = ExpressionPos> {
     )
 }
 
-fn else_if_block_p() -> impl Parser<Output = ConditionalBlock> {
+fn else_if_block_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ConditionalBlock> {
     seq2(
         else_if_expr_then_p(),
         ZeroOrMoreStatements::new(keyword_choice(&[
@@ -99,7 +99,7 @@ fn else_if_block_p() -> impl Parser<Output = ConditionalBlock> {
     )
 }
 
-fn else_block_p() -> impl Parser<Output = Statements> {
+fn else_block_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statements> {
     keyword(Keyword::Else).then_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
 }
 

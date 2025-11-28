@@ -26,15 +26,15 @@ macro_rules! seq_pc {
             }
         }
 
-        impl <$first_type, $($generic_type),+> Parser for $name <$first_type, $($generic_type),+>
+        impl <I: Tokenizer + 'static, $first_type, $($generic_type),+> Parser<I> for $name <$first_type, $($generic_type),+>
         where
-            $first_type: Parser,
-            $($generic_type: Parser + NonOptParser),+
+            $first_type: Parser<I>,
+            $($generic_type: Parser<I> + NonOptParser<I>),+
         {
-            type Output = ($first_type::Output, $(<$generic_type as Parser>::Output),+ );
+            type Output = ($first_type::Output, $(<$generic_type as Parser<I>>::Output),+ );
 
             #[allow(non_snake_case)]
-            fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, $crate::ParseError> {
+            fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, $crate::ParseError> {
                 // the first is allowed to return incomplete
                 let $first_type = self.$first_type.parse(tokenizer)?;
                 $(
@@ -52,21 +52,21 @@ macro_rules! seq_pc {
 
         // if all parsers are NonOpt, the sequence is also NonOpt
 
-        impl <$first_type, $($generic_type),+> NonOptParser for $name <$first_type, $($generic_type),+>
+        impl <I: Tokenizer + 'static, $first_type, $($generic_type),+> NonOptParser<I> for $name <$first_type, $($generic_type),+>
         where
-            $first_type: Parser + NonOptParser,
-            $($generic_type: Parser + NonOptParser),+
+            $first_type: Parser<I> + NonOptParser<I>,
+            $($generic_type: Parser<I> + NonOptParser<I>),+
         {
         }
 
         #[allow(non_snake_case)]
-        pub fn $map_fn_name<$first_type, $($generic_type),+, _F, _O>(
+        pub fn $map_fn_name<I: Tokenizer + 'static, $first_type, $($generic_type),+, _F, _O>(
             $first_type: $first_type, $($generic_type: $generic_type),+, mapper: _F
-        ) -> impl Parser<Output = _O>
+        ) -> impl Parser<I, Output = _O>
         where
-            $first_type: Parser,
-            $($generic_type: Parser + NonOptParser),+,
-            _F: Fn($first_type::Output, $(<$generic_type as Parser>::Output),+) -> _O
+            $first_type: Parser<I>,
+            $($generic_type: Parser<I> + NonOptParser<I>),+,
+            _F: Fn($first_type::Output, $(<$generic_type as Parser<I>>::Output),+) -> _O
         {
             $name::new(
                 $first_type,
@@ -81,13 +81,13 @@ macro_rules! seq_pc {
         seq_pc!(pub struct $name<$first_type, $($generic_type),+> ; fn $map_fn_name);
 
         #[allow(non_snake_case)]
-        pub fn $map_fn_name_non_opt<$first_type, $($generic_type),+, _F, _O>(
+        pub fn $map_fn_name_non_opt<I: Tokenizer + 'static, $first_type, $($generic_type),+, _F, _O>(
             $first_type: $first_type, $($generic_type: $generic_type),+, mapper: _F
-        ) -> impl Parser<Output = _O> + NonOptParser
+        ) -> impl Parser<I, Output = _O> + NonOptParser<I>
         where
-            $first_type: Parser + NonOptParser,
-            $($generic_type: Parser + NonOptParser),+,
-            _F: Fn(<$first_type as Parser>::Output, $(<$generic_type as Parser>::Output),+) -> _O
+            $first_type: Parser<I> + NonOptParser<I>,
+            $($generic_type: Parser<I> + NonOptParser<I>),+,
+            _F: Fn(<$first_type as Parser<I>>::Output, $(<$generic_type as Parser<I>>::Output),+) -> _O
         {
             $name::new(
                 $first_type,

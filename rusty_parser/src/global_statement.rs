@@ -15,9 +15,9 @@ impl ProgramParser {
     }
 }
 
-impl Parser for ProgramParser {
+impl<I: Tokenizer + 'static> Parser<I> for ProgramParser {
     type Output = Program;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         let mut read_separator = true; // we are at the beginning of the file
         let mut program: Program = vec![];
         let global_statement_parser = global_statement_pos_p();
@@ -62,7 +62,7 @@ impl Parser for ProgramParser {
     }
 }
 
-fn global_statement_pos_p() -> impl Parser<Output = GlobalStatementPos> {
+fn global_statement_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalStatementPos> {
     Alt5::new(
         def_type::def_type_p().map(GlobalStatement::DefType),
         declaration::declaration_p(),

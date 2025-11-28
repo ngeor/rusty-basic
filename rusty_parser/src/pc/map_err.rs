@@ -39,13 +39,13 @@ impl<P> MapIncompleteErrParser<P> {
     }
 }
 
-impl<P> Parser for MapIncompleteErrParser<P>
+impl<I: Tokenizer + 'static, P> Parser<I> for MapIncompleteErrParser<P>
 where
-    P: Parser,
+    P: Parser<I>,
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         self.parser
             .parse(tokenizer)
             .map_err(|err| self.static_error_mapper.map_err(err))
@@ -66,34 +66,34 @@ impl<P> OrFailParser<P> {
     }
 }
 
-impl<P> Parser for OrFailParser<P>
+impl<I: Tokenizer + 'static, P> Parser<I> for OrFailParser<P>
 where
-    P: Parser,
+    P: Parser<I>,
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         self.parser
             .parse(tokenizer)
             .map_err(|err| self.static_error_mapper.map_err(err))
     }
 }
 
-impl<P> NonOptParser for OrFailParser<P> where P: Parser {}
+impl<I: Tokenizer + 'static, P> NonOptParser<I> for OrFailParser<P> where P: Parser<I> {}
 
 parser_declaration!(pub struct NoIncompleteParser);
 
-impl<P> Parser for NoIncompleteParser<P>
+impl<I: Tokenizer + 'static, P> Parser<I> for NoIncompleteParser<P>
 where
-    P: Parser,
+    P: Parser<I>,
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         self.parser
             .parse(tokenizer)
             .map_err(ParserErrorTrait::no_incomplete)
     }
 }
 
-impl<P> NonOptParser for NoIncompleteParser<P> where P: Parser {}
+impl<I: Tokenizer + 'static, P> NonOptParser<I> for NoIncompleteParser<P> where P: Parser<I> {}

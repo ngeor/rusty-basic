@@ -228,7 +228,7 @@ mod tests {
     #[test]
     fn test_digits() {
         let input = "1234";
-        let reader = string_char_reader(input);
+        let reader = string_char_reader(input.to_owned());
         let mut tokenizer = TokenizerImpl::new(
             reader,
             recognizers![
@@ -247,7 +247,7 @@ mod tests {
     #[test]
     fn test_letters_digits() {
         let input = "abc1234";
-        let reader = string_char_reader(input);
+        let reader = string_char_reader(input.to_owned());
         let mut tokenizer = TokenizerImpl::new(
             reader,
             recognizers![
@@ -274,7 +274,7 @@ mod tests {
     #[test]
     fn test_undo() {
         let input = "a1b2c3";
-        let reader = string_char_reader(input);
+        let reader = string_char_reader(input.to_owned());
         let mut tokenizer = UndoTokenizerImpl::new(TokenizerImpl::new(
             reader,
             recognizers![

@@ -7,12 +7,12 @@ use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct OneOrMoreParser);
 
-impl<P> Parser for OneOrMoreParser<P>
+impl<I: Tokenizer + 'static, P> Parser<I> for OneOrMoreParser<P>
 where
-    P: Parser,
+    P: Parser<I>,
 {
     type Output = Vec<P::Output>;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         let mut result: Vec<P::Output> = Vec::new();
         while let Some(value) = self.parser.parse_opt(tokenizer)? {
             result.push(value);

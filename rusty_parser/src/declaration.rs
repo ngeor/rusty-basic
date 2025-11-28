@@ -15,7 +15,7 @@ use crate::types::*;
 // ExtendedBuiltIn       ::= <BareName><ws+>AS<ws+>(SINGLE|DOUBLE|STRING|INTEGER|LONG)
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
-pub fn declaration_p() -> impl Parser<Output = GlobalStatement> {
+pub fn declaration_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalStatement> {
     keyword_followed_by_whitespace_p(Keyword::Declare).then_demand(
         function_declaration_p()
             .map(|(n, p)| GlobalStatement::FunctionDeclaration(n, p))
@@ -24,7 +24,8 @@ pub fn declaration_p() -> impl Parser<Output = GlobalStatement> {
     )
 }
 
-pub fn function_declaration_p() -> impl Parser<Output = (NamePos, Parameters)> {
+pub fn function_declaration_p<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = (NamePos, Parameters)> {
     seq4(
         keyword(Keyword::Function),
         whitespace().no_incomplete(),
@@ -38,7 +39,8 @@ pub fn function_declaration_p() -> impl Parser<Output = (NamePos, Parameters)> {
     )
 }
 
-pub fn sub_declaration_p() -> impl Parser<Output = (BareNamePos, Parameters)> {
+pub fn sub_declaration_p<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = (BareNamePos, Parameters)> {
     seq4(
         keyword(Keyword::Sub),
         whitespace().no_incomplete(),
@@ -51,7 +53,8 @@ pub fn sub_declaration_p() -> impl Parser<Output = (BareNamePos, Parameters)> {
 }
 
 // result ::= "" | "(" ")" | "(" parameter (,parameter)* ")"
-fn declaration_parameters_p() -> impl Parser<Output = Parameters> + NonOptParser {
+fn declaration_parameters_p<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = Parameters> + NonOptParser<I> {
     OptAndPC::new(
         whitespace(),
         in_parenthesis(csv(parameter_pos_p()).allow_default()),

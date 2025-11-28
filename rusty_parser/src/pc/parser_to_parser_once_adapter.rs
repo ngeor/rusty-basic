@@ -3,13 +3,13 @@ use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct ParserToParserOnceAdapter);
 
-impl<P> ParserOnce for ParserToParserOnceAdapter<P>
+impl<I: Tokenizer + 'static, P> ParserOnce<I> for ParserToParserOnceAdapter<P>
 where
-    P: Parser,
+    P: Parser<I>,
 {
     type Output = P::Output;
 
-    fn parse(self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         self.parser.parse(tokenizer)
     }
 }

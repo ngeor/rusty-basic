@@ -152,6 +152,6 @@ pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
     create_tokenizer(file_char_reader(input), create_recognizers())
 }
 
-pub fn create_string_tokenizer(input: &str) -> impl Tokenizer + '_ {
+pub fn create_string_tokenizer(input: String) -> impl Tokenizer {
     create_tokenizer(string_char_reader(input), create_recognizers())
 }

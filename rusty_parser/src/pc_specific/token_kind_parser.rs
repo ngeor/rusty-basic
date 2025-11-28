@@ -2,95 +2,99 @@
 // TokenKindParser
 //
 
-use crate::pc::{any_token, OptAndPC, Parser, Token};
+use crate::pc::{any_token, OptAndPC, Parser, Token, Tokenizer};
 use crate::pc_specific::TokenType;
 
 /// Equal sign, surrounded by optional whitespace.
 ///
 /// `<ws>? = <ws>?`
-pub fn equal_sign() -> impl Parser<Output = Token> {
+pub fn equal_sign<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of_ws(TokenType::Equals)
 }
 
 /// Comma, surrounded by optional whitespace.
 ///
 /// `<ws>? , <ws>?`
-pub fn comma() -> impl Parser<Output = Token> {
+pub fn comma<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of_ws(TokenType::Comma)
 }
 
 /// Star (*), surrounded by optional whitespace.
 ///
 /// `<ws>? * <ws>?`
-pub fn star() -> impl Parser<Output = Token> {
+pub fn star<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of_ws(TokenType::Star)
 }
 
 /// Colon.
 ///
 /// `:`
-pub fn colon() -> impl Parser<Output = Token> {
+pub fn colon<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of(TokenType::Colon)
 }
 
 /// Colon, surrounded by optional whitespace.
 ///
 /// `<ws>? : <ws>?`
-pub fn colon_ws() -> impl Parser<Output = Token> {
+pub fn colon_ws<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of_ws(TokenType::Colon)
 }
 
 /// Minus sign.
 ///
 /// `-`
-pub fn minus_sign() -> impl Parser<Output = Token> {
+pub fn minus_sign<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of(TokenType::Minus)
 }
 
 /// Dot.
 ///
 /// `.`
-pub fn dot() -> impl Parser<Output = Token> {
+pub fn dot<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of(TokenType::Dot)
 }
 
 /// Pound.
 ///
 /// `#`
-pub fn pound() -> impl Parser<Output = Token> {
+pub fn pound<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of(TokenType::Pound)
 }
 
 /// Dollar sign.
 ///
 /// `$`
-pub fn dollar_sign() -> impl Parser<Output = Token> {
+pub fn dollar_sign<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of(TokenType::DollarSign)
 }
 
 /// Semicolon.
 ///
 /// `<ws>? ; <ws>?`
-pub fn semicolon() -> impl Parser<Output = Token> {
+pub fn semicolon<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of_ws(TokenType::Semicolon)
 }
 
 /// Whitespace.
-pub fn whitespace() -> impl Parser<Output = Token> {
+pub fn whitespace<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of(TokenType::Whitespace)
 }
 
-pub fn digits() -> impl Parser<Output = Token> {
+pub fn digits<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of(TokenType::Digits)
 }
 
-pub fn any_token_of(token_type: TokenType) -> impl Parser<Output = Token> {
+pub fn any_token_of<I: Tokenizer + 'static>(
+    token_type: TokenType,
+) -> impl Parser<I, Output = Token> {
     any_token()
         .filter(move |token| token_type.matches(token))
         .map_incomplete_err(token_type.to_error())
 }
 
-fn any_token_of_ws(token_type: TokenType) -> impl Parser<Output = Token> {
+fn any_token_of_ws<I: Tokenizer + 'static>(
+    token_type: TokenType,
+) -> impl Parser<I, Output = Token> {
     OptAndPC::new(whitespace(), any_token_of(token_type))
         .and_opt(whitespace())
         .map(|((_, t), _)| t)

@@ -53,16 +53,16 @@ lazy_parser!(pub fn parse<Output=Statement> ; struct LazyParser ; Alt16::new(
 
 // needed for built-in functions that are also keywords (e.g. LEN), so they
 // cannot be parsed by the `word` module.
-pub fn built_in_function_call_p() -> impl Parser<Output = Expression> {
+pub fn built_in_function_call_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expression> {
     len::parse().or(string_fn::parse())
 }
 
 /// Parses built-in subs with optional arguments.
 /// Used only by `COLOR` and `LOCATE`.
-fn parse_built_in_sub_with_opt_args(
+fn parse_built_in_sub_with_opt_args<I: Tokenizer + 'static>(
     k: Keyword,
     built_in_sub: BuiltInSub,
-) -> impl Parser<Output = Statement> {
+) -> impl Parser<I, Output = Statement> {
     seq3(
         keyword(k),
         whitespace().no_incomplete(),
@@ -94,14 +94,15 @@ fn map_opt_args_to_flags(args: Vec<Option<ExpressionPos>>) -> Expressions {
 }
 
 /// Comma separated list of items, allowing items to be missing between commas.
-fn csv_allow_missing() -> impl Parser<Output = Vec<Option<ExpressionPos>>> + NonOptParser {
+fn csv_allow_missing<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = Vec<Option<ExpressionPos>>> + NonOptParser<I> {
     parse_delimited_to_items(opt_zip(expression_pos_p(), comma()), trailing_comma_error())
         .allow_default()
 }
 
 /// Used in `INPUT` and `LINE INPUT`, parsing an optional file number.
-fn opt_file_handle_comma_p() -> impl Parser<Output = Option<Positioned<FileHandle>>> + NonOptParser
-{
+fn opt_file_handle_comma_p<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = Option<Positioned<FileHandle>>> + NonOptParser<I> {
     seq2(file_handle_p(), comma().no_incomplete(), |l, _| l).allow_none()
 }
 

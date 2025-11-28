@@ -1,28 +1,8 @@
 use std::fs::File;
 
-use crate::pc::{Parser, Tokenizer};
-use crate::pc_specific::create_string_tokenizer;
 use crate::types::*;
 use crate::{parse, parse_main_file, parse_main_str, ParseError, ParseErrorPos};
 use rusty_common::*;
-
-pub fn parse_something<P>(input: &str, parser: impl Parser<Output = P>) -> Result<P, ParseError> {
-    let mut tokenizer = create_string_tokenizer(input);
-    parser.parse(&mut tokenizer)
-}
-
-pub fn parse_something_completely<P>(input: &str, parser: impl Parser<Output = P>) -> P {
-    let mut tokenizer = create_string_tokenizer(input);
-    let result = parser
-        .parse(&mut tokenizer)
-        .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
-    assert!(
-        tokenizer.read().expect("Should read EOF token").is_none(),
-        "Should have parsed {} completely",
-        input
-    );
-    result
-}
 
 pub fn parse_str_no_pos(input: &str) -> Vec<GlobalStatement> {
     parse(input).no_pos()
@@ -50,7 +30,7 @@ pub fn parse_file_no_pos(filename: &str) -> Vec<GlobalStatement> {
 ///
 /// If the parser does not have an error.
 pub fn parse_err_pos(input: &str) -> ParseErrorPos {
-    parse_main_str(input).expect_err("Parser should have failed")
+    parse_main_str(input.to_owned()).expect_err("Parser should have failed")
 }
 
 /// Parses the given string, expecting that it will fail.

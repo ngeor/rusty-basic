@@ -1,4 +1,4 @@
-use crate::pc::{Parser, ZipValue};
+use crate::pc::{Parser, Tokenizer, ZipValue};
 use crate::ParseError;
 
 /// Represents a value that has is followed by optional delimiter.
@@ -34,23 +34,23 @@ impl<L, R> Delimited<L> for (L, Option<R>) {
 }
 
 /// Gets a list of items separated by a delimiter.
-pub fn delimited_by<P: Parser, D: Parser>(
+pub fn delimited_by<I: Tokenizer + 'static, P: Parser<I>, D: Parser<I>>(
     parser: P,
     delimiter: D,
     trailing_error: ParseError,
-) -> impl Parser<Output = Vec<P::Output>> {
+) -> impl Parser<I, Output = Vec<P::Output>> {
     parse_delimited_to_items(parser.and_opt(delimiter), trailing_error)
 }
 
 /// Gets a list of items separated by a delimiter.
 /// The given parser already provides items and delimiters together.
 /// Public because needed by built_ins to implement csv_allow_missing.
-pub fn parse_delimited_to_items<P, L>(
+pub fn parse_delimited_to_items<I: Tokenizer + 'static, P, L>(
     parser: P,
     trailing_error: ParseError,
-) -> impl Parser<Output = Vec<L>>
+) -> impl Parser<I, Output = Vec<L>>
 where
-    P: Parser,
+    P: Parser<I>,
     P::Output: Delimited<L>,
 {
     parser

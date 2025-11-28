@@ -3,7 +3,7 @@ use crate::pc::*;
 use crate::pc_specific::*;
 use crate::*;
 
-pub fn parse() -> impl Parser<Output = Statement> {
+pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     keyword(Keyword::Read)
         .then_demand(csv_expressions_first_guarded().or_syntax_error("Expected: variable"))
         .map(|args| Statement::BuiltInSubCall(BuiltInSub::Read, args))

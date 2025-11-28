@@ -8,7 +8,7 @@ use crate::{Keyword, ResumeOption, Statement};
 // RESUME NEXT
 // RESUME label
 
-pub fn statement_resume_p() -> impl Parser<Output = Statement> {
+pub fn statement_resume_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     keyword(Keyword::Resume)
         .then_demand(
             resume_option_p().or_syntax_error("Expected: label or NEXT or end-of-statement"),
@@ -16,21 +16,21 @@ pub fn statement_resume_p() -> impl Parser<Output = Statement> {
         .map(Statement::Resume)
 }
 
-fn resume_option_p() -> impl Parser<Output = ResumeOption> {
+fn resume_option_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ResumeOption> {
     Alt3::new(blank_resume(), resume_next(), resume_label())
 }
 
-fn blank_resume() -> impl Parser<Output = ResumeOption> {
+fn blank_resume<I: Tokenizer + 'static>() -> impl Parser<I, Output = ResumeOption> {
     peek_eof_or_statement_separator().map(|_| ResumeOption::Bare)
 }
 
-fn resume_next() -> impl Parser<Output = ResumeOption> {
+fn resume_next<I: Tokenizer + 'static>() -> impl Parser<I, Output = ResumeOption> {
     whitespace()
         .and(keyword(Keyword::Next))
         .map(|_| ResumeOption::Next)
 }
 
-fn resume_label() -> impl Parser<Output = ResumeOption> {
+fn resume_label<I: Tokenizer + 'static>() -> impl Parser<I, Output = ResumeOption> {
     whitespace()
         .and(bare_name_with_dots())
         .keep_right()

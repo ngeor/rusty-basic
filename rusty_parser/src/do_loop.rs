@@ -4,13 +4,13 @@ use crate::pc_specific::*;
 use crate::statements::*;
 use crate::types::*;
 
-pub fn do_loop_p() -> impl Parser<Output = Statement> {
+pub fn do_loop_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     keyword(Keyword::Do)
         .then_demand(do_condition_top().or(do_condition_bottom()))
         .map(Statement::DoLoop)
 }
 
-fn do_condition_top() -> impl Parser<Output = DoLoop> {
+fn do_condition_top<I: Tokenizer + 'static>() -> impl Parser<I, Output = DoLoop> {
     seq4(
         whitespace().and(keyword_choice(&[Keyword::Until, Keyword::While])),
         ws_expr_pos_p().or_syntax_error("Expected: expression"),
@@ -29,7 +29,8 @@ fn do_condition_top() -> impl Parser<Output = DoLoop> {
     )
 }
 
-fn do_condition_bottom() -> impl Parser<Output = DoLoop> + NonOptParser {
+fn do_condition_bottom<I: Tokenizer + 'static>() -> impl Parser<I, Output = DoLoop> + NonOptParser<I>
+{
     seq5_non_opt(
         ZeroOrMoreStatements::new(keyword(Keyword::Loop)),
         keyword(Keyword::Loop).no_incomplete(),

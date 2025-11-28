@@ -64,7 +64,7 @@ pub fn parse_main_file(f: File) -> Result<Program, ParseErrorPos> {
     program_parser(&mut reader)
 }
 
-pub fn program_parser(reader: &mut impl Tokenizer) -> Result<Program, ParseErrorPos> {
+pub fn program_parser<I: Tokenizer + 'static>(reader: &mut I) -> Result<Program, ParseErrorPos> {
     match ProgramParser::new().parse(reader) {
         Ok(opt_program) => Ok(opt_program),
         Err(err) => Err(err.at_pos(reader.position())),
@@ -76,11 +76,15 @@ pub fn program_parser(reader: &mut impl Tokenizer) -> Result<Program, ParseError
 /// # Panics
 ///
 /// If the parser has an error.
-pub fn parse(input: &str) -> Program {
-    parse_main_str(input).expect("Could not parse program")
+pub fn parse<S>(input: S) -> Program
+where
+    S: AsRef<str>,
+{
+    let s = input.as_ref().to_string();
+    parse_main_str(s).expect("Could not parse program")
 }
 
-fn parse_main_str(input: &str) -> Result<Program, ParseErrorPos> {
+fn parse_main_str(input: String) -> Result<Program, ParseErrorPos> {
     let mut reader = create_string_tokenizer(input);
     program_parser(&mut reader)
 }

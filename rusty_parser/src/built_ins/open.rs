@@ -5,7 +5,7 @@ use crate::pc_specific::*;
 use crate::*;
 use rusty_common::*;
 
-pub fn parse() -> impl Parser<Output = Statement> {
+pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq6(
         keyword(Keyword::Open),
         ws_expr_pos_ws_p().or_syntax_error("Expected: file name after OPEN"),
@@ -29,7 +29,7 @@ pub fn parse() -> impl Parser<Output = Statement> {
 }
 
 // FOR <ws+> INPUT <ws+>
-fn parse_open_mode_p() -> impl Parser<Output = Positioned<FileMode>> {
+fn parse_open_mode_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Positioned<FileMode>> {
     seq4(
         keyword(Keyword::For),
         whitespace().no_incomplete(),
@@ -47,7 +47,8 @@ fn parse_open_mode_p() -> impl Parser<Output = Positioned<FileMode>> {
 }
 
 // ACCESS <ws+> READ <ws+>
-fn parse_open_access_p() -> impl Parser<Output = Positioned<FileAccess>> {
+fn parse_open_access_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Positioned<FileAccess>>
+{
     seq4(
         keyword(Keyword::Access),
         whitespace().no_incomplete(),
@@ -59,13 +60,13 @@ fn parse_open_access_p() -> impl Parser<Output = Positioned<FileAccess>> {
 
 // AS <ws+> expression
 // AS ( expression )
-fn parse_file_number_p() -> impl Parser<Output = ExpressionPos> {
+fn parse_file_number_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
     keyword(Keyword::As).then_demand(
         guarded_file_handle_or_expression_p().or_syntax_error("Expected: #file-number%"),
     )
 }
 
-fn parse_len_p() -> impl Parser<Output = ExpressionPos> {
+fn parse_len_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
     seq3(
         whitespace().and(keyword(Keyword::Len)),
         equal_sign().no_incomplete(),

@@ -18,7 +18,7 @@ pub fn file_char_reader(input: File) -> impl CharReader {
     CharReaderImpl::new(BufReader::new(input))
 }
 
-pub fn string_char_reader(input: &str) -> impl CharReader + '_ {
+pub fn string_char_reader(input: String) -> impl CharReader {
     CharReaderImpl::new(BufReader::new(Cursor::new(input)))
 }
 
@@ -66,7 +66,7 @@ mod tests {
 
     #[test]
     fn test() {
-        let mut input = string_char_reader("hello");
+        let mut input = string_char_reader("hello".to_owned());
         assert_eq!(input.read().unwrap().unwrap(), 'h');
         assert_eq!(input.read().unwrap().unwrap(), 'e');
         assert_eq!(input.read().unwrap().unwrap(), 'l');

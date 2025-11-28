@@ -3,14 +3,14 @@ use crate::{binary_parser_declaration, ParseError};
 
 binary_parser_declaration!(pub struct AccumulateParser);
 
-impl<L, R> Parser for AccumulateParser<L, R>
+impl<I: Tokenizer + 'static, L, R> Parser<I> for AccumulateParser<L, R>
 where
-    L: Parser,
-    R: Parser<Output = L::Output>,
+    L: Parser<I>,
+    R: Parser<I, Output = L::Output>,
 {
     type Output = Vec<L::Output>;
 
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         let first = self.left.parse(tokenizer)?;
         let mut result: Vec<L::Output> = vec![];
         result.push(first);

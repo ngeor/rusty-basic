@@ -1,10 +1,13 @@
+use std::marker::PhantomData;
+
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::statement_separator::Separator;
 use crate::types::*;
 use crate::{statement, ParseError};
 
-pub fn single_line_non_comment_statements_p() -> impl Parser<Output = Statements> {
+pub fn single_line_non_comment_statements_p<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = Statements> {
     whitespace()
         .and(delimited_by_colon(
             statement::single_line_non_comment_statement_p().with_pos(),
@@ -12,7 +15,7 @@ pub fn single_line_non_comment_statements_p() -> impl Parser<Output = Statements
         .keep_right()
 }
 
-pub fn single_line_statements_p() -> impl Parser<Output = Statements> {
+pub fn single_line_statements_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statements> {
     whitespace()
         .and(delimited_by_colon(
             statement::single_line_statement_p().with_pos(),
@@ -20,7 +23,9 @@ pub fn single_line_statements_p() -> impl Parser<Output = Statements> {
         .keep_right()
 }
 
-fn delimited_by_colon<P: Parser>(parser: P) -> impl Parser<Output = Vec<P::Output>> {
+fn delimited_by_colon<I: Tokenizer + 'static, P: Parser<I>>(
+    parser: P,
+) -> impl Parser<I, Output = Vec<P::Output>> {
     delimited_by(
         parser,
         colon_ws(),
@@ -28,29 +33,33 @@ fn delimited_by_colon<P: Parser>(parser: P) -> impl Parser<Output = Vec<P::Outpu
     )
 }
 
-pub struct ZeroOrMoreStatements<S>(NegateParser<PeekParser<S>>, Option<ParseError>);
+pub struct ZeroOrMoreStatements<S, I>(
+    NegateParser<PeekParser<S>>,
+    Option<ParseError>,
+    PhantomData<I>,
+);
 
-impl<S> ZeroOrMoreStatements<S>
+impl<I: Tokenizer + 'static, S> ZeroOrMoreStatements<S, I>
 where
-    S: Parser,
+    S: Parser<I>,
     S::Output: Undo,
 {
     pub fn new(exit_source: S) -> Self {
-        Self(exit_source.peek().negate(), None)
+        Self(exit_source.peek().negate(), None, PhantomData)
     }
 
     pub fn new_with_custom_error(exit_source: S, err: ParseError) -> Self {
-        Self(exit_source.peek().negate(), Some(err))
+        Self(exit_source.peek().negate(), Some(err), PhantomData)
     }
 }
 
-impl<S> Parser for ZeroOrMoreStatements<S>
+impl<I: Tokenizer + 'static, S> Parser<I> for ZeroOrMoreStatements<S, I>
 where
-    S: Parser,
+    S: Parser<I>,
     S::Output: Undo,
 {
     type Output = Statements;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         // must start with a separator (e.g. after a WHILE condition)
         Separator::NonComment
             .parse_opt(tokenizer)?
@@ -96,9 +105,9 @@ where
 }
 
 // TODO review impl<...> NonOptParser
-impl<S> NonOptParser for ZeroOrMoreStatements<S>
+impl<I: Tokenizer + 'static, S> NonOptParser<I> for ZeroOrMoreStatements<S, I>
 where
-    S: Parser,
+    S: Parser<I>,
     S::Output: Undo,
 {
 }

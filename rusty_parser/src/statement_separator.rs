@@ -1,4 +1,4 @@
-use crate::comment::CommentAsString;
+use crate::comment::comment_as_string_p;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::ParseError;
@@ -16,9 +16,9 @@ pub enum Separator {
     NonComment,
 }
 
-impl Parser for Separator {
+impl<I: Tokenizer + 'static> Parser<I> for Separator {
     type Output = ();
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         match self {
             Self::Comment => CommentSeparator.parse(tokenizer),
             Self::NonComment => CommonSeparator.parse(tokenizer),
@@ -28,9 +28,9 @@ impl Parser for Separator {
 
 struct CommentSeparator;
 
-impl Parser for CommentSeparator {
+impl<I: Tokenizer + 'static> Parser<I> for CommentSeparator {
     type Output = ();
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         let mut tokens: TokenList = vec![];
         let mut found_eol = false;
         while let Some(token) = tokenizer.read()? {
@@ -57,9 +57,9 @@ impl Parser for CommentSeparator {
 
 struct CommonSeparator;
 
-impl Parser for CommonSeparator {
+impl<I: Tokenizer + 'static> Parser<I> for CommonSeparator {
     type Output = ();
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         let mut sep = TokenType::Unknown;
         while let Some(token) = tokenizer.read()? {
             if TokenType::Whitespace.matches(&token) {
@@ -96,7 +96,7 @@ impl Parser for CommonSeparator {
     }
 }
 
-pub fn peek_eof_or_statement_separator() -> impl Parser<Output = ()> {
+pub fn peek_eof_or_statement_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
     // .allow_none() to accept EOF
     any_token()
         .allow_none()
@@ -113,10 +113,11 @@ pub fn peek_eof_or_statement_separator() -> impl Parser<Output = ()> {
 
 // TODO review all parsers that return a collection, implement some `accumulate` method
 /// Reads multiple comments and the surrounding whitespace.
-pub fn comments_and_whitespace_p() -> impl Parser<Output = Vec<Positioned<String>>> + NonOptParser {
+pub fn comments_and_whitespace_p<I: Tokenizer + 'static>(
+) -> impl Parser<I, Output = Vec<Positioned<String>>> + NonOptParser<I> {
     OptAndPC::new(
         whitespace(),
-        OptZip::new(Separator::Comment, CommentAsString.with_pos())
+        OptZip::new(Separator::Comment, comment_as_string_p().with_pos())
             .one_or_more()
             .map(ZipValue::collect_right)
             .allow_default(),

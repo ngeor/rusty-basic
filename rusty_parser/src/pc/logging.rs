@@ -21,12 +21,12 @@ fn indentation() -> String {
     s
 }
 
-impl<P> Parser for LoggingPC<P>
+impl<I: Tokenizer + 'static, P> Parser<I> for LoggingPC<P>
 where
-    P: Parser,
+    P: Parser<I>,
 {
     type Output = P::Output;
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         println!(
             "{}{} Parsing non-opt current position {:?} peek token {}",
             indentation(),

@@ -6,13 +6,12 @@ parser_declaration!(
     }
 );
 
-impl<P> Parser for AllowNoneIfParser<P>
+impl<I: Tokenizer + 'static, P> Parser<I> for AllowNoneIfParser<P>
 where
-    P: Parser,
+    P: Parser<I>,
 {
     type Output = Option<P::Output>;
-
-    fn parse(&self, tokenizer: &mut impl Tokenizer) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             Ok(value) => Ok(Some(value)),
             Err(err) if err.is_incomplete() && self.condition => Ok(None),

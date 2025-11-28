@@ -2,9 +2,10 @@ use crate::pc::and_opt::AndOptPC;
 use crate::pc::many::OneOrMoreParser;
 use crate::pc::mappers::{FnMapper, KeepLeftMapper, KeepRightMapper};
 use crate::pc::{
-    AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, Alt2, AndPC, AndThen, ChainParser,
+    AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndPC, AndThen, ChainParser,
     FilterMapParser, FilterParser, GuardPC, LoopWhile, MapIncompleteErrParser, NegateParser,
-    NoIncompleteParser, OrFailParser, ParserToParserOnceAdapter, PeekParser, Tokenizer, Undo,
+    NoIncompleteParser, OrFailParser, OrParser, OrParserOnce, ParserToParserOnceAdapter,
+    PeekParser, Tokenizer, Undo,
 };
 use crate::ParseError;
 
@@ -106,12 +107,12 @@ pub trait Parser<I: Tokenizer + 'static> {
         KeepRightMapper::new(self)
     }
 
-    fn or<O, R>(self, right: R) -> Alt2<O, Self, R>
+    fn or<O, R>(self, right: R) -> OrParser<I, O>
     where
-        Self: Sized + Parser<I, Output = O>,
-        R: Parser<I, Output = O>,
+        Self: Sized + Parser<I, Output = O> + 'static,
+        R: Parser<I, Output = O> + 'static,
     {
-        Alt2::new(self, right)
+        OrParser::new(vec![Box::new(self), Box::new(right)])
     }
 
     #[cfg(debug_assertions)]
@@ -242,12 +243,12 @@ pub trait ParserOnce<I: Tokenizer + 'static> {
         FnMapper::new(self, mapper)
     }
 
-    fn or<O, R>(self, right: R) -> Alt2<O, Self, R>
+    fn or<O, R>(self, right: R) -> OrParserOnce<Self, R>
     where
         Self: Sized + ParserOnce<I, Output = O>,
         R: ParserOnce<I, Output = O>,
     {
-        Alt2::new(self, right)
+        OrParserOnce::new(self, right)
     }
 }
 

@@ -17,7 +17,11 @@ pub fn statement_resume_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = S
 }
 
 fn resume_option_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ResumeOption> {
-    Alt3::new(blank_resume(), resume_next(), resume_label())
+    OrParser::new(vec![
+        Box::new(blank_resume()),
+        Box::new(resume_next()),
+        Box::new(resume_label()),
+    ])
 }
 
 fn blank_resume<I: Tokenizer + 'static>() -> impl Parser<I, Output = ResumeOption> {

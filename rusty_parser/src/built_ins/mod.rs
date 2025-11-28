@@ -32,24 +32,24 @@ use crate::{Expression, ExpressionPos, Expressions, Keyword, Statement};
 use rusty_common::{AtPos, Position, Positioned};
 
 // Parses built-in subs which have a special syntax.
-lazy_parser!(pub fn parse<Output=Statement> ; struct LazyParser ; Alt16::new(
-    close::parse(),
-    color::parse(),
-    data::parse(),
-    def_seg::parse(),
-    field::parse(),
-    get::parse(),
-    input::parse(),
-    line_input::parse(),
-    locate::parse(),
-    lset::parse(),
-    name::parse(),
-    open::parse(),
-    put::parse(),
-    read::parse(),
-    view_print::parse(),
-    width::parse(),
-));
+lazy_parser!(pub fn parse<Output=Statement> ; struct LazyParser ; OrParser::new(vec![
+    Box::new(close::parse()),
+    Box::new(color::parse()),
+    Box::new(data::parse()),
+    Box::new(def_seg::parse()),
+    Box::new(field::parse()),
+    Box::new(get::parse()),
+    Box::new(input::parse()),
+    Box::new(line_input::parse()),
+    Box::new(locate::parse()),
+    Box::new(lset::parse()),
+    Box::new(name::parse()),
+    Box::new(open::parse()),
+    Box::new(put::parse()),
+    Box::new(read::parse()),
+    Box::new(view_print::parse()),
+    Box::new(width::parse()),
+]));
 
 // needed for built-in functions that are also keywords (e.g. LEN), so they
 // cannot be parsed by the `word` module.

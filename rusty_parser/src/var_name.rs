@@ -93,17 +93,19 @@ fn as_clause<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Token, Token,
     )
 }
 
-fn any_extended<I: Tokenizer + 'static, T>(
-    built_in_parser: impl Parser<I, Output = T>,
+fn any_extended<I: Tokenizer + 'static, T: 'static>(
+    built_in_parser: impl Parser<I, Output = T> + 'static,
 ) -> impl Parser<I, Output = T>
 where
     T: VarTypeNewUserDefined,
 {
-    built_in_parser
-        .or(user_defined_type())
-        .map_incomplete_err(ParseError::expected(
-            "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-        ))
+    OrParser::new(vec![
+        Box::new(built_in_parser),
+        Box::new(user_defined_type()),
+    ])
+    .map_incomplete_err(ParseError::expected(
+        "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
+    ))
 }
 
 fn user_defined_type<I: Tokenizer + 'static, T>() -> impl Parser<I, Output = T>

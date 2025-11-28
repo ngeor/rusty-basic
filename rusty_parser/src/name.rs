@@ -67,22 +67,24 @@ pub fn bare_name_with_dots<I: Tokenizer + 'static>() -> impl Parser<I, Output = 
 ///
 /// Usage: label declaration (but also used internally in the module).
 pub fn identifier_with_dots<I: Tokenizer + 'static>() -> impl Parser<I, Output = TokenList> {
-    Alt2::new(
+    OrParser::new(vec![
         // to allow keywords, there must be at least one dot
-        seq2(
-            identifier_or_keyword()
-                .and(dot())
-                .map(|(left, right)| vec![left, right]),
-            identifier_or_keyword_or_dot().zero_or_more(),
-            |mut left_list, mut right_list| {
-                left_list.append(&mut right_list);
-                left_list
-            },
-        )
-        .and_then(ensure_token_list_length),
+        Box::new(
+            seq2(
+                identifier_or_keyword()
+                    .and(dot())
+                    .map(|(left, right)| vec![left, right]),
+                identifier_or_keyword_or_dot().zero_or_more(),
+                |mut left_list, mut right_list| {
+                    left_list.append(&mut right_list);
+                    left_list
+                },
+            )
+            .and_then(ensure_token_list_length),
+        ),
         // otherwise just one identifier (max_length already checked)
-        identifier().map(|token| vec![token]),
-    )
+        Box::new(identifier().map(|token| vec![token])),
+    ])
 }
 
 fn identifier_or_keyword<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
@@ -122,11 +124,13 @@ pub fn name_with_dots<I: Tokenizer + 'static>() -> impl Parser<I, Output = Name>
 }
 
 pub fn name_with_dots_as_tokens<I: Tokenizer + 'static>() -> impl Parser<I, Output = NameAsTokens> {
-    Alt2::new(
-        identifier_with_dots().and_opt(type_qualifier()),
-        ensure_no_trailing_dot_or_qualifier(any_keyword_with_dollar_sign())
-            .map(|(keyword_token, dollar_token)| (vec![keyword_token], Some(dollar_token))),
-    )
+    OrParser::new(vec![
+        Box::new(identifier_with_dots().and_opt(type_qualifier())),
+        Box::new(
+            ensure_no_trailing_dot_or_qualifier(any_keyword_with_dollar_sign())
+                .map(|(keyword_token, dollar_token)| (vec![keyword_token], Some(dollar_token))),
+        ),
+    ])
 }
 
 /// Parses a type qualifier character.
@@ -231,7 +235,7 @@ mod tests {
         fn cannot_have_dots() {
             for input in ["Hell.o", "Hello."] {
                 let input: String = String::from(input);
-                let result = bare_name_with_dots().parse(&mut create_string_tokenizer(input));
+                let result = bare_name_without_dots().parse(&mut create_string_tokenizer(input));
                 assert_eq!(
                     result.expect_err("Should fail"),
                     ParseError::IdentifierCannotIncludePeriod

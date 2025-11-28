@@ -69,9 +69,13 @@ mod type_definition {
     use crate::*;
 
     pub fn built_in_extended_type<I: Tokenizer + 'static>() -> impl Parser<I, Output = DimType> {
-        Alt2::new(built_in_numeric_type(), built_in_string()).map_incomplete_err(
-            ParseError::expected("Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING"),
-        )
+        OrParser::new(vec![
+            Box::new(built_in_numeric_type()),
+            Box::new(built_in_string()),
+        ])
+        .map_incomplete_err(ParseError::expected(
+            "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING",
+        ))
     }
 
     fn built_in_numeric_type<I: Tokenizer + 'static>() -> impl Parser<I, Output = DimType> {

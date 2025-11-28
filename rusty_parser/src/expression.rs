@@ -445,7 +445,10 @@ pub mod property {
     // can't use expression_pos_p because it will stack overflow
     fn base_expr_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
         // order is important, variable matches anything that function_call_or_array_element matches
-        Alt2::new(function_call_or_array_element::parser(), variable::parser())
+        OrParser::new(vec![
+            Box::new(function_call_or_array_element::parser()),
+            Box::new(variable::parser()),
+        ])
     }
 
     fn is_qualified(expr: &Expression) -> bool {
@@ -474,7 +477,7 @@ mod binary_expression {
         built_in_function_call, expression_pos_p, guard, integer_or_long_literal, parenthesis,
         property, single_or_double_literal, string_literal, unary_expression,
     };
-    use crate::pc::{any_token, Alt7, OptAndPC, Parser, Token, Tokenizer};
+    use crate::pc::{any_token, OptAndPC, OrParser, Parser, Token, Tokenizer};
     use crate::pc_specific::{whitespace, SpecificTrait, TokenType};
     use crate::{
         ExpressionPos, ExpressionPosTrait, ExpressionTrait, Keyword, Operator, ParseError,
@@ -528,16 +531,16 @@ mod binary_expression {
         }
 
         fn non_bin_expr<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
-            Alt7::new(
-                single_or_double_literal::parser(),
-                string_literal::parser(),
-                integer_or_long_literal::parser(),
+            OrParser::new(vec![
+                Box::new(single_or_double_literal::parser()),
+                Box::new(string_literal::parser()),
+                Box::new(integer_or_long_literal::parser()),
                 // property internally uses variable and function_call_or_array_element so they can be skipped
-                property::parser(),
-                built_in_function_call::parser(),
-                parenthesis::parser(),
-                unary_expression::parser(),
-            )
+                Box::new(property::parser()),
+                Box::new(built_in_function_call::parser()),
+                Box::new(parenthesis::parser()),
+                Box::new(unary_expression::parser()),
+            ])
         }
 
         fn operator<I: Tokenizer + 'static>(

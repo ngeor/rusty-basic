@@ -82,23 +82,25 @@ fn element_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ElementPos
 }
 
 fn element_type_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ElementType> {
-    Alt3::new(
-        keyword_map(&[
+    OrParser::new(vec![
+        Box::new(keyword_map(&[
             (Keyword::Integer, ElementType::Integer),
             (Keyword::Long, ElementType::Long),
             (Keyword::Single, ElementType::Single),
             (Keyword::Double, ElementType::Double),
-        ]),
-        seq3(
+        ])),
+        Box::new(seq3(
             keyword(Keyword::String),
             star().no_incomplete(),
             demand_string_length_p(),
             |_, _, e| ElementType::FixedLengthString(e, 0),
+        )),
+        Box::new(
+            bare_name_without_dots()
+                .with_pos()
+                .map(ElementType::UserDefined),
         ),
-        bare_name_without_dots()
-            .with_pos()
-            .map(ElementType::UserDefined),
-    )
+    ])
 }
 
 fn demand_string_length_p<I: Tokenizer + 'static>(

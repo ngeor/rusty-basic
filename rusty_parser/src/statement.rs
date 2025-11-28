@@ -18,35 +18,36 @@ use crate::types::*;
 use crate::while_wend;
 use crate::{comment, ParseError};
 
-lazy_parser!(pub fn statement_p<Output = Statement> ; struct LazyStatementP ; Alt8::new(
-    statement_label_p(),
-    single_line_statement_p(),
-    if_block::if_block_p(),
-    for_loop::for_loop_p(),
-    select_case::select_case_p(),
-    while_wend::while_wend_p(),
-    do_loop::do_loop_p(),
-    illegal_starting_keywords(),
-));
+lazy_parser!(pub fn statement_p<Output = Statement> ; struct LazyStatementP ; OrParser::new(vec![
+    Box::new(statement_label_p()),
+    Box::new(single_line_statement_p()),
+    Box::new(if_block::if_block_p()),
+    Box::new(for_loop::for_loop_p()),
+    Box::new(select_case::select_case_p()),
+    Box::new(while_wend::while_wend_p()),
+    Box::new(do_loop::do_loop_p()),
+    Box::new(illegal_starting_keywords()),
+]));
 
 // Tries to read a statement that is allowed to be on a single line IF statement,
 // excluding comments.
-lazy_parser!(pub fn single_line_non_comment_statement_p<Output = Statement> ; struct SingleLineNonCommentStatement ; Alt15::new(
-    dim::dim_p(),
-    dim::redim_p(),
-    constant::constant_p(),
-    super::built_ins::parse(),
-    print::parse_print_p(),
-    print::parse_lprint_p(),
-    sub_call::sub_call_or_assignment_p(),
-    statement_go_to_p(),
-    statement_go_sub_p(),
-    statement_return_p(),
-    statement_exit_p(),
-    statement_on_error_go_to_p(),
-    statement_resume_p(),
-    end::parse_end_p(),
-    system::parse_system_p()));
+lazy_parser!(pub fn single_line_non_comment_statement_p<Output = Statement> ; struct SingleLineNonCommentStatement ; OrParser::new(vec![
+    Box::new(dim::dim_p()),
+    Box::new(dim::redim_p()),
+    Box::new(constant::constant_p()),
+    Box::new(super::built_ins::parse()),
+    Box::new(print::parse_print_p()),
+    Box::new(print::parse_lprint_p()),
+    Box::new(sub_call::sub_call_or_assignment_p()),
+    Box::new(statement_go_to_p()),
+    Box::new(statement_go_sub_p()),
+    Box::new(statement_return_p()),
+    Box::new(statement_exit_p()),
+    Box::new(statement_on_error_go_to_p()),
+    Box::new(statement_resume_p()),
+    Box::new(end::parse_end_p()),
+    Box::new(system::parse_system_p())
+]));
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
@@ -97,10 +98,10 @@ mod end {
     /// Otherwise, it demands that we find an end-of-statement terminator.
     fn after_end_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> + NonOptParser<I>
     {
-        Alt2::new(
-            whitespace_and_allowed_keyword_after_end(),
-            opt_ws_and_eof_or_statement_separator(),
-        )
+        OrParser::new(vec![
+            Box::new(whitespace_and_allowed_keyword_after_end()),
+            Box::new(opt_ws_and_eof_or_statement_separator()),
+        ])
         .peek()
         .or_syntax_error(
             "Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement",

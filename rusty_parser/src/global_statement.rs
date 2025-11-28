@@ -63,12 +63,12 @@ impl<I: Tokenizer + 'static> Parser<I> for ProgramParser {
 }
 
 fn global_statement_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalStatementPos> {
-    Alt5::new(
-        def_type::def_type_p().map(GlobalStatement::DefType),
-        declaration::declaration_p(),
-        implementation::implementation_p(),
-        statement::statement_p().map(GlobalStatement::Statement),
-        user_defined_type::user_defined_type_p().map(GlobalStatement::UserDefinedType),
-    )
+    OrParser::new(vec![
+        Box::new(def_type::def_type_p().map(GlobalStatement::DefType)),
+        Box::new(declaration::declaration_p()),
+        Box::new(implementation::implementation_p()),
+        Box::new(statement::statement_p().map(GlobalStatement::Statement)),
+        Box::new(user_defined_type::user_defined_type_p().map(GlobalStatement::UserDefinedType)),
+    ])
     .with_pos()
 }

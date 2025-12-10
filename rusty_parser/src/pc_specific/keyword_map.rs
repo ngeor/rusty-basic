@@ -23,7 +23,7 @@ where
 {
     type Output = T;
     fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        match tokenizer.read()? {
+        match tokenizer.read() {
             Some(keyword_token) if TokenType::Keyword.matches(&keyword_token) => {
                 for (keyword, mapped_value) in &self.mappings {
                     if keyword == &keyword_token {

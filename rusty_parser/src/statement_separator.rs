@@ -33,7 +33,7 @@ impl<I: Tokenizer + 'static> Parser<I> for CommentSeparator {
     fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         let mut tokens: TokenList = vec![];
         let mut found_eol = false;
-        while let Some(token) = tokenizer.read()? {
+        while let Some(token) = tokenizer.read() {
             if TokenType::Whitespace.matches(&token) {
                 if !found_eol {
                     tokens.push(token);
@@ -61,7 +61,7 @@ impl<I: Tokenizer + 'static> Parser<I> for CommonSeparator {
     type Output = ();
     fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         let mut sep = TokenType::Unknown;
-        while let Some(token) = tokenizer.read()? {
+        while let Some(token) = tokenizer.read() {
             if TokenType::Whitespace.matches(&token) {
                 // skip whitespace
             } else if TokenType::SingleQuote.matches(&token) {

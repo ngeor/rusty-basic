@@ -68,12 +68,11 @@ where
 
 fn peek_token(tokenizer: &mut impl Tokenizer) -> String {
     match tokenizer.read() {
-        Ok(Some(token)) => {
+        Some(token) => {
             let result = format!("kind {} text {}", token.kind, token.text);
             tokenizer.unread(token);
             result
         }
-        Ok(None) => "[None]".to_string(),
-        Err(_) => "[ERR!]".to_string(),
+        None => "[None]".to_string(),
     }
 }

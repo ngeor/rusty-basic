@@ -14,9 +14,8 @@ impl<I: Tokenizer + 'static> Parser<I> for AnyTokenParser {
 
     fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         match tokenizer.read() {
-            Ok(Some(token)) => Ok(token),
-            Ok(None) => Err(ParseError::Incomplete),
-            Err(err) => Err(err.into()),
+            Some(token) => Ok(token),
+            None => Err(ParseError::Incomplete),
         }
     }
 }

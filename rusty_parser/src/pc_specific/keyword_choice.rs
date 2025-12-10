@@ -15,7 +15,7 @@ impl Undo for (Keyword, Token) {
 impl<I: Tokenizer + 'static> Parser<I> for KeywordChoice<'_> {
     type Output = (Keyword, Token);
     fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        match tokenizer.read()? {
+        match tokenizer.read() {
             Some(token) => match self.find_keyword(&token) {
                 Some(keyword) => Ok((keyword, token)),
                 None => {

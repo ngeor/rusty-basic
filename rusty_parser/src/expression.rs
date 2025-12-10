@@ -655,8 +655,8 @@ pub mod file_handle {
         type Output = Positioned<FileHandle>;
         fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
             let pos = tokenizer.position();
-            match tokenizer.read()? {
-                Some(token) if TokenType::Pound.matches(&token) => match tokenizer.read()? {
+            match tokenizer.read() {
+                Some(token) if TokenType::Pound.matches(&token) => match tokenizer.read() {
                     Some(token) if TokenType::Digits.matches(&token) => {
                         match token.text.parse::<u8>() {
                             Ok(d) if d > 0 => Ok(FileHandle::from(d).at_pos(pos)),

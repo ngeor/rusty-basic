@@ -78,10 +78,10 @@ struct CaseButNotElse;
 impl<I: Tokenizer + 'static> Parser<I> for CaseButNotElse {
     type Output = ();
     fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        match tokenizer.read()? {
-            Some(case_token) if Keyword::Case == case_token => match tokenizer.read()? {
+        match tokenizer.read() {
+            Some(case_token) if Keyword::Case == case_token => match tokenizer.read() {
                 Some(space_token) if TokenType::Whitespace.matches(&space_token) => {
-                    match tokenizer.read()? {
+                    match tokenizer.read() {
                         Some(else_token) if Keyword::Else == else_token => {
                             tokenizer.unread(else_token);
                             tokenizer.unread(space_token);

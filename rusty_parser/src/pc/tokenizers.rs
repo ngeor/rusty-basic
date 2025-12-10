@@ -30,7 +30,7 @@ pub fn token_list_to_bare_name(tokens: TokenList) -> BareName {
 
 pub trait Tokenizer {
     // TODO this can also be Result<Token, ?> where ? is Fatal/NotFound, or an Iterator
-    fn read(&mut self) -> std::io::Result<Option<Token>>;
+    fn read(&mut self) -> Option<Token>;
     fn unread(&mut self, token: Token);
     fn position(&self) -> Position;
 }
@@ -93,7 +93,7 @@ impl TokenizerImpl {
         }
     }
 
-    pub fn read(&mut self) -> std::io::Result<Option<Token>> {
+    pub fn read(&mut self) -> Option<Token> {
         let mut buffer = String::new();
         let mut no_match_or_eof = false;
         let mut recognizer_responses = RecognizerResponses::new(self.recognizers.len());
@@ -163,18 +163,15 @@ impl TokenizerImpl {
         }
 
         if let Some(kind) = token_type {
-            Ok(Some(Token {
+            Some(Token {
                 kind,
                 text: buffer,
                 pos: begin,
-            }))
+            })
         } else if buffer.is_empty() {
-            Ok(None)
+            None
         } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Could not recognize token!",
-            ))
+            panic!("Could not recognize token!");
         }
     }
 }
@@ -189,9 +186,9 @@ impl UndoTokenizerImpl {
 }
 
 impl Tokenizer for UndoTokenizerImpl {
-    fn read(&mut self) -> std::io::Result<Option<Token>> {
+    fn read(&mut self) -> Option<Token> {
         match self.buffer.pop() {
-            Some(token) => Ok(Some(token)),
+            Some(token) => Some(token),
             None => self.tokenizer.read(),
         }
     }
@@ -242,7 +239,7 @@ mod tests {
                 0 => many_digits_recognizer()
             ],
         );
-        let token = tokenizer.read().unwrap().unwrap();
+        let token = tokenizer.read().unwrap();
         assert_eq!(token.text, "1234");
         assert_eq!(token.kind, 0);
         assert_eq!(token.pos.row(), 1);
@@ -260,14 +257,14 @@ mod tests {
                 1 => many_digits_recognizer()
             ],
         );
-        let token = tokenizer.read().unwrap().unwrap();
+        let token = tokenizer.read().unwrap();
         assert_eq!(token.text, "abc");
         assert_eq!(token.kind, 0);
         assert_eq!(token.pos.row(), 1);
         assert_eq!(token.pos.col(), 1);
         assert_eq!(tokenizer.pos().row(), 1);
         assert_eq!(tokenizer.pos().col(), 4);
-        let token = tokenizer.read().unwrap().unwrap();
+        let token = tokenizer.read().unwrap();
         assert_eq!(token.text, "1234");
         assert_eq!(token.kind, 1);
         assert_eq!(token.pos.row(), 1);
@@ -286,27 +283,27 @@ mod tests {
             ],
         ));
 
-        let token = tokenizer.read().unwrap().unwrap();
+        let token = tokenizer.read().unwrap();
         assert_eq!(token.text, "a");
 
         tokenizer.unread(token);
 
-        let token1 = tokenizer.read().unwrap().unwrap();
+        let token1 = tokenizer.read().unwrap();
         assert_eq!(token1.text, "a");
 
-        let token2 = tokenizer.read().unwrap().unwrap();
+        let token2 = tokenizer.read().unwrap();
         assert_eq!(token2.text, "1");
 
         tokenizer.unread(token2);
         tokenizer.unread(token1);
 
-        let token1 = tokenizer.read().unwrap().unwrap();
+        let token1 = tokenizer.read().unwrap();
         assert_eq!(token1.text, "a");
 
-        let token2 = tokenizer.read().unwrap().unwrap();
+        let token2 = tokenizer.read().unwrap();
         assert_eq!(token2.text, "1");
 
-        let token2 = tokenizer.read().unwrap().unwrap();
+        let token2 = tokenizer.read().unwrap();
         assert_eq!(token2.text, "b");
     }
 }

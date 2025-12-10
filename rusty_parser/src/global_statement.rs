@@ -22,7 +22,7 @@ impl<I: Tokenizer + 'static> Parser<I> for ProgramParser {
         let mut program: Program = vec![];
         let global_statement_parser = global_statement_pos_p();
         loop {
-            let opt_item = tokenizer.read()?;
+            let opt_item = tokenizer.read();
             match opt_item {
                 Some(ch) => {
                     let token_type = TokenType::from_token(&ch);

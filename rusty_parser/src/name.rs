@@ -219,7 +219,7 @@ mod tests {
                 .parse(&mut tokenizer)
                 .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
             assert!(
-                tokenizer.read().expect("Should read EOF token").is_none(),
+                tokenizer.read().is_none(),
                 "Should have parsed {} completely",
                 input
             );
@@ -276,7 +276,7 @@ mod tests {
                 .parse(&mut tokenizer)
                 .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
             assert!(
-                tokenizer.read().expect("Should read EOF token").is_none(),
+                tokenizer.read().is_none(),
                 "Should have parsed {} completely",
                 input
             );
@@ -311,7 +311,7 @@ mod tests {
                 .parse(&mut tokenizer)
                 .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
             assert!(
-                tokenizer.read().expect("Should read EOF token").is_none(),
+                tokenizer.read().is_none(),
                 "Should have parsed {} completely",
                 input
             );
@@ -351,7 +351,7 @@ mod tests {
                 .parse(&mut tokenizer)
                 .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
             assert!(
-                tokenizer.read().expect("Should read EOF token").is_none(),
+                tokenizer.read().is_none(),
                 "Should have parsed {} completely",
                 input
             );

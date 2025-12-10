@@ -17,10 +17,10 @@ struct CommentAsString;
 impl<I: Tokenizer + 'static> Parser<I> for CommentAsString {
     type Output = String;
     fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        match tokenizer.read()? {
+        match tokenizer.read() {
             Some(token) if TokenType::SingleQuote.matches(&token) => {
                 let mut result = String::new();
-                while let Some(token) = tokenizer.read()? {
+                while let Some(token) = tokenizer.read() {
                     if TokenType::Eol.matches(&token) {
                         tokenizer.unread(token);
                         break;

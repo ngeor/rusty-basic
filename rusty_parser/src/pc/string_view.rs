@@ -1,3 +1,5 @@
+use rusty_common::Position;
+
 use super::row_col_view::*;
 use std::{
     fs::File,
@@ -7,7 +9,7 @@ use std::{
 
 pub struct StringView {
     chars: Vec<char>,
-    row_col: Vec<RowCol>,
+    row_col: Vec<Position>,
 }
 
 impl From<&str> for StringView {
@@ -85,6 +87,10 @@ impl RcStringView {
 
     pub fn char_at(&self, index: usize) -> char {
         self.buffer.chars[index]
+    }
+
+    pub fn row_col(&self) -> Position {
+        self.buffer.row_col[self.position]
     }
 
     pub fn char(&self) -> char {

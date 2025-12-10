@@ -233,7 +233,7 @@ mod integer_or_long_literal {
     }
 
     fn convert_hex_digit(ch: char) -> u8 {
-        if is_digit(ch) {
+        if ch.is_ascii_digit() {
             (ch as u8) - b'0'
         } else if ('a'..='f').contains(&ch) {
             (ch as u8) - b'a' + 10

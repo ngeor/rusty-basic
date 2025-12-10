@@ -103,4 +103,8 @@ impl RcStringView {
             position: self.position + 1,
         }
     }
+
+    pub fn is_eof(&self) -> bool {
+        self.position >= self.len()
+    }
 }

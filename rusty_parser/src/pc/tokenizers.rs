@@ -1,4 +1,4 @@
-use crate::char_reader::CharReader;
+use crate::pc::string_view::RcStringView;
 use crate::pc::{Recognition, Recognizer};
 use crate::BareName;
 use rusty_common::Position;
@@ -38,21 +38,18 @@ pub trait Tokenizer {
 pub type RecognizerWithTypePair = (TokenKind, Box<dyn Recognizer>);
 pub type RecognizersWithType = Vec<RecognizerWithTypePair>;
 
-pub fn create_tokenizer<R: CharReader>(
-    reader: R,
-    recognizers: RecognizersWithType,
-) -> impl Tokenizer {
+pub fn create_tokenizer(reader: RcStringView, recognizers: RecognizersWithType) -> impl Tokenizer {
     UndoTokenizerImpl::new(TokenizerImpl::new(reader, recognizers))
 }
 
-struct TokenizerImpl<R: CharReader> {
-    reader: R,
+struct TokenizerImpl {
+    reader: RcStringView,
     recognizers: RecognizersWithType,
-    pos: Position,
+    eof_pos: Option<Position>,
 }
 
-struct UndoTokenizerImpl<R: CharReader> {
-    tokenizer: TokenizerImpl<R>,
+struct UndoTokenizerImpl {
+    tokenizer: TokenizerImpl,
     buffer: TokenList,
 }
 
@@ -79,12 +76,20 @@ impl RecognizerResponses {
     }
 }
 
-impl<R: CharReader> TokenizerImpl<R> {
-    pub fn new(reader: R, recognizers: RecognizersWithType) -> Self {
+impl TokenizerImpl {
+    pub fn new(reader: RcStringView, recognizers: RecognizersWithType) -> Self {
         Self {
             reader,
             recognizers,
-            pos: Position::start(),
+            eof_pos: None,
+        }
+    }
+
+    pub fn pos(&self) -> Position {
+        if self.reader.position() >= self.reader.len() {
+            self.eof_pos.unwrap()
+        } else {
+            self.reader.row_col()
         }
     }
 
@@ -93,32 +98,50 @@ impl<R: CharReader> TokenizerImpl<R> {
         let mut no_match_or_eof = false;
         let mut recognizer_responses = RecognizerResponses::new(self.recognizers.len());
         let mut sizes: Vec<usize> = iter::repeat(0).take(self.recognizers.len()).collect();
+
+        // temporary solution, store views to be able to "unread"
+        let mut views: Vec<RcStringView> = vec![];
+
+        let begin = if self.reader.position() >= self.reader.len() {
+            Position::start()
+        } else {
+            self.reader.row_col()
+        };
+
         while !no_match_or_eof {
-            match self.reader.read()? {
-                Some(ch) => {
-                    buffer.push(ch);
-                    for (i, (_, recognizer)) in self.recognizers.iter().enumerate() {
-                        let last_response = recognizer_responses.get_last_response(i);
-                        if last_response != Recognition::Negative {
-                            let recognition = recognizer.recognize(&buffer);
-                            recognizer_responses.set_last_response(i, recognition);
-                            if recognition == Recognition::Positive {
-                                // remember the buffer size at this point
-                                sizes[i] = buffer.len();
-                            } else if recognition == Recognition::Negative
-                                && last_response == Recognition::Partial
-                            {
-                                // this recognizer never met its goal
-                                sizes[i] = 0;
-                            }
+            let eof = self.reader.position() >= self.reader.len();
+            if !eof {
+                let ch = self.reader.char();
+
+                views.push(self.reader.clone());
+                self.reader = self.reader.clone().inc_position();
+
+                buffer.push(ch);
+                for (i, (_, recognizer)) in self.recognizers.iter().enumerate() {
+                    let last_response = recognizer_responses.get_last_response(i);
+                    if last_response != Recognition::Negative {
+                        let recognition = recognizer.recognize(&buffer);
+                        recognizer_responses.set_last_response(i, recognition);
+                        if recognition == Recognition::Positive {
+                            // remember the buffer size at this point
+                            sizes[i] = buffer.len();
+                        } else if recognition == Recognition::Negative
+                            && last_response == Recognition::Partial
+                        {
+                            // this recognizer never met its goal
+                            sizes[i] = 0;
                         }
                     }
-                    no_match_or_eof = recognizer_responses
-                        .count_by_recognition(Recognition::Negative)
-                        == self.recognizers.len();
                 }
-                None => {
-                    no_match_or_eof = true;
+                no_match_or_eof = recognizer_responses.count_by_recognition(Recognition::Negative)
+                    == self.recognizers.len();
+            } else {
+                no_match_or_eof = true;
+
+                if self.eof_pos.is_none() {
+                    let mut temp = begin;
+                    temp.inc_col();
+                    self.eof_pos = Some(temp);
                 }
             }
         }
@@ -135,27 +158,11 @@ impl<R: CharReader> TokenizerImpl<R> {
 
         // unread extra characters
         while buffer.len() > max_positive_size {
-            let last_char = buffer.pop().unwrap();
-            self.reader.unread(last_char);
+            buffer.pop().unwrap();
+            self.reader = views.pop().unwrap();
         }
 
         if let Some(kind) = token_type {
-            let begin: Position = self.pos;
-            let mut previous_char: char = ' ';
-            for ch in buffer.chars() {
-                if ch == '\r' {
-                    self.pos.inc_row();
-                } else if ch == '\n' {
-                    if previous_char == '\r' {
-                        // already increased row for '\r'
-                    } else {
-                        self.pos.inc_row();
-                    }
-                } else {
-                    self.pos.inc_col();
-                }
-                previous_char = ch;
-            }
             Ok(Some(Token {
                 kind,
                 text: buffer,
@@ -172,8 +179,8 @@ impl<R: CharReader> TokenizerImpl<R> {
     }
 }
 
-impl<R: CharReader> UndoTokenizerImpl<R> {
-    pub fn new(tokenizer: TokenizerImpl<R>) -> Self {
+impl UndoTokenizerImpl {
+    pub fn new(tokenizer: TokenizerImpl) -> Self {
         Self {
             tokenizer,
             buffer: vec![],
@@ -181,7 +188,7 @@ impl<R: CharReader> UndoTokenizerImpl<R> {
     }
 }
 
-impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
+impl Tokenizer for UndoTokenizerImpl {
     fn read(&mut self) -> std::io::Result<Option<Token>> {
         match self.buffer.pop() {
             Some(token) => Ok(Some(token)),
@@ -196,7 +203,7 @@ impl<R: CharReader> Tokenizer for UndoTokenizerImpl<R> {
     fn position(&self) -> Position {
         match self.buffer.last() {
             Some(token) => token.pos,
-            _ => self.tokenizer.pos,
+            _ => self.tokenizer.pos(),
         }
     }
 }
@@ -217,7 +224,7 @@ macro_rules! recognizers {
 
 #[cfg(test)]
 mod tests {
-    use crate::char_reader::string_char_reader;
+    use crate::pc::string_view::RcStringView;
     use crate::pc::tokenizers::{TokenizerImpl, UndoTokenizerImpl};
     use crate::pc::*;
 
@@ -228,7 +235,7 @@ mod tests {
     #[test]
     fn test_digits() {
         let input = "1234";
-        let reader = string_char_reader(input.to_owned());
+        let reader: RcStringView = input.into();
         let mut tokenizer = TokenizerImpl::new(
             reader,
             recognizers![
@@ -240,14 +247,12 @@ mod tests {
         assert_eq!(token.kind, 0);
         assert_eq!(token.pos.row(), 1);
         assert_eq!(token.pos.col(), 1);
-        assert_eq!(tokenizer.pos.row(), 1);
-        assert_eq!(tokenizer.pos.col(), 5);
     }
 
     #[test]
     fn test_letters_digits() {
         let input = "abc1234";
-        let reader = string_char_reader(input.to_owned());
+        let reader: RcStringView = input.into();
         let mut tokenizer = TokenizerImpl::new(
             reader,
             recognizers![
@@ -260,21 +265,19 @@ mod tests {
         assert_eq!(token.kind, 0);
         assert_eq!(token.pos.row(), 1);
         assert_eq!(token.pos.col(), 1);
-        assert_eq!(tokenizer.pos.row(), 1);
-        assert_eq!(tokenizer.pos.col(), 4);
+        assert_eq!(tokenizer.pos().row(), 1);
+        assert_eq!(tokenizer.pos().col(), 4);
         let token = tokenizer.read().unwrap().unwrap();
         assert_eq!(token.text, "1234");
         assert_eq!(token.kind, 1);
         assert_eq!(token.pos.row(), 1);
         assert_eq!(token.pos.col(), 4);
-        assert_eq!(tokenizer.pos.row(), 1);
-        assert_eq!(tokenizer.pos.col(), 8);
     }
 
     #[test]
     fn test_undo() {
         let input = "a1b2c3";
-        let reader = string_char_reader(input.to_owned());
+        let reader: RcStringView = input.into();
         let mut tokenizer = UndoTokenizerImpl::new(TokenizerImpl::new(
             reader,
             recognizers![

@@ -1,6 +1,5 @@
 mod assignment;
 mod built_ins;
-mod char_reader;
 mod comment;
 mod constant;
 mod declaration;
@@ -60,7 +59,7 @@ use crate::pc_specific::{create_file_tokenizer, create_string_tokenizer};
 /// <digit> ::= "0".."9"
 /// ```
 pub fn parse_main_file(f: File) -> Result<Program, ParseErrorPos> {
-    let mut reader = create_file_tokenizer(f);
+    let mut reader = create_file_tokenizer(f).unwrap();
     program_parser(&mut reader)
 }
 

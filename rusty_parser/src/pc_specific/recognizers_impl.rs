@@ -1,4 +1,3 @@
-use crate::char_reader::{file_char_reader, string_char_reader};
 use crate::pc::*;
 use crate::pc_specific::TokenType;
 use crate::recognizers;
@@ -148,10 +147,12 @@ pub fn create_recognizers() -> RecognizersWithType {
     ]
 }
 
-pub fn create_file_tokenizer(input: File) -> impl Tokenizer {
-    create_tokenizer(file_char_reader(input), create_recognizers())
+pub fn create_file_tokenizer(input: File) -> Result<impl Tokenizer, std::io::Error> {
+    input
+        .try_into()
+        .map(|rc_string_view| create_tokenizer(rc_string_view, create_recognizers()))
 }
 
 pub fn create_string_tokenizer(input: String) -> impl Tokenizer {
-    create_tokenizer(string_char_reader(input), create_recognizers())
+    create_tokenizer(input.into(), create_recognizers())
 }

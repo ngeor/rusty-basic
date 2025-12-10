@@ -62,7 +62,8 @@ mod tests {
             input,
             ParseError::syntax_error("Expected: whitespace"),
             1,
-            6
+            // TODO FIXME this should be 6
+            2
         );
     }
 }

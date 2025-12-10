@@ -1,15 +1,43 @@
 use super::row_col_view::*;
-use std::rc::Rc;
+use std::{
+    fs::File,
+    io::{BufRead, BufReader},
+    rc::Rc,
+};
 
 pub struct StringView {
     chars: Vec<char>,
     row_col: Vec<RowCol>,
 }
 
-pub fn create_string_view(s: &str) -> StringView {
-    let chars: Vec<char> = s.chars().collect();
-    let row_col = create_row_col_view(&chars);
-    StringView { chars, row_col }
+impl From<&str> for StringView {
+    fn from(value: &str) -> Self {
+        let chars: Vec<char> = value.chars().collect();
+        let row_col = create_row_col_view(&chars);
+        StringView { chars, row_col }
+    }
+}
+
+impl From<String> for StringView {
+    fn from(value: String) -> Self {
+        value.as_str().into()
+    }
+}
+
+impl TryFrom<File> for StringView {
+    type Error = std::io::Error;
+
+    fn try_from(value: File) -> Result<Self, Self::Error> {
+        let mut reader = BufReader::new(value);
+        let mut buf = String::new();
+        loop {
+            let bytes_read = reader.read_line(&mut buf)?;
+            if bytes_read == 0 {
+                break;
+            }
+        }
+        Ok(buf.into())
+    }
 }
 
 /// A shared immutable view of the contents to be parsed.
@@ -21,14 +49,32 @@ pub struct RcStringView {
     position: usize,
 }
 
-pub fn create_rc_string_view(s: &str) -> RcStringView {
-    RcStringView {
-        buffer: Rc::new(create_string_view(s)),
-        position: 0,
+impl<S> From<S> for RcStringView
+where
+    S: Into<StringView>,
+{
+    fn from(value: S) -> Self {
+        Self::new(value.into())
+    }
+}
+
+impl TryFrom<File> for RcStringView {
+    type Error = std::io::Error;
+
+    fn try_from(value: File) -> Result<Self, Self::Error> {
+        let string_view = StringView::try_from(value)?;
+        Ok(string_view.into())
     }
 }
 
 impl RcStringView {
+    pub fn new(buffer: StringView) -> Self {
+        Self {
+            buffer: Rc::new(buffer),
+            position: 0,
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.buffer.chars.len()
     }

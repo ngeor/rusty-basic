@@ -63,5 +63,6 @@ pub use parsers::*;
 pub use peek::*;
 pub use recognizers::*;
 pub use seq::*;
+pub use string_view::RcStringView;
 pub use tokenizers::*;
 pub use undo::*;

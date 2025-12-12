@@ -644,34 +644,15 @@ pub mod file_handle {
 
     pub fn file_handle_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Positioned<FileHandle>>
     {
-        FileHandleParser
-    }
-
-    // TODO support simple functions without `&self` for cases like FileHandleParser
-
-    struct FileHandleParser;
-
-    impl<I: Tokenizer + 'static> Parser<I> for FileHandleParser {
-        type Output = Positioned<FileHandle>;
-        fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-            let pos = tokenizer.position();
-            match tokenizer.read() {
-                Some(token) if TokenType::Pound.matches(&token) => match tokenizer.read() {
-                    Some(token) if TokenType::Digits.matches(&token) => {
-                        match token.text.parse::<u8>() {
-                            Ok(d) if d > 0 => Ok(FileHandle::from(d).at_pos(pos)),
-                            _ => Err(ParseError::BadFileNameOrNumber),
-                        }
-                    }
-                    _ => Err(ParseError::syntax_error("Expected: digits after #")),
-                },
-                Some(token) => {
-                    tokenizer.unread(token);
-                    Err(ParseError::Incomplete)
-                }
-                _ => Err(ParseError::Incomplete),
-            }
-        }
+        // # and digits
+        // if # and 0 -> BadFileNameOrNumber
+        // if # without digits -> SyntaxError (Expected: digits after #)
+        any_token_of(TokenType::Pound)
+            .and(any_token_of(TokenType::Digits).or_syntax_error("Expected: digits after #"))
+            .and_then(|(pound, digits)| match digits.text.parse::<u8>() {
+                Ok(d) if d > 0 => Ok(FileHandle::from(d).at_pos(pound.pos)),
+                _ => Err(ParseError::BadFileNameOrNumber),
+            })
     }
 
     /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.

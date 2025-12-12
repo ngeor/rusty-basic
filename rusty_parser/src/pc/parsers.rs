@@ -2,10 +2,10 @@ use crate::pc::and_opt::AndOptPC;
 use crate::pc::many::OneOrMoreParser;
 use crate::pc::mappers::{FnMapper, KeepLeftMapper, KeepRightMapper};
 use crate::pc::{
-    AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndPC, AndThen, ChainParser,
-    FilterMapParser, FilterParser, GuardPC, LoopWhile, MapIncompleteErrParser, NegateParser,
-    NoIncompleteParser, OrFailParser, OrParser, OrParserOnce, ParserToParserOnceAdapter,
-    PeekParser, Tokenizer, Undo,
+    AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndPC, AndThen, AndThenOkErr,
+    ChainParser, FilterMapParser, FilterParser, GuardPC, LoopWhile, MapIncompleteErrParser,
+    NegateParser, NoIncompleteParser, OrFailParser, OrParser, OrParserOnce,
+    ParserToParserOnceAdapter, PeekParser, Tokenizer, Undo,
 };
 use crate::ParseError;
 
@@ -36,6 +36,16 @@ pub trait Parser<I: Tokenizer + 'static> {
         F: Fn(Self::Output) -> Result<U, ParseError>,
     {
         AndThen::new(self, mapper)
+    }
+
+    /// Flat map the result of this parser for both successful and failed results.
+    fn and_then_ok_err<F, G, U>(self, ok_mapper: F, err_mapper: G) -> AndThenOkErr<Self, F, G>
+    where
+        Self: Sized,
+        F: Fn(Self::Output) -> Result<U, ParseError>,
+        G: Fn(ParseError) -> Result<U, ParseError>,
+    {
+        AndThenOkErr::new(self, ok_mapper, err_mapper)
     }
 
     fn filter<F>(self, predicate: F) -> FilterParser<Self, F>

@@ -4,11 +4,12 @@ use rusty_common::Position;
 pub type TokenKind = u8;
 
 // TODO make fields private
+// TODO remove the Clone trait
 /// Represents a recognized token.
 ///
 /// The [kind] field could have been a generic parameter, but that would require
 /// propagating the type in the [Tokenizer] and eventually also to the parsers.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Token {
     pub kind: TokenKind,
     pub text: String,

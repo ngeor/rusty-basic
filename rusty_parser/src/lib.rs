@@ -43,7 +43,7 @@ pub use types::*;
 use rusty_common::AtPos;
 use std::fs::File;
 
-use crate::global_statement::ProgramParser;
+use crate::global_statement::program_parser_p;
 use crate::pc::*;
 use crate::pc_specific::{create_file_tokenizer, create_string_tokenizer};
 
@@ -65,7 +65,7 @@ pub fn parse_main_file(f: File) -> Result<Program, ParseErrorPos> {
 }
 
 pub fn program_parser<I: Tokenizer + 'static>(reader: &mut I) -> Result<Program, ParseErrorPos> {
-    match ProgramParser::new().parse(reader) {
+    match program_parser_p().parse(reader) {
         Ok(opt_program) => Ok(opt_program),
         Err(err) => Err(err.at_pos(reader.position())),
     }

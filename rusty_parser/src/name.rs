@@ -210,6 +210,14 @@ mod tests {
     use crate::pc::{Parser, Tokenizer};
     use crate::pc_specific::create_string_tokenizer;
 
+    fn assert_fully_parsed(tokenizer: &mut impl Tokenizer, input: &str) {
+        assert!(
+            tokenizer.read().is_none(),
+            "Should have parsed {} completely",
+            input
+        );
+    }
+
     mod bare_name_without_dots {
         use super::*;
 
@@ -218,11 +226,7 @@ mod tests {
             let result = bare_name_without_dots()
                 .parse(&mut tokenizer)
                 .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
-            assert!(
-                tokenizer.read().is_none(),
-                "Should have parsed {} completely",
-                input
-            );
+            assert_fully_parsed(&mut tokenizer, input);
             result
         }
 
@@ -275,11 +279,7 @@ mod tests {
             let result = identifier()
                 .parse(&mut tokenizer)
                 .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
-            assert!(
-                tokenizer.read().is_none(),
-                "Should have parsed {} completely",
-                input
-            );
+            assert_fully_parsed(&mut tokenizer, input);
             result
         }
 
@@ -310,11 +310,7 @@ mod tests {
             let result = bare_name_with_dots()
                 .parse(&mut tokenizer)
                 .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
-            assert!(
-                tokenizer.read().is_none(),
-                "Should have parsed {} completely",
-                input
-            );
+            assert_fully_parsed(&mut tokenizer, input);
             result
         }
 
@@ -350,11 +346,7 @@ mod tests {
             let result = name_with_dots()
                 .parse(&mut tokenizer)
                 .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
-            assert!(
-                tokenizer.read().is_none(),
-                "Should have parsed {} completely",
-                input
-            );
+            assert_fully_parsed(&mut tokenizer, input);
             result
         }
 

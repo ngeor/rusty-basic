@@ -3,6 +3,7 @@ use crate::pc_ng::filter::Filter;
 use crate::pc_ng::flat_map::FlatMap;
 use crate::pc_ng::many::Many;
 use crate::pc_ng::map::Map;
+use crate::pc_ng::opt::Opt;
 use crate::pc_ng::ParseResult;
 
 pub trait Parser {
@@ -71,5 +72,14 @@ pub trait Parser {
         F: Fn(Self::Output) -> O,
     {
         Map::new(self, mapper)
+    }
+
+    fn opt(
+        self,
+    ) -> impl Parser<Input = Self::Input, Output = Option<Self::Output>, Error = Self::Error>
+    where
+        Self: Sized,
+    {
+        Opt::new(self)
     }
 }

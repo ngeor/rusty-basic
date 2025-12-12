@@ -3,6 +3,7 @@ mod filter;
 mod flat_map;
 mod many;
 mod map;
+mod opt;
 mod or;
 mod parse_result;
 mod parser;

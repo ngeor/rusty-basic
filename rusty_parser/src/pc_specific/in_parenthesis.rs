@@ -11,7 +11,7 @@ pub fn in_parenthesis<I: Tokenizer + 'static, P>(
 where
     P: Parser<I> + NonOptParser<I>,
 {
-    seq3(left_paren(), parser, right_paren(), |_, value, _| value)
+    parser.surround(left_paren(), right_paren())
 }
 
 fn left_paren<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Token, Option<Token>)> {

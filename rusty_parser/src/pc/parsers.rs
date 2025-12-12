@@ -5,7 +5,7 @@ use crate::pc::{
     AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndPC, AndThen, AndThenOkErr,
     ChainParser, FilterMapParser, FilterParser, GuardPC, LoopWhile, MapIncompleteErrParser,
     NegateParser, NoIncompleteParser, OrFailParser, OrParser, OrParserOnce,
-    ParserToParserOnceAdapter, PeekParser, Tokenizer, Undo,
+    ParserToParserOnceAdapter, PeekParser, SurroundParser, Tokenizer, Undo,
 };
 use crate::ParseError;
 
@@ -228,6 +228,16 @@ pub trait Parser<I: Tokenizer + 'static> {
         Self: Sized,
     {
         ParserToParserOnceAdapter::new(self)
+    }
+
+    fn surround<L, R>(self, left: L, right: R) -> SurroundParser<L, Self, R>
+    where
+        Self: Sized,
+        L: Parser<I>,
+        L::Output: Undo,
+        R: Parser<I>,
+    {
+        SurroundParser::new(left, self, right)
     }
 }
 

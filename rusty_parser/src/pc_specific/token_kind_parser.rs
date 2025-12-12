@@ -2,7 +2,7 @@
 // TokenKindParser
 //
 
-use crate::pc::{any_token, OptAndPC, Parser, Token, Tokenizer};
+use crate::pc::{any_token, Parser, Token, Tokenizer};
 use crate::pc_specific::TokenType;
 
 /// Equal sign, surrounded by optional whitespace.
@@ -80,6 +80,11 @@ pub fn whitespace<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of(TokenType::Whitespace)
 }
 
+/// Optional whitespace.
+pub fn opt_whitespace<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<Token>> {
+    whitespace().allow_none()
+}
+
 pub fn digits<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
     any_token_of(TokenType::Digits)
 }
@@ -95,7 +100,5 @@ pub fn any_token_of<I: Tokenizer + 'static>(
 fn any_token_of_ws<I: Tokenizer + 'static>(
     token_type: TokenType,
 ) -> impl Parser<I, Output = Token> {
-    OptAndPC::new(whitespace(), any_token_of(token_type))
-        .and_opt(whitespace())
-        .map(|((_, t), _)| t)
+    any_token_of(token_type).surround(opt_whitespace(), opt_whitespace())
 }

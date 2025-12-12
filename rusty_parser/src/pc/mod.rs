@@ -32,6 +32,7 @@ mod peek;
 mod row_col_view;
 mod seq;
 mod string_view;
+mod surround;
 mod tokenizers;
 mod undo;
 
@@ -62,5 +63,6 @@ pub use parsers::*;
 pub use peek::*;
 pub use seq::*;
 pub use string_view::RcStringView;
+pub use surround::*;
 pub use tokenizers::*;
 pub use undo::*;

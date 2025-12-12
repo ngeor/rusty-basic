@@ -1,7 +1,6 @@
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::types::*;
-use crate::ParseError;
 
 /// Tries to read a comment.
 pub fn comment_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
@@ -9,34 +8,14 @@ pub fn comment_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement>
 }
 
 pub fn comment_as_string_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = String> {
-    CommentAsString
-}
-
-struct CommentAsString;
-
-impl<I: Tokenizer + 'static> Parser<I> for CommentAsString {
-    type Output = String;
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        match tokenizer.read() {
-            Some(token) if TokenType::SingleQuote.matches(&token) => {
-                let mut result = String::new();
-                while let Some(token) = tokenizer.read() {
-                    if TokenType::Eol.matches(&token) {
-                        tokenizer.unread(token);
-                        break;
-                    } else {
-                        result.push_str(&token.text);
-                    }
-                }
-                Ok(result)
-            }
-            Some(token) => {
-                tokenizer.unread(token);
-                Err(ParseError::Incomplete)
-            }
-            None => Err(ParseError::Incomplete),
-        }
-    }
+    any_token_of(TokenType::SingleQuote)
+        .and(
+            any_token()
+                .filter(|t| !TokenType::Eol.matches(t))
+                .zero_or_more(),
+        )
+        .keep_right()
+        .map(token_list_to_string)
 }
 
 #[cfg(test)]

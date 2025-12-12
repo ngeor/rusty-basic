@@ -27,7 +27,10 @@ pub fn token_list_to_bare_name(tokens: TokenList) -> BareName {
 
 pub trait Tokenizer {
     // TODO this can also be Result<Token, ?> where ? is Fatal/NotFound, or an Iterator
+    #[deprecated]
     fn read(&mut self) -> Option<Token>;
+    #[deprecated]
     fn unread(&mut self, token: Token);
+    #[deprecated]
     fn position(&self) -> Position;
 }

@@ -102,3 +102,10 @@ fn any_token_of_ws<I: Tokenizer + 'static>(
 ) -> impl Parser<I, Output = Token> {
     any_token_of(token_type).surround(opt_whitespace(), opt_whitespace())
 }
+
+pub fn any_token_of_two<I: Tokenizer + 'static>(
+    token_type1: TokenType,
+    token_type2: TokenType,
+) -> impl Parser<I, Output = Token> {
+    any_token().filter(move |token| token_type1.matches(token) || token_type2.matches(token))
+}

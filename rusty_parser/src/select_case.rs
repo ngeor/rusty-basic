@@ -403,7 +403,7 @@ mod tests {
             input,
             ParseError::syntax_error("Expected: end-of-statement"),
             3,
-            16
+            15
         );
     }
 

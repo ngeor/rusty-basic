@@ -73,6 +73,8 @@ fn next_statement<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalSta
 }
 
 mod separator {
+    use crate::statement_separator::no_separator_needed_before_comment;
+
     use super::*;
 
     pub fn separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
@@ -90,17 +92,6 @@ mod separator {
         eol_col_one_or_more()
             .and_opt(ws_eol_col_zero_or_more())
             .map(|_| ())
-    }
-
-    fn no_separator_needed_before_comment<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
-        // warning: cannot use filter_map because it will undo and we've already "undo" via "peek"
-        peek_token().and_then(|t| {
-            if TokenType::SingleQuote.matches(&t) {
-                Ok(())
-            } else {
-                Err(ParseError::Incomplete)
-            }
-        })
     }
 
     fn raise_err<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {

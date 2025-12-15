@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::statement_separator::Separator;
+use crate::statement_separator::{comment_separator, common_separator};
 use crate::types::*;
 use crate::{statement, ParseError};
 
@@ -61,7 +61,7 @@ where
     type Output = Statements;
     fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         // must start with a separator (e.g. after a WHILE condition)
-        Separator::NonComment
+        common_separator()
             .parse_opt(tokenizer)?
             .ok_or_else(|| ParseError::syntax_error("Expected: end-of-statement"))?;
         let mut result: Statements = vec![];
@@ -87,9 +87,9 @@ where
                 let found_separator =
                     if let Some(Statement::Comment(_)) = result.last().map(|x| &x.element) {
                         // last element was comment
-                        Separator::Comment.parse_opt(tokenizer)?.is_some()
+                        comment_separator().parse_opt(tokenizer)?.is_some()
                     } else {
-                        Separator::NonComment.parse_opt(tokenizer)?.is_some()
+                        common_separator().parse_opt(tokenizer)?.is_some()
                     };
                 if found_separator {
                     state = 2;

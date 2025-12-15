@@ -163,7 +163,7 @@ mod tests {
             input,
             ParseError::syntax_error("Expected: statement separator"),
             3,
-            21
+            20
         );
     }
 

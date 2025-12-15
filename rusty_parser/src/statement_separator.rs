@@ -1,99 +1,77 @@
+/// Separator between statements.
+/// There are two cases, after a comment, or after a different kind of statement.
+///
+/// For the comment we have:
+///
+/// `<ws>* EOL <ws | eol>*`
+///
+/// And for the rest of the cases we have:
+///
+/// ````text
+/// <ws>* '\'' (undoing it)
+/// <ws>* ':' <ws*>
+/// <ws>* EOL <ws | eol>*
+/// ```
 use crate::comment::comment_as_string_p;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::ParseError;
 use rusty_common::*;
 
-pub enum Separator {
-    /// `<ws>* EOL <ws | eol>*`
-    Comment,
-
-    /// ````text
-    /// <ws>* '\'' (undoing it)
-    /// <ws>* ':' <ws*>
-    /// <ws>* EOL <ws | eol>*
-    /// ```
-    NonComment,
+pub fn comment_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
+    OptAndPC::new(whitespace(), any_token_of(TokenType::Eol))
+        .and_opt(any_token_of_two(TokenType::Eol, TokenType::Whitespace))
+        .map(|_| ())
 }
 
-impl<I: Tokenizer + 'static> Parser<I> for Separator {
-    type Output = ();
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        match self {
-            Self::Comment => CommentSeparator.parse(tokenizer),
-            Self::NonComment => CommonSeparator.parse(tokenizer),
-        }
-    }
+/// Common separator reads a separator between statements.
+///
+/// The steps are:
+///
+/// Skip whitespace.
+/// If single quote, undo and return ok.
+/// If found colon, store that information and continue reading.
+/// If found EOL, store that information and continue reading.
+/// If found anything else, stop.
+/// If found colon after having found a colon or an EOL, undo it and stop.
+/// So it's something like: one colon or multiple EOL, surrounded by optional whitespace.
+///
+/// The colon variant can be seen as:
+/// ws* colon (ws | eol)*
+///
+/// The eol variant can be seen as:
+/// ws* eol (ws | eol)*
+///
+/// The single quote variant can be seen as:
+/// ws* ' (but undoing it and without reading anything after it)
+///
+/// Together it should be:
+/// ws* (colon | eol) (ws | eol)*
+/// ws* ' ! (where `!` stands for read and undo)
+pub fn common_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
+    OptAndPC::new(
+        whitespace(),
+        OrParser::new(vec![
+            Box::new(
+                any_token_of_two(TokenType::Colon, TokenType::Eol)
+                    .and_opt(any_token_of_two(TokenType::Eol, TokenType::Whitespace).zero_or_more())
+                    .map(|_| ()),
+            ),
+            Box::new(no_separator_needed_before_comment()),
+        ]),
+    )
+    .map(|_| ())
 }
 
-struct CommentSeparator;
-
-impl<I: Tokenizer + 'static> Parser<I> for CommentSeparator {
-    type Output = ();
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        let mut tokens: TokenList = vec![];
-        let mut found_eol = false;
-        while let Some(token) = tokenizer.read() {
-            if TokenType::Whitespace.matches(&token) {
-                if !found_eol {
-                    tokens.push(token);
-                }
-            } else if TokenType::Eol.matches(&token) {
-                found_eol = true;
-                tokens.clear();
-            } else {
-                tokenizer.unread(token);
-                break;
-            }
-        }
-        if found_eol {
-            Ok(())
-        } else {
-            tokens.undo(tokenizer);
-            Err(ParseError::Incomplete)
-        }
-    }
-}
-
-struct CommonSeparator;
-
-impl<I: Tokenizer + 'static> Parser<I> for CommonSeparator {
-    type Output = ();
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        let mut sep = TokenType::Unknown;
-        while let Some(token) = tokenizer.read() {
-            if TokenType::Whitespace.matches(&token) {
-                // skip whitespace
-            } else if TokenType::SingleQuote.matches(&token) {
-                tokenizer.unread(token);
-                return Ok(());
-            } else if TokenType::Colon.matches(&token) {
-                if sep == TokenType::Unknown {
-                    // same line separator
-                    sep = TokenType::Colon;
-                } else {
-                    tokenizer.unread(token);
-                    break;
-                }
-            } else if TokenType::Eol.matches(&token) {
-                if sep == TokenType::Unknown || sep == TokenType::Eol {
-                    // multiline separator
-                    sep = TokenType::Eol;
-                } else {
-                    tokenizer.unread(token);
-                    break;
-                }
-            } else {
-                tokenizer.unread(token);
-                break;
-            }
-        }
-        if sep != TokenType::Unknown {
+pub fn no_separator_needed_before_comment<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
+    // warning: cannot use filter_map because it will undo and we've already "undo" via "peek"
+    peek_token().and_then(|t| {
+        if TokenType::SingleQuote.matches(&t) {
             Ok(())
         } else {
             Err(ParseError::Incomplete)
         }
-    }
+    })
 }
 
 pub fn peek_eof_or_statement_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
@@ -117,7 +95,7 @@ pub fn comments_and_whitespace_p<I: Tokenizer + 'static>(
 ) -> impl Parser<I, Output = Vec<Positioned<String>>> + NonOptParser<I> {
     OptAndPC::new(
         whitespace(),
-        OptZip::new(Separator::Comment, comment_as_string_p().with_pos())
+        OptZip::new(comment_separator(), comment_as_string_p().with_pos())
             .one_or_more()
             .map(ZipValue::collect_right)
             .allow_default(),

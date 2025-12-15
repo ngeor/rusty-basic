@@ -117,7 +117,7 @@ impl<I: Tokenizer + 'static> Parser<I> for CaseButNotElse {
 fn continue_after_case<I: Tokenizer + 'static>() -> impl Parser<I, Output = CaseBlock> {
     seq2(
         case_expression_list(),
-        ZeroOrMoreStatements::new(keyword_choice(&[Keyword::Case, Keyword::End])),
+        ZeroOrMoreStatements::new(keyword_choice(vec![Keyword::Case, Keyword::End])),
         |expression_list, statements| CaseBlock {
             expression_list,
             statements,

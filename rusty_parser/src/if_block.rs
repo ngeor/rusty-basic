@@ -63,7 +63,7 @@ fn single_line_else_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = State
 fn multi_line_if_p<I: Tokenizer + 'static>(
 ) -> impl Parser<I, Output = (Statements, Vec<ConditionalBlock>, Option<Statements>)> {
     seq4(
-        ZeroOrMoreStatements::new(keyword_choice(&[
+        ZeroOrMoreStatements::new(keyword_choice(vec![
             Keyword::End,
             Keyword::Else,
             Keyword::ElseIf,
@@ -87,7 +87,7 @@ fn else_if_expr_then_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expr
 fn else_if_block_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ConditionalBlock> {
     seq2(
         else_if_expr_then_p(),
-        ZeroOrMoreStatements::new(keyword_choice(&[
+        ZeroOrMoreStatements::new(keyword_choice(vec![
             Keyword::End,
             Keyword::Else,
             Keyword::ElseIf,

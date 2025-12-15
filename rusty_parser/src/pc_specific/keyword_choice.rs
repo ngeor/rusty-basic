@@ -1,10 +1,6 @@
 use crate::pc::*;
-use crate::pc_specific::TokenType;
+use crate::pc_specific::{any_token_of, TokenType};
 use crate::{Keyword, ParseError};
-
-pub struct KeywordChoice<'a> {
-    keywords: &'a [Keyword],
-}
 
 impl Undo for (Keyword, Token) {
     fn undo(self, tokenizer: &mut impl Tokenizer) {
@@ -12,52 +8,32 @@ impl Undo for (Keyword, Token) {
     }
 }
 
-impl<I: Tokenizer + 'static> Parser<I> for KeywordChoice<'_> {
-    type Output = (Keyword, Token);
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        match tokenizer.read() {
-            Some(token) => match self.find_keyword(&token) {
-                Some(keyword) => Ok((keyword, token)),
-                None => {
-                    tokenizer.unread(token);
-                    self.to_err()
-                }
-            },
-            None => self.to_err(),
-        }
-    }
-}
-
-impl<'a> KeywordChoice<'a> {
-    fn find_keyword(&self, token: &Token) -> Option<Keyword> {
-        if TokenType::Keyword.matches(token) {
-            let needle = Keyword::from(token);
-            if self.keywords.contains(&needle) {
-                Some(needle)
+/// Matches one of the given keywords.
+pub fn keyword_choice<I: Tokenizer + 'static>(
+    keywords: Vec<Keyword>,
+) -> impl Parser<I, Output = (Keyword, Token)> {
+    // TODO error message should be lazily evaluated
+    let err_msg = keyword_syntax_error(&keywords);
+    any_token_of(TokenType::Keyword)
+        .filter_map(move |token| {
+            let needle: Keyword = token.into();
+            // TODO use a more efficient lookup
+            if keywords.contains(&needle) {
+                // TODO remove the need for cloning the token
+                Some((needle, token.clone()))
             } else {
                 None
             }
-        } else {
-            None
-        }
-    }
-
-    fn to_err(&self) -> Result<(Keyword, Token), ParseError> {
-        Err(ParseError::Expected(keyword_syntax_error(
-            self.keywords.iter(),
-        )))
-    }
+        })
+        .map_incomplete_err(ParseError::Expected(err_msg))
 }
 
-pub fn keyword_choice<I: Tokenizer + 'static>(
-    keywords: &[Keyword],
-) -> impl Parser<I, Output = (Keyword, Token)> + '_ {
-    KeywordChoice { keywords }
-}
-
-pub fn keyword_syntax_error<'a>(keywords: impl Iterator<Item = &'a Keyword>) -> String {
+pub fn keyword_syntax_error<K>(keywords: K) -> String
+where
+    K: AsRef<[Keyword]>,
+{
     let mut s = String::new();
-    for keyword in keywords {
+    for keyword in keywords.as_ref() {
         if !s.is_empty() {
             s.push_str(" or ");
         }

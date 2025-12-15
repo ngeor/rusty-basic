@@ -12,7 +12,7 @@ pub fn do_loop_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement>
 
 fn do_condition_top<I: Tokenizer + 'static>() -> impl Parser<I, Output = DoLoop> {
     seq4(
-        whitespace().and(keyword_choice(&[Keyword::Until, Keyword::While])),
+        whitespace().and(keyword_choice(vec![Keyword::Until, Keyword::While])),
         ws_expr_pos_p().or_syntax_error("Expected: expression"),
         ZeroOrMoreStatements::new(keyword(Keyword::Loop)),
         keyword(Keyword::Loop).no_incomplete(),
@@ -35,7 +35,7 @@ fn do_condition_bottom<I: Tokenizer + 'static>() -> impl Parser<I, Output = DoLo
         ZeroOrMoreStatements::new(keyword(Keyword::Loop)),
         keyword(Keyword::Loop).no_incomplete(),
         whitespace().no_incomplete(),
-        keyword_choice(&[Keyword::Until, Keyword::While]).no_incomplete(),
+        keyword_choice(vec![Keyword::Until, Keyword::While]).no_incomplete(),
         ws_expr_pos_p().or_syntax_error("Expected: expression"),
         |statements, _, _, (k, _), condition| DoLoop {
             condition,

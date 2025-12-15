@@ -1,51 +1,24 @@
 use crate::pc::{Parser, Tokenizer};
-use crate::pc_specific::{keyword_syntax_error, TokenType};
+use crate::pc_specific::{keyword_choice, keyword_syntax_error};
 use crate::{Keyword, ParseError};
 
-pub fn keyword_map<I: Tokenizer + 'static, T>(
-    mappings: &[(Keyword, T)],
-) -> impl Parser<I, Output = T>
+pub fn keyword_map<I: Tokenizer + 'static, T, K>(mappings: K) -> impl Parser<I, Output = T>
 where
+    K: AsRef<[(Keyword, T)]>,
     T: Clone,
 {
-    KeywordMap {
-        mappings: mappings.to_vec(),
-    }
-}
-
-pub struct KeywordMap<T> {
-    mappings: Vec<(Keyword, T)>,
-}
-
-impl<I: Tokenizer + 'static, T> Parser<I> for KeywordMap<T>
-where
-    T: Clone,
-{
-    type Output = T;
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        match tokenizer.read() {
-            Some(keyword_token) if TokenType::Keyword.matches(&keyword_token) => {
-                for (keyword, mapped_value) in &self.mappings {
-                    if keyword == &keyword_token {
-                        return Ok(mapped_value.clone());
-                    }
+    let keywords: Vec<Keyword> = mappings.as_ref().iter().map(|(k, _)| *k).collect();
+    // TODO error message should be lazily evaluated
+    let err_msg = keyword_syntax_error(&keywords);
+    keyword_choice(keywords)
+        .map(move |(keyword, _)| {
+            // TODO this is inefficient, use a map instead
+            for (k, mapped_value) in mappings.as_ref() {
+                if *k == keyword {
+                    return mapped_value.clone();
                 }
-                tokenizer.unread(keyword_token);
-                self.to_err()
             }
-            Some(other_token) => {
-                tokenizer.unread(other_token);
-                self.to_err()
-            }
-            None => self.to_err(),
-        }
-    }
-}
-
-impl<T> KeywordMap<T> {
-    fn to_err(&self) -> Result<T, ParseError> {
-        Err(ParseError::Expected(keyword_syntax_error(
-            self.mappings.iter().map(|(k, _)| k),
-        )))
-    }
+            unreachable!()
+        })
+        .map_incomplete_err(ParseError::Expected(err_msg))
 }

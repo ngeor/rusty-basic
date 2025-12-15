@@ -118,7 +118,7 @@ mod end {
 
     fn allowed_keywords_after_end<I: Tokenizer + 'static>(
     ) -> impl Parser<I, Output = (Keyword, Token)> {
-        keyword_choice(&[
+        keyword_choice(vec![
             Keyword::Function,
             Keyword::If,
             Keyword::Select,

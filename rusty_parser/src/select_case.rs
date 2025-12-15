@@ -1,9 +1,9 @@
+use crate::expression;
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::statement_separator::comments_and_whitespace_p;
 use crate::statements::ZeroOrMoreStatements;
 use crate::types::*;
-use crate::{expression, ParseError};
 
 // SELECT CASE expr ' comment
 // CASE 1
@@ -12,19 +12,29 @@ use crate::{expression, ParseError};
 // CASE ELSE
 // END SELECT
 
-// CASE <ws+> ELSE (priority)
+// CASE <ws+> ELSE
 // CASE <expr> TO <expr>
 // CASE <ws+> IS <Operator> <expr>
 // CASE <expr>
 
 pub fn select_case_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
-    seq5(
+    seq4(
         select_case_expr_p(),
         comments_and_whitespace_p(),
         case_blocks(),
-        case_else().allow_none(),
         keyword_pair(Keyword::End, Keyword::Select).no_incomplete(),
-        |expr, inline_comments, case_blocks, else_block, _| {
+        |expr, inline_comments, all_case_blocks: Vec<CaseBlock>, _| {
+            // TODO 1 do not clone 2 fail if multiple ELSE blocks 3 fail if ELSE block is not the last one
+            // TODO revisit this
+            let case_blocks = all_case_blocks
+                .clone()
+                .into_iter()
+                .filter(|x| !x.expression_list.is_empty())
+                .collect();
+            let else_block = all_case_blocks
+                .into_iter()
+                .find(|x| x.expression_list.is_empty())
+                .map(|x| x.statements);
             Statement::SelectCase(SelectCase {
                 expr,
                 case_blocks,
@@ -66,63 +76,27 @@ fn case_blocks<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<CaseBloc
 
 fn case_block<I: Tokenizer + 'static>() -> impl Parser<I, Output = CaseBlock> {
     // CASE
-    CaseButNotElse.then_demand(
-        OptAndPC::new(whitespace(), continue_after_case())
-            .keep_right()
-            .or_syntax_error("Expected case expression after CASE"),
+    keyword(Keyword::Case).then_demand(
+        continue_after_case().or_syntax_error("Expected 'case expression' or ELSE after CASE"),
     )
-}
-
-struct CaseButNotElse;
-
-impl<I: Tokenizer + 'static> Parser<I> for CaseButNotElse {
-    type Output = ();
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        match tokenizer.read() {
-            Some(case_token) if Keyword::Case == case_token => match tokenizer.read() {
-                Some(space_token) if TokenType::Whitespace.matches(&space_token) => {
-                    match tokenizer.read() {
-                        Some(else_token) if Keyword::Else == else_token => {
-                            tokenizer.unread(else_token);
-                            tokenizer.unread(space_token);
-                            tokenizer.unread(case_token);
-                            Err(ParseError::Incomplete)
-                        }
-                        Some(other_token) => {
-                            tokenizer.unread(other_token);
-                            Ok(())
-                        }
-                        None => Err(ParseError::syntax_error(
-                            "Expected: ELSE or expression after CASE",
-                        )),
-                    }
-                }
-                Some(paren_token) if TokenType::LParen.matches(&paren_token) => {
-                    tokenizer.unread(paren_token);
-                    Ok(())
-                }
-                _ => Err(ParseError::syntax_error(
-                    "Expected: whitespace or parenthesis after CASE",
-                )),
-            },
-            Some(token) => {
-                tokenizer.unread(token);
-                Err(ParseError::Incomplete)
-            }
-            None => Err(ParseError::Incomplete),
-        }
-    }
 }
 
 fn continue_after_case<I: Tokenizer + 'static>() -> impl Parser<I, Output = CaseBlock> {
-    seq2(
-        case_expression_list(),
-        ZeroOrMoreStatements::new(keyword_choice(vec![Keyword::Case, Keyword::End])),
-        |expression_list, statements| CaseBlock {
-            expression_list,
-            statements,
-        },
+    OptAndPC::new(
+        whitespace(),
+        seq2(
+            OrParser::new(vec![
+                Box::new(keyword(Keyword::Else).map(|_| vec![])),
+                Box::new(case_expression_list()),
+            ]),
+            ZeroOrMoreStatements::new(keyword_choice(vec![Keyword::Case, Keyword::End])),
+            |expression_list, statements| CaseBlock {
+                expression_list,
+                statements,
+            },
+        ),
     )
+    .keep_right()
 }
 
 fn case_expression_list<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<CaseExpression>> {
@@ -176,11 +150,6 @@ mod case_expression_parser {
             },
         )
     }
-}
-
-fn case_else<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statements> {
-    keyword_pair(Keyword::Case, Keyword::Else)
-        .then_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
 }
 
 #[cfg(test)]

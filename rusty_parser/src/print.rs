@@ -117,14 +117,21 @@ impl<I: Tokenizer + 'static> Parser<I> for PrintArgsParser {
 impl<I: Tokenizer + 'static> NonOptParser<I> for PrintArgsParser {}
 
 fn print_boundary<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
-    whitespace().map(Guard::Whitespace).or(any_token()
-        .filter(|token| {
-            TokenType::Comma.matches(token)
-                || TokenType::Semicolon.matches(token)
-                || TokenType::LParen.matches(token)
-        })
-        .peek()
-        .map(|_| Guard::Peeked))
+    whitespace()
+        .map(Guard::Whitespace)
+        .or(peek_token().and_then_ok_err(
+            |token| {
+                if TokenType::Comma.matches(&token)
+                    || TokenType::Semicolon.matches(&token)
+                    || TokenType::LParen.matches(&token)
+                {
+                    Ok(Guard::Peeked)
+                } else {
+                    Err(ParseError::Incomplete)
+                }
+            },
+            Err,
+        ))
 }
 
 #[cfg(test)]

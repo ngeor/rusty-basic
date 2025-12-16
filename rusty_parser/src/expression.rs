@@ -674,8 +674,8 @@ pub mod file_handle {
 }
 
 pub mod guard {
-    use crate::pc::{Parser, Token, Tokenizer, Undo};
-    use crate::pc_specific::{any_token_of, whitespace, TokenType};
+    use crate::pc::{peek_token, Parser, Token, Tokenizer, Undo};
+    use crate::pc_specific::{whitespace, TokenType};
     use crate::ParseError;
 
     pub enum Guard {
@@ -713,9 +713,16 @@ pub mod guard {
     }
 
     fn lparen_guard<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
-        any_token_of(TokenType::LParen)
-            .peek()
-            .map(|_| Guard::Peeked)
+        peek_token().and_then_ok_err(
+            |token| {
+                if TokenType::LParen.matches(&token) {
+                    Ok(Guard::Peeked)
+                } else {
+                    Err(ParseError::Incomplete)
+                }
+            },
+            Err,
+        )
     }
 }
 

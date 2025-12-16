@@ -5,7 +5,7 @@ use crate::pc::{
     AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndPC, AndThen, AndThenOkErr,
     ChainParser, FilterMapParser, FilterParser, GuardPC, LoopWhile, MapIncompleteErrParser,
     NoIncompleteParser, OrFailParser, OrParser, OrParserOnce, ParserToParserOnceAdapter,
-    PeekParser, SurroundParser, Tokenizer, Undo,
+    SurroundParser, Tokenizer, Undo,
 };
 use crate::ParseError;
 
@@ -198,13 +198,6 @@ pub trait Parser<I: Tokenizer + 'static> {
         Self: Sized,
     {
         OneOrMoreParser::new(self)
-    }
-
-    fn peek(self) -> PeekParser<Self>
-    where
-        Self: Sized,
-    {
-        PeekParser::new(self)
     }
 
     fn chain<RF, R>(self, right_factory: RF) -> ChainParser<Self, RF>

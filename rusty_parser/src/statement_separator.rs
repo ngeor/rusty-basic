@@ -75,18 +75,20 @@ pub fn no_separator_needed_before_comment<I: Tokenizer + 'static>() -> impl Pars
 }
 
 pub fn peek_eof_or_statement_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
-    // .allow_none() to accept EOF
-    any_token()
-        .allow_none()
-        .filter(|opt_token| match opt_token {
-            Some(token) => {
-                TokenType::Colon.matches(token)
-                    || TokenType::SingleQuote.matches(token)
-                    || TokenType::Eol.matches(token)
+    peek_token().and_then_ok_err(
+        |token| {
+            if TokenType::Colon.matches(&token)
+                || TokenType::SingleQuote.matches(&token)
+                || TokenType::Eol.matches(&token)
+            {
+                Ok(())
+            } else {
+                Err(ParseError::Incomplete)
             }
-            None => true,
-        })
-        .peek()
+        },
+        // allow EOF
+        |_| Ok(()),
+    )
 }
 
 // TODO review all parsers that return a collection, implement some `accumulate` method

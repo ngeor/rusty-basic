@@ -4,8 +4,8 @@ use crate::pc::mappers::{FnMapper, KeepLeftMapper, KeepRightMapper};
 use crate::pc::{
     AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndPC, AndThen, AndThenOkErr,
     ChainParser, FilterMapParser, FilterParser, GuardPC, LoopWhile, MapIncompleteErrParser,
-    NegateParser, NoIncompleteParser, OrFailParser, OrParser, OrParserOnce,
-    ParserToParserOnceAdapter, PeekParser, SurroundParser, Tokenizer, Undo,
+    NoIncompleteParser, OrFailParser, OrParser, OrParserOnce, ParserToParserOnceAdapter,
+    PeekParser, SurroundParser, Tokenizer, Undo,
 };
 use crate::ParseError;
 
@@ -205,14 +205,6 @@ pub trait Parser<I: Tokenizer + 'static> {
         Self: Sized,
     {
         PeekParser::new(self)
-    }
-
-    // TODO #[deprecated]
-    fn negate(self) -> NegateParser<Self>
-    where
-        Self: Sized,
-    {
-        NegateParser::new(self)
     }
 
     fn chain<RF, R>(self, right_factory: RF) -> ChainParser<Self, RF>

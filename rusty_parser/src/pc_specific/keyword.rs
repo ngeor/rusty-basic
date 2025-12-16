@@ -1,4 +1,4 @@
-use crate::pc::{any_token, Parser, Seq2, Seq3, Token, Tokenizer};
+use crate::pc::{any_token, peek_token, Parser, Seq2, Seq3, Token, Tokenizer};
 use crate::pc_specific::{any_token_of, dollar_sign, whitespace, TokenType};
 use crate::{Keyword, ParseError};
 
@@ -7,7 +7,18 @@ use crate::{Keyword, ParseError};
 fn dollar_sign_check<I: Tokenizer + 'static>(
     parser: impl Parser<I, Output = Token>,
 ) -> impl Parser<I, Output = Token> {
-    parser.and(dollar_sign().peek().negate()).keep_left()
+    parser
+        .and(peek_token().and_then_ok_err(
+            |t| {
+                if TokenType::DollarSign.matches(&t) {
+                    Err(ParseError::Incomplete)
+                } else {
+                    Ok(())
+                }
+            },
+            |_| Ok(()),
+        ))
+        .keep_left()
 }
 
 /// Matches the specific keyword. Ensures that it is not followed

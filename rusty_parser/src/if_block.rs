@@ -63,11 +63,7 @@ fn single_line_else_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = State
 fn multi_line_if_p<I: Tokenizer + 'static>(
 ) -> impl Parser<I, Output = (Statements, Vec<ConditionalBlock>, Option<Statements>)> {
     seq4(
-        ZeroOrMoreStatements::new(keyword_choice(vec![
-            Keyword::End,
-            Keyword::Else,
-            Keyword::ElseIf,
-        ])),
+        ZeroOrMoreStatements::new_multi(vec![Keyword::End, Keyword::Else, Keyword::ElseIf]),
         else_if_block_p().zero_or_more(),
         else_block_p().allow_none(),
         keyword_pair(Keyword::End, Keyword::If).no_incomplete(),
@@ -87,11 +83,7 @@ fn else_if_expr_then_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expr
 fn else_if_block_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ConditionalBlock> {
     seq2(
         else_if_expr_then_p(),
-        ZeroOrMoreStatements::new(keyword_choice(vec![
-            Keyword::End,
-            Keyword::Else,
-            Keyword::ElseIf,
-        ])),
+        ZeroOrMoreStatements::new_multi(vec![Keyword::End, Keyword::Else, Keyword::ElseIf]),
         |condition, statements| ConditionalBlock {
             condition,
             statements,
@@ -100,7 +92,7 @@ fn else_if_block_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Conditio
 }
 
 fn else_block_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statements> {
-    keyword(Keyword::Else).then_demand(ZeroOrMoreStatements::new(keyword(Keyword::End)))
+    keyword(Keyword::Else).then_demand(ZeroOrMoreStatements::new(Keyword::End))
 }
 
 #[cfg(test)]

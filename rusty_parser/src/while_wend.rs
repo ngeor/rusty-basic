@@ -9,10 +9,7 @@ pub fn while_wend_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Stateme
     seq4(
         keyword(Keyword::While),
         ws_expr_pos_p().or_syntax_error("Expected: expression after WHILE"),
-        ZeroOrMoreStatements::new_with_custom_error(
-            keyword(Keyword::Wend),
-            ParseError::WhileWithoutWend,
-        ),
+        ZeroOrMoreStatements::new_with_custom_error(Keyword::Wend, ParseError::WhileWithoutWend),
         keyword(Keyword::Wend).or_fail(ParseError::WhileWithoutWend),
         |_, condition, statements, _| {
             Statement::While(ConditionalBlock {

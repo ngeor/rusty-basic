@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::statement_separator::{comment_separator, common_separator};
@@ -33,31 +31,45 @@ fn delimited_by_colon<I: Tokenizer + 'static, P: Parser<I>>(
     )
 }
 
-pub struct ZeroOrMoreStatements<S, I>(
-    NegateParser<PeekParser<S>>,
-    Option<ParseError>,
-    PhantomData<I>,
-);
+pub struct ZeroOrMoreStatements(Vec<Keyword>, Option<ParseError>);
 
-impl<I: Tokenizer + 'static, S> ZeroOrMoreStatements<S, I>
-where
-    S: Parser<I>,
-    S::Output: Undo,
-{
-    pub fn new(exit_source: S) -> Self {
-        Self(exit_source.peek().negate(), None, PhantomData)
+impl ZeroOrMoreStatements {
+    pub fn new(exit_source: Keyword) -> Self {
+        Self(vec![exit_source], None)
     }
 
-    pub fn new_with_custom_error(exit_source: S, err: ParseError) -> Self {
-        Self(exit_source.peek().negate(), Some(err), PhantomData)
+    pub fn new_multi(exit_source: Vec<Keyword>) -> Self {
+        Self(exit_source, None)
+    }
+
+    pub fn new_with_custom_error(exit_source: Keyword, err: ParseError) -> Self {
+        Self(vec![exit_source], Some(err))
+    }
+
+    fn found_exit<I: Tokenizer + 'static>(&self, tokenizer: &mut I) -> Result<bool, ParseError> {
+        peek_token()
+            .and_then_ok_err(
+                |token| {
+                    for k in &self.0 {
+                        if k == &token {
+                            return Ok(true);
+                        }
+                    }
+                    Ok(false)
+                },
+                |_| {
+                    // EOF is an error here as we're looking for the exit source
+                    match self.1.clone() {
+                        Some(custom_err) => Err(custom_err),
+                        None => Err(ParseError::SyntaxError(keyword_syntax_error(&self.0))),
+                    }
+                },
+            )
+            .parse(tokenizer)
     }
 }
 
-impl<I: Tokenizer + 'static, S> Parser<I> for ZeroOrMoreStatements<S, I>
-where
-    S: Parser<I>,
-    S::Output: Undo,
-{
+impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
     type Output = Statements;
     fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         // must start with a separator (e.g. after a WHILE condition)
@@ -68,7 +80,7 @@ where
         // TODO rewrite the numeric state or add constants
         let mut state = 0;
         // while not found exit
-        while self.0.parse_opt(tokenizer)?.is_some() {
+        while !self.found_exit(tokenizer)? {
             if state == 0 || state == 2 {
                 // looking for statement
                 if let Some(statement_pos) =
@@ -105,9 +117,4 @@ where
 }
 
 // TODO review impl<...> NonOptParser
-impl<I: Tokenizer + 'static, S> NonOptParser<I> for ZeroOrMoreStatements<S, I>
-where
-    S: Parser<I>,
-    S::Output: Undo,
-{
-}
+impl<I: Tokenizer + 'static> NonOptParser<I> for ZeroOrMoreStatements {}

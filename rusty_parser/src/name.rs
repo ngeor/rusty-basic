@@ -150,14 +150,18 @@ fn ensure_no_trailing_dot_or_qualifier<I: Tokenizer + 'static, P>(
 fn ensure_no_trailing_dot<I: Tokenizer + 'static, P>(
     parser: impl Parser<I, Output = P>,
 ) -> impl Parser<I, Output = P> {
-    seq2(
-        parser,
-        dot()
-            .peek()
-            .negate()
-            .or_fail(ParseError::IdentifierCannotIncludePeriod),
-        |l, _| l,
-    )
+    parser
+        .and_opt(peek_token().and_then_ok_err(
+            |token| {
+                if TokenType::Dot.matches(&token) {
+                    Err(ParseError::IdentifierCannotIncludePeriod)
+                } else {
+                    Ok(())
+                }
+            },
+            |_| Ok(()),
+        ))
+        .keep_left()
 }
 
 /// Returns the result of the given parser,
@@ -165,14 +169,20 @@ fn ensure_no_trailing_dot<I: Tokenizer + 'static, P>(
 fn ensure_no_trailing_qualifier<I: Tokenizer + 'static, P>(
     parser: impl Parser<I, Output = P>,
 ) -> impl Parser<I, Output = P> {
-    seq2(
-        parser,
-        type_qualifier_unchecked()
-            .peek()
-            .negate()
-            .or_syntax_error("Identifier cannot end with %, &, !, #, or $"),
-        |l, _| l,
-    )
+    parser
+        .and_opt(peek_token().and_then_ok_err(
+            |token| {
+                if is_type_qualifier(&token) {
+                    Err(ParseError::syntax_error(
+                        "Identifier cannot end with %, &, !, #, or $",
+                    ))
+                } else {
+                    Ok(())
+                }
+            },
+            |_| Ok(()),
+        ))
+        .keep_left()
 }
 
 pub type NameAsTokens = (TokenList, Option<Token>);

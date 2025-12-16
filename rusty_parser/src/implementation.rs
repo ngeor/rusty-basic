@@ -14,7 +14,7 @@ pub fn implementation_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Glo
 fn function_implementation_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalStatement> {
     seq3(
         static_declaration_p(declaration::function_declaration_p()),
-        ZeroOrMoreStatements::new(keyword(Keyword::End)),
+        ZeroOrMoreStatements::new(Keyword::End),
         keyword_pair(Keyword::End, Keyword::Function).no_incomplete(),
         |((name, params), is_static), body, _| {
             GlobalStatement::FunctionImplementation(FunctionImplementation {
@@ -30,7 +30,7 @@ fn function_implementation_p<I: Tokenizer + 'static>() -> impl Parser<I, Output 
 fn sub_implementation_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalStatement> {
     seq3(
         static_declaration_p(declaration::sub_declaration_p()),
-        ZeroOrMoreStatements::new(keyword(Keyword::End)),
+        ZeroOrMoreStatements::new(Keyword::End),
         keyword_pair(Keyword::End, Keyword::Sub).no_incomplete(),
         |((name, params), is_static), body, _| {
             GlobalStatement::SubImplementation(SubImplementation {

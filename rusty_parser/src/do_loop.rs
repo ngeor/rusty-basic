@@ -14,7 +14,7 @@ fn do_condition_top<I: Tokenizer + 'static>() -> impl Parser<I, Output = DoLoop>
     seq4(
         whitespace().and(keyword_choice(vec![Keyword::Until, Keyword::While])),
         ws_expr_pos_p().or_syntax_error("Expected: expression"),
-        ZeroOrMoreStatements::new(keyword(Keyword::Loop)),
+        ZeroOrMoreStatements::new(Keyword::Loop),
         keyword(Keyword::Loop).no_incomplete(),
         |(_, (k, _)), condition, statements, _| DoLoop {
             condition,
@@ -32,7 +32,7 @@ fn do_condition_top<I: Tokenizer + 'static>() -> impl Parser<I, Output = DoLoop>
 fn do_condition_bottom<I: Tokenizer + 'static>() -> impl Parser<I, Output = DoLoop> + NonOptParser<I>
 {
     seq5_non_opt(
-        ZeroOrMoreStatements::new(keyword(Keyword::Loop)),
+        ZeroOrMoreStatements::new(Keyword::Loop),
         keyword(Keyword::Loop).no_incomplete(),
         whitespace().no_incomplete(),
         keyword_choice(vec![Keyword::Until, Keyword::While]).no_incomplete(),

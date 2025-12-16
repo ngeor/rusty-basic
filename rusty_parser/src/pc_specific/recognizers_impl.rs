@@ -63,7 +63,7 @@ where
         }
     }
 
-    fn unread(&mut self, _: Token) {
+    fn unread(&mut self) {
         self.readers.pop().unwrap();
     }
 

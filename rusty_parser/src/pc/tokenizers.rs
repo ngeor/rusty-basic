@@ -31,7 +31,7 @@ pub trait Tokenizer {
     #[deprecated]
     fn read(&mut self) -> Option<Token>;
     #[deprecated]
-    fn unread(&mut self, token: Token);
+    fn unread(&mut self);
     #[deprecated]
     fn position(&self) -> Position;
 }

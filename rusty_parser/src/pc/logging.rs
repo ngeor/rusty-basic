@@ -70,7 +70,7 @@ fn peek_token(tokenizer: &mut impl Tokenizer) -> String {
     match tokenizer.read() {
         Some(token) => {
             let result = format!("kind {} text {}", token.kind, token.text);
-            tokenizer.unread(token);
+            tokenizer.unread();
             result
         }
         None => "[None]".to_string(),

@@ -118,7 +118,7 @@ impl<I: Tokenizer + 'static> NonOptParser<I> for PrintArgsParser {}
 
 fn print_boundary<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
     whitespace()
-        .map(Guard::Whitespace)
+        .map(|_| Guard::Whitespace)
         .or(peek_token().and_then_ok_err(
             |token| {
                 if TokenType::Comma.matches(&token)

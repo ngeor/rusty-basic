@@ -6,7 +6,7 @@ pub trait Undo {
 
 impl Undo for Token {
     fn undo(self, tokenizer: &mut impl Tokenizer) {
-        tokenizer.unread(self);
+        tokenizer.unread();
     }
 }
 
@@ -35,8 +35,8 @@ where
 impl Undo for TokenList {
     fn undo(self, tokenizer: &mut impl Tokenizer) {
         let mut x = self;
-        while let Some(token) = x.pop() {
-            tokenizer.unread(token);
+        while let Some(_) = x.pop() {
+            tokenizer.unread();
         }
     }
 }

@@ -674,13 +674,13 @@ pub mod file_handle {
 }
 
 pub mod guard {
-    use crate::pc::{peek_token, Parser, Token, Tokenizer, Undo};
+    use crate::pc::{peek_token, Parser, Tokenizer, Undo};
     use crate::pc_specific::{whitespace, TokenType};
     use crate::ParseError;
 
     pub enum Guard {
         Peeked,
-        Whitespace(Token),
+        Whitespace,
     }
 
     // helps when mapping arguments with `unwrap_or_default`, where the guard
@@ -693,8 +693,8 @@ pub mod guard {
 
     impl Undo for Guard {
         fn undo(self, tokenizer: &mut impl Tokenizer) {
-            if let Self::Whitespace(token) = self {
-                tokenizer.unread(token);
+            if let Self::Whitespace = self {
+                tokenizer.unread();
             }
         }
     }
@@ -709,7 +709,7 @@ pub mod guard {
     }
 
     fn whitespace_guard<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
-        whitespace().map(Guard::Whitespace)
+        whitespace().map(|_| Guard::Whitespace)
     }
 
     fn lparen_guard<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {

@@ -1,4 +1,4 @@
-use crate::pc::{NonOptParser, Parser, Token, Tokenizer, Undo};
+use crate::pc::{Parser, Token, Tokenizer, Undo};
 use crate::{binary_parser_declaration, ParseError, ParserErrorTrait};
 
 // The left side is optional, the right is not.
@@ -24,11 +24,4 @@ where
             }
         }
     }
-}
-
-impl<I: Tokenizer + 'static, L, R> NonOptParser<I> for OptAndPC<L, R>
-where
-    L: Parser<I, Output = Token>,
-    R: NonOptParser<I>,
-{
 }

@@ -94,15 +94,15 @@ fn map_opt_args_to_flags(args: Vec<Option<ExpressionPos>>) -> Expressions {
 }
 
 /// Comma separated list of items, allowing items to be missing between commas.
-fn csv_allow_missing<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = Vec<Option<ExpressionPos>>> + NonOptParser<I> {
+fn csv_allow_missing<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<Option<ExpressionPos>>>
+{
     parse_delimited_to_items(opt_zip(expression_pos_p(), comma()), trailing_comma_error())
         .allow_default()
 }
 
 /// Used in `INPUT` and `LINE INPUT`, parsing an optional file number.
 fn opt_file_handle_comma_p<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = Option<Positioned<FileHandle>>> + NonOptParser<I> {
+) -> impl Parser<I, Output = Option<Positioned<FileHandle>>> {
     seq2(file_handle_p(), comma().no_incomplete(), |l, _| l).allow_none()
 }
 

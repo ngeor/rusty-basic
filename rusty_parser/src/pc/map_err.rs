@@ -1,4 +1,4 @@
-use crate::pc::{NonOptParser, Parser, Tokenizer};
+use crate::pc::{Parser, Tokenizer};
 use crate::{parser_declaration, ParseError, ParserErrorTrait};
 
 struct StaticErrorMapper {
@@ -79,8 +79,6 @@ where
     }
 }
 
-impl<I: Tokenizer + 'static, P> NonOptParser<I> for OrFailParser<P> where P: Parser<I> {}
-
 parser_declaration!(pub struct NoIncompleteParser);
 
 impl<I: Tokenizer + 'static, P> Parser<I> for NoIncompleteParser<P>
@@ -95,5 +93,3 @@ where
             .map_err(ParserErrorTrait::no_incomplete)
     }
 }
-
-impl<I: Tokenizer + 'static, P> NonOptParser<I> for NoIncompleteParser<P> where P: Parser<I> {}

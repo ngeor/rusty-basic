@@ -94,7 +94,7 @@ pub fn peek_eof_or_statement_separator<I: Tokenizer + 'static>() -> impl Parser<
 // TODO review all parsers that return a collection, implement some `accumulate` method
 /// Reads multiple comments and the surrounding whitespace.
 pub fn comments_and_whitespace_p<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = Vec<Positioned<String>>> + NonOptParser<I> {
+) -> impl Parser<I, Output = Vec<Positioned<String>>> {
     OptAndPC::new(
         whitespace(),
         OptZip::new(comment_separator(), comment_as_string_p().with_pos())

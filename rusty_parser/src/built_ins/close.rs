@@ -19,8 +19,7 @@ pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     )
 }
 
-fn file_handles<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expressions> + NonOptParser<I>
-{
+fn file_handles<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expressions> {
     AccumulateParser::new(
         guarded_file_handle_or_expression_p(),
         comma().then_demand(file_handle_or_expression_p()),
@@ -28,8 +27,7 @@ fn file_handles<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expressions
     .allow_default()
 }
 
-fn file_handle_or_expression_p<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = ExpressionPos> + NonOptParser<I> {
+fn file_handle_or_expression_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
     file_handle_as_expression_pos_p()
         .or(expression_pos_p())
         .or_syntax_error("Expected: file handle")

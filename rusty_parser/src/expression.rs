@@ -6,7 +6,7 @@ use crate::types::*;
 /// `( expr [, expr]* )`
 pub fn in_parenthesis_csv_expressions_non_opt<I: Tokenizer + 'static>(
     err_msg: &str,
-) -> impl Parser<I, Output = Expressions> + NonOptParser<I> + '_ {
+) -> impl Parser<I, Output = Expressions> + '_ {
     in_parenthesis(csv_expressions_non_opt(err_msg)).no_incomplete()
 }
 
@@ -14,7 +14,7 @@ pub fn in_parenthesis_csv_expressions_non_opt<I: Tokenizer + 'static>(
 /// FIXME Unlike csv_expressions, the first expression does not need a separator!
 pub fn csv_expressions_non_opt<I: Tokenizer + 'static>(
     msg: &str,
-) -> impl Parser<I, Output = Expressions> + NonOptParser<I> {
+) -> impl Parser<I, Output = Expressions> {
     csv_non_opt(expression_pos_p(), msg)
 }
 
@@ -158,8 +158,7 @@ mod string_literal {
         any_token_of(TokenType::DoubleQuote)
     }
 
-    fn inside_string<I: Tokenizer + 'static>(
-    ) -> impl Parser<I, Output = TokenList> + NonOptParser<I> {
+    fn inside_string<I: Tokenizer + 'static>() -> impl Parser<I, Output = TokenList> {
         any_token()
             .filter(|token| {
                 !TokenType::DoubleQuote.matches(token) && !TokenType::Eol.matches(token)
@@ -428,7 +427,7 @@ pub mod property {
     }
 
     fn dot_properties<I: Tokenizer + 'static>(
-    ) -> impl Parser<I, Output = Vec<(Token, Option<Token>)>> + NonOptParser<I> {
+    ) -> impl Parser<I, Output = Vec<(Token, Option<Token>)>> {
         dot_property().zero_or_more()
     }
 

@@ -61,8 +61,7 @@ pub fn user_defined_type_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = 
     )
 }
 
-fn elements_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<ElementPos>> + NonOptParser<I>
-{
+fn elements_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<ElementPos>> {
     element_pos_p()
         .one_or_more()
         .or_fail(ParseError::ElementNotDefined)
@@ -103,8 +102,7 @@ fn element_type_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ElementTy
     ])
 }
 
-fn demand_string_length_p<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = ExpressionPos> + NonOptParser<I> {
+fn demand_string_length_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
     expression_pos_p().or_syntax_error("Expected: string length")
 }
 

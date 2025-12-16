@@ -180,7 +180,7 @@ pub trait Parser<I: Tokenizer + 'static> {
     fn then_demand<R>(self, other: R) -> GuardPC<Self, R>
     where
         Self: Sized,
-        R: Parser<I> + NonOptParser<I>,
+        R: Parser<I>,
     {
         GuardPC::new(self, other)
     }
@@ -219,8 +219,3 @@ pub trait Parser<I: Tokenizer + 'static> {
         SurroundParser::new(left, self, right)
     }
 }
-
-/// A parser that returns a successful result or a fatal error.
-/// This parser will never return an error that is "incomplete".
-/// TODO: review all direct impl NonOptParser outside the core parsers, as implementing a marker trait doesn't guarantee much
-pub trait NonOptParser<I: Tokenizer + 'static>: Parser<I> {}

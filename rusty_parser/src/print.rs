@@ -42,8 +42,7 @@ pub fn parse_lprint_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = State
         })
 }
 
-fn opt_using<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = Option<ExpressionPos>> + NonOptParser<I> {
+fn opt_using<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<ExpressionPos>> {
     seq3(
         keyword(Keyword::Using),
         ws_expr_pos_p().or_syntax_error("Expected: expression after USING"),
@@ -54,7 +53,7 @@ fn opt_using<I: Tokenizer + 'static>(
 }
 
 fn opt_file_handle_comma_p<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = Option<Positioned<FileHandle>>> + NonOptParser<I> {
+) -> impl Parser<I, Output = Option<Positioned<FileHandle>>> {
     seq2(
         file_handle_p(),
         comma().no_incomplete(),
@@ -113,8 +112,6 @@ impl<I: Tokenizer + 'static> Parser<I> for PrintArgsParser {
         Ok(result)
     }
 }
-
-impl<I: Tokenizer + 'static> NonOptParser<I> for PrintArgsParser {}
 
 fn print_boundary<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
     whitespace()

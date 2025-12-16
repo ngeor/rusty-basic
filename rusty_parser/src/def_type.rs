@@ -27,8 +27,7 @@ fn def_keyword_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = TypeQualif
     ])
 }
 
-fn letter_ranges<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = Vec<LetterRange>> + NonOptParser<I> {
+fn letter_ranges<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<LetterRange>> {
     csv_non_opt(letter_range(), "Expected: letter ranges")
 }
 

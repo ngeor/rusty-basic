@@ -29,7 +29,7 @@ macro_rules! seq_pc {
         impl <I: Tokenizer + 'static, $first_type, $($generic_type),+> Parser<I> for $name <$first_type, $($generic_type),+>
         where
             $first_type: Parser<I>,
-            $($generic_type: Parser<I> + NonOptParser<I>),+
+            $($generic_type: Parser<I>),+
         {
             type Output = ($first_type::Output, $(<$generic_type as Parser<I>>::Output),+ );
 
@@ -50,22 +50,13 @@ macro_rules! seq_pc {
             }
         }
 
-        // if all parsers are NonOpt, the sequence is also NonOpt
-
-        impl <I: Tokenizer + 'static, $first_type, $($generic_type),+> NonOptParser<I> for $name <$first_type, $($generic_type),+>
-        where
-            $first_type: Parser<I> + NonOptParser<I>,
-            $($generic_type: Parser<I> + NonOptParser<I>),+
-        {
-        }
-
         #[allow(non_snake_case)]
         pub fn $map_fn_name<I: Tokenizer + 'static, $first_type, $($generic_type),+, _F, _O>(
             $first_type: $first_type, $($generic_type: $generic_type),+, mapper: _F
         ) -> impl Parser<I, Output = _O>
         where
             $first_type: Parser<I>,
-            $($generic_type: Parser<I> + NonOptParser<I>),+,
+            $($generic_type: Parser<I>),+,
             _F: Fn($first_type::Output, $(<$generic_type as Parser<I>>::Output),+) -> _O
         {
             $name::new(
@@ -83,10 +74,10 @@ macro_rules! seq_pc {
         #[allow(non_snake_case)]
         pub fn $map_fn_name_non_opt<I: Tokenizer + 'static, $first_type, $($generic_type),+, _F, _O>(
             $first_type: $first_type, $($generic_type: $generic_type),+, mapper: _F
-        ) -> impl Parser<I, Output = _O> + NonOptParser<I>
+        ) -> impl Parser<I, Output = _O>
         where
-            $first_type: Parser<I> + NonOptParser<I>,
-            $($generic_type: Parser<I> + NonOptParser<I>),+,
+            $first_type: Parser<I>,
+            $($generic_type: Parser<I>),+,
             _F: Fn(<$first_type as Parser<I>>::Output, $(<$generic_type as Parser<I>>::Output),+) -> _O
         {
             $name::new(

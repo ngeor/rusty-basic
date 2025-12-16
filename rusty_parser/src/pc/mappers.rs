@@ -2,7 +2,7 @@
 // Map
 //
 
-use crate::pc::{NonOptParser, Parser, Tokenizer};
+use crate::pc::{Parser, Tokenizer};
 use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct FnMapper<mapper: F>);
@@ -18,13 +18,6 @@ where
     fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(&self.mapper)
     }
-}
-
-impl<I: Tokenizer + 'static, P, F, U> NonOptParser<I> for FnMapper<P, F>
-where
-    P: NonOptParser<I>,
-    F: Fn(P::Output) -> U,
-{
 }
 
 //
@@ -43,11 +36,6 @@ where
     }
 }
 
-impl<I: Tokenizer + 'static, P, L, R> NonOptParser<I> for KeepLeftMapper<P> where
-    P: NonOptParser<I, Output = (L, R)>
-{
-}
-
 //
 // Keep Right
 //
@@ -62,9 +50,4 @@ where
     fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(|(_, r)| r)
     }
-}
-
-impl<I: Tokenizer + 'static, P, L, R> NonOptParser<I> for KeepRightMapper<P> where
-    P: NonOptParser<I, Output = (L, R)>
-{
 }

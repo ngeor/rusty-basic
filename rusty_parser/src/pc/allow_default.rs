@@ -1,4 +1,4 @@
-use crate::pc::{NonOptParser, Parser, Tokenizer};
+use crate::pc::{Parser, Tokenizer};
 use crate::{parser_declaration, ParseError, ParserErrorTrait};
 
 parser_declaration!(pub struct AllowDefaultParser);
@@ -17,11 +17,4 @@ where
             Err(err) => Err(err),
         }
     }
-}
-
-impl<I: Tokenizer + 'static, P> NonOptParser<I> for AllowDefaultParser<P>
-where
-    P: Parser<I>,
-    P::Output: Default,
-{
 }

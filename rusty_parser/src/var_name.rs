@@ -26,7 +26,7 @@ use crate::{
 /// - `A`: The type of the array indicator
 /// - `P`: The parser that parses `T` for extended built-in types.
 pub fn var_name<I: Tokenizer + 'static, T, A, P>(
-    array_p: impl Parser<I, Output = A> + NonOptParser<I>,
+    array_p: impl Parser<I, Output = A>,
     built_in_extended_factory: fn() -> P,
 ) -> impl Parser<I, Output = TypedName<T>>
 where

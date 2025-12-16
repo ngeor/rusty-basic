@@ -115,6 +115,3 @@ impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
         Ok(result)
     }
 }
-
-// TODO review impl<...> NonOptParser
-impl<I: Tokenizer + 'static> NonOptParser<I> for ZeroOrMoreStatements {}

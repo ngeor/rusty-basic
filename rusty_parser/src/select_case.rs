@@ -69,8 +69,7 @@ fn select_case_expr_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expre
 //
 // For range-expression, no space is needed before TO if the first expression is in parenthesis
 
-fn case_blocks<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<CaseBlock>> + NonOptParser<I>
-{
+fn case_blocks<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<CaseBlock>> {
     case_block().zero_or_more()
 }
 

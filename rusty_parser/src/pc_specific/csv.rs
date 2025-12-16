@@ -12,7 +12,7 @@ pub fn csv<I: Tokenizer + 'static, L: Parser<I>>(
 pub fn csv_non_opt<I: Tokenizer + 'static, P: Parser<I>>(
     parser: P,
     err: &str,
-) -> impl Parser<I, Output = Vec<P::Output>> + NonOptParser<I> {
+) -> impl Parser<I, Output = Vec<P::Output>> {
     csv(parser).or_syntax_error(err)
 }
 

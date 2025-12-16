@@ -29,8 +29,7 @@ fn do_condition_top<I: Tokenizer + 'static>() -> impl Parser<I, Output = DoLoop>
     )
 }
 
-fn do_condition_bottom<I: Tokenizer + 'static>() -> impl Parser<I, Output = DoLoop> + NonOptParser<I>
-{
+fn do_condition_bottom<I: Tokenizer + 'static>() -> impl Parser<I, Output = DoLoop> {
     seq5_non_opt(
         ZeroOrMoreStatements::new(Keyword::Loop),
         keyword(Keyword::Loop).no_incomplete(),

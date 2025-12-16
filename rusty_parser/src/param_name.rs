@@ -18,8 +18,7 @@ fn parameter_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Parameter> {
     var_name(array_indicator(), built_in_extended_type)
 }
 
-fn array_indicator<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = Option<(Token, Token)>> + NonOptParser<I> {
+fn array_indicator<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<(Token, Token)>> {
     Seq2::new(
         any_token_of(TokenType::LParen),
         any_token_of(TokenType::RParen).no_incomplete(),

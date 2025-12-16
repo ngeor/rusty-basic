@@ -25,7 +25,7 @@ pub fn redim_var_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = DimV
 }
 
 fn dim_or_redim<I: Tokenizer + 'static>(
-    array_dimensions_parser: impl Parser<I, Output = ArrayDimensions> + NonOptParser<I>,
+    array_dimensions_parser: impl Parser<I, Output = ArrayDimensions>,
 ) -> impl Parser<I, Output = DimVarPos> {
     var_name(array_dimensions_parser, built_in_extended_type).with_pos()
 }

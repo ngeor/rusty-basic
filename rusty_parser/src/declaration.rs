@@ -53,8 +53,7 @@ pub fn sub_declaration_p<I: Tokenizer + 'static>(
 }
 
 // result ::= "" | "(" ")" | "(" parameter (,parameter)* ")"
-fn declaration_parameters_p<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = Parameters> + NonOptParser<I> {
+fn declaration_parameters_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Parameters> {
     OptAndPC::new(
         whitespace(),
         in_parenthesis(csv(parameter_pos_p()).allow_default()),

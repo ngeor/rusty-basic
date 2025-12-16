@@ -1,4 +1,4 @@
-use crate::pc::{NonOptParser, Parser, Tokenizer};
+use crate::pc::{Parser, Tokenizer};
 use crate::{parser_declaration, ParseError, ParserErrorTrait};
 parser_declaration!(pub struct AllowNoneParser);
 
@@ -16,4 +16,3 @@ where
         }
     }
 }
-impl<I: Tokenizer + 'static, P> NonOptParser<I> for AllowNoneParser<P> where P: Parser<I> {}

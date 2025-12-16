@@ -33,5 +33,3 @@ impl<I: Tokenizer + 'static, O> Parser<I> for OrParser<I, O> {
         Err(ParseError::Incomplete)
     }
 }
-
-impl<I: Tokenizer + 'static, O> NonOptParser<I> for OrParser<I, O> {}

@@ -26,7 +26,7 @@ pub fn program_parser_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Pro
         .keep_right()
         .and_opt(ws_eol_col_zero_or_more())
         .keep_left()
-        .and_opt(fail_if_not_eof())
+        .and_opt(demand_eof())
         .keep_left()
         .map(|opt| opt.unwrap_or_default())
 }
@@ -123,16 +123,10 @@ fn ws_eol_col_zero_or_more<I: Tokenizer + 'static>() -> impl Parser<I, Output = 
 /// If we're at EOF, the parser returns a happy empty result.
 /// Otherwise it returns a syntax error.
 /// This is a failsafe to ensure we have parsed the entire input.
-fn fail_if_not_eof<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
+fn demand_eof<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
     any_token().and_then_ok_err(
         |_| Err(ParseError::syntax_error("Cannot parse, expected EOF")),
-        |e| {
-            if e.is_incomplete() {
-                Ok(())
-            } else {
-                Err(e)
-            }
-        },
+        |_| Ok(()),
     )
 }
 

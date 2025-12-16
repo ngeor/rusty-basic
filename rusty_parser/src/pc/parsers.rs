@@ -38,14 +38,19 @@ pub trait Parser<I: Tokenizer + 'static> {
         AndThen::new(self, mapper)
     }
 
-    /// Flat map the result of this parser for both successful and failed results.
-    fn and_then_ok_err<F, G, U>(self, ok_mapper: F, err_mapper: G) -> AndThenOkErr<Self, F, G>
+    /// Flat map the result of this parser for successful and incomplete results.
+    /// Other errors are never allowed to be re-mapped.
+    fn and_then_ok_err<F, G, U>(
+        self,
+        ok_mapper: F,
+        incomplete_mapper: G,
+    ) -> AndThenOkErr<Self, F, G>
     where
         Self: Sized,
         F: Fn(Self::Output) -> Result<U, ParseError>,
         G: Fn(ParseError) -> Result<U, ParseError>,
     {
-        AndThenOkErr::new(self, ok_mapper, err_mapper)
+        AndThenOkErr::new(self, ok_mapper, incomplete_mapper)
     }
 
     fn filter<F>(self, predicate: F) -> FilterParser<Self, F>

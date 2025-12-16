@@ -1,5 +1,5 @@
 use crate::expression::ws_expr_pos_p;
-use crate::pc::{Parser, ParserOnce, Tokenizer};
+use crate::pc::{Parser, Tokenizer};
 use crate::pc_specific::{keyword, whitespace};
 use crate::types::Keyword;
 use crate::{ExpressionPos, ExpressionTrait, ParseError};
@@ -24,13 +24,14 @@ where
     P: Parser<I>,
     P::Output: ExtractExpression,
 {
-    parser.chain(move |first: P::Output| {
-        let first_expr = first.to_expression();
-        let is_paren = first_expr.is_parenthesis();
-        parse_second(keyword, is_paren)
-            .to_parser_once()
-            .map(|opt_second| (first, opt_second))
-    })
+    parser.chain(
+        move |first| {
+            let first_expr = first.to_expression();
+            let is_paren = first_expr.is_parenthesis();
+            parse_second(keyword, is_paren)
+        },
+        |first, opt_second| (first, opt_second),
+    )
 }
 
 fn parse_second<I: Tokenizer + 'static>(

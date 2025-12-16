@@ -4,7 +4,7 @@ use crate::name::{bare_name_without_dots, name_with_dots};
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::{
-    BareName, Keyword, Name, ParseError, TypeQualifier, TypedName, VarTypeNewBuiltInCompact,
+    BareName, Keyword, Name, ParseError, TypedName, VarTypeNewBuiltInCompact,
     VarTypeNewUserDefined, VarTypeToArray,
 };
 
@@ -30,19 +30,20 @@ pub fn var_name<I: Tokenizer + 'static, T, A, P>(
     built_in_extended_factory: fn() -> P,
 ) -> impl Parser<I, Output = TypedName<T>>
 where
-    T: Default,
+    T: Clone + Default + 'static,
     T: VarTypeNewBuiltInCompact,
     T: VarTypeNewUserDefined,
     T: VarTypeToArray<ArrayType = A>,
     P: Parser<I, Output = T> + 'static,
 {
-    Seq2::new(name_with_dots(), array_p)
-        .chain(move |(name, array)| name_chain(name, array, built_in_extended_factory))
-        .map(move |(name, array, var_type)| {
+    Seq2::new(name_with_dots(), array_p).chain(
+        move |(name, _)| name_chain(name, built_in_extended_factory),
+        |(name, array), var_type| {
             let bare_name: BareName = name.into();
             let final_type = var_type.to_array(array);
             TypedName::new(bare_name, final_type)
-        })
+        },
+    )
 }
 
 /// Used in combination with [var_name], produces the type of the variable
@@ -50,25 +51,24 @@ where
 ///
 /// The parameters `name` and `array_param` have already been parsed by [var_name].
 /// The `built_in_extended_factory` parses extended types (but only built-in).
-fn name_chain<I: Tokenizer + 'static, A, T, F, P>(
-    name: Name,
-    array_param: A,
+fn name_chain<I: Tokenizer + 'static, T, F, P>(
+    name: &Name,
     built_in_extended_factory: F,
-) -> impl ParserOnce<I, Output = (Name, A, T)>
+) -> impl Parser<I, Output = T>
 where
-    T: Default,
+    T: Clone + Default + 'static,
     T: VarTypeNewBuiltInCompact,
     T: VarTypeNewUserDefined,
     F: Fn() -> P,
-    P: Parser<I, Output = T>,
+    P: Parser<I, Output = T> + 'static,
 {
     let has_dots = name.bare_name().contains('.');
-    match_option_p(
-        name.qualifier(),
+    match name.qualifier() {
+        // TODO do not use OrParser of 1 element as a workaround for dyn boxing
         // qualified name can't have an "AS" clause
-        |q: TypeQualifier| once_p(T::new_built_in_compact(q)),
+        Some(q) => OrParser::new(vec![Box::new(once_p(T::new_built_in_compact(q)))]),
         // bare names might have an "AS" clause
-        move || {
+        _ => OrParser::new(vec![Box::new(
             as_clause()
                 .then_demand(
                     iif_p(
@@ -78,11 +78,9 @@ where
                     )
                     .no_incomplete(),
                 )
-                .to_parser_once()
-                .or(once_p(T::default()))
-        },
-    )
-    .map(|param_type| (name, array_param, param_type))
+                .or(once_p(T::default())),
+        )]),
+    }
 }
 
 fn as_clause<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Token, Token, Token)> {
@@ -115,4 +113,21 @@ where
     bare_name_without_dots()
         .with_pos()
         .map(VarTypeNewUserDefined::new_user_defined)
+}
+
+/// A parser that returns the given value only once.
+#[deprecated]
+fn once_p<V>(value: V) -> Once<V> {
+    Once(value)
+}
+
+struct Once<V>(V);
+
+impl<I: Tokenizer + 'static, V: Clone> Parser<I> for Once<V> {
+    type Output = V;
+
+    fn parse(&self, _: &mut I) -> Result<Self::Output, ParseError> {
+        // TODO remove the need for clone
+        Ok(self.0.clone())
+    }
 }

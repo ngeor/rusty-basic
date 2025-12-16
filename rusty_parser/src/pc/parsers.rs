@@ -4,8 +4,7 @@ use crate::pc::mappers::{FnMapper, KeepLeftMapper, KeepRightMapper};
 use crate::pc::{
     AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndPC, AndThen, AndThenOkErr,
     ChainParser, FilterMapParser, FilterParser, GuardPC, LoopWhile, MapIncompleteErrParser,
-    NoIncompleteParser, OrFailParser, OrParser, OrParserOnce, ParserToParserOnceAdapter,
-    SurroundParser, Tokenizer, Undo,
+    NoIncompleteParser, OrFailParser, OrParser, SurroundParser, Tokenizer, Undo,
 };
 use crate::ParseError;
 
@@ -200,24 +199,14 @@ pub trait Parser<I: Tokenizer + 'static> {
         OneOrMoreParser::new(self)
     }
 
-    fn chain<RF, R>(self, right_factory: RF) -> ChainParser<Self, RF>
+    fn chain<RF, R, F, O>(self, right_factory: RF, combiner: F) -> ChainParser<Self, RF, F>
     where
         Self: Sized,
-        RF: Fn(Self::Output) -> R,
-        R: ParserOnce<I>,
+        RF: Fn(&Self::Output) -> R,
+        R: Parser<I>,
+        F: Fn(Self::Output, R::Output) -> O,
     {
-        ChainParser::new(self, right_factory)
-    }
-
-    /// Converts a [Parser] to a [ParserOnce].
-    /// A blanket implementation is technically possible,
-    /// but creates problems when generic parameters need to be
-    /// adjusted e.g. from [Fn] to [FnOnce].
-    fn to_parser_once(self) -> ParserToParserOnceAdapter<Self>
-    where
-        Self: Sized,
-    {
-        ParserToParserOnceAdapter::new(self)
+        ChainParser::new(self, right_factory, combiner)
     }
 
     fn surround<L, R>(self, left: L, right: R) -> SurroundParser<L, Self, R>
@@ -235,31 +224,3 @@ pub trait Parser<I: Tokenizer + 'static> {
 /// This parser will never return an error that is "incomplete".
 /// TODO: review all direct impl NonOptParser outside the core parsers, as implementing a marker trait doesn't guarantee much
 pub trait NonOptParser<I: Tokenizer + 'static>: Parser<I> {}
-
-// TODO try an OptParser trait which has the conversions to NonOptParser methods such as or_syntax_error
-// TODO mimic the std::iter functions to create new parsers from simpler blocks
-
-/// A parser that can only be used once. Similar to `FnOnce`.
-pub trait ParserOnce<I: Tokenizer + 'static> {
-    type Output;
-
-    fn parse(self, tokenizer: &mut I) -> Result<Self::Output, ParseError>;
-
-    fn map<F, U>(self, mapper: F) -> FnMapper<Self, F>
-    where
-        Self: Sized,
-        F: FnOnce(Self::Output) -> U,
-    {
-        FnMapper::new(self, mapper)
-    }
-
-    fn or<O, R>(self, right: R) -> OrParserOnce<Self, R>
-    where
-        Self: Sized + ParserOnce<I, Output = O>,
-        R: ParserOnce<I, Output = O>,
-    {
-        OrParserOnce::new(self, right)
-    }
-}
-
-// TODO remove all "impl Parser" outside the main framework

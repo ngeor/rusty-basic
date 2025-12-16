@@ -2,7 +2,7 @@
 // Map
 //
 
-use crate::pc::{NonOptParser, Parser, ParserOnce, Tokenizer};
+use crate::pc::{NonOptParser, Parser, Tokenizer};
 use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct FnMapper<mapper: F>);
@@ -17,17 +17,6 @@ where
     type Output = U;
     fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(&self.mapper)
-    }
-}
-
-impl<I: Tokenizer + 'static, P, F, U> ParserOnce<I> for FnMapper<P, F>
-where
-    P: ParserOnce<I>,
-    F: FnOnce(P::Output) -> U,
-{
-    type Output = U;
-    fn parse(self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        self.parser.parse(tokenizer).map(self.mapper)
     }
 }
 

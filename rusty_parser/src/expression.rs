@@ -89,14 +89,13 @@ fn preceded_by_ws<I: Tokenizer + 'static>(
 fn followed_by_ws<I: Tokenizer + 'static>(
     parser: impl Parser<I, Output = ExpressionPos>,
 ) -> impl Parser<I, Output = ExpressionPos> {
-    parser.chain(|expr_pos| {
-        let is_paren = expr_pos.is_parenthesis();
-        whitespace()
-            .allow_none_if(is_paren)
-            .no_incomplete()
-            .to_parser_once()
-            .map(|_| expr_pos)
-    })
+    parser.chain(
+        |expr_pos| {
+            let is_paren = expr_pos.is_parenthesis();
+            whitespace().allow_none_if(is_paren).no_incomplete()
+        },
+        |expr_pos, _| expr_pos,
+    )
 }
 
 /// Parses an expression

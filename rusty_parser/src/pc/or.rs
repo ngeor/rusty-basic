@@ -35,36 +35,3 @@ impl<I: Tokenizer + 'static, O> Parser<I> for OrParser<I, O> {
 }
 
 impl<I: Tokenizer + 'static, O> NonOptParser<I> for OrParser<I, O> {}
-
-pub struct OrParserOnce<L, R> {
-    left: L,
-    right: R,
-}
-
-impl<L, R> OrParserOnce<L, R> {
-    pub fn new(left: L, right: R) -> Self {
-        Self { left, right }
-    }
-}
-
-impl<I: Tokenizer + 'static, O, L, R> ParserOnce<I> for OrParserOnce<L, R>
-where
-    L: ParserOnce<I, Output = O>,
-    R: ParserOnce<I, Output = O>,
-{
-    type Output = O;
-    fn parse(self, tokenizer: &mut I) -> Result<O, ParseError> {
-        let result = self.left.parse(tokenizer);
-        let mut is_incomplete_err = false;
-        if let Err(e) = &result {
-            is_incomplete_err = e.is_incomplete();
-        }
-
-        if is_incomplete_err {
-            return self.right.parse(tokenizer);
-        } else {
-            // return the first Ok result or Fatal error
-            return result;
-        }
-    }
-}

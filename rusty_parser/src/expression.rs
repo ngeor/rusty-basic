@@ -506,6 +506,7 @@ mod binary_expression {
         ) -> ParseResult<ExpressionPos, ParseError> {
             let first = match Self::non_bin_expr().parse(tokenizer) {
                 ParseResult::Ok(x) => x,
+                ParseResult::None => return ParseResult::None,
                 ParseResult::Err(err) => return ParseResult::Err(err),
             };
 
@@ -534,6 +535,7 @@ mod binary_expression {
                         .parse(tokenizer)
                         .map(|right| first.apply_priority_order(right, op, op_pos))
                 }
+                ParseResult::None => ParseResult::Ok(first),
                 ParseResult::Err(err) if err.is_incomplete() => ParseResult::Ok(first),
                 ParseResult::Err(err) => ParseResult::Err(err),
             }

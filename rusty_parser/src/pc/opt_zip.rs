@@ -56,10 +56,12 @@ where
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         let opt_left = match self.left.parse_opt(tokenizer) {
             ParseResult::Ok(x) => x,
+            ParseResult::None => None,
             ParseResult::Err(err) => return ParseResult::Err(err),
         };
         let opt_right = match self.right.parse_opt(tokenizer) {
             ParseResult::Ok(x) => x,
+            ParseResult::None => None,
             ParseResult::Err(err) => return ParseResult::Err(err),
         };
         match opt_left {

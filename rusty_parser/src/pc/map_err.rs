@@ -48,6 +48,9 @@ where
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             ParseResult::Ok(value) => ParseResult::Ok(value),
+            ParseResult::None => {
+                ParseResult::Err(self.static_error_mapper.map_err(ParseError::Incomplete))
+            }
             ParseResult::Err(err) => ParseResult::Err(self.static_error_mapper.map_err(err)),
         }
     }
@@ -76,6 +79,9 @@ where
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             ParseResult::Ok(value) => ParseResult::Ok(value),
+            ParseResult::None => {
+                ParseResult::Err(self.static_error_mapper.map_err(ParseError::Incomplete))
+            }
             ParseResult::Err(err) => ParseResult::Err(self.static_error_mapper.map_err(err)),
         }
     }
@@ -92,6 +98,9 @@ where
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             ParseResult::Ok(value) => ParseResult::Ok(value),
+            ParseResult::None => {
+                ParseResult::Err(ParserErrorTrait::no_incomplete(ParseError::Incomplete))
+            }
             ParseResult::Err(err) => ParseResult::Err(ParserErrorTrait::no_incomplete(err)),
         }
     }

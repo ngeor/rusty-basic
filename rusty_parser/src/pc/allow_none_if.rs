@@ -14,6 +14,13 @@ where
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             ParseResult::Ok(value) => ParseResult::Ok(Some(value)),
+            ParseResult::None => {
+                if self.condition {
+                    ParseResult::Ok(None)
+                } else {
+                    ParseResult::None
+                }
+            }
             ParseResult::Err(err) if err.is_incomplete() && self.condition => ParseResult::Ok(None),
             ParseResult::Err(err) => ParseResult::Err(err),
         }

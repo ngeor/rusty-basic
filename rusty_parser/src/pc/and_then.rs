@@ -13,13 +13,12 @@ where
 {
     type Output = U;
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
-        match self.parser.parse(tokenizer) {
-            ParseResult::Ok(value) => match (self.mapper)(value) {
+        self.parser
+            .parse(tokenizer)
+            .flat_map(|value| match (self.mapper)(value) {
                 Ok(result) => ParseResult::Ok(result),
                 Err(err) => ParseResult::Err(err),
-            },
-            ParseResult::Err(err) => ParseResult::Err(err),
-        }
+            })
     }
 }
 
@@ -37,6 +36,10 @@ where
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             ParseResult::Ok(value) => match (self.ok_mapper)(value) {
+                Ok(result) => ParseResult::Ok(result),
+                Err(err) => ParseResult::Err(err),
+            },
+            ParseResult::None => match (self.incomplete_mapper)(ParseError::Incomplete) {
                 Ok(result) => ParseResult::Ok(result),
                 Err(err) => ParseResult::Err(err),
             },

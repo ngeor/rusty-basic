@@ -19,7 +19,7 @@ where
                     // push to the list regardless
                     result.push(item);
                 }
-                ParseResult::Ok(None) => {
+                ParseResult::Ok(None) | ParseResult::None => {
                     keep_going = false;
                 }
                 ParseResult::Err(err) => return ParseResult::Err(err),

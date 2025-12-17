@@ -19,7 +19,7 @@ where
                     ParseResult::Ok(Some(next)) => {
                         result.push(next);
                     }
-                    ParseResult::Ok(None) => {
+                    ParseResult::Ok(None) | ParseResult::None => {
                         break;
                     }
                     ParseResult::Err(err) => {

@@ -38,13 +38,15 @@ macro_rules! seq_pc {
                 // the first is allowed to return incomplete
                 let $first_type = match self.$first_type.parse(tokenizer) {
                     ParseResult::Ok(x) => x,
+                    ParseResult::None => return ParseResult::None,
                     ParseResult::Err(err) => return ParseResult::Err(err),
                 };
 
                 $(
-                    // but the rest are not, hence `.no_incomplete()`
+                    // but the rest are not
                     let $generic_type = match self.$generic_type.parse(tokenizer) {
                         ParseResult::Ok(x) => x,
+                        ParseResult::None => return ParseResult::Err($crate::ParseError::Failure),
                         ParseResult::Err(err) => return ParseResult::Err(err),
                     };
                 )+

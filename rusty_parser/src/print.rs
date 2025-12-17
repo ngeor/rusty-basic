@@ -101,6 +101,9 @@ impl<I: Tokenizer + 'static> Parser<I> for PrintArgsParser {
                     last_one_was_expression = next.is_expression();
                     result.push(next);
                 }
+                ParseResult::None => {
+                    break;
+                }
                 ParseResult::Err(err) if err.is_incomplete() => {
                     break;
                 }

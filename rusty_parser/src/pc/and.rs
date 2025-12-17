@@ -22,8 +22,13 @@ where
                     left.undo(tokenizer);
                     ParseResult::Err(ParseError::Incomplete)
                 }
+                ParseResult::None => {
+                    left.undo(tokenizer);
+                    ParseResult::None
+                }
                 ParseResult::Err(err) => ParseResult::Err(err),
             },
+            ParseResult::None => ParseResult::None,
             ParseResult::Err(err) => ParseResult::Err(err),
         }
     }

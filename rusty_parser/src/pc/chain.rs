@@ -26,14 +26,11 @@ where
     type Output = O;
 
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
-        match self.left.parse(tokenizer) {
-            ParseResult::Ok(first) => {
-                let right_parser = (self.right)(&first);
-                right_parser
-                    .parse(tokenizer)
-                    .map(|r| (self.combiner)(first, r))
-            }
-            ParseResult::Err(e) => ParseResult::Err(e),
-        }
+        self.left.parse(tokenizer).flat_map(|first| {
+            let right_parser = (self.right)(&first);
+            right_parser
+                .parse(tokenizer)
+                .map(|r| (self.combiner)(first, r))
+        })
     }
 }

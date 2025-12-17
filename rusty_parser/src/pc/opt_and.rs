@@ -16,10 +16,20 @@ where
         match self.left.parse_opt(tokenizer) {
             ParseResult::Ok(opt_leading) => match self.right.parse(tokenizer) {
                 ParseResult::Ok(right) => ParseResult::Ok((opt_leading, right)),
+                ParseResult::None => {
+                    opt_leading.undo(tokenizer);
+                    ParseResult::None
+                }
                 ParseResult::Err(err) if err.is_incomplete() => {
                     opt_leading.undo(tokenizer);
                     ParseResult::Err(err)
                 }
+                ParseResult::Err(err) => ParseResult::Err(err),
+            },
+            ParseResult::None => match self.right.parse(tokenizer) {
+                ParseResult::Ok(right) => ParseResult::Ok((None, right)),
+                ParseResult::None => ParseResult::None,
+                ParseResult::Err(err) if err.is_incomplete() => ParseResult::Err(err),
                 ParseResult::Err(err) => ParseResult::Err(err),
             },
             ParseResult::Err(err) => ParseResult::Err(err),

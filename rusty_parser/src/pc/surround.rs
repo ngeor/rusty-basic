@@ -33,6 +33,10 @@ where
                     ParseResult::Err(err) => ParseResult::Err(err),
                     _ => ParseResult::Ok(value),
                 },
+                ParseResult::None => {
+                    left.undo(tokenizer);
+                    ParseResult::None
+                }
                 ParseResult::Err(err) => {
                     if err.is_incomplete() {
                         left.undo(tokenizer);

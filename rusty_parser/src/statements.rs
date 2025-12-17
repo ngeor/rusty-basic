@@ -60,7 +60,7 @@ impl ZeroOrMoreStatements {
                     }
                     ParseResult::Ok(false)
                 },
-                |_| {
+                || {
                     // EOF is an error here as we're looking for the exit source
                     match self.1.clone() {
                         Some(custom_err) => ParseResult::Err(custom_err),

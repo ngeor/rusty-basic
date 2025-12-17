@@ -16,7 +16,7 @@ fn dollar_sign_check<I: Tokenizer + 'static>(
                     ParseResult::Ok(())
                 }
             },
-            |_| ParseResult::Ok(()),
+            || ParseResult::Ok(()),
         ))
         .keep_left()
 }

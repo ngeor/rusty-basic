@@ -26,7 +26,7 @@ where
             }
         }
         if result.is_empty() {
-            ParseResult::Err(ParseError::Incomplete)
+            ParseResult::None
         } else {
             ParseResult::Ok(result)
         }

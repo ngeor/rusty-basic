@@ -14,7 +14,7 @@ impl<I: Tokenizer + 'static> Parser<I> for AnyTokenParser {
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match tokenizer.read() {
             Some(token) => ParseResult::Ok(token),
-            None => ParseResult::Err(ParseError::Incomplete),
+            None => ParseResult::None,
         }
     }
 }
@@ -35,7 +35,7 @@ impl<I: Tokenizer + 'static> Parser<I> for PeekTokenParser {
                 tokenizer.unread();
                 ParseResult::Ok(token)
             }
-            None => ParseResult::Err(ParseError::Incomplete),
+            None => ParseResult::None,
         }
     }
 }
@@ -56,7 +56,7 @@ impl<I: Tokenizer + 'static> Parser<I> for EofDetector {
         match tokenizer.read() {
             Some(_) => {
                 tokenizer.unread();
-                ParseResult::Err(ParseError::Incomplete)
+                ParseResult::None
             }
             None => ParseResult::Ok(()),
         }

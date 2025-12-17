@@ -20,7 +20,7 @@ where
                 ParseResult::Ok(Some(right)) => ParseResult::Ok((left, right)),
                 ParseResult::Ok(None) => {
                     left.undo(tokenizer);
-                    ParseResult::Err(ParseError::Incomplete)
+                    ParseResult::None
                 }
                 ParseResult::None => {
                     left.undo(tokenizer);

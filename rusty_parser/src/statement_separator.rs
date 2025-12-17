@@ -87,7 +87,7 @@ pub fn peek_eof_or_statement_separator<I: Tokenizer + 'static>() -> impl Parser<
             }
         },
         // allow EOF
-        |_| ParseResult::Ok(()),
+        || ParseResult::Ok(()),
     )
 }
 

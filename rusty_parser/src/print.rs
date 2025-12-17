@@ -130,7 +130,7 @@ fn print_boundary<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
                     ParseResult::None
                 }
             },
-            |_| ParseResult::None,
+            || ParseResult::None,
         ))
 }
 

@@ -17,7 +17,7 @@ where
                 ParseResult::Ok(result)
             } else {
                 result.undo(tokenizer);
-                ParseResult::Err(ParseError::Incomplete)
+                ParseResult::None
             }
         })
     }
@@ -40,7 +40,7 @@ where
                 Some(value) => ParseResult::Ok(value),
                 None => {
                     result.undo(tokenizer);
-                    ParseResult::Err(ParseError::Incomplete)
+                    ParseResult::None
                 }
             })
     }

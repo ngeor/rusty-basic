@@ -71,7 +71,7 @@ where
             },
             None => match opt_right {
                 Some(right) => ParseResult::Ok(ZipValue::Right(right)),
-                _ => ParseResult::Err(ParseError::Incomplete),
+                _ => ParseResult::None,
             },
         }
     }

@@ -43,6 +43,7 @@ pub enum ParseError {
 
     ElementNotDefined,
 
+    #[deprecated]
     Incomplete,
 
     Expected(String),

@@ -159,7 +159,7 @@ fn ensure_no_trailing_dot<I: Tokenizer + 'static, P>(
                     ParseResult::Ok(())
                 }
             },
-            |_| ParseResult::Ok(()),
+            || ParseResult::Ok(()),
         ))
         .keep_left()
 }
@@ -180,7 +180,7 @@ fn ensure_no_trailing_qualifier<I: Tokenizer + 'static, P>(
                     ParseResult::Ok(())
                 }
             },
-            |_| ParseResult::Ok(()),
+            || ParseResult::Ok(()),
         ))
         .keep_left()
 }

@@ -67,7 +67,7 @@ fn next_statement<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalSta
             // map the statement
             Some(s) => ParseResult::Ok(s),
             // map the EOF back to an incomplete result
-            None => ParseResult::Err(ParseError::Incomplete),
+            None => ParseResult::None,
         })
 }
 
@@ -132,7 +132,7 @@ fn demand_eof<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
                 t
             )))
         },
-        |_| ParseResult::Ok(()),
+        || ParseResult::Ok(()),
     )
 }
 

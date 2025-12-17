@@ -23,16 +23,16 @@ impl<I: Tokenizer + 'static, P, F, G, U> Parser<I> for AndThenOkErr<P, F, G>
 where
     P: Parser<I>,
     F: Fn(P::Output) -> ParseResult<U, ParseError>,
-    G: Fn(ParseError) -> ParseResult<U, ParseError>,
+    G: Fn() -> ParseResult<U, ParseError>,
 {
     type Output = U;
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             ParseResult::Ok(value) => (self.ok_mapper)(value),
-            ParseResult::None => (self.incomplete_mapper)(ParseError::Incomplete),
+            ParseResult::None => (self.incomplete_mapper)(),
             ParseResult::Err(err) => {
                 if err.is_incomplete() {
-                    (self.incomplete_mapper)(err)
+                    (self.incomplete_mapper)()
                 } else {
                     ParseResult::Err(err)
                 }

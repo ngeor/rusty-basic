@@ -741,7 +741,7 @@ pub mod guard {
                     ParseResult::None
                 }
             },
-            |_| ParseResult::None,
+            || ParseResult::None,
         )
     }
 }

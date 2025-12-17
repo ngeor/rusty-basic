@@ -38,6 +38,7 @@ pub trait Parser<I: Tokenizer + 'static> {
 
     /// Flat map the result of this parser for successful and incomplete results.
     /// Other errors are never allowed to be re-mapped.
+    /// TODO: add some common helpers for incomplete_mapper == Ok(()) and incomplete_mapper == None
     fn and_then_ok_err<F, G, U>(
         self,
         ok_mapper: F,
@@ -46,7 +47,7 @@ pub trait Parser<I: Tokenizer + 'static> {
     where
         Self: Sized,
         F: Fn(Self::Output) -> ParseResult<U, ParseError>,
-        G: Fn(ParseError) -> ParseResult<U, ParseError>,
+        G: Fn() -> ParseResult<U, ParseError>,
     {
         AndThenOkErr::new(self, ok_mapper, incomplete_mapper)
     }
@@ -140,9 +141,9 @@ pub trait Parser<I: Tokenizer + 'static> {
     fn parse_opt(&self, tokenizer: &mut I) -> ParseResult<Option<Self::Output>, ParseError> {
         match self.parse(tokenizer) {
             ParseResult::Ok(value) => ParseResult::Ok(Some(value)),
-            ParseResult::None
-            | ParseResult::Err(ParseError::Incomplete)
-            | ParseResult::Err(ParseError::Expected(_)) => ParseResult::Ok(None),
+            ParseResult::None | ParseResult::None | ParseResult::Err(ParseError::Expected(_)) => {
+                ParseResult::Ok(None)
+            }
             ParseResult::Err(err) => ParseResult::Err(err),
         }
     }

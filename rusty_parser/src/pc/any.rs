@@ -1,4 +1,4 @@
-use crate::pc::{Parser, Token, Tokenizer};
+use crate::pc::{ParseResult, Parser, Token, Tokenizer};
 use crate::ParseError;
 
 /// Parses any token.
@@ -11,10 +11,10 @@ struct AnyTokenParser;
 impl<I: Tokenizer + 'static> Parser<I> for AnyTokenParser {
     type Output = Token;
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match tokenizer.read() {
-            Some(token) => Ok(token),
-            None => Err(ParseError::Incomplete),
+            Some(token) => ParseResult::Ok(token),
+            None => ParseResult::Err(ParseError::Incomplete),
         }
     }
 }
@@ -29,13 +29,13 @@ struct PeekTokenParser;
 impl<I: Tokenizer + 'static> Parser<I> for PeekTokenParser {
     type Output = Token;
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match tokenizer.read() {
             Some(token) => {
                 tokenizer.unread();
-                Ok(token)
+                ParseResult::Ok(token)
             }
-            None => Err(ParseError::Incomplete),
+            None => ParseResult::Err(ParseError::Incomplete),
         }
     }
 }
@@ -52,13 +52,13 @@ struct EofDetector;
 impl<I: Tokenizer + 'static> Parser<I> for EofDetector {
     type Output = ();
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match tokenizer.read() {
             Some(_) => {
                 tokenizer.unread();
-                Err(ParseError::Incomplete)
+                ParseResult::Err(ParseError::Incomplete)
             }
-            None => Ok(()),
+            None => ParseResult::Ok(()),
         }
     }
 }

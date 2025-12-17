@@ -1,4 +1,4 @@
-use crate::pc::{Parser, Token, Tokenizer, Undo};
+use crate::pc::{ParseResult, Parser, Token, Tokenizer, Undo};
 use crate::{binary_parser_declaration, ParseError, ParserErrorTrait};
 
 // The left side is optional, the right is not.
@@ -11,17 +11,18 @@ where
     L: Parser<I, Output = Token>,
     R: Parser<I>,
 {
-    type Output = (Option<Token>, R::Output);
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        let opt_leading = self.left.parse_opt(tokenizer)?;
-        match self.right.parse(tokenizer) {
-            Ok(value) => Ok((opt_leading, value)),
-            Err(err) => {
-                if err.is_incomplete() {
+    type Output = (Option<L::Output>, R::Output);
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+        match self.left.parse_opt(tokenizer) {
+            ParseResult::Ok(opt_leading) => match self.right.parse(tokenizer) {
+                ParseResult::Ok(right) => ParseResult::Ok((opt_leading, right)),
+                ParseResult::Err(err) if err.is_incomplete() => {
                     opt_leading.undo(tokenizer);
+                    ParseResult::Err(err)
                 }
-                Err(err)
-            }
+                ParseResult::Err(err) => ParseResult::Err(err),
+            },
+            ParseResult::Err(err) => ParseResult::Err(err),
         }
     }
 }

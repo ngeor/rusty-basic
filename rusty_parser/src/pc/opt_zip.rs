@@ -1,6 +1,6 @@
 // Mixed type or
 
-use crate::pc::{Parser, Tokenizer};
+use crate::pc::{ParseResult, Parser, Tokenizer};
 use crate::{binary_parser_declaration, ParseError};
 
 pub enum ZipValue<L, R> {
@@ -53,17 +53,23 @@ where
     R: Parser<I>,
 {
     type Output = ZipValue<L::Output, R::Output>;
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        let opt_left = self.left.parse_opt(tokenizer)?;
-        let opt_right = self.right.parse_opt(tokenizer)?;
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+        let opt_left = match self.left.parse_opt(tokenizer) {
+            ParseResult::Ok(x) => x,
+            ParseResult::Err(err) => return ParseResult::Err(err),
+        };
+        let opt_right = match self.right.parse_opt(tokenizer) {
+            ParseResult::Ok(x) => x,
+            ParseResult::Err(err) => return ParseResult::Err(err),
+        };
         match opt_left {
             Some(left) => match opt_right {
-                Some(right) => Ok(ZipValue::Both(left, right)),
-                _ => Ok(ZipValue::Left(left)),
+                Some(right) => ParseResult::Ok(ZipValue::Both(left, right)),
+                _ => ParseResult::Ok(ZipValue::Left(left)),
             },
             None => match opt_right {
-                Some(right) => Ok(ZipValue::Right(right)),
-                _ => Err(ParseError::Incomplete),
+                Some(right) => ParseResult::Ok(ZipValue::Right(right)),
+                _ => ParseResult::Err(ParseError::Incomplete),
             },
         }
     }

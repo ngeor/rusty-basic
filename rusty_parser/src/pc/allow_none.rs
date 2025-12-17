@@ -1,18 +1,19 @@
-use crate::pc::{Parser, Tokenizer};
+use crate::pc::{ParseResult, Parser, Tokenizer};
 use crate::{parser_declaration, ParseError, ParserErrorTrait};
-parser_declaration!(pub struct AllowNoneParser);
+parser_declaration!(
+    pub struct AllowNoneParser {}
+);
 
 impl<I: Tokenizer + 'static, P> Parser<I> for AllowNoneParser<P>
 where
     P: Parser<I>,
 {
     type Output = Option<P::Output>;
-
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
-            Ok(value) => Ok(Some(value)),
-            Err(err) if err.is_incomplete() => Ok(None),
-            Err(err) => Err(err),
+            ParseResult::Ok(value) => ParseResult::Ok(Some(value)),
+            ParseResult::Err(err) if err.is_incomplete() => ParseResult::Ok(None),
+            ParseResult::Err(err) => ParseResult::Err(err),
         }
     }
 }

@@ -34,14 +34,21 @@ macro_rules! seq_pc {
             type Output = ($first_type::Output, $(<$generic_type as Parser<I>>::Output),+ );
 
             #[allow(non_snake_case)]
-            fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, $crate::ParseError> {
+            fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, $crate::ParseError> {
                 // the first is allowed to return incomplete
-                let $first_type = self.$first_type.parse(tokenizer)?;
+                let $first_type = match self.$first_type.parse(tokenizer) {
+                    ParseResult::Ok(x) => x,
+                    ParseResult::Err(err) => return ParseResult::Err(err),
+                };
+
                 $(
                     // but the rest are not, hence `.no_incomplete()`
-                    let $generic_type = self.$generic_type.parse(tokenizer)?;
+                    let $generic_type = match self.$generic_type.parse(tokenizer) {
+                        ParseResult::Ok(x) => x,
+                        ParseResult::Err(err) => return ParseResult::Err(err),
+                    };
                 )+
-                Ok(
+                ParseResult::Ok(
                     (
                         $first_type,
                         $($generic_type),+

@@ -126,8 +126,8 @@ struct Once<V>(V);
 impl<I: Tokenizer + 'static, V: Clone> Parser<I> for Once<V> {
     type Output = V;
 
-    fn parse(&self, _: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, _: &mut I) -> ParseResult<Self::Output, ParseError> {
         // TODO remove the need for clone
-        Ok(self.0.clone())
+        ParseResult::Ok(self.0.clone())
     }
 }

@@ -475,7 +475,7 @@ mod binary_expression {
         built_in_function_call, expression_pos_p, guard, integer_or_long_literal, parenthesis,
         property, single_or_double_literal, string_literal, unary_expression,
     };
-    use crate::pc::{any_token, OptAndPC, OrParser, Parser, Token, Tokenizer};
+    use crate::pc::{any_token, OptAndPC, OrParser, ParseResult, Parser, Token, Tokenizer};
     use crate::pc_specific::{whitespace, SpecificTrait, TokenType};
     use crate::{
         ExpressionPos, ExpressionPosTrait, ExpressionTrait, Keyword, Operator, ParseError,
@@ -493,7 +493,7 @@ mod binary_expression {
     impl<I: Tokenizer + 'static> Parser<I> for BinaryExprParser {
         type Output = ExpressionPos;
 
-        fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+        fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
             self.do_parse(tokenizer)
                 .map(ExpressionPos::simplify_unary_minus_literals)
         }
@@ -503,28 +503,39 @@ mod binary_expression {
         fn do_parse<I: Tokenizer + 'static>(
             &self,
             tokenizer: &mut I,
-        ) -> Result<ExpressionPos, ParseError> {
-            let first = Self::non_bin_expr().parse(tokenizer)?;
+        ) -> ParseResult<ExpressionPos, ParseError> {
+            let first = match Self::non_bin_expr().parse(tokenizer) {
+                ParseResult::Ok(x) => x,
+                ParseResult::Err(err) => return ParseResult::Err(err),
+            };
+
             let is_paren = first.is_parenthesis();
             match Self::operator(is_paren).parse(tokenizer) {
-                Ok(Positioned {
+                ParseResult::Ok(Positioned {
                     element: op,
                     pos: op_pos,
                 }) => {
                     let is_keyword_op =
                         op == Operator::And || op == Operator::Or || op == Operator::Modulo;
                     if is_keyword_op {
-                        guard::parser().no_incomplete().parse(tokenizer)?;
+                        if let ParseResult::Err(err) =
+                            guard::parser().no_incomplete().parse(tokenizer)
+                        {
+                            return ParseResult::Err(err);
+                        }
                     } else {
-                        guard::parser().allow_none().parse(tokenizer)?;
+                        if let ParseResult::Err(err) = guard::parser().allow_none().parse(tokenizer)
+                        {
+                            return ParseResult::Err(err);
+                        }
                     }
-                    let right = expression_pos_p()
+                    expression_pos_p()
                         .or_syntax_error("Expected: expression after operator")
-                        .parse(tokenizer)?;
-                    Ok(first.apply_priority_order(right, op, op_pos))
+                        .parse(tokenizer)
+                        .map(|right| first.apply_priority_order(right, op, op_pos))
                 }
-                Err(err) if err.is_incomplete() => Ok(first),
-                Err(err) => Err(err),
+                ParseResult::Err(err) if err.is_incomplete() => ParseResult::Ok(first),
+                ParseResult::Err(err) => ParseResult::Err(err),
             }
         }
 

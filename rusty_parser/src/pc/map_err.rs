@@ -1,4 +1,4 @@
-use crate::pc::{Parser, Tokenizer};
+use crate::pc::{ParseResult, Parser, Tokenizer};
 use crate::{parser_declaration, ParseError, ParserErrorTrait};
 
 struct StaticErrorMapper {
@@ -45,10 +45,11 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        self.parser
-            .parse(tokenizer)
-            .map_err(|err| self.static_error_mapper.map_err(err))
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+        match self.parser.parse(tokenizer) {
+            ParseResult::Ok(value) => ParseResult::Ok(value),
+            ParseResult::Err(err) => ParseResult::Err(self.static_error_mapper.map_err(err)),
+        }
     }
 }
 
@@ -72,10 +73,11 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        self.parser
-            .parse(tokenizer)
-            .map_err(|err| self.static_error_mapper.map_err(err))
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+        match self.parser.parse(tokenizer) {
+            ParseResult::Ok(value) => ParseResult::Ok(value),
+            ParseResult::Err(err) => ParseResult::Err(self.static_error_mapper.map_err(err)),
+        }
     }
 }
 
@@ -87,9 +89,10 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        self.parser
-            .parse(tokenizer)
-            .map_err(ParserErrorTrait::no_incomplete)
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+        match self.parser.parse(tokenizer) {
+            ParseResult::Ok(value) => ParseResult::Ok(value),
+            ParseResult::Err(err) => ParseResult::Err(ParserErrorTrait::no_incomplete(err)),
+        }
     }
 }

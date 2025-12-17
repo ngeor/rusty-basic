@@ -9,8 +9,10 @@ where
     R: Parser<I>,
 {
     type Output = <R as Parser<I>>::Output;
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        self.left.parse(tokenizer)?;
-        self.right.parse(tokenizer)
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+        match self.left.parse(tokenizer) {
+            ParseResult::Ok(_) => self.right.parse(tokenizer),
+            ParseResult::Err(e) => ParseResult::Err(e),
+        }
     }
 }

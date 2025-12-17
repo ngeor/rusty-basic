@@ -2,12 +2,10 @@
 // Map
 //
 
-use crate::pc::{Parser, Tokenizer};
+use crate::pc::{ParseResult, Parser, Tokenizer};
 use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct FnMapper<mapper: F>);
-
-// TODO: question, can a macro reduce the repetition of the impl traits
 
 impl<I: Tokenizer + 'static, P, F, U> Parser<I> for FnMapper<P, F>
 where
@@ -15,7 +13,7 @@ where
     F: Fn(P::Output) -> U,
 {
     type Output = U;
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(&self.mapper)
     }
 }
@@ -31,7 +29,7 @@ where
     P: Parser<I, Output = (L, R)>,
 {
     type Output = L;
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(|(l, _)| l)
     }
 }
@@ -47,7 +45,7 @@ where
     P: Parser<I, Output = (L, R)>,
 {
     type Output = R;
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         self.parser.parse(tokenizer).map(|(_, r)| r)
     }
 }

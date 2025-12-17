@@ -14,11 +14,11 @@ impl<I: Tokenizer + 'static, O> OrParser<I, O> {
 
 impl<I: Tokenizer + 'static, O> Parser<I> for OrParser<I, O> {
     type Output = O;
-    fn parse(&self, tokenizer: &mut I) -> Result<O, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<O, ParseError> {
         for parser in &self.parsers {
             let result = parser.parse(tokenizer);
             let mut is_incomplete_err = false;
-            if let Err(e) = &result {
+            if let ParseResult::Err(e) = &result {
                 is_incomplete_err = e.is_incomplete();
             }
 
@@ -30,6 +30,6 @@ impl<I: Tokenizer + 'static, O> Parser<I> for OrParser<I, O> {
             }
         }
 
-        Err(ParseError::Incomplete)
+        ParseResult::Err(ParseError::Incomplete)
     }
 }

@@ -1,4 +1,4 @@
-use crate::pc::{Parser, Tokenizer};
+use crate::pc::{ParseResult, Parser, Tokenizer};
 use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct LoopWhile<predicate: F>);
@@ -9,25 +9,26 @@ where
     F: Fn(&P::Output) -> bool,
 {
     type Output = Vec<P::Output>;
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         let mut result: Vec<P::Output> = vec![];
         let mut keep_going = true;
         while keep_going {
-            match self.parser.parse_opt(tokenizer)? {
-                Some(item) => {
+            match self.parser.parse_opt(tokenizer) {
+                ParseResult::Ok(Some(item)) => {
                     keep_going = (self.predicate)(&item);
                     // push to the list regardless
                     result.push(item);
                 }
-                None => {
+                ParseResult::Ok(None) => {
                     keep_going = false;
                 }
+                ParseResult::Err(err) => return ParseResult::Err(err),
             }
         }
         if result.is_empty() {
-            Err(ParseError::Incomplete)
+            ParseResult::Err(ParseError::Incomplete)
         } else {
-            Ok(result)
+            ParseResult::Ok(result)
         }
     }
 }

@@ -68,7 +68,7 @@ impl PrintArgsParser {
     fn next<I: Tokenizer + 'static>(
         tokenizer: &mut I,
         allow_expr: bool,
-    ) -> Result<PrintArg, ParseError> {
+    ) -> ParseResult<PrintArg, ParseError> {
         if allow_expr {
             Self::any_print_arg().parse(tokenizer)
         } else {
@@ -92,24 +92,24 @@ impl PrintArgsParser {
 impl<I: Tokenizer + 'static> Parser<I> for PrintArgsParser {
     type Output = Vec<PrintArg>;
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         let mut result: Vec<PrintArg> = vec![];
         let mut last_one_was_expression = false;
         loop {
             match Self::next(tokenizer, !last_one_was_expression) {
-                Ok(next) => {
+                ParseResult::Ok(next) => {
                     last_one_was_expression = next.is_expression();
                     result.push(next);
                 }
-                Err(err) if err.is_incomplete() => {
+                ParseResult::Err(err) if err.is_incomplete() => {
                     break;
                 }
-                Err(err) => {
-                    return Err(err);
+                ParseResult::Err(err) => {
+                    return ParseResult::Err(err);
                 }
             }
         }
-        Ok(result)
+        ParseResult::Ok(result)
     }
 }
 

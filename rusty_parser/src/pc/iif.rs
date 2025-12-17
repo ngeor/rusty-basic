@@ -1,4 +1,4 @@
-use crate::pc::{Parser, Tokenizer};
+use crate::pc::{ParseResult, Parser, Tokenizer};
 use crate::ParseError;
 
 pub fn iif_p<L, R>(condition: bool, left: L, right: R) -> IIfParser<L, R> {
@@ -28,7 +28,7 @@ where
 {
     type Output = L::Output;
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         if self.condition {
             self.left.parse(tokenizer)
         } else {

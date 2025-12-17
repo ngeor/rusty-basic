@@ -66,8 +66,8 @@ pub fn parse_main_file(f: File) -> Result<Program, ParseErrorPos> {
 
 pub fn program_parser<I: Tokenizer + 'static>(reader: &mut I) -> Result<Program, ParseErrorPos> {
     match program_parser_p().parse(reader) {
-        Ok(opt_program) => Ok(opt_program),
-        Err(err) => Err(err.at_pos(reader.position())),
+        ParseResult::Ok(opt_program) => Ok(opt_program),
+        ParseResult::Err(err) => Err(err.at_pos(reader.position())),
     }
 }
 

@@ -2,7 +2,7 @@
 // Many
 //
 
-use crate::pc::{Parser, Tokenizer};
+use crate::pc::{ParseResult, Parser, Tokenizer};
 use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct OneOrMoreParser);
@@ -12,15 +12,26 @@ where
     P: Parser<I>,
 {
     type Output = Vec<P::Output>;
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         let mut result: Vec<P::Output> = Vec::new();
-        while let Some(value) = self.parser.parse_opt(tokenizer)? {
-            result.push(value);
+        loop {
+            match self.parser.parse_opt(tokenizer) {
+                ParseResult::Ok(Some(value)) => {
+                    result.push(value);
+                }
+                ParseResult::Ok(None) => {
+                    break;
+                }
+                ParseResult::Err(err) => {
+                    return ParseResult::Err(err);
+                }
+            }
         }
+
         if result.is_empty() {
-            Err(ParseError::Incomplete)
+            ParseResult::Err(ParseError::Incomplete)
         } else {
-            Ok(result)
+            ParseResult::Ok(result)
         }
     }
 }

@@ -17,27 +17,28 @@ struct SubCallOrAssignment;
 
 impl<I: Tokenizer + 'static> Parser<I> for SubCallOrAssignment {
     type Output = Statement;
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         let (
             Positioned {
                 element: name_expr, ..
             },
             opt_equal_sign,
-        ) = Self::name_and_opt_eq_sign().parse(tokenizer)?;
+        ) = match Self::name_and_opt_eq_sign().parse(tokenizer) {
+            ParseResult::Ok(x) => x,
+            ParseResult::Err(err) => return ParseResult::Err(err),
+        };
+
         match opt_equal_sign {
-            Some(_) => {
-                let right_side_expr = expression::expression_pos_p()
-                    .or_syntax_error("Expected: expression for assignment")
-                    .parse(tokenizer)?;
-                Ok(Statement::Assignment(name_expr, right_side_expr))
-            }
+            Some(_) => expression::expression_pos_p()
+                .or_syntax_error("Expected: expression for assignment")
+                .parse(tokenizer)
+                .map(|right_side_expr| Statement::Assignment(name_expr, right_side_expr)),
             _ => match expr_to_bare_name_args(name_expr) {
-                Ok((bare_name, Some(args))) => Ok(Statement::SubCall(bare_name, args)),
-                Ok((bare_name, None)) => {
-                    let args = expression::csv_expressions_first_guarded().parse_opt(tokenizer)?;
-                    Ok(Statement::SubCall(bare_name, args.unwrap_or_default()))
-                }
-                Err(err) => Err(err),
+                Ok((bare_name, Some(args))) => ParseResult::Ok(Statement::SubCall(bare_name, args)),
+                Ok((bare_name, None)) => expression::csv_expressions_first_guarded()
+                    .parse_opt(tokenizer)
+                    .map(|args| Statement::SubCall(bare_name, args.unwrap_or_default())),
+                Err(err) => ParseResult::Err(err),
             },
         }
     }

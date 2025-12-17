@@ -8,11 +8,18 @@ parser_declaration!(pub struct AndThen<mapper: F>);
 impl<I: Tokenizer + 'static, P, F, U> Parser<I> for AndThen<P, F>
 where
     P: Parser<I>,
+    // TODO return ParseResult here
     F: Fn(P::Output) -> Result<U, ParseError>,
 {
     type Output = U;
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        self.parser.parse(tokenizer).and_then(&self.mapper)
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+        match self.parser.parse(tokenizer) {
+            ParseResult::Ok(value) => match (self.mapper)(value) {
+                Ok(result) => ParseResult::Ok(result),
+                Err(err) => ParseResult::Err(err),
+            },
+            ParseResult::Err(err) => ParseResult::Err(err),
+        }
     }
 }
 
@@ -22,18 +29,25 @@ parser_declaration!(pub struct AndThenOkErr<ok_mapper: F, incomplete_mapper: G>)
 impl<I: Tokenizer + 'static, P, F, G, U> Parser<I> for AndThenOkErr<P, F, G>
 where
     P: Parser<I>,
+    // TODO return ParseResult here
     F: Fn(P::Output) -> Result<U, ParseError>,
     G: Fn(ParseError) -> Result<U, ParseError>,
 {
     type Output = U;
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
-            Ok(value) => (self.ok_mapper)(value),
-            Err(err) => {
+            ParseResult::Ok(value) => match (self.ok_mapper)(value) {
+                Ok(result) => ParseResult::Ok(result),
+                Err(err) => ParseResult::Err(err),
+            },
+            ParseResult::Err(err) => {
                 if err.is_incomplete() {
-                    (self.incomplete_mapper)(err)
+                    match (self.incomplete_mapper)(err) {
+                        Ok(result) => ParseResult::Ok(result),
+                        Err(err) => ParseResult::Err(err),
+                    }
                 } else {
-                    Err(err)
+                    ParseResult::Err(err)
                 }
             }
         }

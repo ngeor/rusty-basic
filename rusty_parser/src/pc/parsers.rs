@@ -4,12 +4,11 @@ use crate::pc::mappers::{FnMapper, KeepLeftMapper, KeepRightMapper};
 use crate::pc::{
     AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndPC, AndThen, AndThenOkErr,
     ChainParser, FilterMapParser, FilterParser, GuardPC, LoopWhile, MapIncompleteErrParser,
-    NoIncompleteParser, OrFailParser, OrParser, SurroundParser, Tokenizer, Undo,
+    NoIncompleteParser, OrFailParser, OrParser, ParseResult, SurroundParser, Tokenizer, Undo,
 };
 use crate::ParseError;
 
 // TODO make QError generic param too
-// TODO specific error types for Tokenizer and Parser libraries
 
 /// A parser uses a [Tokenizer] in order to produce a result.
 ///
@@ -19,7 +18,7 @@ use crate::ParseError;
 pub trait Parser<I: Tokenizer + 'static> {
     type Output;
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError>;
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError>;
 
     // TODO #[deprecated]
     fn and_opt<R>(self, right: R) -> AndOptPC<Self, R>
@@ -138,11 +137,12 @@ pub trait Parser<I: Tokenizer + 'static> {
     }
 
     // TODO #[deprecated]
-    fn parse_opt(&self, tokenizer: &mut I) -> Result<Option<Self::Output>, ParseError> {
+    fn parse_opt(&self, tokenizer: &mut I) -> ParseResult<Option<Self::Output>, ParseError> {
         match self.parse(tokenizer) {
-            Ok(value) => Ok(Some(value)),
-            Err(ParseError::Incomplete) | Err(ParseError::Expected(_)) => Ok(None),
-            Err(err) => Err(err),
+            ParseResult::Ok(value) => ParseResult::Ok(Some(value)),
+            ParseResult::Err(ParseError::Incomplete)
+            | ParseResult::Err(ParseError::Expected(_)) => ParseResult::Ok(None),
+            ParseResult::Err(err) => ParseResult::Err(err),
         }
     }
 

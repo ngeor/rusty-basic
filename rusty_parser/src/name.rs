@@ -228,16 +228,35 @@ mod tests {
         );
     }
 
+    fn assert_result<T, E>(input: &str, result: ParseResult<T, E>) -> T {
+        match result {
+            ParseResult::Ok(x) => x,
+            _ => panic!("Should have succeeded for {}", input),
+        }
+    }
+
+    fn assert_err<T, E>(input: &str, result: ParseResult<T, E>, expected_err: E)
+    where
+        E: std::fmt::Debug + PartialEq,
+    {
+        match result {
+            ParseResult::Err(err) => {
+                assert_eq!(err, expected_err);
+            }
+            _ => {
+                panic!("Should have failed for {}", input)
+            }
+        }
+    }
+
     mod bare_name_without_dots {
         use super::*;
 
         fn parse_something_completely(input: &str) -> BareName {
             let mut tokenizer = create_string_tokenizer(input.to_owned());
-            let result = bare_name_without_dots()
-                .parse(&mut tokenizer)
-                .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
+            let result = bare_name_without_dots().parse(&mut tokenizer);
             assert_fully_parsed(&mut tokenizer, input);
-            result
+            assert_result(input, result)
         }
 
         #[test]
@@ -248,23 +267,21 @@ mod tests {
         #[test]
         fn cannot_have_dots() {
             for input in ["Hell.o", "Hello."] {
-                let input: String = String::from(input);
-                let result = bare_name_without_dots().parse(&mut create_string_tokenizer(input));
-                assert_eq!(
-                    result.expect_err("Should fail"),
-                    ParseError::IdentifierCannotIncludePeriod
-                );
+                let result = bare_name_without_dots()
+                    .parse(&mut create_string_tokenizer(String::from(input)));
+                assert_err(input, result, ParseError::IdentifierCannotIncludePeriod);
             }
         }
 
         #[test]
         fn cannot_have_trailing_qualifier() {
             for input in ["Hello!", "Hello#", "Hello$", "Hello%", "Hello&"] {
-                let input: String = String::from(input);
-                let result = bare_name_with_dots().parse(&mut create_string_tokenizer(input));
-                assert_eq!(
-                    result.expect_err("Should fail"),
-                    ParseError::syntax_error("Identifier cannot end with %, &, !, #, or $")
+                let result =
+                    bare_name_with_dots().parse(&mut create_string_tokenizer(String::from(input)));
+                assert_err(
+                    input,
+                    result,
+                    ParseError::syntax_error("Identifier cannot end with %, &, !, #, or $"),
                 );
             }
         }
@@ -273,11 +290,8 @@ mod tests {
         fn cannot_exceed_max_length() {
             let input = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO".to_owned();
             assert_eq!(input.len(), 41);
-            let result = bare_name_with_dots().parse(&mut create_string_tokenizer(input));
-            assert_eq!(
-                result.expect_err("Should fail"),
-                ParseError::IdentifierTooLong
-            );
+            let result = bare_name_with_dots().parse(&mut create_string_tokenizer(input.clone()));
+            assert_err(&input, result, ParseError::IdentifierTooLong);
         }
     }
 
@@ -286,11 +300,9 @@ mod tests {
 
         fn parse_something_completely(input: &str) -> Token {
             let mut tokenizer = create_string_tokenizer(input.to_owned());
-            let result = identifier()
-                .parse(&mut tokenizer)
-                .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
+            let result = identifier().parse(&mut tokenizer);
             assert_fully_parsed(&mut tokenizer, input);
-            result
+            assert_result(input, result)
         }
 
         #[test]
@@ -304,11 +316,8 @@ mod tests {
         fn cannot_exceed_max_length() {
             let input = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO".to_owned();
             assert_eq!(input.len(), 41);
-            let result = identifier().parse(&mut create_string_tokenizer(input));
-            assert_eq!(
-                result.expect_err("Should fail"),
-                ParseError::IdentifierTooLong
-            );
+            let result = identifier().parse(&mut create_string_tokenizer(input.clone()));
+            assert_err(&input, result, ParseError::IdentifierTooLong);
         }
     }
 
@@ -317,11 +326,9 @@ mod tests {
 
         fn parse_something_completely(input: &str) -> BareName {
             let mut tokenizer = create_string_tokenizer(input.to_owned());
-            let result = bare_name_with_dots()
-                .parse(&mut tokenizer)
-                .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
+            let result = bare_name_with_dots().parse(&mut tokenizer);
             assert_fully_parsed(&mut tokenizer, input);
-            result
+            assert_result(input, result)
         }
 
         fn happy_flow(input: &str) {
@@ -353,11 +360,9 @@ mod tests {
 
         fn parse_something_completely(input: &str) -> Name {
             let mut tokenizer = create_string_tokenizer(input.to_owned());
-            let result = name_with_dots()
-                .parse(&mut tokenizer)
-                .unwrap_or_else(|_| panic!("Should have succeeded for {}", input));
+            let result = name_with_dots().parse(&mut tokenizer);
             assert_fully_parsed(&mut tokenizer, input);
-            result
+            assert_result(input, result)
         }
 
         fn happy_flow(input: &str) {

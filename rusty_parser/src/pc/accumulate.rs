@@ -1,4 +1,4 @@
-use crate::pc::{Parser, Tokenizer};
+use crate::pc::{ParseResult, Parser, Tokenizer};
 use crate::{binary_parser_declaration, ParseError};
 
 binary_parser_declaration!(pub struct AccumulateParser);
@@ -10,13 +10,25 @@ where
 {
     type Output = Vec<L::Output>;
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        let first = self.left.parse(tokenizer)?;
-        let mut result: Vec<L::Output> = vec![];
-        result.push(first);
-        while let Some(next) = self.right.parse_opt(tokenizer)? {
-            result.push(next);
-        }
-        Ok(result)
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+        self.left.parse(tokenizer).flat_map(|first| {
+            let mut result: Vec<L::Output> = vec![];
+            result.push(first);
+            loop {
+                match self.right.parse_opt(tokenizer) {
+                    ParseResult::Ok(Some(next)) => {
+                        result.push(next);
+                    }
+                    ParseResult::Ok(None) => {
+                        break;
+                    }
+                    ParseResult::Err(err) => {
+                        return ParseResult::Err(err);
+                    }
+                }
+            }
+
+            ParseResult::Ok(result)
+        })
     }
 }

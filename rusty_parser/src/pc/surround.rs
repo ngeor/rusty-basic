@@ -25,20 +25,20 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, crate::ParseError> {
-        let left = self.left.parse(tokenizer)?;
-
-        match self.parser.parse(tokenizer) {
-            Ok(value) => {
-                self.right.parse(tokenizer)?;
-                Ok(value)
-            }
-            Err(err) => {
-                if err.is_incomplete() {
-                    left.undo(tokenizer);
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, crate::ParseError> {
+        self.left
+            .parse(tokenizer)
+            .flat_map(|left| match self.parser.parse(tokenizer) {
+                ParseResult::Ok(value) => match self.right.parse(tokenizer) {
+                    ParseResult::Err(err) => ParseResult::Err(err),
+                    _ => ParseResult::Ok(value),
+                },
+                ParseResult::Err(err) => {
+                    if err.is_incomplete() {
+                        left.undo(tokenizer);
+                    }
+                    ParseResult::Err(err)
                 }
-                Err(err)
-            }
-        }
+            })
     }
 }

@@ -1,12 +1,9 @@
-use crate::pc::{Parser, Tokenizer, Undo};
+use crate::pc::{ParseResult, Parser, Tokenizer, Undo};
 use crate::{binary_parser_declaration, ParseError};
 
 //
 // And (with undo if the left parser supports it)
 //
-
-// Looks identical to `NonOptSeq2` but that one has already an implementation
-// of Parser
 
 binary_parser_declaration!(pub struct AndPC);
 
@@ -17,13 +14,17 @@ where
     B: Parser<I>,
 {
     type Output = (A::Output, B::Output);
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        let left = self.left.parse(tokenizer)?;
-        if let Some(right) = self.right.parse_opt(tokenizer)? {
-            Ok((left, right))
-        } else {
-            left.undo(tokenizer);
-            Err(ParseError::Incomplete)
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+        match self.left.parse(tokenizer) {
+            ParseResult::Ok(left) => match self.right.parse_opt(tokenizer) {
+                ParseResult::Ok(Some(right)) => ParseResult::Ok((left, right)),
+                ParseResult::Ok(None) => {
+                    left.undo(tokenizer);
+                    ParseResult::Err(ParseError::Incomplete)
+                }
+                ParseResult::Err(err) => ParseResult::Err(err),
+            },
+            ParseResult::Err(err) => ParseResult::Err(err),
         }
     }
 }

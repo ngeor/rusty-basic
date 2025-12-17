@@ -1,4 +1,4 @@
-use crate::pc::{Parser, Tokenizer};
+use crate::pc::{ParseResult, Parser, Tokenizer};
 use crate::ParseError;
 
 pub struct ChainParser<L, R, F> {
@@ -25,11 +25,15 @@ where
 {
     type Output = O;
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        let first = self.left.parse(tokenizer)?;
-        let right_parser = (self.right)(&first);
-        right_parser
-            .parse(tokenizer)
-            .map(|r| (self.combiner)(first, r))
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+        match self.left.parse(tokenizer) {
+            ParseResult::Ok(first) => {
+                let right_parser = (self.right)(&first);
+                right_parser
+                    .parse(tokenizer)
+                    .map(|r| (self.combiner)(first, r))
+            }
+            ParseResult::Err(e) => ParseResult::Err(e),
+        }
     }
 }

@@ -1,4 +1,4 @@
-use crate::pc::{Parser, Tokenizer, Undo};
+use crate::pc::{ParseResult, Parser, Tokenizer, Undo};
 use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct FilterParser<predicate: F>);
@@ -11,14 +11,15 @@ where
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        let result = self.parser.parse(tokenizer)?;
-        if (self.predicate)(&result) {
-            Ok(result)
-        } else {
-            result.undo(tokenizer);
-            Err(ParseError::Incomplete)
-        }
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+        self.parser.parse(tokenizer).flat_map(|result| {
+            if (self.predicate)(&result) {
+                ParseResult::Ok(result)
+            } else {
+                result.undo(tokenizer);
+                ParseResult::Err(ParseError::Incomplete)
+            }
+        })
     }
 }
 
@@ -32,14 +33,15 @@ where
 {
     type Output = U;
 
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
-        let result = self.parser.parse(tokenizer)?;
-        match (self.mapper)(&result) {
-            Some(value) => Ok(value),
-            None => {
-                result.undo(tokenizer);
-                Err(ParseError::Incomplete)
-            }
-        }
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+        self.parser
+            .parse(tokenizer)
+            .flat_map(|result| match (self.mapper)(&result) {
+                Some(value) => ParseResult::Ok(value),
+                None => {
+                    result.undo(tokenizer);
+                    ParseResult::Err(ParseError::Incomplete)
+                }
+            })
     }
 }

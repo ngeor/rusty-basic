@@ -1,5 +1,6 @@
 use crate::pc::parsers::Parser;
 use crate::pc::tokenizers::Tokenizer;
+use crate::pc::ParseResult;
 use crate::{parser_declaration, ParseError};
 
 parser_declaration!(
@@ -24,9 +25,10 @@ fn indentation() -> String {
 impl<I: Tokenizer + 'static, P> Parser<I> for LoggingPC<P>
 where
     P: Parser<I>,
+    P::Output: std::fmt::Debug,
 {
     type Output = P::Output;
-    fn parse(&self, tokenizer: &mut I) -> Result<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         println!(
             "{}{} Parsing non-opt current position {:?} peek token {}",
             indentation(),
@@ -42,25 +44,27 @@ where
             INDENTATION_LEVEL -= 1;
         }
         match result {
-            Ok(value) => {
+            ParseResult::Ok(value) => {
                 println!(
-                    "{}{} Success current position {:?} peek token {}",
+                    "{}{} Success. value={:?}, current position {:?}, peek token {}",
                     indentation(),
                     self.tag,
+                    value,
                     tokenizer.position(),
                     peek_token(tokenizer)
                 );
-                Ok(value)
+                ParseResult::Ok(value)
             }
-            Err(err) => {
+            ParseResult::Err(err) => {
                 println!(
-                    "{}{} Err current position {:?} peek token {}",
+                    "{}{} Err {:?} current position {:?} peek token {}",
                     indentation(),
                     self.tag,
+                    err,
                     tokenizer.position(),
                     peek_token(tokenizer)
                 );
-                Err(err)
+                ParseResult::Err(err)
             }
         }
     }

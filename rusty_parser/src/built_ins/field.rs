@@ -9,6 +9,8 @@ use rusty_common::*;
 pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq5(
         keyword(Keyword::Field),
+        // TODO: create a shortcut for whitespace().no_incomplete() and simple token parsers in general
+        // they should have a different FilterParser implementation that does not require Undo capability
         whitespace().no_incomplete(),
         file_handle_p().or_syntax_error("Expected: file-number"),
         comma().no_incomplete(),

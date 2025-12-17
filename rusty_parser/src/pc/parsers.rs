@@ -86,6 +86,7 @@ pub trait Parser<I: Tokenizer + 'static> {
         FnMapper::new(self, mapper)
     }
 
+    #[deprecated]
     fn map_incomplete_err(self, err: ParseError) -> MapIncompleteErrParser<Self>
     where
         Self: Sized,
@@ -93,6 +94,7 @@ pub trait Parser<I: Tokenizer + 'static> {
         MapIncompleteErrParser::new(self, err)
     }
 
+    #[deprecated]
     fn or_fail(self, err: ParseError) -> OrFailParser<Self>
     where
         Self: Sized,
@@ -100,6 +102,7 @@ pub trait Parser<I: Tokenizer + 'static> {
         OrFailParser::new(self, err)
     }
 
+    #[deprecated]
     fn no_incomplete(self) -> NoIncompleteParser<Self>
     where
         Self: Sized,

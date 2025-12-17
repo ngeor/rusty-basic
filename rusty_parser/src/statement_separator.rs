@@ -69,7 +69,7 @@ pub fn no_separator_needed_before_comment<I: Tokenizer + 'static>() -> impl Pars
         if TokenType::SingleQuote.matches(&t) {
             ParseResult::Ok(())
         } else {
-            ParseResult::Err(ParseError::Incomplete)
+            ParseResult::None
         }
     })
 }
@@ -81,13 +81,13 @@ pub fn peek_eof_or_statement_separator<I: Tokenizer + 'static>() -> impl Parser<
                 || TokenType::SingleQuote.matches(&token)
                 || TokenType::Eol.matches(&token)
             {
-                Ok(())
+                ParseResult::Ok(())
             } else {
-                Err(ParseError::Incomplete)
+                ParseResult::None
             }
         },
         // allow EOF
-        |_| Ok(()),
+        |_| ParseResult::Ok(()),
     )
 }
 

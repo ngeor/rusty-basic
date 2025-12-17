@@ -125,12 +125,12 @@ fn print_boundary<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
                     || TokenType::Semicolon.matches(&token)
                     || TokenType::LParen.matches(&token)
                 {
-                    Ok(Guard::Peeked)
+                    ParseResult::Ok(Guard::Peeked)
                 } else {
-                    Err(ParseError::Incomplete)
+                    ParseResult::None
                 }
             },
-            Err,
+            |_| ParseResult::None,
         ))
 }
 

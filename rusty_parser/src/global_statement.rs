@@ -127,12 +127,12 @@ fn ws_eol_col_zero_or_more<I: Tokenizer + 'static>() -> impl Parser<I, Output = 
 fn demand_eof<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
     any_token().and_then_ok_err(
         |t| {
-            Err(ParseError::SyntaxError(format!(
+            ParseResult::Err(ParseError::SyntaxError(format!(
                 "Cannot parse, expected EOF {:?}",
                 t
             )))
         },
-        |_| Ok(()),
+        |_| ParseResult::Ok(()),
     )
 }
 

@@ -522,15 +522,23 @@ mod binary_expression {
                 }) => {
                     let is_keyword_op =
                         op == Operator::And || op == Operator::Or || op == Operator::Modulo;
-                    if is_keyword_op {
-                        if let ParseResult::Err(err) =
-                            guard::parser().no_incomplete().parse(tokenizer)
-                        {
-                            return ParseResult::Err(err);
+                    match guard::parser().parse(tokenizer) {
+                        ParseResult::Ok(_) => {}
+                        ParseResult::None => {
+                            if is_keyword_op {
+                                return ParseResult::Err(ParseError::syntax_error(
+                                    "Expected: whitespace or (",
+                                ));
+                            }
                         }
-                    } else {
-                        if let ParseResult::Err(err) = guard::parser().allow_none().parse(tokenizer)
-                        {
+                        ParseResult::Err(err) if err.is_incomplete() => {
+                            if is_keyword_op {
+                                return ParseResult::Err(ParseError::syntax_error(
+                                    "Expected: whitespace or (",
+                                ));
+                            }
+                        }
+                        ParseResult::Err(err) => {
                             return ParseResult::Err(err);
                         }
                     }
@@ -689,9 +697,8 @@ pub mod file_handle {
 }
 
 pub mod guard {
-    use crate::pc::{peek_token, Parser, Tokenizer, Undo};
+    use crate::pc::{peek_token, ParseResult, Parser, Tokenizer, Undo};
     use crate::pc_specific::{whitespace, TokenType};
-    use crate::ParseError;
 
     pub enum Guard {
         Peeked,
@@ -718,9 +725,7 @@ pub mod guard {
     ///
     /// The "(" will be undone.
     pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
-        whitespace_guard()
-            .or(lparen_guard())
-            .map_incomplete_err(ParseError::expected("Expected: whitespace or parenthesis"))
+        whitespace_guard().or(lparen_guard())
     }
 
     fn whitespace_guard<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
@@ -731,12 +736,12 @@ pub mod guard {
         peek_token().and_then_ok_err(
             |token| {
                 if TokenType::LParen.matches(&token) {
-                    Ok(Guard::Peeked)
+                    ParseResult::Ok(Guard::Peeked)
                 } else {
-                    Err(ParseError::Incomplete)
+                    ParseResult::None
                 }
             },
-            Err,
+            |_| ParseResult::None,
         )
     }
 }

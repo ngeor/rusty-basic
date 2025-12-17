@@ -20,6 +20,8 @@ impl<I: Tokenizer + 'static, O> Parser<I> for OrParser<I, O> {
             let mut is_incomplete_err = false;
             if let ParseResult::Err(e) = &result {
                 is_incomplete_err = e.is_incomplete();
+            } else if let ParseResult::None = &result {
+                is_incomplete_err = true;
             }
 
             if is_incomplete_err {

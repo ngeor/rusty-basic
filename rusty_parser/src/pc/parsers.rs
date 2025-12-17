@@ -45,8 +45,8 @@ pub trait Parser<I: Tokenizer + 'static> {
     ) -> AndThenOkErr<Self, F, G>
     where
         Self: Sized,
-        F: Fn(Self::Output) -> Result<U, ParseError>,
-        G: Fn(ParseError) -> Result<U, ParseError>,
+        F: Fn(Self::Output) -> ParseResult<U, ParseError>,
+        G: Fn(ParseError) -> ParseResult<U, ParseError>,
     {
         AndThenOkErr::new(self, ok_mapper, incomplete_mapper)
     }

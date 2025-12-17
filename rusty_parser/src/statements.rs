@@ -55,16 +55,18 @@ impl ZeroOrMoreStatements {
                 |token| {
                     for k in &self.0 {
                         if k == &token {
-                            return Ok(true);
+                            return ParseResult::Ok(true);
                         }
                     }
-                    Ok(false)
+                    ParseResult::Ok(false)
                 },
                 |_| {
                     // EOF is an error here as we're looking for the exit source
                     match self.1.clone() {
-                        Some(custom_err) => Err(custom_err),
-                        None => Err(ParseError::SyntaxError(keyword_syntax_error(&self.0))),
+                        Some(custom_err) => ParseResult::Err(custom_err),
+                        None => {
+                            ParseResult::Err(ParseError::SyntaxError(keyword_syntax_error(&self.0)))
+                        }
                     }
                 },
             )

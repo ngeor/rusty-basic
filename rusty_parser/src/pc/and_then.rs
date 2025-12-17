@@ -22,27 +22,17 @@ parser_declaration!(pub struct AndThenOkErr<ok_mapper: F, incomplete_mapper: G>)
 impl<I: Tokenizer + 'static, P, F, G, U> Parser<I> for AndThenOkErr<P, F, G>
 where
     P: Parser<I>,
-    // TODO return ParseResult here
-    F: Fn(P::Output) -> Result<U, ParseError>,
-    G: Fn(ParseError) -> Result<U, ParseError>,
+    F: Fn(P::Output) -> ParseResult<U, ParseError>,
+    G: Fn(ParseError) -> ParseResult<U, ParseError>,
 {
     type Output = U;
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
-            ParseResult::Ok(value) => match (self.ok_mapper)(value) {
-                Ok(result) => ParseResult::Ok(result),
-                Err(err) => ParseResult::Err(err),
-            },
-            ParseResult::None => match (self.incomplete_mapper)(ParseError::Incomplete) {
-                Ok(result) => ParseResult::Ok(result),
-                Err(err) => ParseResult::Err(err),
-            },
+            ParseResult::Ok(value) => (self.ok_mapper)(value),
+            ParseResult::None => (self.incomplete_mapper)(ParseError::Incomplete),
             ParseResult::Err(err) => {
                 if err.is_incomplete() {
-                    match (self.incomplete_mapper)(err) {
-                        Ok(result) => ParseResult::Ok(result),
-                        Err(err) => ParseResult::Err(err),
-                    }
+                    (self.incomplete_mapper)(err)
                 } else {
                     ParseResult::Err(err)
                 }

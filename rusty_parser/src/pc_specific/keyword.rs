@@ -1,4 +1,4 @@
-use crate::pc::{any_token, peek_token, Parser, Seq2, Seq3, Token, Tokenizer};
+use crate::pc::{any_token, peek_token, ParseResult, Parser, Seq2, Seq3, Token, Tokenizer};
 use crate::pc_specific::{any_token_of, dollar_sign, whitespace, TokenType};
 use crate::{Keyword, ParseError};
 
@@ -11,12 +11,12 @@ fn dollar_sign_check<I: Tokenizer + 'static>(
         .and(peek_token().and_then_ok_err(
             |t| {
                 if TokenType::DollarSign.matches(&t) {
-                    Err(ParseError::Incomplete)
+                    ParseResult::None
                 } else {
-                    Ok(())
+                    ParseResult::Ok(())
                 }
             },
-            |_| Ok(()),
+            |_| ParseResult::Ok(()),
         ))
         .keep_left()
 }

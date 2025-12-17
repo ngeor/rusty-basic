@@ -154,12 +154,12 @@ fn ensure_no_trailing_dot<I: Tokenizer + 'static, P>(
         .and_opt(peek_token().and_then_ok_err(
             |token| {
                 if TokenType::Dot.matches(&token) {
-                    Err(ParseError::IdentifierCannotIncludePeriod)
+                    ParseResult::Err(ParseError::IdentifierCannotIncludePeriod)
                 } else {
-                    Ok(())
+                    ParseResult::Ok(())
                 }
             },
-            |_| Ok(()),
+            |_| ParseResult::Ok(()),
         ))
         .keep_left()
 }
@@ -173,14 +173,14 @@ fn ensure_no_trailing_qualifier<I: Tokenizer + 'static, P>(
         .and_opt(peek_token().and_then_ok_err(
             |token| {
                 if is_type_qualifier(&token) {
-                    Err(ParseError::syntax_error(
+                    ParseResult::Err(ParseError::syntax_error(
                         "Identifier cannot end with %, &, !, #, or $",
                     ))
                 } else {
-                    Ok(())
+                    ParseResult::Ok(())
                 }
             },
-            |_| Ok(()),
+            |_| ParseResult::Ok(()),
         ))
         .keep_left()
 }

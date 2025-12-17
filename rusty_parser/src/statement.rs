@@ -78,7 +78,7 @@ fn illegal_starting_keywords<I: Tokenizer + 'static>(
         (Keyword::Loop, ParseError::LoopWithoutDo),
         (Keyword::Next, ParseError::NextWithoutFor),
     ])
-    .and_then(Err)
+    .and_then(ParseResult::Err)
 }
 
 mod end {

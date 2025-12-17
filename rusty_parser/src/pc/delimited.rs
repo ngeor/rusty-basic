@@ -1,4 +1,4 @@
-use crate::pc::{Parser, Tokenizer, ZipValue};
+use crate::pc::{ParseResult, Parser, Tokenizer, ZipValue};
 use crate::ParseError;
 
 /// Represents a value that has is followed by optional delimiter.
@@ -58,7 +58,7 @@ where
         .and_then(move |items| map_items(items, trailing_error.clone()))
 }
 
-fn map_items<P, T>(items: Vec<P>, trailing_error: ParseError) -> Result<Vec<T>, ParseError>
+fn map_items<P, T>(items: Vec<P>, trailing_error: ParseError) -> ParseResult<Vec<T>, ParseError>
 where
     P: Delimited<T>,
 {
@@ -67,8 +67,8 @@ where
         .map(Delimited::has_delimiter)
         .unwrap_or_default()
     {
-        Err(trailing_error)
+        ParseResult::Err(trailing_error)
     } else {
-        Ok(items.into_iter().map(Delimited::value).collect())
+        ParseResult::Ok(items.into_iter().map(Delimited::value).collect())
     }
 }

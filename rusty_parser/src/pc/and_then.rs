@@ -8,17 +8,11 @@ parser_declaration!(pub struct AndThen<mapper: F>);
 impl<I: Tokenizer + 'static, P, F, U> Parser<I> for AndThen<P, F>
 where
     P: Parser<I>,
-    // TODO return ParseResult here
-    F: Fn(P::Output) -> Result<U, ParseError>,
+    F: Fn(P::Output) -> ParseResult<U, ParseError>,
 {
     type Output = U;
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
-        self.parser
-            .parse(tokenizer)
-            .flat_map(|value| match (self.mapper)(value) {
-                Ok(result) => ParseResult::Ok(result),
-                Err(err) => ParseResult::Err(err),
-            })
+        self.parser.parse(tokenizer).flat_map(&self.mapper)
     }
 }
 

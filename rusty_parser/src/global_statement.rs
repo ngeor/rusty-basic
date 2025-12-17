@@ -65,9 +65,9 @@ fn next_statement<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalSta
         ]))
         .and_then(|opt| match opt {
             // map the statement
-            Some(s) => Ok(s),
+            Some(s) => ParseResult::Ok(s),
             // map the EOF back to an incomplete result
-            None => Err(ParseError::Incomplete),
+            None => ParseResult::Err(ParseError::Incomplete),
         })
 }
 
@@ -94,7 +94,9 @@ mod separator {
     }
 
     fn raise_err<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
-        any_token().and_then(|t| Err(ParseError::SyntaxError(format!("No separator: {}", t.text))))
+        any_token().and_then(|t| {
+            ParseResult::Err(ParseError::SyntaxError(format!("No separator: {}", t.text)))
+        })
     }
 }
 

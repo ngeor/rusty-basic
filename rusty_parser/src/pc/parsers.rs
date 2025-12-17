@@ -31,7 +31,7 @@ pub trait Parser<I: Tokenizer + 'static> {
     fn and_then<F, U>(self, mapper: F) -> AndThen<Self, F>
     where
         Self: Sized,
-        F: Fn(Self::Output) -> Result<U, ParseError>,
+        F: Fn(Self::Output) -> ParseResult<U, ParseError>,
     {
         AndThen::new(self, mapper)
     }

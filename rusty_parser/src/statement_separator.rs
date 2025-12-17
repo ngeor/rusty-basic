@@ -67,9 +67,9 @@ pub fn no_separator_needed_before_comment<I: Tokenizer + 'static>() -> impl Pars
     // warning: cannot use filter_map because it will undo and we've already "undo" via "peek"
     peek_token().and_then(|t| {
         if TokenType::SingleQuote.matches(&t) {
-            Ok(())
+            ParseResult::Ok(())
         } else {
-            Err(ParseError::Incomplete)
+            ParseResult::Err(ParseError::Incomplete)
         }
     })
 }

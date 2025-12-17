@@ -34,11 +34,11 @@ fn is_type_qualifier(token: &Token) -> bool {
         || TokenType::Ampersand.matches(token)
 }
 
-fn ensure_token_length(token: Token) -> Result<Token, ParseError> {
+fn ensure_token_length(token: Token) -> ParseResult<Token, ParseError> {
     if token.text.chars().count() > MAX_LENGTH {
-        Err(ParseError::IdentifierTooLong)
+        ParseResult::Err(ParseError::IdentifierTooLong)
     } else {
-        Ok(token)
+        ParseResult::Ok(token)
     }
 }
 
@@ -101,16 +101,16 @@ fn identifier_or_keyword_or_dot<I: Tokenizer + 'static>() -> impl Parser<I, Outp
 }
 
 // TODO add test: max length of 40 characters applies both to parts and the full string
-fn ensure_token_list_length(tokens: TokenList) -> Result<TokenList, ParseError> {
+fn ensure_token_list_length(tokens: TokenList) -> ParseResult<TokenList, ParseError> {
     if tokens
         .iter()
         .map(|token| token.text.chars().count())
         .sum::<usize>()
         > MAX_LENGTH
     {
-        Err(ParseError::IdentifierTooLong)
+        ParseResult::Err(ParseError::IdentifierTooLong)
     } else {
-        Ok(tokens)
+        ParseResult::Ok(tokens)
     }
 }
 

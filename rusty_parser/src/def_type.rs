@@ -38,12 +38,12 @@ fn letter_range<I: Tokenizer + 'static>() -> impl Parser<I, Output = LetterRange
         .and_then(|(l, opt_r)| match opt_r {
             Some((_, r)) => {
                 if l < r {
-                    Ok(LetterRange::Range(l, r))
+                    ParseResult::Ok(LetterRange::Range(l, r))
                 } else {
-                    Err(ParseError::syntax_error("Invalid letter range"))
+                    ParseResult::Err(ParseError::syntax_error("Invalid letter range"))
                 }
             }
-            None => Ok(LetterRange::Single(l)),
+            None => ParseResult::Ok(LetterRange::Single(l)),
         })
 }
 

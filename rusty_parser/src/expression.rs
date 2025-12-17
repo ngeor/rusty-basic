@@ -125,13 +125,13 @@ mod single_or_double_literal {
                 let s = format!("{}.{}", left, frac_digits.text);
                 if opt_pound.is_some() {
                     match s.parse::<f64>() {
-                        Ok(f) => Ok(Expression::DoubleLiteral(f)),
-                        Err(err) => Err(err.into()),
+                        Ok(f) => ParseResult::Ok(Expression::DoubleLiteral(f)),
+                        Err(err) => ParseResult::Err(err.into()),
                     }
                 } else {
                     match s.parse::<f32>() {
-                        Ok(f) => Ok(Expression::SingleLiteral(f)),
-                        Err(err) => Err(err.into()),
+                        Ok(f) => ParseResult::Ok(Expression::SingleLiteral(f)),
+                        Err(err) => ParseResult::Err(err.into()),
                     }
                 }
             })
@@ -187,12 +187,16 @@ mod integer_or_long_literal {
             || TokenType::OctDigits.matches(token)
     }
 
-    fn process_token(token: Token) -> Result<Expression, ParseError> {
-        match TokenType::from_token(&token) {
+    fn process_token(token: Token) -> ParseResult<Expression, ParseError> {
+        let res = match TokenType::from_token(&token) {
             TokenType::Digits => process_dec(token),
             TokenType::HexDigits => process_hex(token),
             TokenType::OctDigits => process_oct(token),
             _ => panic!("Should not have processed {}", token.text),
+        };
+        match res {
+            Ok(expr) => ParseResult::Ok(expr),
+            Err(err) => ParseResult::Err(err),
         }
     }
 
@@ -402,7 +406,7 @@ pub mod property {
         Seq2::new(base_expr_pos_p(), dot_properties()).and_then(|(first_expr_pos, properties)| {
             if !properties.is_empty() && is_qualified(&first_expr_pos.element) {
                 // TODO do this check before parsing the properties
-                return Err(ParseError::syntax_error(
+                return ParseResult::Err(ParseError::syntax_error(
                     "Qualified name cannot have properties",
                 ));
             }
@@ -422,7 +426,7 @@ pub mod property {
                     })
                 },
             );
-            Ok(result)
+            ParseResult::Ok(result)
         })
     }
 
@@ -570,9 +574,9 @@ mod binary_expression {
                     Operator::Modulo | Operator::And | Operator::Or
                 );
                 if had_whitespace || is_paren || !needs_whitespace {
-                    Ok(op_pos)
+                    ParseResult::Ok(op_pos)
                 } else {
-                    Err(ParseError::SyntaxError(format!(
+                    ParseResult::Err(ParseError::SyntaxError(format!(
                         "Expected: parenthesis before operator {:?}",
                         op_pos.element()
                     )))
@@ -661,8 +665,8 @@ pub mod file_handle {
         any_token_of(TokenType::Pound)
             .and(any_token_of(TokenType::Digits).or_syntax_error("Expected: digits after #"))
             .and_then(|(pound, digits)| match digits.text.parse::<u8>() {
-                Ok(d) if d > 0 => Ok(FileHandle::from(d).at_pos(pound.pos)),
-                _ => Err(ParseError::BadFileNameOrNumber),
+                Ok(d) if d > 0 => ParseResult::Ok(FileHandle::from(d).at_pos(pound.pos)),
+                _ => ParseResult::Err(ParseError::BadFileNameOrNumber),
             })
     }
 

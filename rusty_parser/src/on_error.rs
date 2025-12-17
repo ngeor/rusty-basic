@@ -37,7 +37,7 @@ fn goto_label<I: Tokenizer + 'static>() -> impl Parser<I, Output = OnErrorOption
 
 fn goto_zero<I: Tokenizer + 'static>() -> impl Parser<I, Output = OnErrorOption> {
     expression_pos_p().and_then(|Positioned { element, .. }| match element {
-        Expression::IntegerLiteral(0) => Ok(OnErrorOption::Zero),
-        _ => Err(ParseError::syntax_error("Expected: label or 0")),
+        Expression::IntegerLiteral(0) => ParseResult::Ok(OnErrorOption::Zero),
+        _ => ParseResult::Err(ParseError::syntax_error("Expected: label or 0")),
     })
 }

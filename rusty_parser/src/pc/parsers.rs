@@ -1,10 +1,10 @@
+use crate::pc::and::{AndPC, AndWithoutUndoPC};
 use crate::pc::many::OneOrMoreParser;
-use crate::pc::mappers::{FnMapper, KeepLeftMapper, KeepRightMapper};
+use crate::pc::map::MapPC;
 use crate::pc::{
-    AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndPC, AndThen, AndThenOkErr,
-    AndWithoutUndoPC, ChainParser, FilterMapParser, FilterParser, LoopWhile, MessageProvider,
-    NoIncompleteParser, OrFailParser, OrParser, ParseResult, SurroundParser, Tokenizer, Undo,
-    WithExpectedMessage,
+    AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndThen, AndThenOkErr, ChainParser,
+    FilterMapParser, FilterParser, LoopWhile, MessageProvider, NoIncompleteParser, OrFailParser,
+    OrParser, ParseResult, SurroundParser, Tokenizer, Undo, WithExpectedMessage,
 };
 use crate::ParseError;
 
@@ -20,6 +20,10 @@ pub trait Parser<I: Tokenizer + 'static> {
 
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError>;
 
+    /**
+     * And
+     */
+
     /// Parses both the left and the right side.
     /// If the right side fails, parsing of the left side is undone.
     fn and<R>(self, right: R) -> impl Parser<I, Output = (Self::Output, R::Output)>
@@ -30,6 +34,10 @@ pub trait Parser<I: Tokenizer + 'static> {
     {
         AndPC::new(self, right)
     }
+
+    /**
+     * And Without Undo
+     */
 
     /// Parses both the left and the right side.
     /// Be careful: if the right side fails, parsing of the left side
@@ -65,6 +73,36 @@ pub trait Parser<I: Tokenizer + 'static> {
     {
         self.and_without_undo(right, |_, right| right)
     }
+
+    /**
+     * Map
+     */
+
+    fn map<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
+    where
+        Self: Sized,
+        F: Fn(Self::Output) -> U,
+    {
+        MapPC::new(self, mapper)
+    }
+
+    fn keep_left<L, R>(self) -> impl Parser<I, Output = L>
+    where
+        Self: Sized + Parser<I, Output = (L, R)>,
+    {
+        self.map(|(l, _)| l)
+    }
+
+    fn keep_right<L, R>(self) -> impl Parser<I, Output = R>
+    where
+        Self: Sized + Parser<I, Output = (L, R)>,
+    {
+        self.map(|(_, r)| r)
+    }
+
+    /**
+     * Not reviewed yet
+     */
 
     fn and_then<F, U>(self, mapper: F) -> AndThen<Self, F>
     where
@@ -116,14 +154,6 @@ pub trait Parser<I: Tokenizer + 'static> {
         LoopWhile::new(self, predicate)
     }
 
-    fn map<F, U>(self, mapper: F) -> FnMapper<Self, F>
-    where
-        Self: Sized,
-        F: Fn(Self::Output) -> U,
-    {
-        FnMapper::new(self, mapper)
-    }
-
     fn with_expected_message<F>(self, f: F) -> WithExpectedMessage<Self, F>
     where
         Self: Sized,
@@ -146,20 +176,6 @@ pub trait Parser<I: Tokenizer + 'static> {
         Self: Sized,
     {
         NoIncompleteParser::new(self)
-    }
-
-    fn keep_left<L, R>(self) -> KeepLeftMapper<Self>
-    where
-        Self: Sized + Parser<I, Output = (L, R)>,
-    {
-        KeepLeftMapper::new(self)
-    }
-
-    fn keep_right<L, R>(self) -> KeepRightMapper<Self>
-    where
-        Self: Sized + Parser<I, Output = (L, R)>,
-    {
-        KeepRightMapper::new(self)
     }
 
     fn or<O, R>(self, right: R) -> OrParser<I, O>

@@ -1,6 +1,6 @@
 use crate::pc::{any_token, peek_token, ParseResult, Parser, Seq2, Seq3, Token, Tokenizer};
 use crate::pc_specific::{any_token_of, dollar_sign, whitespace, TokenType};
-use crate::{Keyword, ParseError};
+use crate::Keyword;
 
 // TODO review usages of TokenType::Keyword
 
@@ -30,7 +30,7 @@ pub fn keyword<I: Tokenizer + 'static>(k: Keyword) -> impl Parser<I, Output = To
 fn keyword_unchecked<I: Tokenizer + 'static>(k: Keyword) -> impl Parser<I, Output = Token> {
     any_token()
         .filter(move |token| &k == token)
-        .map_incomplete_err(ParseError::Expected(format!("Expected: {}", k)))
+        .with_expected_message(format!("Expected: {}", k))
 }
 
 // TODO 1. rename to keyword_ws like expressions 2. add ws_keyword and ws_keyword_ws

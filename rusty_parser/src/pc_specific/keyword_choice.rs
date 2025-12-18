@@ -1,6 +1,6 @@
 use crate::pc::*;
 use crate::pc_specific::{any_token_of, TokenType};
-use crate::{Keyword, ParseError};
+use crate::Keyword;
 
 impl Undo for (Keyword, Token) {
     fn undo(self, tokenizer: &mut impl Tokenizer) {
@@ -25,7 +25,7 @@ pub fn keyword_choice<I: Tokenizer + 'static>(
                 None
             }
         })
-        .map_incomplete_err(ParseError::Expected(err_msg))
+        .with_expected_message(err_msg)
 }
 
 pub fn keyword_syntax_error<K>(keywords: K) -> String

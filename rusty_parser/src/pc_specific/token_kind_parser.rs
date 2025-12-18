@@ -94,7 +94,7 @@ pub fn any_token_of<I: Tokenizer + 'static>(
 ) -> impl Parser<I, Output = Token> {
     any_token()
         .filter(move |token| token_type.matches(token))
-        .map_incomplete_err(token_type.to_error())
+        .with_expected_message(move || token_type.to_error_message())
 }
 
 fn any_token_of_ws<I: Tokenizer + 'static>(

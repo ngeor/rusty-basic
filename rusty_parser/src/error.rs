@@ -43,9 +43,12 @@ pub enum ParseError {
 
     ElementNotDefined,
 
+    /// A special error messages that indicates a failed expectation of a parser.
     #[deprecated]
     Incomplete,
 
+    /// A special error message that indicates a failed expectation of a parser.
+    #[deprecated]
     Expected(String),
 
     Failure,
@@ -58,6 +61,7 @@ impl ParseError {
         ParseError::SyntaxError(msg.to_string())
     }
 
+    #[deprecated]
     pub fn expected(msg: &str) -> Self {
         ParseError::Expected(msg.to_owned())
     }

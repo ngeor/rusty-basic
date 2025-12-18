@@ -73,9 +73,7 @@ mod type_definition {
             Box::new(built_in_numeric_type()),
             Box::new(built_in_string()),
         ])
-        .map_incomplete_err(ParseError::expected(
-            "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING",
-        ))
+        .with_expected_message("Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING")
     }
 
     fn built_in_numeric_type<I: Tokenizer + 'static>() -> impl Parser<I, Output = DimType> {

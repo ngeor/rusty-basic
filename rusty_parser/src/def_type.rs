@@ -51,7 +51,7 @@ fn letter<I: Tokenizer + 'static>() -> impl Parser<I, Output = char> {
     any_token_of(TokenType::Identifier)
         .filter(|token| token.text.chars().count() == 1)
         .map(token_to_char)
-        .map_incomplete_err(ParseError::expected("Expected: letter"))
+        .with_expected_message("Expected: letter")
 }
 
 fn token_to_char(token: Token) -> char {

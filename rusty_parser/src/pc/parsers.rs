@@ -3,8 +3,9 @@ use crate::pc::many::OneOrMoreParser;
 use crate::pc::mappers::{FnMapper, KeepLeftMapper, KeepRightMapper};
 use crate::pc::{
     AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndPC, AndThen, AndThenOkErr,
-    ChainParser, FilterMapParser, FilterParser, GuardPC, LoopWhile, MapIncompleteErrParser,
+    ChainParser, FilterMapParser, FilterParser, GuardPC, LoopWhile, MessageProvider,
     NoIncompleteParser, OrFailParser, OrParser, ParseResult, SurroundParser, Tokenizer, Undo,
+    WithExpectedMessage,
 };
 use crate::ParseError;
 
@@ -86,12 +87,12 @@ pub trait Parser<I: Tokenizer + 'static> {
         FnMapper::new(self, mapper)
     }
 
-    #[deprecated]
-    fn map_incomplete_err(self, err: ParseError) -> MapIncompleteErrParser<Self>
+    fn with_expected_message<F>(self, f: F) -> WithExpectedMessage<Self, F>
     where
         Self: Sized,
+        F: MessageProvider,
     {
-        MapIncompleteErrParser::new(self, err)
+        WithExpectedMessage::new(self, f)
     }
 
     #[deprecated]
@@ -144,9 +145,9 @@ pub trait Parser<I: Tokenizer + 'static> {
     fn parse_opt(&self, tokenizer: &mut I) -> ParseResult<Option<Self::Output>, ParseError> {
         match self.parse(tokenizer) {
             ParseResult::Ok(value) => ParseResult::Ok(Some(value)),
-            ParseResult::None | ParseResult::None | ParseResult::Err(ParseError::Expected(_)) => {
-                ParseResult::Ok(None)
-            }
+            ParseResult::None
+            | ParseResult::Err(ParseError::Incomplete)
+            | ParseResult::Err(ParseError::Expected(_)) => ParseResult::Ok(None),
             ParseResult::Err(err) => ParseResult::Err(err),
         }
     }

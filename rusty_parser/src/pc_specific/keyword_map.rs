@@ -1,6 +1,6 @@
 use crate::pc::{Parser, Tokenizer};
 use crate::pc_specific::{keyword_choice, keyword_syntax_error};
-use crate::{Keyword, ParseError};
+use crate::Keyword;
 
 pub fn keyword_map<I: Tokenizer + 'static, T, K>(mappings: K) -> impl Parser<I, Output = T>
 where
@@ -20,5 +20,5 @@ where
             }
             unreachable!()
         })
-        .map_incomplete_err(ParseError::Expected(err_msg))
+        .with_expected_message(err_msg)
 }

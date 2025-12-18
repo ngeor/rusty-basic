@@ -101,9 +101,7 @@ where
         Box::new(built_in_parser),
         Box::new(user_defined_type()),
     ])
-    .map_incomplete_err(ParseError::expected(
-        "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-    ))
+    .with_expected_message("Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier")
 }
 
 fn user_defined_type<I: Tokenizer + 'static, T>() -> impl Parser<I, Output = T>

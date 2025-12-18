@@ -15,7 +15,7 @@ use crate::var_name::var_name;
 /// A$(1 TO 2, 0 TO 10)
 /// A(1 TO 5) AS INTEGER
 pub fn dim_var_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = DimVarPos> {
-    dim_or_redim(array_dimensions::array_dimensions_p().allow_default())
+    dim_or_redim(array_dimensions::array_dimensions_p().or_default())
 }
 
 pub fn redim_var_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = DimVarPos> {

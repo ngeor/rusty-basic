@@ -51,7 +51,7 @@ impl ZeroOrMoreStatements {
         tokenizer: &mut I,
     ) -> ParseResult<bool, ParseError> {
         peek_token()
-            .flat_map_ok_none(
+            .flat_map_ok_none_closures(
                 |token| {
                     for k in &self.0 {
                         if k == &token {

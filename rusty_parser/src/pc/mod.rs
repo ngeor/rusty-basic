@@ -1,8 +1,6 @@
 //! base module contains functionality that can be extracted into a library,
 //! it's generic and not specific to QBasic
 mod accumulate;
-mod allow_default;
-mod allow_none;
 mod allow_none_if;
 mod and;
 mod any;
@@ -31,8 +29,6 @@ mod tokenizers;
 mod undo;
 
 pub use accumulate::*;
-pub use allow_default::*;
-pub use allow_none::*;
 pub use allow_none_if::*;
 pub use any::*;
 pub use chain::*;

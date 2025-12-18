@@ -23,7 +23,7 @@ fn array_indicator<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<(
         any_token_of(TokenType::LParen),
         any_token_of(TokenType::RParen).no_incomplete(),
     )
-    .allow_none()
+    .to_option()
 }
 
 fn built_in_extended_type<I: Tokenizer + 'static>() -> impl Parser<I, Output = ParamType> {

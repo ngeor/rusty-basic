@@ -13,7 +13,7 @@ pub fn for_loop_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement
         parse_for_step_p(),
         ZeroOrMoreStatements::new(Keyword::Next),
         keyword(Keyword::Next).or_fail(ParseError::ForWithoutNext),
-        next_counter_p().allow_none(),
+        next_counter_p().to_option(),
         |(variable_name, lower_bound, upper_bound, opt_step), statements, _, opt_next_name_pos| {
             Statement::ForLoop(ForLoop {
                 variable_name,

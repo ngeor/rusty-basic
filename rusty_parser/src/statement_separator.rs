@@ -75,7 +75,7 @@ pub fn no_separator_needed_before_comment<I: Tokenizer + 'static>() -> impl Pars
 }
 
 pub fn peek_eof_or_statement_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
-    peek_token().flat_map_ok_none(
+    peek_token().flat_map_ok_none_closures(
         |token| {
             if TokenType::Colon.matches(&token)
                 || TokenType::SingleQuote.matches(&token)
@@ -100,7 +100,7 @@ pub fn comments_and_whitespace_p<I: Tokenizer + 'static>(
         OptZip::new(comment_separator(), comment_as_string_p().with_pos())
             .one_or_more()
             .map(ZipValue::collect_right)
-            .allow_default(),
+            .or_default(),
     )
     .keep_right()
 }

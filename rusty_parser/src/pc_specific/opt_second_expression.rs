@@ -42,7 +42,7 @@ fn parse_second<I: Tokenizer + 'static>(
         .allow_none_if(is_paren)
         .and(keyword(k))
         .then_demand(ws_expr_pos_p().or_fail(err(k)))
-        .allow_none()
+        .to_option()
 }
 
 fn err(keyword: Keyword) -> ParseError {

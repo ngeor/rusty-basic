@@ -24,7 +24,7 @@ fn file_handles<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expressions
         guarded_file_handle_or_expression_p(),
         comma().then_demand(file_handle_or_expression_p()),
     )
-    .allow_default()
+    .or_default()
 }
 
 fn file_handle_or_expression_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {

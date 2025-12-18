@@ -1,6 +1,8 @@
 use crate::pc::*;
 use crate::{parser_declaration, ParseError};
 
+// Flat map the successful result.
+
 parser_declaration!(pub struct FlatMapPC<mapper: F>);
 
 impl<I: Tokenizer + 'static, P, F, U> Parser<I> for FlatMapPC<P, F>
@@ -14,10 +16,11 @@ where
     }
 }
 
-// Flat map Ok and None
-parser_declaration!(pub struct FlatMapOkNonePC<ok_mapper: F, incomplete_mapper: G>);
+// Flat map Ok and None using closures.
 
-impl<I: Tokenizer + 'static, P, F, G, U> Parser<I> for FlatMapOkNonePC<P, F, G>
+parser_declaration!(pub struct FlatMapOkNoneClosuresPC<ok_mapper: F, incomplete_mapper: G>);
+
+impl<I: Tokenizer + 'static, P, F, G, U> Parser<I> for FlatMapOkNoneClosuresPC<P, F, G>
 where
     P: Parser<I>,
     F: Fn(P::Output) -> ParseResult<U, ParseError>,

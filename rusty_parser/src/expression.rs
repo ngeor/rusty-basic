@@ -381,7 +381,7 @@ mod function_call_or_array_element {
 
     pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
         name_with_dots_as_tokens()
-            .and(in_parenthesis(csv(expression_pos_p()).allow_default()))
+            .and(in_parenthesis(csv(expression_pos_p()).or_default()))
             .map(|(name_as_tokens, arguments)| {
                 Expression::FunctionCall(name_as_tokens.into(), arguments)
             })
@@ -725,7 +725,7 @@ pub mod guard {
     }
 
     fn lparen_guard<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
-        peek_token().flat_map_ok_none(
+        peek_token().flat_map_ok_none_closures(
             |token| {
                 if TokenType::LParen.matches(&token) {
                     ParseResult::Ok(Guard::Peeked)

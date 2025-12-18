@@ -151,7 +151,7 @@ fn ensure_no_trailing_dot<I: Tokenizer + 'static, P>(
     parser: impl Parser<I, Output = P>,
 ) -> impl Parser<I, Output = P> {
     parser
-        .and_opt(peek_token().flat_map_ok_none(
+        .and_opt(peek_token().flat_map_ok_none_closures(
             |token| {
                 if TokenType::Dot.matches(&token) {
                     ParseResult::Err(ParseError::IdentifierCannotIncludePeriod)
@@ -170,7 +170,7 @@ fn ensure_no_trailing_qualifier<I: Tokenizer + 'static, P>(
     parser: impl Parser<I, Output = P>,
 ) -> impl Parser<I, Output = P> {
     parser
-        .and_opt(peek_token().flat_map_ok_none(
+        .and_opt(peek_token().flat_map_ok_none_closures(
             |token| {
                 if is_type_qualifier(&token) {
                     ParseResult::Err(ParseError::syntax_error(

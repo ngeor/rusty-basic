@@ -9,10 +9,10 @@ pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq6(
         keyword(Keyword::Open),
         ws_expr_pos_ws_p().or_syntax_error("Expected: file name after OPEN"),
-        parse_open_mode_p().allow_none(),
-        parse_open_access_p().allow_none(),
+        parse_open_mode_p().to_option(),
+        parse_open_access_p().to_option(),
         parse_file_number_p().or_syntax_error("Expected: AS file-number"),
-        parse_len_p().allow_none(),
+        parse_len_p().to_option(),
         |_, file_name, opt_file_mode, opt_file_access, file_number, opt_len| {
             Statement::BuiltInSubCall(
                 BuiltInSub::Open,

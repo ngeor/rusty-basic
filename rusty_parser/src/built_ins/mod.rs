@@ -97,13 +97,13 @@ fn map_opt_args_to_flags(args: Vec<Option<ExpressionPos>>) -> Expressions {
 fn csv_allow_missing<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<Option<ExpressionPos>>>
 {
     parse_delimited_to_items(opt_zip(expression_pos_p(), comma()), trailing_comma_error())
-        .allow_default()
+        .or_default()
 }
 
 /// Used in `INPUT` and `LINE INPUT`, parsing an optional file number.
 fn opt_file_handle_comma_p<I: Tokenizer + 'static>(
 ) -> impl Parser<I, Output = Option<Positioned<FileHandle>>> {
-    seq2(file_handle_p(), comma().no_incomplete(), |l, _| l).allow_none()
+    seq2(file_handle_p(), comma().no_incomplete(), |l, _| l).to_option()
 }
 
 /// Used in `INPUT` and `LINE INPUT`, converts an optional file-number into arguments.

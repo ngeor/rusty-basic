@@ -15,7 +15,7 @@ pub fn statement_return_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = S
         whitespace()
             .and(bare_name_with_dots())
             .keep_right()
-            .allow_none(),
+            .to_option(),
         |_, name| Statement::Return(name),
     )
 }

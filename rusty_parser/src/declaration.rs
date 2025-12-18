@@ -56,10 +56,10 @@ pub fn sub_declaration_p<I: Tokenizer + 'static>(
 fn declaration_parameters_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Parameters> {
     OptAndPC::new(
         whitespace(),
-        in_parenthesis(csv(parameter_pos_p()).allow_default()),
+        in_parenthesis(csv(parameter_pos_p()).or_default()),
     )
     .keep_right()
-    .allow_default()
+    .or_default()
 }
 
 #[cfg(test)]

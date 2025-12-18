@@ -1,11 +1,11 @@
-use crate::pc::and::{AndPC, AndWithoutUndoPC};
-use crate::pc::flat_map::{FlatMapOkNonePC, FlatMapPC};
-use crate::pc::many::OneOrMoreParser;
-use crate::pc::map::MapPC;
+use crate::pc::and::*;
+use crate::pc::flat_map::*;
+use crate::pc::many::*;
+use crate::pc::map::*;
 use crate::pc::{
-    AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, ChainParser, FilterMapParser,
-    FilterParser, LoopWhile, MessageProvider, NoIncompleteParser, OrFailParser, OrParser,
-    ParseResult, SurroundParser, Tokenizer, Undo, WithExpectedMessage,
+    AllowNoneIfParser, ChainParser, FilterMapParser, FilterParser, LoopWhile, MessageProvider,
+    NoIncompleteParser, OrFailParser, OrParser, ParseResult, SurroundParser, Tokenizer, Undo,
+    WithExpectedMessage,
 };
 use crate::ParseError;
 
@@ -59,7 +59,7 @@ pub trait Parser<I: Tokenizer + 'static> {
         Self: Sized,
         R: Parser<I>,
     {
-        self.and_without_undo(right.allow_none(), |left, right| (left, right))
+        self.and_without_undo(right.to_option(), |left, right| (left, right))
     }
 
     /// Parses the left side and returns the right side.
@@ -101,10 +101,36 @@ pub trait Parser<I: Tokenizer + 'static> {
         self.map(|(_, r)| r)
     }
 
+    /// Map the result of this parser for successful and incomplete results.
+    /// The given mapper implements [MapOk] which takes care of the mapping.
+    fn map_ok_trait<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
+    where
+        Self: Sized,
+        F: MapOk<Self::Output, U>,
+    {
+        MapOkNoneTraitPC::new(self, mapper)
+    }
+
+    fn to_option(self) -> impl Parser<I, Output = Option<Self::Output>>
+    where
+        Self: Sized,
+    {
+        self.map_ok_trait(MapToOption)
+    }
+
+    fn or_default(self) -> impl Parser<I, Output = Self::Output>
+    where
+        Self: Sized,
+        Self::Output: Default,
+    {
+        self.map_ok_trait(MapToDefault)
+    }
+
     /**
      * Flat Map
      */
 
+    /// Flat map the result of this parser for successful results.
     fn flat_map<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
     where
         Self: Sized,
@@ -114,9 +140,10 @@ pub trait Parser<I: Tokenizer + 'static> {
     }
 
     /// Flat map the result of this parser for successful and incomplete results.
+    /// Mapping is done by the given closures.
     /// Other errors are never allowed to be re-mapped.
     /// TODO: add some common helpers for incomplete_mapper == Ok(()) and incomplete_mapper == None
-    fn flat_map_ok_none<F, G, U>(
+    fn flat_map_ok_none_closures<F, G, U>(
         self,
         ok_mapper: F,
         incomplete_mapper: G,
@@ -126,15 +153,7 @@ pub trait Parser<I: Tokenizer + 'static> {
         F: Fn(Self::Output) -> ParseResult<U, ParseError>,
         G: Fn() -> ParseResult<U, ParseError>,
     {
-        FlatMapOkNonePC::new(self, ok_mapper, incomplete_mapper)
-    }
-
-    fn allow_none(self) -> impl Parser<I, Output = Option<Self::Output>>
-    where
-        Self: Sized,
-    {
-        // TODO should be possibe to use flat_map_ok_none here, so for now this stays in this group
-        AllowNoneParser::new(self) // self.flat_map_ok_none(|v| ParseResult::Ok(Some(v)), || ParseResult::Ok(None))
+        FlatMapOkNoneClosuresPC::new(self, ok_mapper, incomplete_mapper)
     }
 
     /**
@@ -214,22 +233,14 @@ pub trait Parser<I: Tokenizer + 'static> {
         AllowNoneIfParser::new(self, condition)
     }
 
-    fn allow_default(self) -> AllowDefaultParser<Self>
-    where
-        Self: Sized,
-        Self::Output: Default,
-    {
-        AllowDefaultParser::new(self)
-    }
-
-    fn zero_or_more(self) -> AllowDefaultParser<OneOrMoreParser<Self>>
+    fn zero_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>>
     where
         Self: Sized,
     {
-        self.one_or_more().allow_default()
+        self.one_or_more().or_default()
     }
 
-    fn one_or_more(self) -> OneOrMoreParser<Self>
+    fn one_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>>
     where
         Self: Sized,
     {

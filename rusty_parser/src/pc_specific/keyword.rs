@@ -8,7 +8,7 @@ fn dollar_sign_check<I: Tokenizer + 'static>(
     parser: impl Parser<I, Output = Token>,
 ) -> impl Parser<I, Output = Token> {
     parser
-        .and(peek_token().flat_map_ok_none(
+        .and(peek_token().flat_map_ok_none_closures(
             |t| {
                 if TokenType::DollarSign.matches(&t) {
                     ParseResult::None

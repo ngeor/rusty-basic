@@ -65,7 +65,7 @@ fn multi_line_if_p<I: Tokenizer + 'static>(
     seq4(
         ZeroOrMoreStatements::new_multi(vec![Keyword::End, Keyword::Else, Keyword::ElseIf]),
         else_if_block_p().zero_or_more(),
-        else_block_p().allow_none(),
+        else_block_p().to_option(),
         keyword_pair(Keyword::End, Keyword::If).no_incomplete(),
         |if_block, else_if_blocks, opt_else, _| (if_block, else_if_blocks, opt_else),
     )

@@ -38,7 +38,7 @@ impl<I: Tokenizer + 'static> Parser<I> for SubCallOrAssignment {
             _ => match expr_to_bare_name_args(name_expr) {
                 Ok((bare_name, Some(args))) => ParseResult::Ok(Statement::SubCall(bare_name, args)),
                 Ok((bare_name, None)) => expression::csv_expressions_first_guarded()
-                    .allow_default()
+                    .or_default()
                     .parse(tokenizer)
                     .map(|args| Statement::SubCall(bare_name, args)),
                 Err(err) => ParseResult::Err(err),

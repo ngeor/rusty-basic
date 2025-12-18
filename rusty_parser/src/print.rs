@@ -49,7 +49,7 @@ fn opt_using<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<Express
         semicolon().no_incomplete(),
         |_, using_expr, _| using_expr,
     )
-    .allow_none()
+    .to_option()
 }
 
 fn opt_file_handle_comma_p<I: Tokenizer + 'static>(
@@ -59,7 +59,7 @@ fn opt_file_handle_comma_p<I: Tokenizer + 'static>(
         comma().no_incomplete(),
         |file_handle, _| file_handle,
     )
-    .allow_none()
+    .to_option()
 }
 
 pub struct PrintArgsParser;
@@ -116,7 +116,7 @@ impl<I: Tokenizer + 'static> Parser<I> for PrintArgsParser {
 fn print_boundary<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
     whitespace()
         .map(|_| Guard::Whitespace)
-        .or(peek_token().flat_map_ok_none(
+        .or(peek_token().flat_map_ok_none_closures(
             |token| {
                 if TokenType::Comma.matches(&token)
                     || TokenType::Semicolon.matches(&token)

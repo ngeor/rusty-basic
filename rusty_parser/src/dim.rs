@@ -35,7 +35,7 @@ pub fn redim_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
 }
 
 fn opt_shared_keyword<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<(Token, Token)>> {
-    Seq2::new(keyword(Keyword::Shared), whitespace().no_incomplete()).allow_none()
+    Seq2::new(keyword(Keyword::Shared), whitespace().no_incomplete()).to_option()
 }
 
 #[cfg(test)]

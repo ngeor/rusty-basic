@@ -82,7 +82,7 @@ pub fn whitespace<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
 
 /// Optional whitespace.
 fn opt_whitespace<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<Token>> {
-    whitespace().allow_none()
+    whitespace().to_option()
 }
 
 pub fn digits<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {

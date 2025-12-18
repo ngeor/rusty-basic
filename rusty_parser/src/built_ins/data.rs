@@ -6,7 +6,7 @@ use crate::*;
 pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq2(
         keyword(Keyword::Data),
-        csv_expressions_first_guarded().allow_default(),
+        csv_expressions_first_guarded().or_default(),
         |_, args| Statement::BuiltInSubCall(BuiltInSub::Data, args),
     )
 }

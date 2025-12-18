@@ -7,7 +7,7 @@ use crate::*;
 pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     seq2(
         keyword_pair(Keyword::Def, Keyword::Seg),
-        equal_sign_and_expression().allow_none(),
+        equal_sign_and_expression().to_option(),
         |_, opt_expr_pos| {
             Statement::BuiltInSubCall(BuiltInSub::DefSeg, opt_expr_pos.into_iter().collect())
         },

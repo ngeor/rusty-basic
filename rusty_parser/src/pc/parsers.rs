@@ -20,13 +20,37 @@ pub trait Parser<I: Tokenizer + 'static> {
 
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError>;
 
-    // TODO #[deprecated]
+    /// Parses both the left and the right side.
+    /// If the right side fails, parsing of the left side is undone.
+    fn and<R>(self, right: R) -> AndPC<Self, R>
+    where
+        Self: Sized,
+        Self::Output: Undo,
+        R: Parser<I>,
+    {
+        AndPC::new(self, right)
+    }
+
+    /// Parses both the left and the right side.
+    /// Be careful: if the right side fails, parsing of the left side
+    /// is not undone. This should not be used unless it's certain
+    /// that the right side can't fail.
+    fn and_without_undo<R, F, O>(self, right: R, combiner: F) -> impl Parser<I, Output = O>
+    where
+        Self: Sized,
+        R: Parser<I>,
+        F: Fn(Self::Output, R::Output) -> O,
+    {
+        AndWithoutUndoPC::new(self, right, combiner)
+    }
+
+    /// Parses the left side and optionally the right side.
     fn and_opt<R>(self, right: R) -> impl Parser<I, Output = (Self::Output, Option<R::Output>)>
     where
         Self: Sized,
         R: Parser<I>,
     {
-        self.and_without_undo(right.allow_none())
+        self.and_without_undo(right.allow_none(), |left, right| (left, right))
     }
 
     fn and_then<F, U>(self, mapper: F) -> AndThen<Self, F>
@@ -161,23 +185,6 @@ pub trait Parser<I: Tokenizer + 'static> {
         Self::Output: Default,
     {
         AllowDefaultParser::new(self)
-    }
-
-    fn and<R>(self, right: R) -> AndPC<Self, R>
-    where
-        Self: Sized,
-        Self::Output: Undo,
-        R: Parser<I>,
-    {
-        AndPC::new(self, right)
-    }
-
-    fn and_without_undo<R>(self, right: R) -> AndWithoutUndoPC<Self, R>
-    where
-        Self: Sized,
-        R: Parser<I>,
-    {
-        AndWithoutUndoPC::new(self, right)
     }
 
     fn then_demand<R>(self, other: R) -> GuardPC<Self, R>

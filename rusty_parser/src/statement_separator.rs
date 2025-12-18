@@ -65,7 +65,7 @@ pub fn common_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()>
 
 pub fn no_separator_needed_before_comment<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
     // warning: cannot use filter_map because it will undo and we've already "undo" via "peek"
-    peek_token().and_then(|t| {
+    peek_token().flat_map(|t| {
         if TokenType::SingleQuote.matches(&t) {
             ParseResult::Ok(())
         } else {
@@ -75,7 +75,7 @@ pub fn no_separator_needed_before_comment<I: Tokenizer + 'static>() -> impl Pars
 }
 
 pub fn peek_eof_or_statement_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
-    peek_token().and_then_ok_err(
+    peek_token().flat_map_ok_none(
         |token| {
             if TokenType::Colon.matches(&token)
                 || TokenType::SingleQuote.matches(&token)

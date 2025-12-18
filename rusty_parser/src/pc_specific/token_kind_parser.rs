@@ -81,7 +81,7 @@ pub fn whitespace<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
 }
 
 /// Optional whitespace.
-pub fn opt_whitespace<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<Token>> {
+fn opt_whitespace<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<Token>> {
     whitespace().allow_none()
 }
 

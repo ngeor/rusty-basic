@@ -118,7 +118,7 @@ mod single_or_double_literal {
     pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
         OptAndPC::new(digits(), dot().then_demand(digits().no_incomplete()))
             .and_opt(pound())
-            .and_then(|((opt_integer_digits, frac_digits), opt_pound)| {
+            .flat_map(|((opt_integer_digits, frac_digits), opt_pound)| {
                 let left = opt_integer_digits
                     .map(|token| token.text)
                     .unwrap_or_else(|| "0".to_owned());
@@ -177,7 +177,7 @@ mod integer_or_long_literal {
     pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
         any_token()
             .filter(is_allowed_token)
-            .and_then(process_token)
+            .flat_map(process_token)
             .with_pos()
     }
 
@@ -403,7 +403,7 @@ pub mod property {
     // expr must not be qualified
 
     pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
-        Seq2::new(base_expr_pos_p(), dot_properties()).and_then(|(first_expr_pos, properties)| {
+        Seq2::new(base_expr_pos_p(), dot_properties()).flat_map(|(first_expr_pos, properties)| {
             if !properties.is_empty() && is_qualified(&first_expr_pos.element) {
                 // TODO do this check before parsing the properties
                 return ParseResult::Err(ParseError::syntax_error(
@@ -567,7 +567,7 @@ mod binary_expression {
                     .filter_map(Self::map_token_to_operator)
                     .with_pos(),
             )
-            .and_then(move |(leading_ws, op_pos)| {
+            .flat_map(move |(leading_ws, op_pos)| {
                 let had_whitespace = leading_ws.is_some();
                 let needs_whitespace = matches!(
                     &op_pos.element,
@@ -664,7 +664,7 @@ pub mod file_handle {
         // if # without digits -> SyntaxError (Expected: digits after #)
         any_token_of(TokenType::Pound)
             .and(any_token_of(TokenType::Digits).or_syntax_error("Expected: digits after #"))
-            .and_then(|(pound, digits)| match digits.text.parse::<u8>() {
+            .flat_map(|(pound, digits)| match digits.text.parse::<u8>() {
                 Ok(d) if d > 0 => ParseResult::Ok(FileHandle::from(d).at_pos(pound.pos)),
                 _ => ParseResult::Err(ParseError::BadFileNameOrNumber),
             })
@@ -725,7 +725,7 @@ pub mod guard {
     }
 
     fn lparen_guard<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
-        peek_token().and_then_ok_err(
+        peek_token().flat_map_ok_none(
             |token| {
                 if TokenType::LParen.matches(&token) {
                     ParseResult::Ok(Guard::Peeked)

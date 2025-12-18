@@ -1,10 +1,11 @@
 use crate::pc::and::{AndPC, AndWithoutUndoPC};
+use crate::pc::flat_map::{FlatMapOkNonePC, FlatMapPC};
 use crate::pc::many::OneOrMoreParser;
 use crate::pc::map::MapPC;
 use crate::pc::{
-    AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndThen, AndThenOkErr, ChainParser,
-    FilterMapParser, FilterParser, LoopWhile, MessageProvider, NoIncompleteParser, OrFailParser,
-    OrParser, ParseResult, SurroundParser, Tokenizer, Undo, WithExpectedMessage,
+    AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, ChainParser, FilterMapParser,
+    FilterParser, LoopWhile, MessageProvider, NoIncompleteParser, OrFailParser, OrParser,
+    ParseResult, SurroundParser, Tokenizer, Undo, WithExpectedMessage,
 };
 use crate::ParseError;
 
@@ -101,32 +102,44 @@ pub trait Parser<I: Tokenizer + 'static> {
     }
 
     /**
-     * Not reviewed yet
+     * Flat Map
      */
 
-    fn and_then<F, U>(self, mapper: F) -> AndThen<Self, F>
+    fn flat_map<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
     where
         Self: Sized,
         F: Fn(Self::Output) -> ParseResult<U, ParseError>,
     {
-        AndThen::new(self, mapper)
+        FlatMapPC::new(self, mapper)
     }
 
     /// Flat map the result of this parser for successful and incomplete results.
     /// Other errors are never allowed to be re-mapped.
     /// TODO: add some common helpers for incomplete_mapper == Ok(()) and incomplete_mapper == None
-    fn and_then_ok_err<F, G, U>(
+    fn flat_map_ok_none<F, G, U>(
         self,
         ok_mapper: F,
         incomplete_mapper: G,
-    ) -> AndThenOkErr<Self, F, G>
+    ) -> impl Parser<I, Output = U>
     where
         Self: Sized,
         F: Fn(Self::Output) -> ParseResult<U, ParseError>,
         G: Fn() -> ParseResult<U, ParseError>,
     {
-        AndThenOkErr::new(self, ok_mapper, incomplete_mapper)
+        FlatMapOkNonePC::new(self, ok_mapper, incomplete_mapper)
     }
+
+    fn allow_none(self) -> impl Parser<I, Output = Option<Self::Output>>
+    where
+        Self: Sized,
+    {
+        // TODO should be possibe to use flat_map_ok_none here, so for now this stays in this group
+        AllowNoneParser::new(self) // self.flat_map_ok_none(|v| ParseResult::Ok(Some(v)), || ParseResult::Ok(None))
+    }
+
+    /**
+     * Not reviewed yet
+     */
 
     fn filter<F>(self, predicate: F) -> FilterParser<Self, F>
     where
@@ -192,13 +205,6 @@ pub trait Parser<I: Tokenizer + 'static> {
         Self: Sized,
     {
         crate::pc::LoggingPC::new(self, tag.to_owned())
-    }
-
-    fn allow_none(self) -> AllowNoneParser<Self>
-    where
-        Self: Sized,
-    {
-        AllowNoneParser::new(self)
     }
 
     fn allow_none_if(self, condition: bool) -> AllowNoneIfParser<Self>

@@ -55,7 +55,7 @@ where
 {
     parser
         .loop_while(Delimited::has_delimiter)
-        .and_then(move |items| map_items(items, trailing_error.clone()))
+        .flat_map(move |items| map_items(items, trailing_error.clone()))
 }
 
 fn map_items<P, T>(items: Vec<P>, trailing_error: ParseError) -> ParseResult<Vec<T>, ParseError>

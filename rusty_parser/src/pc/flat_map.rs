@@ -1,11 +1,9 @@
-//! Mappers that are able to return an error
-
 use crate::pc::*;
 use crate::{parser_declaration, ParseError};
 
-parser_declaration!(pub struct AndThen<mapper: F>);
+parser_declaration!(pub struct FlatMapPC<mapper: F>);
 
-impl<I: Tokenizer + 'static, P, F, U> Parser<I> for AndThen<P, F>
+impl<I: Tokenizer + 'static, P, F, U> Parser<I> for FlatMapPC<P, F>
 where
     P: Parser<I>,
     F: Fn(P::Output) -> ParseResult<U, ParseError>,
@@ -16,10 +14,10 @@ where
     }
 }
 
-// Flat map Ok and None (Error-Incomplete)
-parser_declaration!(pub struct AndThenOkErr<ok_mapper: F, incomplete_mapper: G>);
+// Flat map Ok and None
+parser_declaration!(pub struct FlatMapOkNonePC<ok_mapper: F, incomplete_mapper: G>);
 
-impl<I: Tokenizer + 'static, P, F, G, U> Parser<I> for AndThenOkErr<P, F, G>
+impl<I: Tokenizer + 'static, P, F, G, U> Parser<I> for FlatMapOkNonePC<P, F, G>
 where
     P: Parser<I>,
     F: Fn(P::Output) -> ParseResult<U, ParseError>,

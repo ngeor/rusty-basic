@@ -63,7 +63,7 @@ fn next_statement<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalSta
                     .map(Some),
             ),
         ]))
-        .and_then(|opt| match opt {
+        .flat_map(|opt| match opt {
             // map the statement
             Some(s) => ParseResult::Ok(s),
             // map the EOF back to an incomplete result
@@ -94,7 +94,7 @@ mod separator {
     }
 
     fn raise_err<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
-        any_token().and_then(|t| {
+        any_token().flat_map(|t| {
             ParseResult::Err(ParseError::SyntaxError(format!("No separator: {}", t.text)))
         })
     }
@@ -125,7 +125,7 @@ fn ws_eol_col_zero_or_more<I: Tokenizer + 'static>() -> impl Parser<I, Output = 
 /// Otherwise it returns a syntax error.
 /// This is a failsafe to ensure we have parsed the entire input.
 fn demand_eof<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
-    any_token().and_then_ok_err(
+    any_token().flat_map_ok_none(
         |t| {
             ParseResult::Err(ParseError::SyntaxError(format!(
                 "Cannot parse, expected EOF {:?}",

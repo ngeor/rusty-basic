@@ -18,7 +18,7 @@ pub fn bare_name_without_dots<I: Tokenizer + 'static>() -> impl Parser<I, Output
 /// Parses an identifier token.
 /// Errors if it exceeds the maximum length of identifiers.
 pub fn identifier<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
-    any_token_of(TokenType::Identifier).and_then(ensure_token_length)
+    any_token_of(TokenType::Identifier).flat_map(ensure_token_length)
 }
 
 /// Parses a type qualifier character.
@@ -80,7 +80,7 @@ pub fn identifier_with_dots<I: Tokenizer + 'static>() -> impl Parser<I, Output =
                     left_list
                 },
             )
-            .and_then(ensure_token_list_length),
+            .flat_map(ensure_token_list_length),
         ),
         // otherwise just one identifier (max_length already checked)
         Box::new(identifier().map(|token| vec![token])),
@@ -151,7 +151,7 @@ fn ensure_no_trailing_dot<I: Tokenizer + 'static, P>(
     parser: impl Parser<I, Output = P>,
 ) -> impl Parser<I, Output = P> {
     parser
-        .and_opt(peek_token().and_then_ok_err(
+        .and_opt(peek_token().flat_map_ok_none(
             |token| {
                 if TokenType::Dot.matches(&token) {
                     ParseResult::Err(ParseError::IdentifierCannotIncludePeriod)
@@ -170,7 +170,7 @@ fn ensure_no_trailing_qualifier<I: Tokenizer + 'static, P>(
     parser: impl Parser<I, Output = P>,
 ) -> impl Parser<I, Output = P> {
     parser
-        .and_opt(peek_token().and_then_ok_err(
+        .and_opt(peek_token().flat_map_ok_none(
             |token| {
                 if is_type_qualifier(&token) {
                     ParseResult::Err(ParseError::syntax_error(

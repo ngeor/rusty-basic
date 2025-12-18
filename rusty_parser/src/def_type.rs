@@ -35,7 +35,7 @@ fn letter_range<I: Tokenizer + 'static>() -> impl Parser<I, Output = LetterRange
     letter()
         .no_incomplete()
         .and_opt(minus_sign().and(letter()))
-        .and_then(|(l, opt_r)| match opt_r {
+        .flat_map(|(l, opt_r)| match opt_r {
             Some((_, r)) => {
                 if l < r {
                     ParseResult::Ok(LetterRange::Range(l, r))

@@ -5,7 +5,6 @@ mod allow_default;
 mod allow_none;
 mod allow_none_if;
 mod and;
-mod and_opt;
 mod and_then;
 mod any;
 mod chain;

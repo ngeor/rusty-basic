@@ -78,9 +78,9 @@ impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
     type Output = Statements;
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         // must start with a separator (e.g. after a WHILE condition)
-        match common_separator().parse_opt(tokenizer) {
-            ParseResult::Ok(Some(_)) => { /*ok*/ }
-            ParseResult::None | ParseResult::Ok(None) | ParseResult::Expected(_) => {
+        match common_separator().parse(tokenizer) {
+            ParseResult::Ok(_) => { /*ok*/ }
+            ParseResult::None | ParseResult::Expected(_) => {
                 return ParseResult::Err(ParseError::syntax_error("Expected: end-of-statement"));
             }
             ParseResult::Err(err) => {
@@ -104,12 +104,12 @@ impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
 
             if state == 0 || state == 2 {
                 // looking for statement
-                match statement::statement_p().with_pos().parse_opt(tokenizer) {
-                    ParseResult::Ok(Some(statement_pos)) => {
+                match statement::statement_p().with_pos().parse(tokenizer) {
+                    ParseResult::Ok(statement_pos) => {
                         result.push(statement_pos);
                         state = 1;
                     }
-                    ParseResult::None | ParseResult::Ok(None) | ParseResult::Expected(_) => {
+                    ParseResult::None | ParseResult::Expected(_) => {
                         return ParseResult::Err(match &self.1 {
                             Some(custom_error) => custom_error.clone(),
                             _ => ParseError::syntax_error("Expected: statement"),
@@ -124,16 +124,16 @@ impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
                 let found_separator =
                     if let Some(Statement::Comment(_)) = result.last().map(|x| &x.element) {
                         // last element was comment
-                        match comment_separator().parse_opt(tokenizer) {
-                            ParseResult::Ok(opt) => opt.is_some(),
+                        match comment_separator().parse(tokenizer) {
+                            ParseResult::Ok(_) => true,
                             ParseResult::None | ParseResult::Expected(_) => false,
                             ParseResult::Err(err) => {
                                 return ParseResult::Err(err);
                             }
                         }
                     } else {
-                        match common_separator().parse_opt(tokenizer) {
-                            ParseResult::Ok(opt) => opt.is_some(),
+                        match common_separator().parse(tokenizer) {
+                            ParseResult::Ok(_) => true,
                             ParseResult::None | ParseResult::Expected(_) => false,
                             ParseResult::Err(err) => {
                                 return ParseResult::Err(err);

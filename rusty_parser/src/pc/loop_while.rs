@@ -13,13 +13,13 @@ where
         let mut result: Vec<P::Output> = vec![];
         let mut keep_going = true;
         while keep_going {
-            match self.parser.parse_opt(tokenizer) {
-                ParseResult::Ok(Some(item)) => {
+            match self.parser.parse(tokenizer) {
+                ParseResult::Ok(item) => {
                     keep_going = (self.predicate)(&item);
                     // push to the list regardless
                     result.push(item);
                 }
-                ParseResult::Ok(None) | ParseResult::None | ParseResult::Expected(_) => {
+                ParseResult::None | ParseResult::Expected(_) => {
                     keep_going = false;
                 }
                 ParseResult::Err(err) => return ParseResult::Err(err),

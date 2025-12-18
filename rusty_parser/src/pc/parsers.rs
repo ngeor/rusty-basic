@@ -1,11 +1,10 @@
-use crate::pc::and_opt::AndOptPC;
 use crate::pc::many::OneOrMoreParser;
 use crate::pc::mappers::{FnMapper, KeepLeftMapper, KeepRightMapper};
 use crate::pc::{
     AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndPC, AndThen, AndThenOkErr,
-    ChainParser, FilterMapParser, FilterParser, GuardPC, LoopWhile, MessageProvider,
-    NoIncompleteParser, OrFailParser, OrParser, ParseResult, SurroundParser, Tokenizer, Undo,
-    WithExpectedMessage,
+    AndWithoutUndoPC, ChainParser, FilterMapParser, FilterParser, GuardPC, LoopWhile,
+    MessageProvider, NoIncompleteParser, OrFailParser, OrParser, ParseResult, SurroundParser,
+    Tokenizer, Undo, WithExpectedMessage,
 };
 use crate::ParseError;
 
@@ -22,11 +21,12 @@ pub trait Parser<I: Tokenizer + 'static> {
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError>;
 
     // TODO #[deprecated]
-    fn and_opt<R>(self, right: R) -> AndOptPC<Self, R>
+    fn and_opt<R>(self, right: R) -> impl Parser<I, Output = (Self::Output, Option<R::Output>)>
     where
         Self: Sized,
+        R: Parser<I>,
     {
-        AndOptPC::new(self, right)
+        self.and_without_undo(right.allow_none())
     }
 
     fn and_then<F, U>(self, mapper: F) -> AndThen<Self, F>
@@ -141,15 +141,6 @@ pub trait Parser<I: Tokenizer + 'static> {
         crate::pc::LoggingPC::new(self, tag.to_owned())
     }
 
-    #[deprecated]
-    fn parse_opt(&self, tokenizer: &mut I) -> ParseResult<Option<Self::Output>, ParseError> {
-        match self.parse(tokenizer) {
-            ParseResult::Ok(value) => ParseResult::Ok(Some(value)),
-            ParseResult::None | ParseResult::Expected(_) => ParseResult::Ok(None),
-            ParseResult::Err(err) => ParseResult::Err(err),
-        }
-    }
-
     fn allow_none(self) -> AllowNoneParser<Self>
     where
         Self: Sized,
@@ -179,6 +170,14 @@ pub trait Parser<I: Tokenizer + 'static> {
         R: Parser<I>,
     {
         AndPC::new(self, right)
+    }
+
+    fn and_without_undo<R>(self, right: R) -> AndWithoutUndoPC<Self, R>
+    where
+        Self: Sized,
+        R: Parser<I>,
+    {
+        AndWithoutUndoPC::new(self, right)
     }
 
     fn then_demand<R>(self, other: R) -> GuardPC<Self, R>

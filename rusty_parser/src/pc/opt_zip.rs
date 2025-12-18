@@ -54,13 +54,13 @@ where
 {
     type Output = ZipValue<L::Output, R::Output>;
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
-        let opt_left = match self.left.parse_opt(tokenizer) {
-            ParseResult::Ok(x) => x,
+        let opt_left = match self.left.parse(tokenizer) {
+            ParseResult::Ok(x) => Some(x),
             ParseResult::None | ParseResult::Expected(_) => None,
             ParseResult::Err(err) => return ParseResult::Err(err),
         };
-        let opt_right = match self.right.parse_opt(tokenizer) {
-            ParseResult::Ok(x) => x,
+        let opt_right = match self.right.parse(tokenizer) {
+            ParseResult::Ok(x) => Some(x),
             ParseResult::None | ParseResult::Expected(_) => None,
             ParseResult::Err(err) => return ParseResult::Err(err),
         };

@@ -13,9 +13,9 @@ where
 {
     type Output = (Option<L::Output>, R::Output);
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
-        match self.left.parse_opt(tokenizer) {
+        match self.left.parse(tokenizer) {
             ParseResult::Ok(opt_leading) => match self.right.parse(tokenizer) {
-                ParseResult::Ok(right) => ParseResult::Ok((opt_leading, right)),
+                ParseResult::Ok(right) => ParseResult::Ok((Some(opt_leading), right)),
                 ParseResult::None => {
                     opt_leading.undo(tokenizer);
                     ParseResult::None

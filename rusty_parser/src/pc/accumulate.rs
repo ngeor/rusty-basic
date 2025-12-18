@@ -15,11 +15,11 @@ where
             let mut result: Vec<L::Output> = vec![];
             result.push(first);
             loop {
-                match self.right.parse_opt(tokenizer) {
-                    ParseResult::Ok(Some(next)) => {
+                match self.right.parse(tokenizer) {
+                    ParseResult::Ok(next) => {
                         result.push(next);
                     }
-                    ParseResult::Ok(None) | ParseResult::None | ParseResult::Expected(_) => {
+                    ParseResult::None | ParseResult::Expected(_) => {
                         break;
                     }
                     ParseResult::Err(err) => {

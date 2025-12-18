@@ -2,9 +2,9 @@ use crate::pc::many::OneOrMoreParser;
 use crate::pc::mappers::{FnMapper, KeepLeftMapper, KeepRightMapper};
 use crate::pc::{
     AllowDefaultParser, AllowNoneIfParser, AllowNoneParser, AndPC, AndThen, AndThenOkErr,
-    AndWithoutUndoPC, ChainParser, FilterMapParser, FilterParser, GuardPC, LoopWhile,
-    MessageProvider, NoIncompleteParser, OrFailParser, OrParser, ParseResult, SurroundParser,
-    Tokenizer, Undo, WithExpectedMessage,
+    AndWithoutUndoPC, ChainParser, FilterMapParser, FilterParser, LoopWhile, MessageProvider,
+    NoIncompleteParser, OrFailParser, OrParser, ParseResult, SurroundParser, Tokenizer, Undo,
+    WithExpectedMessage,
 };
 use crate::ParseError;
 
@@ -22,7 +22,7 @@ pub trait Parser<I: Tokenizer + 'static> {
 
     /// Parses both the left and the right side.
     /// If the right side fails, parsing of the left side is undone.
-    fn and<R>(self, right: R) -> AndPC<Self, R>
+    fn and<R>(self, right: R) -> impl Parser<I, Output = (Self::Output, R::Output)>
     where
         Self: Sized,
         Self::Output: Undo,
@@ -51,6 +51,19 @@ pub trait Parser<I: Tokenizer + 'static> {
         R: Parser<I>,
     {
         self.and_without_undo(right.allow_none(), |left, right| (left, right))
+    }
+
+    /// Parses the left side and returns the right side.
+    /// If the left does not succeed, the right is not parsed.
+    /// Be careful: If the right does not succeed, the left is not undone.
+    /// This should not be used unless it's certain that the right can't fail.
+    /// TODO use a NonOptParser here for the right side.
+    fn then_demand<R>(self, right: R) -> impl Parser<I, Output = R::Output>
+    where
+        Self: Sized,
+        R: Parser<I>,
+    {
+        self.and_without_undo(right, |_, right| right)
     }
 
     fn and_then<F, U>(self, mapper: F) -> AndThen<Self, F>
@@ -185,14 +198,6 @@ pub trait Parser<I: Tokenizer + 'static> {
         Self::Output: Default,
     {
         AllowDefaultParser::new(self)
-    }
-
-    fn then_demand<R>(self, other: R) -> GuardPC<Self, R>
-    where
-        Self: Sized,
-        R: Parser<I>,
-    {
-        GuardPC::new(self, other)
     }
 
     fn zero_or_more(self) -> AllowDefaultParser<OneOrMoreParser<Self>>

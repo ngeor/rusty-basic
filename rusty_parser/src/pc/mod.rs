@@ -10,7 +10,6 @@ mod any;
 mod chain;
 mod delimited;
 mod filter;
-mod guard;
 mod iif;
 #[cfg(debug_assertions)]
 mod logging;
@@ -41,7 +40,6 @@ pub use any::*;
 pub use chain::*;
 pub use delimited::*;
 pub use filter::*;
-pub use guard::*;
 pub use iif::*;
 #[cfg(debug_assertions)]
 pub use logging::*;

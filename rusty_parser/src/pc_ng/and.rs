@@ -35,6 +35,8 @@ where
                 }
                 // return original input here
                 ParseResult::None(_) => ParseResult::None(input),
+                // return original input here
+                ParseResult::Expected(_, s) => ParseResult::Expected(input, s),
                 ParseResult::Err(i, err) => ParseResult::Err(i, err),
             }
         })

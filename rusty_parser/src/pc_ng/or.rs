@@ -19,7 +19,7 @@ impl<I, O, E> Parser for Or<I, O, E> {
         for parser in &self.parsers {
             match parser.parse(input) {
                 ParseResult::Ok(i, result) => return ParseResult::Ok(i, result),
-                ParseResult::None(remaining) => {
+                ParseResult::None(remaining) | ParseResult::Expected(remaining, _) => {
                     input = remaining;
                 }
                 ParseResult::Err(i, err) => return ParseResult::Err(i, err),

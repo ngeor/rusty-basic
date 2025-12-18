@@ -1,6 +1,7 @@
 pub enum ParseResult<I, O, E> {
     Ok(I, O),
     None(I),
+    Expected(I, String),
     Err(I, E),
 }
 
@@ -12,6 +13,7 @@ impl<I, O, E> ParseResult<I, O, E> {
         match self {
             ParseResult::Ok(i, o) => f(i, o),
             ParseResult::None(i) => ParseResult::None(i),
+            ParseResult::Expected(i, s) => ParseResult::Expected(i, s),
             ParseResult::Err(i, e) => ParseResult::Err(i, e),
         }
     }
@@ -23,6 +25,7 @@ impl<I, O, E> ParseResult<I, O, E> {
         match self {
             ParseResult::Ok(i, o) => ParseResult::Ok(i, f(o)),
             ParseResult::None(i) => ParseResult::None(i),
+            ParseResult::Expected(i, s) => ParseResult::Expected(i, s),
             ParseResult::Err(i, e) => ParseResult::Err(i, e),
         }
     }

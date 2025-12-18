@@ -56,7 +56,7 @@ where
                 self.readers.push(remaining);
                 Some(token)
             }
-            crate::pc_ng::ParseResult::None(_) => None,
+            crate::pc_ng::ParseResult::None(_) | crate::pc_ng::ParseResult::Expected(_, _) => None,
             crate::pc_ng::ParseResult::Err(_, err) => {
                 panic!("temporary error in new tokenizer {:?}", err);
             }

@@ -21,7 +21,7 @@ where
     fn parse(&self, input: Self::Input) -> ParseResult<Self::Input, Self::Output, Self::Error> {
         match self.parser.parse(input) {
             ParseResult::Ok(i, result) => ParseResult::Ok(i, Some(result)),
-            ParseResult::None(i) => ParseResult::Ok(i, None),
+            ParseResult::None(i) | ParseResult::Expected(i, _) => ParseResult::Ok(i, None),
             ParseResult::Err(i, err) => ParseResult::Err(i, err),
         }
     }

@@ -35,7 +35,7 @@ where
                         input = i;
                         result = (self.accumulator)(result, value);
                     }
-                    ParseResult::None(i) => {
+                    ParseResult::None(i) | ParseResult::Expected(i, _) => {
                         input = i;
                         break;
                     }

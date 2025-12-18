@@ -1,40 +1,14 @@
 use crate::pc::{ParseResult, Parser, Tokenizer};
-use crate::{parser_declaration, ParseError, ParserErrorTrait};
-
-struct StaticErrorMapper {
-    target: ParseError,
-}
-
-impl StaticErrorMapper {
-    pub fn ensure_complete(target: ParseError) -> Self {
-        debug_assert!(!target.is_incomplete());
-        Self { target }
-    }
-
-    fn map_err(&self, err: ParseError) -> ParseError {
-        if err.is_incomplete() {
-            self.to_err()
-        } else {
-            err
-        }
-    }
-
-    fn to_err(&self) -> ParseError {
-        self.target.clone()
-    }
-}
+use crate::{parser_declaration, ParseError};
 
 pub struct OrFailParser<P> {
     parser: P,
-    static_error_mapper: StaticErrorMapper,
+    err: ParseError,
 }
 
 impl<P> OrFailParser<P> {
     pub fn new(parser: P, err: ParseError) -> Self {
-        Self {
-            parser,
-            static_error_mapper: StaticErrorMapper::ensure_complete(err),
-        }
+        Self { parser, err }
     }
 }
 
@@ -47,8 +21,8 @@ where
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             ParseResult::Ok(value) => ParseResult::Ok(value),
-            ParseResult::None => ParseResult::Err(self.static_error_mapper.to_err()),
-            ParseResult::Err(err) => ParseResult::Err(self.static_error_mapper.map_err(err)),
+            ParseResult::None | ParseResult::Expected(_) => ParseResult::Err(self.err.clone()),
+            ParseResult::Err(err) => ParseResult::Err(err),
         }
     }
 }
@@ -64,8 +38,9 @@ where
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             ParseResult::Ok(value) => ParseResult::Ok(value),
-            ParseResult::None => ParseResult::Err(ParseError::Failure),
-            ParseResult::Err(err) => ParseResult::Err(ParserErrorTrait::no_incomplete(err)),
+            ParseResult::None => ParseResult::Err(ParseError::syntax_error("Could not parse")),
+            ParseResult::Expected(s) => ParseResult::Err(ParseError::SyntaxError(s)),
+            ParseResult::Err(err) => ParseResult::Err(err),
         }
     }
 }
@@ -112,10 +87,7 @@ where
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.0.parse(tokenizer) {
             ParseResult::Ok(value) => ParseResult::Ok(value),
-            ParseResult::None => ParseResult::Err(ParseError::Expected(self.1.to_str())),
-            ParseResult::Err(err) if err.is_incomplete() => {
-                ParseResult::Err(ParseError::Expected(self.1.to_str()))
-            }
+            ParseResult::None | ParseResult::Expected(_) => ParseResult::Expected(self.1.to_str()),
             ParseResult::Err(err) => ParseResult::Err(err),
         }
     }

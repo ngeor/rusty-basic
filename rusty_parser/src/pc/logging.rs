@@ -65,6 +65,17 @@ where
                 );
                 ParseResult::None
             }
+            ParseResult::Expected(msg) => {
+                println!(
+                    "{}{} Expected {:?} current position {:?} peek token {}",
+                    indentation(),
+                    self.tag,
+                    msg,
+                    tokenizer.position(),
+                    peek_token(tokenizer)
+                );
+                ParseResult::Expected(msg)
+            }
             ParseResult::Err(err) => {
                 println!(
                     "{}{} Err {:?} current position {:?} peek token {}",

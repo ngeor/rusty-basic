@@ -26,9 +26,14 @@ where
                     left.undo(tokenizer);
                     ParseResult::None
                 }
+                ParseResult::Expected(s) => {
+                    left.undo(tokenizer);
+                    ParseResult::Expected(s)
+                }
                 ParseResult::Err(err) => ParseResult::Err(err),
             },
             ParseResult::None => ParseResult::None,
+            ParseResult::Expected(s) => ParseResult::Expected(s),
             ParseResult::Err(err) => ParseResult::Err(err),
         }
     }

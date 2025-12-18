@@ -1,6 +1,5 @@
 use crate::pc::*;
 use crate::ParseError;
-use crate::ParserErrorTrait;
 
 pub struct OrParser<I, O> {
     parsers: Vec<Box<dyn Parser<I, Output = O>>>,
@@ -17,12 +16,10 @@ impl<I: Tokenizer + 'static, O> Parser<I> for OrParser<I, O> {
     fn parse(&self, tokenizer: &mut I) -> ParseResult<O, ParseError> {
         for parser in &self.parsers {
             let result = parser.parse(tokenizer);
-            let mut is_incomplete_err = false;
-            if let ParseResult::Err(e) = &result {
-                is_incomplete_err = e.is_incomplete();
-            } else if let ParseResult::None = &result {
-                is_incomplete_err = true;
-            }
+            let is_incomplete_err = match &result {
+                ParseResult::None | ParseResult::Expected(_) => true,
+                _ => false,
+            };
 
             if is_incomplete_err {
                 continue;

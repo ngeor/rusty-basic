@@ -39,6 +39,7 @@ macro_rules! seq_pc {
                 let $first_type = match self.$first_type.parse(tokenizer) {
                     ParseResult::Ok(x) => x,
                     ParseResult::None => return ParseResult::None,
+                    ParseResult::Expected(s) => return ParseResult::Expected(s),
                     ParseResult::Err(err) => return ParseResult::Err(err),
                 };
 
@@ -46,7 +47,8 @@ macro_rules! seq_pc {
                     // but the rest are not
                     let $generic_type = match self.$generic_type.parse(tokenizer) {
                         ParseResult::Ok(x) => x,
-                        ParseResult::None => return ParseResult::Err($crate::ParseError::Failure),
+                        ParseResult::None => return ParseResult::Err($crate::ParseError::syntax_error("Could not parse")),
+                        ParseResult::Expected(s) => return ParseResult::Err($crate::ParseError::SyntaxError(s)),
                         ParseResult::Err(err) => return ParseResult::Err(err),
                     };
                 )+

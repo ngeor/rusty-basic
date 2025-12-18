@@ -43,53 +43,12 @@ pub enum ParseError {
 
     ElementNotDefined,
 
-    /// A special error message that indicates a failed expectation of a parser.
-    #[deprecated]
-    Expected(String),
-
-    #[deprecated]
-    Failure,
-
     LoopWithoutDo,
 }
 
 impl ParseError {
     pub fn syntax_error(msg: &str) -> Self {
         ParseError::SyntaxError(msg.to_string())
-    }
-
-    #[deprecated]
-    pub fn expected(msg: &str) -> Self {
-        ParseError::Expected(msg.to_owned())
-    }
-}
-
-pub trait ParserErrorTrait {
-    fn is_incomplete(&self) -> bool;
-
-    fn no_incomplete(self) -> Self;
-}
-
-impl ParserErrorTrait for ParseError {
-    fn is_incomplete(&self) -> bool {
-        matches!(self, Self::Expected(_))
-    }
-
-    fn no_incomplete(self) -> Self {
-        match self {
-            Self::Expected(s) => Self::SyntaxError(s),
-            _ => self,
-        }
-    }
-}
-
-impl<T, E: ParserErrorTrait> ParserErrorTrait for Result<T, E> {
-    fn is_incomplete(&self) -> bool {
-        matches!(self, Err(err) if err.is_incomplete())
-    }
-
-    fn no_incomplete(self) -> Self {
-        self.map_err(|err| err.no_incomplete())
     }
 }
 

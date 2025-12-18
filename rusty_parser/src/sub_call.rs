@@ -26,6 +26,7 @@ impl<I: Tokenizer + 'static> Parser<I> for SubCallOrAssignment {
         ) = match Self::name_and_opt_eq_sign().parse(tokenizer) {
             ParseResult::Ok(x) => x,
             ParseResult::None => return ParseResult::None,
+            ParseResult::Expected(err) => return ParseResult::Expected(err),
             ParseResult::Err(err) => return ParseResult::Err(err),
         };
 

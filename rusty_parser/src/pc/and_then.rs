@@ -1,7 +1,7 @@
 //! Mappers that are able to return an error
 
+use crate::pc::*;
 use crate::{parser_declaration, ParseError};
-use crate::{pc::*, ParserErrorTrait};
 
 parser_declaration!(pub struct AndThen<mapper: F>);
 
@@ -29,14 +29,8 @@ where
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             ParseResult::Ok(value) => (self.ok_mapper)(value),
-            ParseResult::None => (self.incomplete_mapper)(),
-            ParseResult::Err(err) => {
-                if err.is_incomplete() {
-                    (self.incomplete_mapper)()
-                } else {
-                    ParseResult::Err(err)
-                }
-            }
+            ParseResult::None | ParseResult::Expected(_) => (self.incomplete_mapper)(),
+            ParseResult::Err(err) => ParseResult::Err(err),
         }
     }
 }

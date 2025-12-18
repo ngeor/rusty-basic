@@ -1,5 +1,5 @@
 use crate::pc::{ParseResult, Parser, Tokenizer};
-use crate::{parser_declaration, ParseError, ParserErrorTrait};
+use crate::{parser_declaration, ParseError};
 parser_declaration!(
     pub struct AllowNoneIfParser {
         condition: bool,
@@ -21,7 +21,13 @@ where
                     ParseResult::None
                 }
             }
-            ParseResult::Err(err) if err.is_incomplete() && self.condition => ParseResult::Ok(None),
+            ParseResult::Expected(s) => {
+                if self.condition {
+                    ParseResult::Ok(None)
+                } else {
+                    ParseResult::Expected(s)
+                }
+            }
             ParseResult::Err(err) => ParseResult::Err(err),
         }
     }

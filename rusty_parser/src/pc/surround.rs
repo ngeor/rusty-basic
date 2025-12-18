@@ -1,4 +1,4 @@
-use crate::{pc::*, ParserErrorTrait};
+use crate::pc::*;
 
 pub struct SurroundParser<L, P, R> {
     left: L,
@@ -37,12 +37,11 @@ where
                     left.undo(tokenizer);
                     ParseResult::None
                 }
-                ParseResult::Err(err) => {
-                    if err.is_incomplete() {
-                        left.undo(tokenizer);
-                    }
-                    ParseResult::Err(err)
+                ParseResult::Expected(s) => {
+                    left.undo(tokenizer);
+                    ParseResult::Expected(s)
                 }
+                ParseResult::Err(err) => ParseResult::Err(err),
             })
     }
 }

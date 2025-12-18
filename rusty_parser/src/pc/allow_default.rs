@@ -1,5 +1,5 @@
 use crate::pc::{ParseResult, Parser, Tokenizer};
-use crate::{parser_declaration, ParseError, ParserErrorTrait};
+use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct AllowDefaultParser);
 
@@ -13,8 +13,7 @@ where
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             ParseResult::Ok(value) => ParseResult::Ok(value),
-            ParseResult::None => ParseResult::Ok(Self::Output::default()),
-            ParseResult::Err(err) if err.is_incomplete() => {
+            ParseResult::None | ParseResult::Expected(_) => {
                 ParseResult::Ok(Self::Output::default())
             }
             ParseResult::Err(err) => ParseResult::Err(err),

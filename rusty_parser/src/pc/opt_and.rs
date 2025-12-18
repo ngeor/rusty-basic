@@ -1,5 +1,5 @@
 use crate::pc::{ParseResult, Parser, Token, Tokenizer, Undo};
-use crate::{binary_parser_declaration, ParseError, ParserErrorTrait};
+use crate::{binary_parser_declaration, ParseError};
 
 // The left side is optional, the right is not.
 // If the right is missing, the left is reverted.
@@ -20,16 +20,16 @@ where
                     opt_leading.undo(tokenizer);
                     ParseResult::None
                 }
-                ParseResult::Err(err) if err.is_incomplete() => {
+                ParseResult::Expected(s) => {
                     opt_leading.undo(tokenizer);
-                    ParseResult::Err(err)
+                    ParseResult::Expected(s)
                 }
                 ParseResult::Err(err) => ParseResult::Err(err),
             },
-            ParseResult::None => match self.right.parse(tokenizer) {
+            ParseResult::None | ParseResult::Expected(_) => match self.right.parse(tokenizer) {
                 ParseResult::Ok(right) => ParseResult::Ok((None, right)),
                 ParseResult::None => ParseResult::None,
-                ParseResult::Err(err) if err.is_incomplete() => ParseResult::Err(err),
+                ParseResult::Expected(s) => ParseResult::Expected(s),
                 ParseResult::Err(err) => ParseResult::Err(err),
             },
             ParseResult::Err(err) => ParseResult::Err(err),

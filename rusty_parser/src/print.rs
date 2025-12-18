@@ -4,7 +4,7 @@ use crate::expression::{expression_pos_p, ws_expr_pos_p};
 use crate::pc::*;
 use crate::pc_specific::*;
 use crate::types::*;
-use crate::{ParseError, ParserErrorTrait};
+use crate::ParseError;
 use rusty_common::*;
 
 /// See [Print] for the definition.
@@ -101,10 +101,7 @@ impl<I: Tokenizer + 'static> Parser<I> for PrintArgsParser {
                     last_one_was_expression = next.is_expression();
                     result.push(next);
                 }
-                ParseResult::None => {
-                    break;
-                }
-                ParseResult::Err(err) if err.is_incomplete() => {
+                ParseResult::None | ParseResult::Expected(_) => {
                     break;
                 }
                 ParseResult::Err(err) => {

@@ -70,6 +70,7 @@ pub fn program_parser<I: Tokenizer + 'static>(reader: &mut I) -> Result<Program,
         ParseResult::None => {
             Err(ParseError::syntax_error("Could not parse program").at_pos(reader.position()))
         }
+        ParseResult::Expected(err) => Err(ParseError::SyntaxError(err).at_pos(reader.position())),
         ParseResult::Err(err) => Err(err.at_pos(reader.position())),
     }
 }

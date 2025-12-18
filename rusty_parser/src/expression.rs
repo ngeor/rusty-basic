@@ -483,7 +483,6 @@ mod binary_expression {
     use crate::pc_specific::{whitespace, SpecificTrait, TokenType};
     use crate::{
         ExpressionPos, ExpressionPosTrait, ExpressionTrait, Keyword, Operator, ParseError,
-        ParserErrorTrait,
     };
     use rusty_common::Positioned;
 
@@ -511,6 +510,7 @@ mod binary_expression {
             let first = match Self::non_bin_expr().parse(tokenizer) {
                 ParseResult::Ok(x) => x,
                 ParseResult::None => return ParseResult::None,
+                ParseResult::Expected(err) => return ParseResult::Expected(err),
                 ParseResult::Err(err) => return ParseResult::Err(err),
             };
 
@@ -524,14 +524,7 @@ mod binary_expression {
                         op == Operator::And || op == Operator::Or || op == Operator::Modulo;
                     match guard::parser().parse(tokenizer) {
                         ParseResult::Ok(_) => {}
-                        ParseResult::None => {
-                            if is_keyword_op {
-                                return ParseResult::Err(ParseError::syntax_error(
-                                    "Expected: whitespace or (",
-                                ));
-                            }
-                        }
-                        ParseResult::Err(err) if err.is_incomplete() => {
+                        ParseResult::None | ParseResult::Expected(_) => {
                             if is_keyword_op {
                                 return ParseResult::Err(ParseError::syntax_error(
                                     "Expected: whitespace or (",
@@ -547,8 +540,7 @@ mod binary_expression {
                         .parse(tokenizer)
                         .map(|right| first.apply_priority_order(right, op, op_pos))
                 }
-                ParseResult::None => ParseResult::Ok(first),
-                ParseResult::Err(err) if err.is_incomplete() => ParseResult::Ok(first),
+                ParseResult::None | ParseResult::Expected(_) => ParseResult::Ok(first),
                 ParseResult::Err(err) => ParseResult::Err(err),
             }
         }

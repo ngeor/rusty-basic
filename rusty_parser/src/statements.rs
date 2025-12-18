@@ -80,7 +80,7 @@ impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
         // must start with a separator (e.g. after a WHILE condition)
         match common_separator().parse_opt(tokenizer) {
             ParseResult::Ok(Some(_)) => { /*ok*/ }
-            ParseResult::None | ParseResult::Ok(None) => {
+            ParseResult::None | ParseResult::Ok(None) | ParseResult::Expected(_) => {
                 return ParseResult::Err(ParseError::syntax_error("Expected: end-of-statement"));
             }
             ParseResult::Err(err) => {
@@ -95,7 +95,7 @@ impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
             // while not found exit
             let found_exit = match self.found_exit(tokenizer) {
                 ParseResult::Ok(x) => x,
-                ParseResult::None => false,
+                ParseResult::None | ParseResult::Expected(_) => false,
                 ParseResult::Err(err) => return ParseResult::Err(err),
             };
             if found_exit {
@@ -109,7 +109,7 @@ impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
                         result.push(statement_pos);
                         state = 1;
                     }
-                    ParseResult::None | ParseResult::Ok(None) => {
+                    ParseResult::None | ParseResult::Ok(None) | ParseResult::Expected(_) => {
                         return ParseResult::Err(match &self.1 {
                             Some(custom_error) => custom_error.clone(),
                             _ => ParseError::syntax_error("Expected: statement"),
@@ -126,7 +126,7 @@ impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
                         // last element was comment
                         match comment_separator().parse_opt(tokenizer) {
                             ParseResult::Ok(opt) => opt.is_some(),
-                            ParseResult::None => false,
+                            ParseResult::None | ParseResult::Expected(_) => false,
                             ParseResult::Err(err) => {
                                 return ParseResult::Err(err);
                             }
@@ -134,7 +134,7 @@ impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
                     } else {
                         match common_separator().parse_opt(tokenizer) {
                             ParseResult::Ok(opt) => opt.is_some(),
-                            ParseResult::None => false,
+                            ParseResult::None | ParseResult::Expected(_) => false,
                             ParseResult::Err(err) => {
                                 return ParseResult::Err(err);
                             }

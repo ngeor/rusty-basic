@@ -13,10 +13,14 @@ impl StaticErrorMapper {
 
     fn map_err(&self, err: ParseError) -> ParseError {
         if err.is_incomplete() {
-            self.target.clone()
+            self.to_err()
         } else {
             err
         }
+    }
+
+    fn to_err(&self) -> ParseError {
+        self.target.clone()
     }
 }
 
@@ -43,9 +47,7 @@ where
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             ParseResult::Ok(value) => ParseResult::Ok(value),
-            ParseResult::None => {
-                ParseResult::Err(self.static_error_mapper.map_err(ParseError::Incomplete))
-            }
+            ParseResult::None => ParseResult::Err(self.static_error_mapper.to_err()),
             ParseResult::Err(err) => ParseResult::Err(self.static_error_mapper.map_err(err)),
         }
     }
@@ -62,9 +64,7 @@ where
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
             ParseResult::Ok(value) => ParseResult::Ok(value),
-            ParseResult::None => {
-                ParseResult::Err(ParserErrorTrait::no_incomplete(ParseError::Incomplete))
-            }
+            ParseResult::None => ParseResult::Err(ParseError::Failure),
             ParseResult::Err(err) => ParseResult::Err(ParserErrorTrait::no_incomplete(err)),
         }
     }

@@ -47,8 +47,9 @@ pub fn select_case_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statem
 
 /// Parses the `SELECT CASE expression` part
 fn select_case_expr_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
-    keyword_pair(Keyword::Select, Keyword::Case)
-        .then_demand(expression::ws_expr_pos_p().or_syntax_error("Expected: expression after CASE"))
+    keyword_pair(Keyword::Select, Keyword::Case).and_without_undo_keep_right(
+        expression::ws_expr_pos_p().or_syntax_error("Expected: expression after CASE"),
+    )
 }
 
 // SELECT CASE expr
@@ -75,7 +76,7 @@ fn case_blocks<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<CaseBloc
 
 fn case_block<I: Tokenizer + 'static>() -> impl Parser<I, Output = CaseBlock> {
     // CASE
-    keyword(Keyword::Case).then_demand(
+    keyword(Keyword::Case).and_without_undo_keep_right(
         continue_after_case().or_syntax_error("Expected 'case expression' or ELSE after CASE"),
     )
 }

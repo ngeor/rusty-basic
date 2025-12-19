@@ -5,7 +5,9 @@ use crate::*;
 
 pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     keyword(Keyword::Read)
-        .then_demand(csv_expressions_first_guarded().or_syntax_error("Expected: variable"))
+        .and_without_undo_keep_right(
+            csv_expressions_first_guarded().or_syntax_error("Expected: variable"),
+        )
         .map(|args| Statement::BuiltInSubCall(BuiltInSub::Read, args))
 }
 

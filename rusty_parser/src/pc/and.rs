@@ -2,15 +2,15 @@ use crate::pc::{ParseResult, Parser, Tokenizer, Undo};
 use crate::ParseError;
 
 //
-// And (with undo if the left parser supports it)
+// And (with undo)
 //
 
-pub struct AndPC<L, R, F> {
+pub struct And<L, R, F> {
     left: L,
     right: R,
     combiner: F,
 }
-impl<L, R, F> AndPC<L, R, F> {
+impl<L, R, F> And<L, R, F> {
     pub fn new(left: L, right: R, combiner: F) -> Self {
         Self {
             left,
@@ -20,7 +20,7 @@ impl<L, R, F> AndPC<L, R, F> {
     }
 }
 
-impl<I: Tokenizer + 'static, L, R, F, O> Parser<I> for AndPC<L, R, F>
+impl<I: Tokenizer + 'static, L, R, F, O> Parser<I> for And<L, R, F>
 where
     L: Parser<I>,
     L::Output: Undo,
@@ -49,12 +49,12 @@ where
     }
 }
 
-pub struct AndWithoutUndoPC<L, R, F> {
+pub struct AndWithoutUndo<L, R, F> {
     left: L,
     right: R,
     combiner: F,
 }
-impl<L, R, F> AndWithoutUndoPC<L, R, F> {
+impl<L, R, F> AndWithoutUndo<L, R, F> {
     pub fn new(left: L, right: R, combiner: F) -> Self {
         Self {
             left,
@@ -64,7 +64,7 @@ impl<L, R, F> AndWithoutUndoPC<L, R, F> {
     }
 }
 
-impl<I: Tokenizer + 'static, L, R, F, O> Parser<I> for AndWithoutUndoPC<L, R, F>
+impl<I: Tokenizer + 'static, L, R, F, O> Parser<I> for AndWithoutUndo<L, R, F>
 where
     L: Parser<I>,
     R: Parser<I>,

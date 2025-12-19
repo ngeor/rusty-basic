@@ -61,7 +61,7 @@ fn parse_open_access_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Posi
 // AS <ws+> expression
 // AS ( expression )
 fn parse_file_number_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
-    keyword(Keyword::As).then_demand(
+    keyword(Keyword::As).and_without_undo_keep_right(
         guarded_file_handle_or_expression_p().or_syntax_error("Expected: #file-number%"),
     )
 }

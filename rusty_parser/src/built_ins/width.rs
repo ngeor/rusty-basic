@@ -6,7 +6,7 @@ use rusty_common::*;
 
 pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Width)
-        .then_demand(csv_allow_missing())
+        .and_without_undo_keep_right(csv_allow_missing())
         .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args)))
 }
 

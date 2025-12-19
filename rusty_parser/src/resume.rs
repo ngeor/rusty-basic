@@ -10,7 +10,7 @@ use crate::{Keyword, ResumeOption, Statement};
 
 pub fn statement_resume_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     keyword(Keyword::Resume)
-        .then_demand(
+        .and_without_undo_keep_right(
             resume_option_p().or_syntax_error("Expected: label or NEXT or end-of-statement"),
         )
         .map(Statement::Resume)

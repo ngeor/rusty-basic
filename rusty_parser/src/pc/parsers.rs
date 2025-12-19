@@ -1,7 +1,7 @@
-use crate::pc::and::*;
-use crate::pc::flat_map::*;
-use crate::pc::many::*;
-use crate::pc::map::*;
+use crate::pc::and::{And, AndWithoutUndo};
+use crate::pc::flat_map::{FlatMap, FlatMapOkNoneClosures};
+use crate::pc::many::OneOrMoreParser;
+use crate::pc::map::{Map, MapOkNone, MapOkNoneTrait, MapToDefault, MapToOption};
 use crate::pc::{
     AllowNoneIfParser, ChainParser, FilterMapParser, FilterParser, LoopWhile, MessageProvider,
     NoIncompleteParser, OrFailParser, OrParser, ParseResult, SurroundParser, Tokenizer, Undo,
@@ -12,10 +12,6 @@ use crate::ParseError;
 // TODO make QError generic param too
 
 /// A parser uses a [Tokenizer] in order to produce a result.
-///
-/// There are two different types of failures:
-/// - incomplete: another parser might be able to succeed
-/// - fatal: all parsing should stop
 pub trait Parser<I: Tokenizer + 'static> {
     type Output;
 
@@ -34,7 +30,7 @@ pub trait Parser<I: Tokenizer + 'static> {
         R: Parser<I>,
         F: Fn(Self::Output, R::Output) -> O,
     {
-        AndPC::new(self, right, combiner)
+        And::new(self, right, combiner)
     }
 
     fn and_tuple<R>(self, right: R) -> impl Parser<I, Output = (Self::Output, R::Output)>
@@ -78,7 +74,20 @@ pub trait Parser<I: Tokenizer + 'static> {
         R: Parser<I>,
         F: Fn(Self::Output, R::Output) -> O,
     {
-        AndWithoutUndoPC::new(self, right, combiner)
+        AndWithoutUndo::new(self, right, combiner)
+    }
+
+    /// Parses the left side and returns the right side.
+    /// If the left does not succeed, the right is not parsed.
+    /// Be careful: If the right does not succeed, the left is not undone.
+    /// This should not be used unless it's certain that the right can't fail.
+    /// TODO use a NonOptParser here for the right side.
+    fn and_without_undo_keep_right<R>(self, right: R) -> impl Parser<I, Output = R::Output>
+    where
+        Self: Sized,
+        R: Parser<I>,
+    {
+        self.and_without_undo(right, |_, right| right)
     }
 
     /// Parses the left side and optionally the right side.
@@ -125,19 +134,6 @@ pub trait Parser<I: Tokenizer + 'static> {
         self.and_opt(right, |_, r| r)
     }
 
-    /// Parses the left side and returns the right side.
-    /// If the left does not succeed, the right is not parsed.
-    /// Be careful: If the right does not succeed, the left is not undone.
-    /// This should not be used unless it's certain that the right can't fail.
-    /// TODO use a NonOptParser here for the right side.
-    fn then_demand<R>(self, right: R) -> impl Parser<I, Output = R::Output>
-    where
-        Self: Sized,
-        R: Parser<I>,
-    {
-        self.and_without_undo(right, |_, right| right)
-    }
-
     /**
      * Map
      */
@@ -147,9 +143,10 @@ pub trait Parser<I: Tokenizer + 'static> {
         Self: Sized,
         F: Fn(Self::Output) -> U,
     {
-        MapPC::new(self, mapper)
+        Map::new(self, mapper)
     }
 
+    #[deprecated]
     fn keep_right<L, R>(self) -> impl Parser<I, Output = R>
     where
         Self: Sized + Parser<I, Output = (L, R)>,
@@ -158,20 +155,20 @@ pub trait Parser<I: Tokenizer + 'static> {
     }
 
     /// Map the result of this parser for successful and incomplete results.
-    /// The given mapper implements [MapOk] which takes care of the mapping.
-    fn map_ok_trait<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
+    /// The given mapper implements [MapOkNoneTrait] which takes care of the mapping.
+    fn map_ok_none<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
     where
         Self: Sized + 'static,
-        F: MapOk<Self::Output, U> + 'static,
+        F: MapOkNoneTrait<Self::Output, U> + 'static,
     {
-        MapOkNoneTraitPC::new(self, mapper)
+        MapOkNone::new(self, mapper)
     }
 
     fn to_option(self) -> impl Parser<I, Output = Option<Self::Output>>
     where
         Self: Sized + 'static,
     {
-        self.map_ok_trait(MapToOption)
+        self.map_ok_none(MapToOption)
     }
 
     fn or_default(self) -> impl Parser<I, Output = Self::Output>
@@ -179,7 +176,7 @@ pub trait Parser<I: Tokenizer + 'static> {
         Self: Sized + 'static,
         Self::Output: Default,
     {
-        self.map_ok_trait(MapToDefault)
+        self.map_ok_none(MapToDefault)
     }
 
     /**
@@ -192,7 +189,7 @@ pub trait Parser<I: Tokenizer + 'static> {
         Self: Sized,
         F: Fn(Self::Output) -> ParseResult<U, ParseError>,
     {
-        FlatMapPC::new(self, mapper)
+        FlatMap::new(self, mapper)
     }
 
     /// Flat map the result of this parser for successful and incomplete results.
@@ -209,7 +206,7 @@ pub trait Parser<I: Tokenizer + 'static> {
         F: Fn(Self::Output) -> ParseResult<U, ParseError>,
         G: Fn() -> ParseResult<U, ParseError>,
     {
-        FlatMapOkNoneClosuresPC::new(self, ok_mapper, incomplete_mapper)
+        FlatMapOkNoneClosures::new(self, ok_mapper, incomplete_mapper)
     }
 
     /**

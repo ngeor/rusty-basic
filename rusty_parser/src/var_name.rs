@@ -70,7 +70,7 @@ where
         // bare names might have an "AS" clause
         _ => OrParser::new(vec![Box::new(
             as_clause()
-                .then_demand(
+                .and_without_undo_keep_right(
                     iif_p(
                         has_dots,
                         built_in_extended_factory(),

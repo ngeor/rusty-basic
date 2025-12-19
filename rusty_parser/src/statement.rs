@@ -64,7 +64,7 @@ fn statement_label_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statem
 
 fn statement_go_to_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
-        .then_demand(bare_name_with_dots().or_syntax_error("Expected: label"))
+        .and_without_undo_keep_right(bare_name_with_dots().or_syntax_error("Expected: label"))
         .map(Statement::GoTo)
 }
 
@@ -116,7 +116,7 @@ mod system {
 
     pub fn parse_system_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
         keyword(Keyword::System)
-            .then_demand(
+            .and_without_undo_keep_right(
                 OptAndPC::new(whitespace(), peek_eof_or_statement_separator())
                     .or_syntax_error("Expected: end-of-statement"),
             )

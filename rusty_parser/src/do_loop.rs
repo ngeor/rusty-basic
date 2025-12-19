@@ -6,7 +6,7 @@ use crate::types::*;
 
 pub fn do_loop_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     keyword(Keyword::Do)
-        .then_demand(do_condition_top().or(do_condition_bottom()))
+        .and_without_undo_keep_right(do_condition_top().or(do_condition_bottom()))
         .map(Statement::DoLoop)
 }
 

@@ -26,7 +26,9 @@ pub fn csv_expressions_first_guarded<I: Tokenizer + 'static>(
 ) -> impl Parser<I, Output = Expressions> {
     AccumulateParser::new(
         ws_expr_pos_p(),
-        comma().then_demand(expression_pos_p().or_syntax_error("Expected: expression after comma")),
+        comma().and_without_undo_keep_right(
+            expression_pos_p().or_syntax_error("Expected: expression after comma"),
+        ),
     )
 }
 
@@ -116,26 +118,29 @@ mod single_or_double_literal {
     // TODO support more qualifiers besides '#'
 
     pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
-        OptAndPC::new(digits(), dot().then_demand(digits().no_incomplete()))
-            .and_opt_tuple(pound())
-            .flat_map(|((opt_integer_digits, frac_digits), opt_pound)| {
-                let left = opt_integer_digits
-                    .map(|token| token.text)
-                    .unwrap_or_else(|| "0".to_owned());
-                let s = format!("{}.{}", left, frac_digits.text);
-                if opt_pound.is_some() {
-                    match s.parse::<f64>() {
-                        Ok(f) => ParseResult::Ok(Expression::DoubleLiteral(f)),
-                        Err(err) => ParseResult::Err(err.into()),
-                    }
-                } else {
-                    match s.parse::<f32>() {
-                        Ok(f) => ParseResult::Ok(Expression::SingleLiteral(f)),
-                        Err(err) => ParseResult::Err(err.into()),
-                    }
+        OptAndPC::new(
+            digits(),
+            dot().and_without_undo_keep_right(digits().no_incomplete()),
+        )
+        .and_opt_tuple(pound())
+        .flat_map(|((opt_integer_digits, frac_digits), opt_pound)| {
+            let left = opt_integer_digits
+                .map(|token| token.text)
+                .unwrap_or_else(|| "0".to_owned());
+            let s = format!("{}.{}", left, frac_digits.text);
+            if opt_pound.is_some() {
+                match s.parse::<f64>() {
+                    Ok(f) => ParseResult::Ok(Expression::DoubleLiteral(f)),
+                    Err(err) => ParseResult::Err(err.into()),
                 }
-            })
-            .with_pos()
+            } else {
+                match s.parse::<f32>() {
+                    Ok(f) => ParseResult::Ok(Expression::SingleLiteral(f)),
+                    Err(err) => ParseResult::Err(err.into()),
+                }
+            }
+        })
+        .with_pos()
     }
 }
 
@@ -438,7 +443,9 @@ pub mod property {
     }
 
     fn dot_property<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Token, Option<Token>)> {
-        dot().then_demand(property().or_syntax_error("Expected: property name after dot"))
+        dot().and_without_undo_keep_right(
+            property().or_syntax_error("Expected: property name after dot"),
+        )
     }
 
     // cannot be followed by dot or type qualifier if qualified
@@ -629,7 +636,7 @@ mod unary_expression {
         minus_sign()
             .map(|_| UnaryOperator::Minus)
             .or(keyword(Keyword::Not)
-                .then_demand(guard::parser().no_incomplete())
+                .and_without_undo_keep_right(guard::parser().no_incomplete())
                 .map(|_| UnaryOperator::Not))
             .with_pos()
     }

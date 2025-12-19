@@ -41,7 +41,7 @@ fn parse_second<I: Tokenizer + 'static>(
     whitespace()
         .allow_none_if(is_paren)
         .and_tuple(keyword(k))
-        .then_demand(ws_expr_pos_p().or_fail(err(k)))
+        .and_without_undo_keep_right(ws_expr_pos_p().or_fail(err(k)))
         .to_option()
 }
 

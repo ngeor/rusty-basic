@@ -10,7 +10,7 @@ pub fn statement_on_error_go_to_p<I: Tokenizer + 'static>() -> impl Parser<I, Ou
         keyword_pair(Keyword::On, Keyword::Error),
         whitespace().no_incomplete(),
     )
-    .then_demand(
+    .and_without_undo_keep_right(
         next()
             .or(goto())
             .or_syntax_error("Expected: GOTO or RESUME"),
@@ -24,7 +24,7 @@ fn next<I: Tokenizer + 'static>() -> impl Parser<I, Output = OnErrorOption> {
 }
 
 fn goto<I: Tokenizer + 'static>() -> impl Parser<I, Output = OnErrorOption> {
-    keyword_followed_by_whitespace_p(Keyword::GoTo).then_demand(
+    keyword_followed_by_whitespace_p(Keyword::GoTo).and_without_undo_keep_right(
         goto_label()
             .or(goto_zero())
             .or_syntax_error("Expected: label or 0"),

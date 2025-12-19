@@ -22,7 +22,7 @@ pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
 fn file_handles<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expressions> {
     AccumulateParser::new(
         guarded_file_handle_or_expression_p(),
-        comma().then_demand(file_handle_or_expression_p()),
+        comma().and_without_undo_keep_right(file_handle_or_expression_p()),
     )
     .or_default()
 }

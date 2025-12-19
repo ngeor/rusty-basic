@@ -5,7 +5,7 @@ use crate::*;
 
 pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     keyword_pair(Keyword::View, Keyword::Print)
-        .then_demand(parse_args().or_default())
+        .and_without_undo_keep_right(parse_args().or_default())
         .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::ViewPrint, opt_args))
 }
 

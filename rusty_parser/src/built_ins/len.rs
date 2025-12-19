@@ -5,6 +5,6 @@ use crate::*;
 
 pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expression> {
     keyword(Keyword::Len)
-        .then_demand(in_parenthesis_csv_expressions_non_opt("Expected: variable"))
+        .and_without_undo_keep_right(in_parenthesis_csv_expressions_non_opt("Expected: variable"))
         .map(|v| Expression::BuiltInFunctionCall(BuiltInFunction::Len, v))
 }

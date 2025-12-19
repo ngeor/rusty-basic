@@ -52,9 +52,11 @@ fn single_line_if_else_p<I: Tokenizer + 'static>(
 }
 
 fn single_line_else_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statements> {
-    whitespace().and_tuple(keyword(Keyword::Else)).then_demand(
-        single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
-    )
+    whitespace()
+        .and_tuple(keyword(Keyword::Else))
+        .and_without_undo_keep_right(
+            single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
+        )
 }
 
 fn multi_line_if_p<I: Tokenizer + 'static>(
@@ -89,7 +91,7 @@ fn else_if_block_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Conditio
 }
 
 fn else_block_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statements> {
-    keyword(Keyword::Else).then_demand(ZeroOrMoreStatements::new(Keyword::End))
+    keyword(Keyword::Else).and_without_undo_keep_right(ZeroOrMoreStatements::new(Keyword::End))
 }
 
 #[cfg(test)]

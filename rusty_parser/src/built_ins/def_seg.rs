@@ -15,8 +15,9 @@ pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
 }
 
 fn equal_sign_and_expression<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
-    equal_sign()
-        .then_demand(expression_pos_p().or_syntax_error("Expected expression after equal sign"))
+    equal_sign().and_without_undo_keep_right(
+        expression_pos_p().or_syntax_error("Expected expression after equal sign"),
+    )
 }
 
 #[cfg(test)]

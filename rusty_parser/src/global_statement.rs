@@ -48,7 +48,7 @@ fn next_statements<I: Tokenizer + 'static>() -> impl Parser<I, Output = Program>
 
 fn next_statement<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalStatementPos> {
     separator::separator()
-        .then_demand(OrParser::new(vec![
+        .and_without_undo_keep_right(OrParser::new(vec![
             // need to detect EOF, because the separator we detected might have been the last EOL of the file
             Box::new(detect_eof().map(|_| None)),
             // otherwise it must be a statement

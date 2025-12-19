@@ -2,16 +2,14 @@
 // Map
 //
 
-use std::marker::PhantomData;
-
 use crate::pc::{ParseResult, Parser, Tokenizer};
 use crate::{parser_declaration, ParseError};
 
 // Map using the given function.
 
-parser_declaration!(pub struct MapPC<mapper: F>);
+parser_declaration!(pub struct Map<mapper: F>);
 
-impl<I: Tokenizer + 'static, P, F, U> Parser<I> for MapPC<P, F>
+impl<I: Tokenizer + 'static, P, F, U> Parser<I> for Map<P, F>
 where
     P: Parser<I>,
     F: Fn(P::Output) -> U,
@@ -26,15 +24,15 @@ where
 // Both Ok and None get mapped to an Ok value.
 // TODO Therefore this is a NonOptParser.
 
-pub struct MapOkNoneTraitPC<I: Tokenizer + 'static, O, U> {
+pub struct MapOkNone<I: Tokenizer + 'static, O, U> {
     parser: Box<dyn Parser<I, Output = O>>,
-    mapper: Box<dyn MapOk<O, U>>,
+    mapper: Box<dyn MapOkNoneTrait<O, U>>,
 }
 
-impl<I: Tokenizer + 'static, O, U> MapOkNoneTraitPC<I, O, U> {
+impl<I: Tokenizer + 'static, O, U> MapOkNone<I, O, U> {
     pub fn new(
         parser: impl Parser<I, Output = O> + 'static,
-        mapper: impl MapOk<O, U> + 'static,
+        mapper: impl MapOkNoneTrait<O, U> + 'static,
     ) -> Self {
         Self {
             parser: Box::new(parser),
@@ -43,7 +41,7 @@ impl<I: Tokenizer + 'static, O, U> MapOkNoneTraitPC<I, O, U> {
     }
 }
 
-impl<I: Tokenizer + 'static, O, U> Parser<I> for MapOkNoneTraitPC<I, O, U> {
+impl<I: Tokenizer + 'static, O, U> Parser<I> for MapOkNone<I, O, U> {
     type Output = U;
 
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
@@ -57,7 +55,7 @@ impl<I: Tokenizer + 'static, O, U> Parser<I> for MapOkNoneTraitPC<I, O, U> {
     }
 }
 
-pub trait MapOk<T, U> {
+pub trait MapOkNoneTrait<T, U> {
     fn map_ok(&self, value: T) -> U;
 
     fn map_none(&self) -> U;
@@ -65,7 +63,7 @@ pub trait MapOk<T, U> {
 
 pub struct MapToOption;
 
-impl<T> MapOk<T, Option<T>> for MapToOption {
+impl<T> MapOkNoneTrait<T, Option<T>> for MapToOption {
     fn map_ok(&self, value: T) -> Option<T> {
         Some(value)
     }
@@ -77,7 +75,7 @@ impl<T> MapOk<T, Option<T>> for MapToOption {
 
 pub struct MapToDefault;
 
-impl<T> MapOk<T, T> for MapToDefault
+impl<T> MapOkNoneTrait<T, T> for MapToDefault
 where
     T: Default,
 {

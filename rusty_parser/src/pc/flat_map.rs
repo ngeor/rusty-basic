@@ -3,9 +3,9 @@ use crate::{parser_declaration, ParseError};
 
 // Flat map the successful result.
 
-parser_declaration!(pub struct FlatMapPC<mapper: F>);
+parser_declaration!(pub struct FlatMap<mapper: F>);
 
-impl<I: Tokenizer + 'static, P, F, U> Parser<I> for FlatMapPC<P, F>
+impl<I: Tokenizer + 'static, P, F, U> Parser<I> for FlatMap<P, F>
 where
     P: Parser<I>,
     F: Fn(P::Output) -> ParseResult<U, ParseError>,
@@ -18,9 +18,9 @@ where
 
 // Flat map Ok and None using closures.
 
-parser_declaration!(pub struct FlatMapOkNoneClosuresPC<ok_mapper: F, incomplete_mapper: G>);
+parser_declaration!(pub struct FlatMapOkNoneClosures<ok_mapper: F, incomplete_mapper: G>);
 
-impl<I: Tokenizer + 'static, P, F, G, U> Parser<I> for FlatMapOkNoneClosuresPC<P, F, G>
+impl<I: Tokenizer + 'static, P, F, G, U> Parser<I> for FlatMapOkNoneClosures<P, F, G>
 where
     P: Parser<I>,
     F: Fn(P::Output) -> ParseResult<U, ParseError>,

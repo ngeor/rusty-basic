@@ -16,7 +16,7 @@ use crate::types::*;
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
 pub fn declaration_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalStatement> {
-    keyword_followed_by_whitespace_p(Keyword::Declare).then_demand(
+    keyword_followed_by_whitespace_p(Keyword::Declare).and_without_undo_keep_right(
         function_declaration_p()
             .map(|(n, p)| GlobalStatement::FunctionDeclaration(n, p))
             .or(sub_declaration_p().map(|(n, p)| GlobalStatement::SubDeclaration(n, p)))

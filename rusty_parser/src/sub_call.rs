@@ -9,47 +9,51 @@ use rusty_common::*;
 // SubCallArgsNoParenthesis ::= BareName<ws+>Expressions
 // SubCallArgsParenthesis   ::= BareName(Expressions)
 
-pub fn sub_call_or_assignment_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn sub_call_or_assignment_p() -> impl Parser<RcStringView, Output = Statement> {
     SubCallOrAssignment
 }
 
 struct SubCallOrAssignment;
 
-impl<I: Tokenizer + 'static> Parser<I> for SubCallOrAssignment {
+impl Parser<RcStringView> for SubCallOrAssignment {
     type Output = Statement;
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+    fn parse(
+        &self,
+        tokenizer: RcStringView,
+    ) -> ParseResult<RcStringView, Self::Output, ParseError> {
         let (
-            Positioned {
-                element: name_expr, ..
-            },
-            opt_equal_sign,
+            tokenizer,
+            (
+                Positioned {
+                    element: name_expr, ..
+                },
+                opt_equal_sign,
+            ),
         ) = match Self::name_and_opt_eq_sign().parse(tokenizer) {
-            ParseResult::Ok(x) => x,
-            ParseResult::None => return ParseResult::None,
-            ParseResult::Expected(err) => return ParseResult::Expected(err),
-            ParseResult::Err(err) => return ParseResult::Err(err),
+            Ok(x) => x,
+            Err(err) => return Err(err),
         };
 
         match opt_equal_sign {
             Some(_) => expression::expression_pos_p()
                 .or_syntax_error("Expected: expression for assignment")
                 .parse(tokenizer)
-                .map(|right_side_expr| Statement::Assignment(name_expr, right_side_expr)),
+                .map_ok(|right_side_expr| Statement::Assignment(name_expr, right_side_expr)),
             _ => match expr_to_bare_name_args(name_expr) {
-                Ok((bare_name, Some(args))) => ParseResult::Ok(Statement::SubCall(bare_name, args)),
+                Ok((bare_name, Some(args))) => Ok((tokenizer, Statement::SubCall(bare_name, args))),
                 Ok((bare_name, None)) => expression::csv_expressions_first_guarded()
                     .or_default()
                     .parse(tokenizer)
-                    .map(|args| Statement::SubCall(bare_name, args)),
-                Err(err) => ParseResult::Err(err),
+                    .map_ok(|args| Statement::SubCall(bare_name, args)),
+                Err(err) => Err((true, tokenizer, err)),
             },
         }
     }
 }
 
 impl SubCallOrAssignment {
-    fn name_and_opt_eq_sign<I: Tokenizer + 'static>(
-    ) -> impl Parser<I, Output = (ExpressionPos, Option<Token>)> {
+    fn name_and_opt_eq_sign() -> impl Parser<RcStringView, Output = (ExpressionPos, Option<Token>)>
+    {
         expression::property::parser().and_opt_tuple(equal_sign())
     }
 }

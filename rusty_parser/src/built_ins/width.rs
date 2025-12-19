@@ -4,7 +4,7 @@ use crate::pc_specific::*;
 use crate::*;
 use rusty_common::*;
 
-pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Width)
         .and_without_undo_keep_right(csv_allow_missing())
         .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args)))

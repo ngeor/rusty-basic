@@ -3,7 +3,7 @@ use crate::pc::*;
 use crate::pc_specific::*;
 use crate::*;
 
-pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     keyword(Keyword::Read)
         .and_without_undo_keep_right(
             csv_expressions_first_guarded().or_syntax_error("Expected: variable"),

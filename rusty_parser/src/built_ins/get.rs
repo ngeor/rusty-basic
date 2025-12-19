@@ -4,14 +4,14 @@ use crate::pc::*;
 use crate::pc_specific::*;
 use crate::*;
 
-pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     parse_get_or_put(Keyword::Get, BuiltInSub::Get)
 }
 
-pub fn parse_get_or_put<I: Tokenizer + 'static>(
+pub fn parse_get_or_put(
     k: Keyword,
     built_in_sub: BuiltInSub,
-) -> impl Parser<I, Output = Statement> {
+) -> impl Parser<RcStringView, Output = Statement> {
     seq5(
         keyword(k),
         whitespace().no_incomplete(),

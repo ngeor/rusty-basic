@@ -49,7 +49,12 @@ pub trait DemandSingle<T> {
 
 impl<T> DemandSingle<T> for Vec<T> {
     fn demand_single(mut self) -> T {
-        assert_eq!(1, self.len());
+        assert_eq!(
+            self.len(),
+            1,
+            "Expected single element, found {}",
+            self.len()
+        );
         self.pop().unwrap()
     }
 }

@@ -25,16 +25,16 @@ use crate::{
 /// - `T`: The type of the variable (e.g. [DimType], [ParamType])
 /// - `A`: The type of the array indicator
 /// - `P`: The parser that parses `T` for extended built-in types.
-pub fn var_name<I: Tokenizer + 'static, T, A, P>(
-    array_p: impl Parser<I, Output = A>,
+pub fn var_name<T, A, P>(
+    array_p: impl Parser<RcStringView, Output = A>,
     built_in_extended_factory: fn() -> P,
-) -> impl Parser<I, Output = TypedName<T>>
+) -> impl Parser<RcStringView, Output = TypedName<T>>
 where
     T: Clone + Default + 'static,
     T: VarTypeNewBuiltInCompact,
     T: VarTypeNewUserDefined,
     T: VarTypeToArray<ArrayType = A>,
-    P: Parser<I, Output = T> + 'static,
+    P: Parser<RcStringView, Output = T> + 'static,
 {
     Seq2::new(name_with_dots(), array_p).chain(
         move |(name, _)| name_chain(name, built_in_extended_factory),
@@ -51,16 +51,16 @@ where
 ///
 /// The parameters `name` and `array_param` have already been parsed by [var_name].
 /// The `built_in_extended_factory` parses extended types (but only built-in).
-fn name_chain<I: Tokenizer + 'static, T, F, P>(
+fn name_chain<T, F, P>(
     name: &Name,
     built_in_extended_factory: F,
-) -> impl Parser<I, Output = T>
+) -> impl Parser<RcStringView, Output = T>
 where
     T: Clone + Default + 'static,
     T: VarTypeNewBuiltInCompact,
     T: VarTypeNewUserDefined,
     F: Fn() -> P,
-    P: Parser<I, Output = T> + 'static,
+    P: Parser<RcStringView, Output = T> + 'static,
 {
     let has_dots = name.bare_name().contains('.');
     match name.qualifier() {
@@ -83,7 +83,7 @@ where
     }
 }
 
-fn as_clause<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Token, Token, Token)> {
+fn as_clause() -> impl Parser<RcStringView, Output = (Token, Token, Token)> {
     seq2(
         whitespace().and_tuple(keyword(Keyword::As)),
         whitespace().no_incomplete(),
@@ -91,11 +91,11 @@ fn as_clause<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Token, Token,
     )
 }
 
-fn any_extended<I: Tokenizer + 'static, T: 'static>(
-    built_in_parser: impl Parser<I, Output = T> + 'static,
-) -> impl Parser<I, Output = T>
+fn any_extended<T>(
+    built_in_parser: impl Parser<RcStringView, Output = T> + 'static,
+) -> impl Parser<RcStringView, Output = T>
 where
-    T: VarTypeNewUserDefined,
+    T: VarTypeNewUserDefined + 'static,
 {
     OrParser::new(vec![
         Box::new(built_in_parser),
@@ -104,7 +104,7 @@ where
     .with_expected_message("Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier")
 }
 
-fn user_defined_type<I: Tokenizer + 'static, T>() -> impl Parser<I, Output = T>
+fn user_defined_type<T>() -> impl Parser<RcStringView, Output = T>
 where
     T: VarTypeNewUserDefined,
 {
@@ -121,11 +121,11 @@ fn once_p<V>(value: V) -> Once<V> {
 
 struct Once<V>(V);
 
-impl<I: Tokenizer + 'static, V: Clone> Parser<I> for Once<V> {
+impl<V: Clone> Parser<RcStringView> for Once<V> {
     type Output = V;
 
-    fn parse(&self, _: &mut I) -> ParseResult<Self::Output, ParseError> {
+    fn parse(&self, input: RcStringView) -> ParseResult<RcStringView, Self::Output, ParseError> {
         // TODO remove the need for clone
-        ParseResult::Ok(self.0.clone())
+        Ok((input, self.0.clone()))
     }
 }

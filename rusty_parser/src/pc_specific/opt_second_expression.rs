@@ -1,5 +1,5 @@
 use crate::expression::ws_expr_pos_p;
-use crate::pc::{And, AndWithoutUndo, MapOkNone, Parser, Tokenizer};
+use crate::pc::{And, AndWithoutUndo, Parser, RcStringView, ToOption};
 use crate::pc_specific::{keyword, whitespace};
 use crate::types::Keyword;
 use crate::{ExpressionPos, ExpressionTrait, ParseError};
@@ -16,12 +16,12 @@ impl ExtractExpression for ExpressionPos {
     }
 }
 
-pub fn opt_second_expression_after_keyword<I: Tokenizer + 'static, P>(
+pub fn opt_second_expression_after_keyword<P>(
     parser: P,
     keyword: Keyword,
-) -> impl Parser<I, Output = (P::Output, Option<ExpressionPos>)>
+) -> impl Parser<RcStringView, Output = (P::Output, Option<ExpressionPos>)>
 where
-    P: Parser<I>,
+    P: Parser<RcStringView>,
     P::Output: ExtractExpression,
 {
     parser.chain(
@@ -34,10 +34,10 @@ where
     )
 }
 
-fn parse_second<I: Tokenizer + 'static>(
+fn parse_second(
     k: Keyword,
     is_paren: bool,
-) -> impl Parser<I, Output = Option<ExpressionPos>> {
+) -> impl Parser<RcStringView, Output = Option<ExpressionPos>> {
     whitespace()
         .allow_none_if(is_paren)
         .and_tuple(keyword(k))

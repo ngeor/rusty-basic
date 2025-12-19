@@ -26,7 +26,7 @@ macro_rules! seq_pc {
             }
         }
 
-        impl <I: Tokenizer + 'static, $first_type, $($generic_type),+> Parser<I> for $name <$first_type, $($generic_type),+>
+        impl <I,$first_type, $($generic_type),+> Parser<I> for $name <$first_type, $($generic_type),+>
         where
             $first_type: Parser<I>,
             $($generic_type: Parser<I>),+
@@ -34,35 +34,34 @@ macro_rules! seq_pc {
             type Output = ($first_type::Output, $(<$generic_type as Parser<I>>::Output),+ );
 
             #[allow(non_snake_case)]
-            fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, $crate::ParseError> {
+            fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, $crate::ParseError> {
                 // the first is allowed to return incomplete
-                let $first_type = match self.$first_type.parse(tokenizer) {
-                    ParseResult::Ok(x) => x,
-                    ParseResult::None => return ParseResult::None,
-                    ParseResult::Expected(s) => return ParseResult::Expected(s),
-                    ParseResult::Err(err) => return ParseResult::Err(err),
+                let (tokenizer, $first_type) = match self.$first_type.parse(tokenizer) {
+                    Ok(x) => x,
+                    Err(err) => return Err(err),
                 };
 
                 $(
                     // but the rest are not
-                    let $generic_type = match self.$generic_type.parse(tokenizer) {
-                        ParseResult::Ok(x) => x,
-                        ParseResult::None => return ParseResult::Err($crate::ParseError::syntax_error("Could not parse")),
-                        ParseResult::Expected(s) => return ParseResult::Err($crate::ParseError::SyntaxError(s)),
-                        ParseResult::Err(err) => return ParseResult::Err(err),
+                    let (tokenizer, $generic_type) = match self.$generic_type.parse(tokenizer) {
+                        Ok(x) => x,
+                        Err(err) => return Err(err),
                     };
                 )+
-                ParseResult::Ok(
+                Ok(
                     (
-                        $first_type,
-                        $($generic_type),+
+                        tokenizer,
+                        (
+                            $first_type,
+                            $($generic_type),+
+                        )
                     )
                 )
             }
         }
 
         #[allow(non_snake_case)]
-        pub fn $map_fn_name<I: Tokenizer + 'static, $first_type, $($generic_type),+, _F, _O>(
+        pub fn $map_fn_name<I,$first_type, $($generic_type),+, _F, _O>(
             $first_type: $first_type, $($generic_type: $generic_type),+, mapper: _F
         ) -> impl Parser<I, Output = _O>
         where
@@ -83,7 +82,7 @@ macro_rules! seq_pc {
         seq_pc!(pub struct $name<$first_type, $($generic_type),+> ; fn $map_fn_name);
 
         #[allow(non_snake_case)]
-        pub fn $map_fn_name_non_opt<I: Tokenizer + 'static, $first_type, $($generic_type),+, _F, _O>(
+        pub fn $map_fn_name_non_opt<I,$first_type, $($generic_type),+, _F, _O>(
             $first_type: $first_type, $($generic_type: $generic_type),+, mapper: _F
         ) -> impl Parser<I, Output = _O>
         where

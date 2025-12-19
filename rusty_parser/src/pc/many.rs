@@ -1,37 +1,51 @@
-//
-// Many
-//
+use crate::{
+    pc::{ParseResult, ParseResultTrait, Parser},
+    ParseError,
+};
 
-use crate::pc::{ParseResult, Parser, Tokenizer};
-use crate::{parser_declaration, ParseError};
+pub struct Many<P, S, A> {
+    parser: P,
+    seed: S,
+    accumulator: A,
+}
 
-parser_declaration!(pub struct OneOrMoreParser);
+impl<P, S, A> Many<P, S, A> {
+    pub fn new(parser: P, seed: S, accumulator: A) -> Self {
+        Many {
+            parser,
+            seed,
+            accumulator,
+        }
+    }
+}
 
-impl<I: Tokenizer + 'static, P> Parser<I> for OneOrMoreParser<P>
+impl<I, P, S, A, O> Parser<I> for Many<P, S, A>
 where
     P: Parser<I>,
+    S: Fn(P::Output) -> O,
+    A: Fn(O, P::Output) -> O,
 {
-    type Output = Vec<P::Output>;
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
-        let mut result: Vec<P::Output> = Vec::new();
-        loop {
-            match self.parser.parse(tokenizer) {
-                ParseResult::Ok(value) => {
-                    result.push(value);
-                }
-                ParseResult::None | ParseResult::Expected(_) => {
-                    break;
-                }
-                ParseResult::Err(err) => {
-                    return ParseResult::Err(err);
+    type Output = O;
+
+    fn parse(&self, input: I) -> ParseResult<I, Self::Output, ParseError> {
+        self.parser.parse(input).flat_map(|mut input, first_value| {
+            let mut result = (self.seed)(first_value);
+            loop {
+                match self.parser.parse(input) {
+                    Ok((i, value)) => {
+                        input = i;
+                        result = (self.accumulator)(result, value);
+                    }
+                    Err((false, i, _)) => {
+                        input = i;
+                        break;
+                    }
+                    Err(e) => {
+                        return Err(e);
+                    }
                 }
             }
-        }
-
-        if result.is_empty() {
-            ParseResult::None
-        } else {
-            ParseResult::Ok(result)
-        }
+            Ok((input, result))
+        })
     }
 }

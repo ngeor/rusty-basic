@@ -4,13 +4,13 @@ use crate::pc_specific::*;
 use crate::statements::*;
 use crate::types::*;
 
-pub fn do_loop_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn do_loop_p() -> impl Parser<RcStringView, Output = Statement> {
     keyword(Keyword::Do)
         .and_without_undo_keep_right(do_condition_top().or(do_condition_bottom()))
         .map(Statement::DoLoop)
 }
 
-fn do_condition_top<I: Tokenizer + 'static>() -> impl Parser<I, Output = DoLoop> {
+fn do_condition_top() -> impl Parser<RcStringView, Output = DoLoop> {
     seq4(
         whitespace().and_tuple(keyword_choice(vec![Keyword::Until, Keyword::While])),
         ws_expr_pos_p().or_syntax_error("Expected: expression"),
@@ -29,7 +29,7 @@ fn do_condition_top<I: Tokenizer + 'static>() -> impl Parser<I, Output = DoLoop>
     )
 }
 
-fn do_condition_bottom<I: Tokenizer + 'static>() -> impl Parser<I, Output = DoLoop> {
+fn do_condition_bottom() -> impl Parser<RcStringView, Output = DoLoop> {
     seq5_non_opt(
         ZeroOrMoreStatements::new(Keyword::Loop),
         keyword(Keyword::Loop).no_incomplete(),

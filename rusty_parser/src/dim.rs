@@ -3,7 +3,7 @@ use crate::pc_specific::*;
 use crate::{dim_name, DimList, Keyword, Statement};
 
 /// Parses DIM statement
-pub fn dim_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn dim_p() -> impl Parser<RcStringView, Output = Statement> {
     seq4(
         keyword(Keyword::Dim),
         whitespace().no_incomplete(),
@@ -19,7 +19,7 @@ pub fn dim_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
 }
 
 /// Parses REDIM statement
-pub fn redim_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn redim_p() -> impl Parser<RcStringView, Output = Statement> {
     seq4(
         keyword(Keyword::Redim),
         whitespace().no_incomplete(),
@@ -34,7 +34,7 @@ pub fn redim_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     )
 }
 
-fn opt_shared_keyword<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<(Token, Token)>> {
+fn opt_shared_keyword() -> impl Parser<RcStringView, Output = Option<(Token, Token)>> {
     Seq2::new(keyword(Keyword::Shared), whitespace().no_incomplete()).to_option()
 }
 

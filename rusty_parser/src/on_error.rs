@@ -5,7 +5,7 @@ use crate::pc_specific::*;
 use crate::{Expression, Keyword, OnErrorOption, ParseError, Statement};
 use rusty_common::Positioned;
 
-pub fn statement_on_error_go_to_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn statement_on_error_go_to_p() -> impl Parser<RcStringView, Output = Statement> {
     Seq2::new(
         keyword_pair(Keyword::On, Keyword::Error),
         whitespace().no_incomplete(),
@@ -18,12 +18,12 @@ pub fn statement_on_error_go_to_p<I: Tokenizer + 'static>() -> impl Parser<I, Ou
     .map(Statement::OnError)
 }
 
-fn next<I: Tokenizer + 'static>() -> impl Parser<I, Output = OnErrorOption> {
+fn next() -> impl Parser<RcStringView, Output = OnErrorOption> {
     // TODO implement a fn_map that ignores its input
     keyword_pair(Keyword::Resume, Keyword::Next).map(|_| OnErrorOption::Next)
 }
 
-fn goto<I: Tokenizer + 'static>() -> impl Parser<I, Output = OnErrorOption> {
+fn goto() -> impl Parser<RcStringView, Output = OnErrorOption> {
     keyword_followed_by_whitespace_p(Keyword::GoTo).and_without_undo_keep_right(
         goto_label()
             .or(goto_zero())
@@ -31,13 +31,17 @@ fn goto<I: Tokenizer + 'static>() -> impl Parser<I, Output = OnErrorOption> {
     )
 }
 
-fn goto_label<I: Tokenizer + 'static>() -> impl Parser<I, Output = OnErrorOption> {
+fn goto_label() -> impl Parser<RcStringView, Output = OnErrorOption> {
     bare_name_with_dots().map(OnErrorOption::Label)
 }
 
-fn goto_zero<I: Tokenizer + 'static>() -> impl Parser<I, Output = OnErrorOption> {
-    expression_pos_p().flat_map(|Positioned { element, .. }| match element {
-        Expression::IntegerLiteral(0) => ParseResult::Ok(OnErrorOption::Zero),
-        _ => ParseResult::Err(ParseError::syntax_error("Expected: label or 0")),
+fn goto_zero() -> impl Parser<RcStringView, Output = OnErrorOption> {
+    expression_pos_p().flat_map(|input, Positioned { element, .. }| match element {
+        Expression::IntegerLiteral(0) => Ok((input, OnErrorOption::Zero)),
+        _ => Err((
+            true,
+            input,
+            ParseError::syntax_error("Expected: label or 0"),
+        )),
     })
 }

@@ -25,13 +25,3 @@ pub fn token_list_to_string(tokens: TokenList) -> String {
 pub fn token_list_to_bare_name(tokens: TokenList) -> BareName {
     BareName::new(token_list_to_string(tokens))
 }
-
-pub trait Tokenizer {
-    // TODO this can also be Result<Token, ?> where ? is Fatal/NotFound, or an Iterator
-    #[deprecated]
-    fn read(&mut self) -> Option<Token>;
-    #[deprecated]
-    fn unread(&mut self);
-    #[deprecated]
-    fn position(&self) -> Position;
-}

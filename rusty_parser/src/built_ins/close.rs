@@ -11,7 +11,7 @@ use crate::*;
 // next_file_handles ::= <file_handle> | <file_handle> <opt-ws> "," <opt-ws> <next_file_handles>
 // first_file_handle ::= "(" <file_handle> ")" | <ws> <file_handle>
 // file_handle ::= "#" <digits> | <expr>
-pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     seq2(
         keyword(Keyword::Close),
         file_handles(),
@@ -19,7 +19,7 @@ pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     )
 }
 
-fn file_handles<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expressions> {
+fn file_handles() -> impl Parser<RcStringView, Output = Expressions> {
     AccumulateParser::new(
         guarded_file_handle_or_expression_p(),
         comma().and_without_undo_keep_right(file_handle_or_expression_p()),
@@ -27,10 +27,12 @@ fn file_handles<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expressions
     .or_default()
 }
 
-fn file_handle_or_expression_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
-    file_handle_as_expression_pos_p()
-        .or(expression_pos_p())
-        .or_syntax_error("Expected: file handle")
+fn file_handle_or_expression_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
+    OrParser::new(vec![
+        Box::new(file_handle_as_expression_pos_p()),
+        Box::new(expression_pos_p()),
+    ])
+    .or_syntax_error("Expected: file handle")
 }
 
 #[cfg(test)]

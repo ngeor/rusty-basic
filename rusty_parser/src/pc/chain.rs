@@ -1,4 +1,4 @@
-use crate::pc::{ParseResult, Parser, Tokenizer};
+use crate::pc::{ParseResult, ParseResultTrait, Parser};
 use crate::ParseError;
 
 pub struct ChainParser<L, R, F> {
@@ -16,7 +16,7 @@ impl<L, R, F> ChainParser<L, R, F> {
     }
 }
 
-impl<I: Tokenizer + 'static, L, RF, R, F, O> Parser<I> for ChainParser<L, RF, F>
+impl<I, L, RF, R, F, O> Parser<I> for ChainParser<L, RF, F>
 where
     L: Parser<I>,
     RF: Fn(&L::Output) -> R,
@@ -25,12 +25,12 @@ where
 {
     type Output = O;
 
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
-        self.left.parse(tokenizer).flat_map(|first| {
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
+        self.left.parse(tokenizer).flat_map(|tokenizer: I, first| {
             let right_parser = (self.right)(&first);
             right_parser
                 .parse(tokenizer)
-                .map(|r| (self.combiner)(first, r))
+                .map_ok(|r| (self.combiner)(first, r))
         })
     }
 }

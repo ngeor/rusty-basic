@@ -34,7 +34,7 @@ impl<L, R> Delimited<L> for (L, Option<R>) {
 }
 
 /// Gets a list of items separated by a delimiter.
-pub fn delimited_by<I: Tokenizer + 'static, P: Parser<I> + 'static, D: Parser<I> + 'static>(
+pub fn delimited_by<I: Clone, P: Parser<I>, D: Parser<I>>(
     parser: P,
     delimiter: D,
     trailing_error: ParseError,
@@ -45,7 +45,7 @@ pub fn delimited_by<I: Tokenizer + 'static, P: Parser<I> + 'static, D: Parser<I>
 /// Gets a list of items separated by a delimiter.
 /// The given parser already provides items and delimiters together.
 /// Public because needed by built_ins to implement csv_allow_missing.
-pub fn parse_delimited_to_items<I: Tokenizer + 'static, P, L>(
+pub fn parse_delimited_to_items<I: Clone, P, L>(
     parser: P,
     trailing_error: ParseError,
 ) -> impl Parser<I, Output = Vec<L>>
@@ -55,10 +55,14 @@ where
 {
     parser
         .loop_while(Delimited::has_delimiter)
-        .flat_map(move |items| map_items(items, trailing_error.clone()))
+        .flat_map(move |input, items| map_items(input, items, trailing_error.clone()))
 }
 
-fn map_items<P, T>(items: Vec<P>, trailing_error: ParseError) -> ParseResult<Vec<T>, ParseError>
+fn map_items<I, P, T>(
+    input: I,
+    items: Vec<P>,
+    trailing_error: ParseError,
+) -> ParseResult<I, Vec<T>, ParseError>
 where
     P: Delimited<T>,
 {
@@ -67,8 +71,9 @@ where
         .map(Delimited::has_delimiter)
         .unwrap_or_default()
     {
-        ParseResult::Err(trailing_error)
+        // trailing delimiter is fatal
+        Err((true, input, trailing_error))
     } else {
-        ParseResult::Ok(items.into_iter().map(Delimited::value).collect())
+        Ok((input, items.into_iter().map(Delimited::value).collect()))
     }
 }

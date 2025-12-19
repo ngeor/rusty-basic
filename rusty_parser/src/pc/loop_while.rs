@@ -1,34 +1,37 @@
-use crate::pc::{ParseResult, Parser, Tokenizer};
+use crate::pc::{default_parse_error, ParseResult, Parser};
 use crate::{parser_declaration, ParseError};
 
 parser_declaration!(pub struct LoopWhile<predicate: F>);
 
-impl<I: Tokenizer + 'static, P, F> Parser<I> for LoopWhile<P, F>
+impl<I, P, F> Parser<I> for LoopWhile<P, F>
 where
     P: Parser<I>,
     F: Fn(&P::Output) -> bool,
 {
     type Output = Vec<P::Output>;
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
         let mut result: Vec<P::Output> = vec![];
         let mut keep_going = true;
+        let mut remaining = tokenizer;
         while keep_going {
-            match self.parser.parse(tokenizer) {
-                ParseResult::Ok(item) => {
+            match self.parser.parse(remaining) {
+                Ok((tokenizer, item)) => {
                     keep_going = (self.predicate)(&item);
                     // push to the list regardless
                     result.push(item);
+                    remaining = tokenizer;
                 }
-                ParseResult::None | ParseResult::Expected(_) => {
+                Err((false, i, _)) => {
+                    remaining = i;
                     keep_going = false;
                 }
-                ParseResult::Err(err) => return ParseResult::Err(err),
+                Err(err) => return Err(err),
             }
         }
         if result.is_empty() {
-            ParseResult::None
+            default_parse_error(remaining)
         } else {
-            ParseResult::Ok(result)
+            Ok((remaining, result))
         }
     }
 }

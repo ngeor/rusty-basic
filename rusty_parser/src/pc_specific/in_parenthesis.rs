@@ -5,20 +5,20 @@ use crate::pc_specific::{any_token_of, whitespace, TokenType};
 
 /// In parser mode, returns Some if the opening parenthesis is present
 /// AND the decorated parser has a value.
-pub fn in_parenthesis<I: Tokenizer + 'static, P>(
+pub fn in_parenthesis<P>(
     parser: P,
-) -> impl Parser<I, Output = <P as Parser<I>>::Output>
+) -> impl Parser<RcStringView, Output = <P as Parser<RcStringView>>::Output>
 where
-    P: Parser<I>,
+    P: Parser<RcStringView>,
 {
     parser.surround(left_paren(), right_paren())
 }
 
-fn left_paren<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Token, Option<Token>)> {
+fn left_paren() -> impl Parser<RcStringView, Output = (Token, Option<Token>)> {
     any_token_of(TokenType::LParen).and_opt_tuple(whitespace())
 }
 
-fn right_paren<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Option<Token>, Token)> {
+fn right_paren() -> impl Parser<RcStringView, Output = (Option<Token>, Token)> {
     OptAndPC::new(
         whitespace(),
         any_token_of(TokenType::RParen).no_incomplete(),

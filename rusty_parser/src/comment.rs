@@ -3,11 +3,11 @@ use crate::pc_specific::*;
 use crate::types::*;
 
 /// Tries to read a comment.
-pub fn comment_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn comment_p() -> impl Parser<RcStringView, Output = Statement> {
     comment_as_string_p().map(Statement::Comment)
 }
 
-pub fn comment_as_string_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = String> {
+pub fn comment_as_string_p() -> impl Parser<RcStringView, Output = String> {
     any_token_of(TokenType::SingleQuote).and(
         any_token()
             .filter(|t| !TokenType::Eol.matches(t))

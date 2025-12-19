@@ -3,16 +3,16 @@ use crate::pc_specific::*;
 use crate::ParseError;
 
 /// Comma separated list of items.
-pub fn csv<I: Tokenizer + 'static, L: Parser<I> + 'static>(
+pub fn csv<L: Parser<RcStringView>>(
     parser: L,
-) -> impl Parser<I, Output = Vec<L::Output>> {
+) -> impl Parser<RcStringView, Output = Vec<L::Output>> {
     delimited_by(parser, comma(), trailing_comma_error())
 }
 
-pub fn csv_non_opt<I: Tokenizer + 'static, P: Parser<I> + 'static>(
+pub fn csv_non_opt<P: Parser<RcStringView>>(
     parser: P,
     err: &str,
-) -> impl Parser<I, Output = Vec<P::Output>> {
+) -> impl Parser<RcStringView, Output = Vec<P::Output>> {
     csv(parser).or_syntax_error(err)
 }
 

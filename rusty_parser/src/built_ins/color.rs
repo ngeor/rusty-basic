@@ -2,7 +2,7 @@ use crate::built_ins::parse_built_in_sub_with_opt_args;
 use crate::pc::*;
 use crate::*;
 
-pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     parse_built_in_sub_with_opt_args(Keyword::Color, BuiltInSub::Color)
 }
 
@@ -62,8 +62,7 @@ mod tests {
             input,
             ParseError::syntax_error("Expected: whitespace"),
             1,
-            // TODO FIXME this should be 6
-            2
+            6
         );
     }
 }

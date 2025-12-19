@@ -1,6 +1,5 @@
 use crate::pc::parsers::Parser;
-use crate::pc::tokenizers::Tokenizer;
-use crate::pc::ParseResult;
+use crate::pc::{ParseResult, RcStringView};
 use crate::{parser_declaration, ParseError};
 
 parser_declaration!(
@@ -22,19 +21,21 @@ fn indentation() -> String {
     s
 }
 
-impl<I: Tokenizer + 'static, P> Parser<I> for LoggingPC<P>
+impl<P> Parser<RcStringView> for LoggingPC<P>
 where
-    P: Parser<I>,
+    P: Parser<RcStringView>,
     P::Output: std::fmt::Debug,
 {
     type Output = P::Output;
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+    fn parse(
+        &self,
+        tokenizer: RcStringView,
+    ) -> ParseResult<RcStringView, Self::Output, ParseError> {
         println!(
-            "{}{} Parsing non-opt current position {:?} peek token {}",
+            "{}{} Parsing at position {:?}",
             indentation(),
             self.tag,
             tokenizer.position(),
-            peek_token(tokenizer)
         );
         unsafe {
             INDENTATION_LEVEL += 1;
@@ -44,60 +45,27 @@ where
             INDENTATION_LEVEL -= 1;
         }
         match result {
-            ParseResult::Ok(value) => {
+            Ok((input, value)) => {
                 println!(
-                    "{}{} Success. value={:?}, current position {:?}, peek token {}",
+                    "{}{} Success. value={:?}, current position {:?}",
                     indentation(),
                     self.tag,
                     value,
-                    tokenizer.position(),
-                    peek_token(tokenizer)
+                    input.position(),
                 );
-                ParseResult::Ok(value)
+                Ok((input, value))
             }
-            ParseResult::None => {
+            Err((fatal, i, err)) => {
                 println!(
-                    "{}{} None current position {:?} peek token {}",
+                    "{}{} Err fatal={} {:?}, current position {:?}",
                     indentation(),
                     self.tag,
-                    tokenizer.position(),
-                    peek_token(tokenizer)
-                );
-                ParseResult::None
-            }
-            ParseResult::Expected(msg) => {
-                println!(
-                    "{}{} Expected {:?} current position {:?} peek token {}",
-                    indentation(),
-                    self.tag,
-                    msg,
-                    tokenizer.position(),
-                    peek_token(tokenizer)
-                );
-                ParseResult::Expected(msg)
-            }
-            ParseResult::Err(err) => {
-                println!(
-                    "{}{} Err {:?} current position {:?} peek token {}",
-                    indentation(),
-                    self.tag,
+                    fatal,
                     err,
-                    tokenizer.position(),
-                    peek_token(tokenizer)
+                    i.position()
                 );
-                ParseResult::Err(err)
+                Err((fatal, i, err))
             }
         }
-    }
-}
-
-fn peek_token(tokenizer: &mut impl Tokenizer) -> String {
-    match tokenizer.read() {
-        Some(token) => {
-            let result = format!("kind {} text {}", token.kind, token.text);
-            tokenizer.unread();
-            result
-        }
-        None => "[None]".to_string(),
     }
 }

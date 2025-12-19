@@ -1,16 +1,16 @@
-use crate::pc::{ParseResult, Parser, Tokenizer};
+use crate::pc::{ParseResult, ParseResultTrait, Parser};
 use crate::{parser_declaration, ParseError};
-use rusty_common::{AtPos, Positioned};
+use rusty_common::{AtPos, HasPos, Positioned};
 
 parser_declaration!(pub struct WithPosMapper);
 
-impl<I: Tokenizer + 'static, P> Parser<I> for WithPosMapper<P>
+impl<I: HasPos, P> Parser<I> for WithPosMapper<P>
 where
     P: Parser<I>,
 {
     type Output = Positioned<P::Output>;
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
-        let pos = tokenizer.position();
-        self.parser.parse(tokenizer).map(|x| x.at_pos(pos))
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
+        let pos = tokenizer.pos();
+        self.parser.parse(tokenizer).map_ok(|x| x.at_pos(pos))
     }
 }

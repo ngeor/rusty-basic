@@ -6,7 +6,7 @@ use crate::*;
 
 // LINE INPUT variable$
 // LINE INPUT #file-number%, variable$
-pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     seq4(
         keyword_pair(Keyword::Line, Keyword::Input),
         whitespace().no_incomplete(),

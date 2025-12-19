@@ -6,7 +6,7 @@ use crate::*;
 use rusty_common::*;
 
 /// Example: FIELD #1, 10 AS FirstName$, 20 AS LastName$
-pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     seq5(
         keyword(Keyword::Field),
         // TODO: create a shortcut for whitespace().no_incomplete() and simple token parsers in general
@@ -21,7 +21,7 @@ pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     )
 }
 
-fn field_item_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = (ExpressionPos, NamePos)> {
+fn field_item_p() -> impl Parser<RcStringView, Output = (ExpressionPos, NamePos)> {
     seq4(
         expr_pos_ws_p(),
         keyword(Keyword::As).no_incomplete(),

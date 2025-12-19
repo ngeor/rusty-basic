@@ -1,4 +1,4 @@
-use crate::pc::{ParseResult, Parser, Tokenizer};
+use crate::pc::{ParseResult, Parser};
 use crate::{parser_declaration, ParseError};
 
 pub struct OrFailParser<P> {
@@ -12,35 +12,33 @@ impl<P> OrFailParser<P> {
     }
 }
 
-impl<I: Tokenizer + 'static, P> Parser<I> for OrFailParser<P>
+impl<I, P> Parser<I> for OrFailParser<P>
 where
     P: Parser<I>,
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
-            ParseResult::Ok(value) => ParseResult::Ok(value),
-            ParseResult::None | ParseResult::Expected(_) => ParseResult::Err(self.err.clone()),
-            ParseResult::Err(err) => ParseResult::Err(err),
+            Ok(value) => Ok(value),
+            Err((false, i, _)) => Err((true, i, self.err.clone())),
+            Err(err) => Err(err),
         }
     }
 }
 
 parser_declaration!(pub struct NoIncompleteParser);
 
-impl<I: Tokenizer + 'static, P> Parser<I> for NoIncompleteParser<P>
+impl<I, P> Parser<I> for NoIncompleteParser<P>
 where
     P: Parser<I>,
 {
     type Output = P::Output;
 
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
-            ParseResult::Ok(value) => ParseResult::Ok(value),
-            ParseResult::None => ParseResult::Err(ParseError::syntax_error("Could not parse")),
-            ParseResult::Expected(s) => ParseResult::Err(ParseError::SyntaxError(s)),
-            ParseResult::Err(err) => ParseResult::Err(err),
+            Ok(value) => Ok(value),
+            Err((_, i, err)) => Err((true, i, err)),
         }
     }
 }
@@ -78,17 +76,17 @@ where
     }
 }
 
-impl<I: Tokenizer + 'static, P, F> Parser<I> for WithExpectedMessage<P, F>
+impl<I, P, F> Parser<I> for WithExpectedMessage<P, F>
 where
     P: Parser<I>,
     F: MessageProvider,
 {
     type Output = P::Output;
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
         match self.0.parse(tokenizer) {
-            ParseResult::Ok(value) => ParseResult::Ok(value),
-            ParseResult::None | ParseResult::Expected(_) => ParseResult::Expected(self.1.to_str()),
-            ParseResult::Err(err) => ParseResult::Err(err),
+            Ok(value) => Ok(value),
+            Err((false, i, _)) => Err((false, i, ParseError::SyntaxError(self.1.to_str()))),
+            Err(err) => Err(err),
         }
     }
 }

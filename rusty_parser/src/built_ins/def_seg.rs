@@ -4,7 +4,7 @@ use crate::pc_specific::*;
 use crate::*;
 
 // DEF SEG(=expr)?
-pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     seq2(
         keyword_pair(Keyword::Def, Keyword::Seg),
         equal_sign_and_expression().to_option(),
@@ -14,7 +14,7 @@ pub fn parse<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     )
 }
 
-fn equal_sign_and_expression<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+fn equal_sign_and_expression() -> impl Parser<RcStringView, Output = ExpressionPos> {
     equal_sign().and_without_undo_keep_right(
         expression_pos_p().or_syntax_error("Expected expression after equal sign"),
     )

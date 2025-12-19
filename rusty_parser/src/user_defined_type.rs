@@ -50,7 +50,7 @@ use crate::statement_separator::comments_and_whitespace_p;
 use crate::types::{Element, ElementPos, ElementType, ExpressionPos, Keyword, UserDefinedType};
 use crate::ParseError;
 
-pub fn user_defined_type_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = UserDefinedType> {
+pub fn user_defined_type_p() -> impl Parser<RcStringView, Output = UserDefinedType> {
     seq5(
         keyword_followed_by_whitespace_p(Keyword::Type),
         bare_name_without_dots().or_syntax_error("Expected: name after TYPE"),
@@ -61,13 +61,13 @@ pub fn user_defined_type_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = 
     )
 }
 
-fn elements_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<ElementPos>> {
+fn elements_p() -> impl Parser<RcStringView, Output = Vec<ElementPos>> {
     element_pos_p()
         .one_or_more()
         .or_fail(ParseError::ElementNotDefined)
 }
 
-fn element_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ElementPos> {
+fn element_pos_p() -> impl Parser<RcStringView, Output = ElementPos> {
     seq6(
         bare_name_without_dots(),
         whitespace().no_incomplete(),
@@ -80,7 +80,7 @@ fn element_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ElementPos
     .with_pos()
 }
 
-fn element_type_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ElementType> {
+fn element_type_p() -> impl Parser<RcStringView, Output = ElementType> {
     OrParser::new(vec![
         Box::new(keyword_map(&[
             (Keyword::Integer, ElementType::Integer),
@@ -102,7 +102,7 @@ fn element_type_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ElementTy
     ])
 }
 
-fn demand_string_length_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+fn demand_string_length_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
     expression_pos_p().or_syntax_error("Expected: string length")
 }
 

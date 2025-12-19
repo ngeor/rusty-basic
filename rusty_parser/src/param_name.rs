@@ -10,15 +10,15 @@ use crate::var_name::var_name;
 /// A AS UserDefinedType // not dots no qualifiers
 /// A() empty array
 /// A.B() as INTEGER
-pub fn parameter_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ParameterPos> {
+pub fn parameter_pos_p() -> impl Parser<RcStringView, Output = ParameterPos> {
     parameter_p().with_pos()
 }
 
-fn parameter_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Parameter> {
+fn parameter_p() -> impl Parser<RcStringView, Output = Parameter> {
     var_name(array_indicator(), built_in_extended_type)
 }
 
-fn array_indicator<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<(Token, Token)>> {
+fn array_indicator() -> impl Parser<RcStringView, Output = Option<(Token, Token)>> {
     Seq2::new(
         any_token_of(TokenType::LParen),
         any_token_of(TokenType::RParen).no_incomplete(),
@@ -26,7 +26,7 @@ fn array_indicator<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<(
     .to_option()
 }
 
-fn built_in_extended_type<I: Tokenizer + 'static>() -> impl Parser<I, Output = ParamType> {
+fn built_in_extended_type() -> impl Parser<RcStringView, Output = ParamType> {
     // TODO make a keyword_map that doesn't require Clone
     keyword_map(&[
         (

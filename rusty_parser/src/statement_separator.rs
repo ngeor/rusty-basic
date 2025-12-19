@@ -17,7 +17,7 @@ use crate::pc::*;
 use crate::pc_specific::*;
 use rusty_common::*;
 
-pub fn comment_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
+pub fn comment_separator() -> impl Parser<RcStringView, Output = ()> {
     OptAndPC::new(whitespace(), any_token_of(TokenType::Eol)).and_opt(
         any_token_of_two(TokenType::Eol, TokenType::Whitespace),
         |_, _| (),
@@ -48,7 +48,7 @@ pub fn comment_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()
 /// Together it should be:
 /// ws* (colon | eol) (ws | eol)*
 /// ws* ' ! (where `!` stands for read and undo)
-pub fn common_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
+pub fn common_separator() -> impl Parser<RcStringView, Output = ()> {
     OptAndPC::new(
         whitespace(),
         OrParser::new(vec![
@@ -62,34 +62,33 @@ pub fn common_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()>
     .map(|_| ())
 }
 
-pub fn no_separator_needed_before_comment<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
+pub fn no_separator_needed_before_comment() -> impl Parser<RcStringView, Output = ()> {
     // warning: cannot use filter_map because it will undo and we've already "undo" via "peek"
-    peek_token().flat_map(|t| {
+    peek_token().flat_map(|input, t| {
         if TokenType::SingleQuote.matches(&t) {
-            ParseResult::Ok(())
+            Ok((input, ()))
         } else {
-            ParseResult::None
+            default_parse_error(input)
         }
     })
 }
 
-pub fn peek_eof_or_statement_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
-    peek_token().flat_map_negate_none(|token| {
+pub fn peek_eof_or_statement_separator() -> impl Parser<RcStringView, Output = ()> {
+    peek_token().flat_map_negate_none(|input, token| {
         if TokenType::Colon.matches(&token)
             || TokenType::SingleQuote.matches(&token)
             || TokenType::Eol.matches(&token)
         {
-            ParseResult::Ok(())
+            Ok((input, ()))
         } else {
-            ParseResult::None
+            default_parse_error(input)
         }
     })
 }
 
 // TODO review all parsers that return a collection, implement some `accumulate` method
 /// Reads multiple comments and the surrounding whitespace.
-pub fn comments_and_whitespace_p<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = Vec<Positioned<String>>> {
+pub fn comments_and_whitespace_p() -> impl Parser<RcStringView, Output = Vec<Positioned<String>>> {
     OptAndPC::new(
         whitespace(),
         OptZip::new(comment_separator(), comment_as_string_p().with_pos())

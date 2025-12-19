@@ -19,7 +19,6 @@ mod name;
 mod on_error;
 mod param_name;
 mod pc;
-pub mod pc_ng;
 mod pc_specific;
 mod print;
 mod resume;
@@ -60,18 +59,14 @@ use crate::pc_specific::{create_file_tokenizer, create_string_tokenizer};
 /// <digit> ::= "0".."9"
 /// ```
 pub fn parse_main_file(f: File) -> Result<Program, ParseErrorPos> {
-    let mut reader = create_file_tokenizer(f).unwrap();
-    program_parser(&mut reader)
+    let reader = create_file_tokenizer(f).unwrap();
+    program_parser(reader)
 }
 
-pub fn program_parser<I: Tokenizer + 'static>(reader: &mut I) -> Result<Program, ParseErrorPos> {
+pub fn program_parser(reader: RcStringView) -> Result<Program, ParseErrorPos> {
     match program_parser_p().parse(reader) {
-        ParseResult::Ok(opt_program) => Ok(opt_program),
-        ParseResult::None => {
-            Err(ParseError::syntax_error("Could not parse program").at_pos(reader.position()))
-        }
-        ParseResult::Expected(err) => Err(ParseError::SyntaxError(err).at_pos(reader.position())),
-        ParseResult::Err(err) => Err(err.at_pos(reader.position())),
+        Ok((_, program)) => Ok(program),
+        Err((_, input, err)) => Err(err.at_pos(input.position())),
     }
 }
 
@@ -89,8 +84,8 @@ where
 }
 
 fn parse_main_str(input: String) -> Result<Program, ParseErrorPos> {
-    let mut reader = create_string_tokenizer(input);
-    program_parser(&mut reader)
+    let reader = create_string_tokenizer(input);
+    program_parser(reader)
 }
 
 #[cfg(test)]

@@ -4,22 +4,21 @@ use crate::statement_separator::{comment_separator, common_separator};
 use crate::types::*;
 use crate::{statement, ParseError};
 
-pub fn single_line_non_comment_statements_p<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = Statements> {
+pub fn single_line_non_comment_statements_p() -> impl Parser<RcStringView, Output = Statements> {
     whitespace().and_keep_right(delimited_by_colon(
         statement::single_line_non_comment_statement_p().with_pos(),
     ))
 }
 
-pub fn single_line_statements_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statements> {
+pub fn single_line_statements_p() -> impl Parser<RcStringView, Output = Statements> {
     whitespace().and_keep_right(delimited_by_colon(
         statement::single_line_statement_p().with_pos(),
     ))
 }
 
-fn delimited_by_colon<I: Tokenizer + 'static, P: Parser<I> + 'static>(
+fn delimited_by_colon<P: Parser<RcStringView>>(
     parser: P,
-) -> impl Parser<I, Output = Vec<P::Output>> {
+) -> impl Parser<RcStringView, Output = Vec<P::Output>> {
     delimited_by(
         parser,
         colon_ws(),
@@ -42,27 +41,26 @@ impl ZeroOrMoreStatements {
         Self(vec![exit_source], Some(err))
     }
 
-    fn found_exit<I: Tokenizer + 'static>(
-        &self,
-        tokenizer: &mut I,
-    ) -> ParseResult<bool, ParseError> {
+    fn found_exit(&self, tokenizer: RcStringView) -> ParseResult<RcStringView, bool, ParseError> {
         peek_token()
             .flat_map_ok_none(
-                |token| {
+                |input, token| {
                     for k in &self.0 {
                         if k == &token {
-                            return ParseResult::Ok(true);
+                            return Ok((input, true));
                         }
                     }
-                    ParseResult::Ok(false)
+                    Ok((input, false))
                 },
-                || {
+                |input| {
                     // EOF is an error here as we're looking for the exit source
                     match self.1.clone() {
-                        Some(custom_err) => ParseResult::Err(custom_err),
-                        None => {
-                            ParseResult::Err(ParseError::SyntaxError(keyword_syntax_error(&self.0)))
-                        }
+                        Some(custom_err) => Err((true, input, custom_err)),
+                        None => Err((
+                            true,
+                            input,
+                            ParseError::SyntaxError(keyword_syntax_error(&self.0)),
+                        )),
                     }
                 },
             )
@@ -70,17 +68,24 @@ impl ZeroOrMoreStatements {
     }
 }
 
-impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
+impl Parser<RcStringView> for ZeroOrMoreStatements {
     type Output = Statements;
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+    fn parse(
+        &self,
+        tokenizer: RcStringView,
+    ) -> ParseResult<RcStringView, Self::Output, ParseError> {
         // must start with a separator (e.g. after a WHILE condition)
-        match common_separator().parse(tokenizer) {
-            ParseResult::Ok(_) => { /*ok*/ }
-            ParseResult::None | ParseResult::Expected(_) => {
-                return ParseResult::Err(ParseError::syntax_error("Expected: end-of-statement"));
+        let mut tokenizer = match common_separator().parse(tokenizer) {
+            Ok((tokenizer, _)) => tokenizer,
+            Err((false, i, _)) => {
+                return Err((
+                    true,
+                    i,
+                    ParseError::syntax_error("Expected: end-of-statement"),
+                ));
             }
-            ParseResult::Err(err) => {
-                return ParseResult::Err(err);
+            Err(err) => {
+                return Err(err);
             }
         };
 
@@ -90,9 +95,15 @@ impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
         loop {
             // while not found exit
             let found_exit = match self.found_exit(tokenizer) {
-                ParseResult::Ok(x) => x,
-                ParseResult::None | ParseResult::Expected(_) => false,
-                ParseResult::Err(err) => return ParseResult::Err(err),
+                Ok((remaining, x)) => {
+                    tokenizer = remaining;
+                    x
+                }
+                Err((false, remaining, _)) => {
+                    tokenizer = remaining;
+                    false
+                }
+                Err(err) => return Err(err),
             };
             if found_exit {
                 break;
@@ -101,18 +112,23 @@ impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
             if state == 0 || state == 2 {
                 // looking for statement
                 match statement::statement_p().with_pos().parse(tokenizer) {
-                    ParseResult::Ok(statement_pos) => {
+                    Ok((remaining, statement_pos)) => {
+                        tokenizer = remaining;
                         result.push(statement_pos);
                         state = 1;
                     }
-                    ParseResult::None | ParseResult::Expected(_) => {
-                        return ParseResult::Err(match &self.1 {
-                            Some(custom_error) => custom_error.clone(),
-                            _ => ParseError::syntax_error("Expected: statement"),
-                        });
+                    Err((false, remaining, _)) => {
+                        return Err((
+                            true,
+                            remaining,
+                            match &self.1 {
+                                Some(custom_error) => custom_error.clone(),
+                                _ => ParseError::syntax_error("Expected: statement"),
+                            },
+                        ));
                     }
-                    ParseResult::Err(err) => {
-                        return ParseResult::Err(err);
+                    Err(err) => {
+                        return Err(err);
                     }
                 }
             } else if state == 1 {
@@ -121,32 +137,46 @@ impl<I: Tokenizer + 'static> Parser<I> for ZeroOrMoreStatements {
                     if let Some(Statement::Comment(_)) = result.last().map(|x| &x.element) {
                         // last element was comment
                         match comment_separator().parse(tokenizer) {
-                            ParseResult::Ok(_) => true,
-                            ParseResult::None | ParseResult::Expected(_) => false,
-                            ParseResult::Err(err) => {
-                                return ParseResult::Err(err);
+                            Ok((remaining, _)) => {
+                                tokenizer = remaining;
+                                true
+                            }
+                            Err((false, remaining, _)) => {
+                                tokenizer = remaining;
+                                false
+                            }
+                            Err(err) => {
+                                return Err(err);
                             }
                         }
                     } else {
                         match common_separator().parse(tokenizer) {
-                            ParseResult::Ok(_) => true,
-                            ParseResult::None | ParseResult::Expected(_) => false,
-                            ParseResult::Err(err) => {
-                                return ParseResult::Err(err);
+                            Ok((remaining, _)) => {
+                                tokenizer = remaining;
+                                true
+                            }
+                            Err((false, remaining, _)) => {
+                                tokenizer = remaining;
+                                false
+                            }
+                            Err(err) => {
+                                return Err(err);
                             }
                         }
                     };
                 if found_separator {
                     state = 2;
                 } else {
-                    return ParseResult::Err(ParseError::syntax_error(
-                        "Expected: statement separator",
+                    return Err((
+                        true,
+                        tokenizer,
+                        ParseError::syntax_error("Expected: statement separator"),
                     ));
                 }
             } else {
                 panic!("Cannot happen")
             }
         }
-        ParseResult::Ok(result)
+        Ok((tokenizer, result))
     }
 }

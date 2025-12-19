@@ -2,16 +2,10 @@ use crate::pc::*;
 use crate::pc_specific::{any_token_of, TokenType};
 use crate::Keyword;
 
-impl Undo for (Keyword, Token) {
-    fn undo(self, tokenizer: &mut impl Tokenizer) {
-        self.1.undo(tokenizer)
-    }
-}
-
 /// Matches one of the given keywords.
-pub fn keyword_choice<I: Tokenizer + 'static>(
+pub fn keyword_choice(
     keywords: Vec<Keyword>,
-) -> impl Parser<I, Output = (Keyword, Token)> {
+) -> impl Parser<RcStringView, Output = (Keyword, Token)> {
     // TODO error message should be lazily evaluated
     let err_msg = keyword_syntax_error(&keywords);
     any_token_of(TokenType::Keyword)

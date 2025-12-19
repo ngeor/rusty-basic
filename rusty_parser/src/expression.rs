@@ -4,17 +4,15 @@ use crate::pc_specific::*;
 use crate::types::*;
 
 /// `( expr [, expr]* )`
-pub fn in_parenthesis_csv_expressions_non_opt<I: Tokenizer + 'static>(
+pub fn in_parenthesis_csv_expressions_non_opt(
     err_msg: &str,
-) -> impl Parser<I, Output = Expressions> + '_ {
+) -> impl Parser<RcStringView, Output = Expressions> + '_ {
     in_parenthesis(csv_expressions_non_opt(err_msg)).no_incomplete()
 }
 
 /// Parses one or more expressions separated by comma.
 /// FIXME Unlike csv_expressions, the first expression does not need a separator!
-pub fn csv_expressions_non_opt<I: Tokenizer + 'static>(
-    msg: &str,
-) -> impl Parser<I, Output = Expressions> {
+pub fn csv_expressions_non_opt(msg: &str) -> impl Parser<RcStringView, Output = Expressions> {
     csv_non_opt(expression_pos_p(), msg)
 }
 
@@ -22,8 +20,7 @@ pub fn csv_expressions_non_opt<I: Tokenizer + 'static>(
 /// Trailing commas are not allowed.
 /// Missing expressions are not allowed.
 /// The first expression needs to be preceded by space or surrounded in parenthesis.
-pub fn csv_expressions_first_guarded<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = Expressions> {
+pub fn csv_expressions_first_guarded() -> impl Parser<RcStringView, Output = Expressions> {
     AccumulateParser::new(
         ws_expr_pos_p(),
         comma().and_without_undo_keep_right(
@@ -33,7 +30,7 @@ pub fn csv_expressions_first_guarded<I: Tokenizer + 'static>(
 }
 
 lazy_parser!(
-    pub fn expression_pos_p<Output = ExpressionPos> ;
+    pub fn expression_pos_p<I = RcStringView, Output = ExpressionPos> ;
     struct LazyExprParser ;
     eager_expression_pos_p()
 );
@@ -46,7 +43,7 @@ lazy_parser!(
 /// <ws> <expr-in-parenthesis> |
 /// <expr-in-parenthesis>
 /// ```
-pub fn ws_expr_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+pub fn ws_expr_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
     // ws* ( expr )
     // ws+ expr
     preceded_by_ws(expression_pos_p())
@@ -63,7 +60,7 @@ pub fn ws_expr_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expres
 /// <expr-in-parenthesis> <ws> |
 /// <expr-in-parenthesis>
 /// ```
-pub fn expr_pos_ws_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+pub fn expr_pos_ws_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
     followed_by_ws(expression_pos_p())
 }
 
@@ -78,19 +75,19 @@ pub fn expr_pos_ws_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expres
 /// <ws> <expr-in-parenthesis> <ws> |
 /// <expr-in-parenthesis>
 /// ```
-pub fn ws_expr_pos_ws_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+pub fn ws_expr_pos_ws_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
     followed_by_ws(ws_expr_pos_p())
 }
 
-fn preceded_by_ws<I: Tokenizer + 'static>(
-    parser: impl Parser<I, Output = ExpressionPos>,
-) -> impl Parser<I, Output = ExpressionPos> {
+fn preceded_by_ws(
+    parser: impl Parser<RcStringView, Output = ExpressionPos>,
+) -> impl Parser<RcStringView, Output = ExpressionPos> {
     guard::parser().and_keep_right(parser)
 }
 
-fn followed_by_ws<I: Tokenizer + 'static>(
-    parser: impl Parser<I, Output = ExpressionPos>,
-) -> impl Parser<I, Output = ExpressionPos> {
+fn followed_by_ws(
+    parser: impl Parser<RcStringView, Output = ExpressionPos>,
+) -> impl Parser<RcStringView, Output = ExpressionPos> {
     parser.chain(
         |expr_pos| {
             let is_paren = expr_pos.is_parenthesis();
@@ -101,7 +98,7 @@ fn followed_by_ws<I: Tokenizer + 'static>(
 }
 
 /// Parses an expression
-fn eager_expression_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+fn eager_expression_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
     binary_expression::parser()
 }
 
@@ -117,26 +114,26 @@ mod single_or_double_literal {
 
     // TODO support more qualifiers besides '#'
 
-    pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
         OptAndPC::new(
             digits(),
             dot().and_without_undo_keep_right(digits().no_incomplete()),
         )
         .and_opt_tuple(pound())
-        .flat_map(|((opt_integer_digits, frac_digits), opt_pound)| {
+        .flat_map(|input, ((opt_integer_digits, frac_digits), opt_pound)| {
             let left = opt_integer_digits
                 .map(|token| token.text)
                 .unwrap_or_else(|| "0".to_owned());
             let s = format!("{}.{}", left, frac_digits.text);
             if opt_pound.is_some() {
                 match s.parse::<f64>() {
-                    Ok(f) => ParseResult::Ok(Expression::DoubleLiteral(f)),
-                    Err(err) => ParseResult::Err(err.into()),
+                    Ok(f) => Ok((input, Expression::DoubleLiteral(f))),
+                    Err(err) => Err((true, input, err.into())),
                 }
             } else {
                 match s.parse::<f32>() {
-                    Ok(f) => ParseResult::Ok(Expression::SingleLiteral(f)),
-                    Err(err) => ParseResult::Err(err.into()),
+                    Ok(f) => Ok((input, Expression::SingleLiteral(f))),
+                    Err(err) => Err((true, input, err.into())),
                 }
             }
         })
@@ -149,7 +146,7 @@ mod string_literal {
     use crate::pc_specific::*;
     use crate::{Expression, ExpressionPos};
 
-    pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
         seq3(
             string_delimiter(),
             inside_string(),
@@ -159,11 +156,11 @@ mod string_literal {
         .with_pos()
     }
 
-    fn string_delimiter<I: Tokenizer + 'static>() -> impl Parser<I, Output = Token> {
+    fn string_delimiter() -> impl Parser<RcStringView, Output = Token> {
         any_token_of(TokenType::DoubleQuote)
     }
 
-    fn inside_string<I: Tokenizer + 'static>() -> impl Parser<I, Output = TokenList> {
+    fn inside_string() -> impl Parser<RcStringView, Output = TokenList> {
         any_token()
             .filter(|token| {
                 !TokenType::DoubleQuote.matches(token) && !TokenType::Eol.matches(token)
@@ -179,7 +176,7 @@ mod integer_or_long_literal {
     use rusty_variant::{BitVec, BitVecIntOrLong, MAX_INTEGER, MAX_LONG};
 
     // result ::= <digits> | <hex-digits> | <oct-digits>
-    pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
         any_token()
             .filter(is_allowed_token)
             .flat_map(process_token)
@@ -192,7 +189,10 @@ mod integer_or_long_literal {
             || TokenType::OctDigits.matches(token)
     }
 
-    fn process_token(token: Token) -> ParseResult<Expression, ParseError> {
+    fn process_token(
+        input: RcStringView,
+        token: Token,
+    ) -> ParseResult<RcStringView, Expression, ParseError> {
         let res = match TokenType::from_token(&token) {
             TokenType::Digits => process_dec(token),
             TokenType::HexDigits => process_hex(token),
@@ -200,8 +200,8 @@ mod integer_or_long_literal {
             _ => panic!("Should not have processed {}", token.text),
         };
         match res {
-            Ok(expr) => ParseResult::Ok(expr),
-            Err(err) => ParseResult::Err(err),
+            Ok(expr) => Ok((input, expr)),
+            Err(err) => Err((true, input, err)),
         }
     }
 
@@ -303,7 +303,7 @@ mod variable {
     // must not be followed by parenthesis (solved by ordering of parsers)
     //
     // if <identifier-with-dots> contains dots, it might be converted to a property expression
-    pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
         name_with_dots_as_tokens().map(map_to_expr).with_pos()
     }
 
@@ -384,7 +384,7 @@ mod function_call_or_array_element {
     //
     // A function can be qualified.
 
-    pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
         name_with_dots_as_tokens()
             .and(
                 in_parenthesis(csv(expression_pos_p()).or_default()),
@@ -409,52 +409,55 @@ pub mod property {
     //
     // expr must not be qualified
 
-    pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
-        Seq2::new(base_expr_pos_p(), dot_properties()).flat_map(|(first_expr_pos, properties)| {
-            if !properties.is_empty() && is_qualified(&first_expr_pos.element) {
-                // TODO do this check before parsing the properties
-                return ParseResult::Err(ParseError::syntax_error(
-                    "Qualified name cannot have properties",
-                ));
-            }
-            let result = properties.into_iter().fold(
-                first_expr_pos,
-                |prev_expr_pos, (name_token, opt_q_token)| {
-                    let property_name = Name::new(
-                        BareName::from(name_token),
-                        opt_q_token.as_ref().map(token_to_type_qualifier),
-                    );
-                    prev_expr_pos.map(|prev_expr| {
-                        Expression::Property(
-                            Box::new(prev_expr),
-                            property_name,
-                            ExpressionType::Unresolved,
-                        )
-                    })
-                },
-            );
-            ParseResult::Ok(result)
-        })
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
+        Seq2::new(base_expr_pos_p(), dot_properties()).flat_map(
+            |input, (first_expr_pos, properties)| {
+                if !properties.is_empty() && is_qualified(&first_expr_pos.element) {
+                    // TODO do this check before parsing the properties
+                    return Err((
+                        true,
+                        input,
+                        ParseError::syntax_error("Qualified name cannot have properties"),
+                    ));
+                }
+                let result = properties.into_iter().fold(
+                    first_expr_pos,
+                    |prev_expr_pos, (name_token, opt_q_token)| {
+                        let property_name = Name::new(
+                            BareName::from(name_token),
+                            opt_q_token.as_ref().map(token_to_type_qualifier),
+                        );
+                        prev_expr_pos.map(|prev_expr| {
+                            Expression::Property(
+                                Box::new(prev_expr),
+                                property_name,
+                                ExpressionType::Unresolved,
+                            )
+                        })
+                    },
+                );
+                Ok((input, result))
+            },
+        )
     }
 
-    fn dot_properties<I: Tokenizer + 'static>(
-    ) -> impl Parser<I, Output = Vec<(Token, Option<Token>)>> {
+    fn dot_properties() -> impl Parser<RcStringView, Output = Vec<(Token, Option<Token>)>> {
         dot_property().zero_or_more()
     }
 
-    fn dot_property<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Token, Option<Token>)> {
+    fn dot_property() -> impl Parser<RcStringView, Output = (Token, Option<Token>)> {
         dot().and_without_undo_keep_right(
             property().or_syntax_error("Expected: property name after dot"),
         )
     }
 
     // cannot be followed by dot or type qualifier if qualified
-    fn property<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Token, Option<Token>)> {
+    fn property() -> impl Parser<RcStringView, Output = (Token, Option<Token>)> {
         identifier().and_opt_tuple(type_qualifier())
     }
 
     // can't use expression_pos_p because it will stack overflow
-    fn base_expr_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+    fn base_expr_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
         // order is important, variable matches anything that function_call_or_array_element matches
         OrParser::new(vec![
             Box::new(function_call_or_array_element::parser()),
@@ -474,11 +477,11 @@ pub mod property {
 
 mod built_in_function_call {
     use crate::built_ins::built_in_function_call_p;
-    use crate::pc::{Parser, Tokenizer};
+    use crate::pc::{Parser, RcStringView};
     use crate::pc_specific::SpecificTrait;
     use crate::ExpressionPos;
 
-    pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
         built_in_function_call_p().with_pos()
     }
 }
@@ -496,65 +499,73 @@ mod binary_expression {
     use rusty_common::Positioned;
 
     // result ::= <non-bin-expr> <operator> <expr>
-    pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
         BinaryExprParser
     }
 
     struct BinaryExprParser;
 
-    impl<I: Tokenizer + 'static> Parser<I> for BinaryExprParser {
+    impl Parser<RcStringView> for BinaryExprParser {
         type Output = ExpressionPos;
 
-        fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+        fn parse(
+            &self,
+            tokenizer: RcStringView,
+        ) -> ParseResult<RcStringView, Self::Output, ParseError> {
             self.do_parse(tokenizer)
-                .map(ExpressionPos::simplify_unary_minus_literals)
+                .map_ok(ExpressionPos::simplify_unary_minus_literals)
         }
     }
 
     impl BinaryExprParser {
-        fn do_parse<I: Tokenizer + 'static>(
+        fn do_parse(
             &self,
-            tokenizer: &mut I,
-        ) -> ParseResult<ExpressionPos, ParseError> {
-            let first = match Self::non_bin_expr().parse(tokenizer) {
-                ParseResult::Ok(x) => x,
-                ParseResult::None => return ParseResult::None,
-                ParseResult::Expected(err) => return ParseResult::Expected(err),
-                ParseResult::Err(err) => return ParseResult::Err(err),
+            tokenizer: RcStringView,
+        ) -> ParseResult<RcStringView, ExpressionPos, ParseError> {
+            let (tokenizer, first) = match Self::non_bin_expr().parse(tokenizer) {
+                Ok(x) => x,
+                Err(err) => return Err(err),
             };
 
             let is_paren = first.is_parenthesis();
             match Self::operator(is_paren).parse(tokenizer) {
-                ParseResult::Ok(Positioned {
-                    element: op,
-                    pos: op_pos,
-                }) => {
+                Ok((
+                    tokenizer,
+                    Positioned {
+                        element: op,
+                        pos: op_pos,
+                    },
+                )) => {
                     let is_keyword_op =
                         op == Operator::And || op == Operator::Or || op == Operator::Modulo;
-                    match guard::parser().parse(tokenizer) {
-                        ParseResult::Ok(_) => {}
-                        ParseResult::None | ParseResult::Expected(_) => {
+                    let tokenizer = match guard::parser().parse(tokenizer) {
+                        Ok((tokenizer, _)) => tokenizer,
+                        Err((false, input, _)) => {
                             if is_keyword_op {
-                                return ParseResult::Err(ParseError::syntax_error(
-                                    "Expected: whitespace or (",
+                                return Err((
+                                    true,
+                                    input,
+                                    ParseError::syntax_error("Expected: whitespace or ("),
                                 ));
+                            } else {
+                                input
                             }
                         }
-                        ParseResult::Err(err) => {
-                            return ParseResult::Err(err);
+                        Err(err) => {
+                            return Err(err);
                         }
-                    }
+                    };
                     expression_pos_p()
                         .or_syntax_error("Expected: expression after operator")
                         .parse(tokenizer)
-                        .map(|right| first.apply_priority_order(right, op, op_pos))
+                        .map_ok(|right| first.apply_priority_order(right, op, op_pos))
                 }
-                ParseResult::None | ParseResult::Expected(_) => ParseResult::Ok(first),
-                ParseResult::Err(err) => ParseResult::Err(err),
+                Err((false, tokenizer, _)) => Ok((tokenizer, first)),
+                Err(err) => Err(err),
             }
         }
 
-        fn non_bin_expr<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+        fn non_bin_expr() -> impl Parser<RcStringView, Output = ExpressionPos> {
             OrParser::new(vec![
                 Box::new(single_or_double_literal::parser()),
                 Box::new(string_literal::parser()),
@@ -567,28 +578,30 @@ mod binary_expression {
             ])
         }
 
-        fn operator<I: Tokenizer + 'static>(
-            is_paren: bool,
-        ) -> impl Parser<I, Output = Positioned<Operator>> {
+        fn operator(is_paren: bool) -> impl Parser<RcStringView, Output = Positioned<Operator>> {
             OptAndPC::new(
                 whitespace(),
                 any_token()
                     .filter_map(Self::map_token_to_operator)
                     .with_pos(),
             )
-            .flat_map(move |(leading_ws, op_pos)| {
+            .flat_map(move |input, (leading_ws, op_pos)| {
                 let had_whitespace = leading_ws.is_some();
                 let needs_whitespace = matches!(
                     &op_pos.element,
                     Operator::Modulo | Operator::And | Operator::Or
                 );
                 if had_whitespace || is_paren || !needs_whitespace {
-                    ParseResult::Ok(op_pos)
+                    Ok((input, op_pos))
                 } else {
-                    ParseResult::Err(ParseError::SyntaxError(format!(
-                        "Expected: parenthesis before operator {:?}",
-                        op_pos.element()
-                    )))
+                    Err((
+                        true,
+                        input,
+                        ParseError::SyntaxError(format!(
+                            "Expected: parenthesis before operator {:?}",
+                            op_pos.element()
+                        )),
+                    ))
                 }
             })
         }
@@ -624,7 +637,7 @@ mod unary_expression {
     use crate::{ExpressionPos, ExpressionPosTrait, Keyword, UnaryOperator};
     use rusty_common::Positioned;
 
-    pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
         seq2(
             unary_op(),
             expression_pos_p().or_syntax_error("Expected: expression after unary operator"),
@@ -632,7 +645,7 @@ mod unary_expression {
         )
     }
 
-    fn unary_op<I: Tokenizer + 'static>() -> impl Parser<I, Output = Positioned<UnaryOperator>> {
+    fn unary_op() -> impl Parser<RcStringView, Output = Positioned<UnaryOperator>> {
         minus_sign()
             .map(|_| UnaryOperator::Minus)
             .or(keyword(Keyword::Not)
@@ -648,7 +661,7 @@ mod parenthesis {
     use crate::pc_specific::{in_parenthesis, SpecificTrait};
     use crate::{Expression, ExpressionPos};
 
-    pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
         in_parenthesis(
             expression_pos_p().or_syntax_error("Expected: expression inside parenthesis"),
         )
@@ -666,31 +679,29 @@ pub mod file_handle {
     use crate::{Expression, ExpressionPos, FileHandle, ParseError};
     use rusty_common::*;
 
-    pub fn file_handle_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Positioned<FileHandle>>
-    {
+    pub fn file_handle_p() -> impl Parser<RcStringView, Output = Positioned<FileHandle>> {
         // # and digits
         // if # and 0 -> BadFileNameOrNumber
         // if # without digits -> SyntaxError (Expected: digits after #)
         any_token_of(TokenType::Pound)
             .and_tuple(any_token_of(TokenType::Digits).or_syntax_error("Expected: digits after #"))
-            .flat_map(|(pound, digits)| match digits.text.parse::<u8>() {
-                Ok(d) if d > 0 => ParseResult::Ok(FileHandle::from(d).at_pos(pound.pos)),
-                _ => ParseResult::Err(ParseError::BadFileNameOrNumber),
+            .flat_map(|input, (pound, digits)| match digits.text.parse::<u8>() {
+                Ok(d) if d > 0 => Ok((input, FileHandle::from(d).at_pos(pound.pos))),
+                _ => Err((true, input, ParseError::BadFileNameOrNumber)),
             })
     }
 
     /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
-    pub fn file_handle_as_expression_pos_p<I: Tokenizer + 'static>(
-    ) -> impl Parser<I, Output = ExpressionPos> {
+    pub fn file_handle_as_expression_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
         file_handle_p().map(|file_handle_pos| file_handle_pos.map(Expression::from))
     }
 
-    pub fn guarded_file_handle_or_expression_p<I: Tokenizer + 'static>(
-    ) -> impl Parser<I, Output = ExpressionPos> {
+    pub fn guarded_file_handle_or_expression_p() -> impl Parser<RcStringView, Output = ExpressionPos>
+    {
         ws_file_handle().or(ws_expr_pos_p())
     }
 
-    fn ws_file_handle<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
+    fn ws_file_handle() -> impl Parser<RcStringView, Output = ExpressionPos> {
         whitespace().and_keep_right(file_handle_as_expression_pos_p())
     }
 }
@@ -706,31 +717,23 @@ pub mod guard {
         Whitespace,
     }
 
-    impl Undo for Guard {
-        fn undo(self, tokenizer: &mut impl Tokenizer) {
-            if let Self::Whitespace = self {
-                tokenizer.unread();
-            }
-        }
-    }
-
     /// `result ::= " " | "("`
     ///
     /// The "(" will be undone.
-    pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
+    pub fn parser() -> impl Parser<RcStringView, Output = Guard> {
         whitespace_guard().or(lparen_guard())
     }
 
-    fn whitespace_guard<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
+    fn whitespace_guard() -> impl Parser<RcStringView, Output = Guard> {
         whitespace().map(|_| Guard::Whitespace)
     }
 
-    fn lparen_guard<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
-        peek_token().flat_map(|token| {
+    fn lparen_guard() -> impl Parser<RcStringView, Output = Guard> {
+        peek_token().flat_map(|input, token| {
             if TokenType::LParen.matches(&token) {
-                ParseResult::Ok(Guard::Peeked)
+                Ok((input, Guard::Peeked))
             } else {
-                ParseResult::None
+                default_parse_error(input)
             }
         })
     }

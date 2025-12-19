@@ -1,8 +1,8 @@
-use crate::pc::{Map, Parser, Tokenizer};
+use crate::pc::{Map, Parser, RcStringView};
 use crate::pc_specific::{keyword_choice, keyword_syntax_error};
 use crate::Keyword;
 
-pub fn keyword_map<I: Tokenizer + 'static, T, K>(mappings: K) -> impl Parser<I, Output = T>
+pub fn keyword_map<T, K>(mappings: K) -> impl Parser<RcStringView, Output = T>
 where
     K: AsRef<[(Keyword, T)]>,
     T: Clone,

@@ -1,34 +1,37 @@
-use crate::pc::{ParseResult, Parser, Tokenizer};
+use crate::pc::{ParseResult, ParseResultTrait, Parser};
 use crate::{binary_parser_declaration, ParseError};
 
 binary_parser_declaration!(pub struct AccumulateParser);
 
-impl<I: Tokenizer + 'static, L, R> Parser<I> for AccumulateParser<L, R>
+impl<I, L, R> Parser<I> for AccumulateParser<L, R>
 where
     L: Parser<I>,
     R: Parser<I, Output = L::Output>,
 {
     type Output = Vec<L::Output>;
 
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
-        self.left.parse(tokenizer).flat_map(|first| {
+    fn parse(&self, input: I) -> ParseResult<I, Self::Output, ParseError> {
+        self.left.parse(input).flat_map(|input, first| {
             let mut result: Vec<L::Output> = vec![];
             result.push(first);
+            let mut input = input;
             loop {
-                match self.right.parse(tokenizer) {
-                    ParseResult::Ok(next) => {
+                match self.right.parse(input) {
+                    Ok((i, next)) => {
                         result.push(next);
+                        input = i;
                     }
-                    ParseResult::None | ParseResult::Expected(_) => {
+                    Err((false, i, _)) => {
+                        input = i;
                         break;
                     }
-                    ParseResult::Err(err) => {
-                        return ParseResult::Err(err);
+                    Err(err) => {
+                        return Err(err);
                     }
                 }
             }
 
-            ParseResult::Ok(result)
+            Ok((input, result))
         })
     }
 }

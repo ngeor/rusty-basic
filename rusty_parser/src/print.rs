@@ -8,7 +8,7 @@ use crate::ParseError;
 use rusty_common::*;
 
 /// See [Print] for the definition.
-pub fn parse_print_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn parse_print_p() -> impl Parser<RcStringView, Output = Statement> {
     keyword(Keyword::Print)
         .and_opt_keep_right(print_boundary().and_tuple(Seq3::new(
             opt_file_handle_comma_p(),
@@ -26,7 +26,7 @@ pub fn parse_print_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statem
         })
 }
 
-pub fn parse_lprint_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn parse_lprint_p() -> impl Parser<RcStringView, Output = Statement> {
     keyword(Keyword::LPrint)
         .and_opt_keep_right(print_boundary().and_tuple(Seq2::new(opt_using(), PrintArgsParser)))
         .map(|opt_args| opt_args.unwrap_or_default())
@@ -40,7 +40,7 @@ pub fn parse_lprint_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = State
         })
 }
 
-fn opt_using<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<ExpressionPos>> {
+fn opt_using() -> impl Parser<RcStringView, Output = Option<ExpressionPos>> {
     seq3(
         keyword(Keyword::Using),
         ws_expr_pos_p().or_syntax_error("Expected: expression after USING"),
@@ -50,8 +50,7 @@ fn opt_using<I: Tokenizer + 'static>() -> impl Parser<I, Output = Option<Express
     .to_option()
 }
 
-fn opt_file_handle_comma_p<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = Option<Positioned<FileHandle>>> {
+fn opt_file_handle_comma_p() -> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>> {
     seq2(
         file_handle_p(),
         comma().no_incomplete(),
@@ -63,10 +62,10 @@ fn opt_file_handle_comma_p<I: Tokenizer + 'static>(
 pub struct PrintArgsParser;
 
 impl PrintArgsParser {
-    fn next<I: Tokenizer + 'static>(
-        tokenizer: &mut I,
+    fn next(
+        tokenizer: RcStringView,
         allow_expr: bool,
-    ) -> ParseResult<PrintArg, ParseError> {
+    ) -> ParseResult<RcStringView, PrintArg, ParseError> {
         if allow_expr {
             Self::any_print_arg().parse(tokenizer)
         } else {
@@ -74,54 +73,59 @@ impl PrintArgsParser {
         }
     }
 
-    fn any_print_arg<I: Tokenizer + 'static>() -> impl Parser<I, Output = PrintArg> {
+    fn any_print_arg() -> impl Parser<RcStringView, Output = PrintArg> {
         expression_pos_p()
             .map(PrintArg::Expression)
             .or(Self::delimiter_print_arg())
     }
 
-    fn delimiter_print_arg<I: Tokenizer + 'static>() -> impl Parser<I, Output = PrintArg> {
+    fn delimiter_print_arg() -> impl Parser<RcStringView, Output = PrintArg> {
         semicolon()
             .map(|_| PrintArg::Semicolon)
             .or(comma().map(|_| PrintArg::Comma))
     }
 }
 
-impl<I: Tokenizer + 'static> Parser<I> for PrintArgsParser {
+impl Parser<RcStringView> for PrintArgsParser {
     type Output = Vec<PrintArg>;
 
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+    fn parse(
+        &self,
+        mut tokenizer: RcStringView,
+    ) -> ParseResult<RcStringView, Self::Output, ParseError> {
         let mut result: Vec<PrintArg> = vec![];
         let mut last_one_was_expression = false;
         loop {
             match Self::next(tokenizer, !last_one_was_expression) {
-                ParseResult::Ok(next) => {
+                Ok((remaining, next)) => {
                     last_one_was_expression = next.is_expression();
                     result.push(next);
+                    tokenizer = remaining;
                 }
-                ParseResult::None | ParseResult::Expected(_) => {
+                Err((false, remaining, _)) => {
+                    tokenizer = remaining;
                     break;
                 }
-                ParseResult::Err(err) => {
-                    return ParseResult::Err(err);
+                Err(err) => {
+                    return Err(err);
                 }
             }
         }
-        ParseResult::Ok(result)
+        Ok((tokenizer, result))
     }
 }
 
-fn print_boundary<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
+fn print_boundary() -> impl Parser<RcStringView, Output = Guard> {
     whitespace()
         .map(|_| Guard::Whitespace)
-        .or(peek_token().flat_map(|token| {
+        .or(peek_token().flat_map(|input, token| {
             if TokenType::Comma.matches(&token)
                 || TokenType::Semicolon.matches(&token)
                 || TokenType::LParen.matches(&token)
             {
-                ParseResult::Ok(Guard::Peeked)
+                Ok((input, Guard::Peeked))
             } else {
-                ParseResult::None
+                default_parse_error(input)
             }
         }))
 }

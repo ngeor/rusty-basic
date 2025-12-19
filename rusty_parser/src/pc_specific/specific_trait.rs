@@ -1,8 +1,8 @@
-use crate::pc::{OrFailParser, Parser, Tokenizer};
+use crate::pc::{OrFailParser, Parser};
 use crate::pc_specific::WithPosMapper;
 use crate::ParseError;
 
-pub trait SpecificTrait<I: Tokenizer + 'static>: Parser<I>
+pub trait SpecificTrait<I>: Parser<I>
 where
     Self: Sized,
 {
@@ -13,7 +13,7 @@ where
         Self: Sized;
 }
 
-impl<I: Tokenizer + 'static, S> SpecificTrait<I> for S
+impl<I, S> SpecificTrait<I> for S
 where
     S: Parser<I>,
 {

@@ -1,11 +1,11 @@
-use crate::pc::{MapOkNone, ParseResult, Parser, Tokenizer};
+use crate::pc::{ParseResult, ParseResultTrait, Parser, ToOption};
 use crate::ParseError;
 
 //
 // And (without undo)
 //
 
-pub trait AndWithoutUndo<I: Tokenizer + 'static>: Parser<I> {
+pub trait AndWithoutUndo<I>: Parser<I> {
     /// Parses both the left and the right side.
     /// Be careful: if the right side fails, parsing of the left side
     /// is not undone. This should not be used unless it's certain
@@ -34,7 +34,8 @@ pub trait AndWithoutUndo<I: Tokenizer + 'static>: Parser<I> {
     fn and_opt<R, F, O>(self, right: R, combiner: F) -> impl Parser<I, Output = O>
     where
         Self: Sized,
-        R: Parser<I> + 'static,
+        I: Clone,
+        R: Parser<I>,
         F: Fn(Self::Output, Option<R::Output>) -> O,
     {
         self.and_without_undo(right.to_option(), combiner)
@@ -48,7 +49,8 @@ pub trait AndWithoutUndo<I: Tokenizer + 'static>: Parser<I> {
     ) -> impl Parser<I, Output = (Self::Output, Option<R::Output>)>
     where
         Self: Sized,
-        R: Parser<I> + 'static,
+        I: Clone,
+        R: Parser<I>,
     {
         self.and_opt(right, |l, r| (l, r))
     }
@@ -58,7 +60,8 @@ pub trait AndWithoutUndo<I: Tokenizer + 'static>: Parser<I> {
     fn and_opt_keep_left<R>(self, right: R) -> impl Parser<I, Output = Self::Output>
     where
         Self: Sized,
-        R: Parser<I> + 'static,
+        I: Clone,
+        R: Parser<I>,
     {
         self.and_opt(right, |l, _| l)
     }
@@ -68,7 +71,8 @@ pub trait AndWithoutUndo<I: Tokenizer + 'static>: Parser<I> {
     fn and_opt_keep_right<R>(self, right: R) -> impl Parser<I, Output = Option<R::Output>>
     where
         Self: Sized,
-        R: Parser<I> + 'static,
+        I: Clone,
+        R: Parser<I>,
     {
         self.and_opt(right, |_, r| r)
     }
@@ -76,7 +80,6 @@ pub trait AndWithoutUndo<I: Tokenizer + 'static>: Parser<I> {
 
 impl<I, L> AndWithoutUndo<I> for L
 where
-    I: Tokenizer + 'static,
     L: Parser<I>,
 {
     fn and_without_undo<R, F, O>(self, right: R, combiner: F) -> impl Parser<I, Output = O>
@@ -104,7 +107,7 @@ impl<L, R, F> AndWithoutUndoParser<L, R, F> {
     }
 }
 
-impl<I: Tokenizer + 'static, L, R, F, O> Parser<I> for AndWithoutUndoParser<L, R, F>
+impl<I, L, R, F, O> Parser<I> for AndWithoutUndoParser<L, R, F>
 where
     L: Parser<I>,
     R: Parser<I>,
@@ -112,11 +115,11 @@ where
 {
     type Output = O;
 
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
-        self.left.parse(tokenizer).flat_map(|left| {
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
+        self.left.parse(tokenizer).flat_map(|tokenizer, left| {
             self.right
                 .parse(tokenizer)
-                .map(|right| (self.combiner)(left, right))
+                .map_ok(|right| (self.combiner)(left, right))
         })
     }
 }

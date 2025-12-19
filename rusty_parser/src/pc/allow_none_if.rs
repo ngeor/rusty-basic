@@ -1,4 +1,4 @@
-use crate::pc::{ParseResult, Parser, Tokenizer};
+use crate::pc::{ParseResult, Parser};
 use crate::{parser_declaration, ParseError};
 parser_declaration!(
     pub struct AllowNoneIfParser {
@@ -6,29 +6,21 @@ parser_declaration!(
     }
 );
 
-impl<I: Tokenizer + 'static, P> Parser<I> for AllowNoneIfParser<P>
+impl<I, P> Parser<I> for AllowNoneIfParser<P>
 where
     P: Parser<I>,
 {
     type Output = Option<P::Output>;
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {
-            ParseResult::Ok(value) => ParseResult::Ok(Some(value)),
-            ParseResult::None => {
-                if self.condition {
-                    ParseResult::Ok(None)
+            Ok((input, value)) => Ok((input, Some(value))),
+            Err((fatal, i, err)) => {
+                if self.condition && !fatal {
+                    Ok((i, None))
                 } else {
-                    ParseResult::None
+                    Err((fatal, i, err))
                 }
             }
-            ParseResult::Expected(s) => {
-                if self.condition {
-                    ParseResult::Ok(None)
-                } else {
-                    ParseResult::Expected(s)
-                }
-            }
-            ParseResult::Err(err) => ParseResult::Err(err),
         }
     }
 }

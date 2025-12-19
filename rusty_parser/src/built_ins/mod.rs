@@ -32,7 +32,7 @@ use crate::{Expression, ExpressionPos, Expressions, Keyword, Statement};
 use rusty_common::{AtPos, Position, Positioned};
 
 // Parses built-in subs which have a special syntax.
-lazy_parser!(pub fn parse<Output=Statement> ; struct LazyParser ; OrParser::new(vec![
+lazy_parser!(pub fn parse<I=RcStringView, Output=Statement> ; struct LazyParser ; OrParser::new(vec![
     Box::new(close::parse()),
     Box::new(color::parse()),
     Box::new(data::parse()),
@@ -53,16 +53,16 @@ lazy_parser!(pub fn parse<Output=Statement> ; struct LazyParser ; OrParser::new(
 
 // needed for built-in functions that are also keywords (e.g. LEN), so they
 // cannot be parsed by the `word` module.
-pub fn built_in_function_call_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expression> {
-    len::parse().or(string_fn::parse())
+pub fn built_in_function_call_p() -> impl Parser<RcStringView, Output = Expression> {
+    OrParser::new(vec![Box::new(len::parse()), Box::new(string_fn::parse())])
 }
 
 /// Parses built-in subs with optional arguments.
 /// Used only by `COLOR` and `LOCATE`.
-fn parse_built_in_sub_with_opt_args<I: Tokenizer + 'static>(
+fn parse_built_in_sub_with_opt_args(
     k: Keyword,
     built_in_sub: BuiltInSub,
-) -> impl Parser<I, Output = Statement> {
+) -> impl Parser<RcStringView, Output = Statement> {
     seq3(
         keyword(k),
         whitespace().no_incomplete(),
@@ -94,15 +94,13 @@ fn map_opt_args_to_flags(args: Vec<Option<ExpressionPos>>) -> Expressions {
 }
 
 /// Comma separated list of items, allowing items to be missing between commas.
-fn csv_allow_missing<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<Option<ExpressionPos>>>
-{
+fn csv_allow_missing() -> impl Parser<RcStringView, Output = Vec<Option<ExpressionPos>>> {
     parse_delimited_to_items(opt_zip(expression_pos_p(), comma()), trailing_comma_error())
         .or_default()
 }
 
 /// Used in `INPUT` and `LINE INPUT`, parsing an optional file number.
-fn opt_file_handle_comma_p<I: Tokenizer + 'static>(
-) -> impl Parser<I, Output = Option<Positioned<FileHandle>>> {
+fn opt_file_handle_comma_p() -> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>> {
     seq2(file_handle_p(), comma().no_incomplete(), |l, _| l).to_option()
 }
 

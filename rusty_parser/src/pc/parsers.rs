@@ -1,17 +1,17 @@
-use crate::pc::many::OneOrMoreParser;
+use crate::pc::many::Many;
 use crate::pc::{
-    AllowNoneIfParser, ChainParser, LoopWhile, MapOkNone, MessageProvider, NoIncompleteParser,
-    OrFailParser, OrParser, ParseResult, SurroundParser, Tokenizer, Undo, WithExpectedMessage,
+    AllowNoneIfParser, And, ChainParser, LoopWhile, MessageProvider, NoIncompleteParser, OrDefault,
+    OrFailParser, ParseResult, WithExpectedMessage,
 };
 use crate::ParseError;
 
 // TODO make QError generic param too
 
 /// A parser uses a [Tokenizer] in order to produce a result.
-pub trait Parser<I: Tokenizer + 'static> {
+pub trait Parser<I> {
     type Output;
 
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError>;
+    fn parse(&self, input: I) -> ParseResult<I, Self::Output, ParseError>;
 
     /**
      * Not reviewed yet
@@ -20,6 +20,7 @@ pub trait Parser<I: Tokenizer + 'static> {
     fn loop_while<F>(self, predicate: F) -> LoopWhile<Self, F>
     where
         Self: Sized,
+        I: Clone,
         F: Fn(&Self::Output) -> bool,
     {
         LoopWhile::new(self, predicate)
@@ -49,14 +50,6 @@ pub trait Parser<I: Tokenizer + 'static> {
         NoIncompleteParser::new(self)
     }
 
-    fn or<O, R>(self, right: R) -> OrParser<I, O>
-    where
-        Self: Sized + Parser<I, Output = O> + 'static,
-        R: Parser<I, Output = O> + 'static,
-    {
-        OrParser::new(vec![Box::new(self), Box::new(right)])
-    }
-
     #[cfg(debug_assertions)]
     fn logging(self, tag: &str) -> crate::pc::LoggingPC<Self>
     where
@@ -74,7 +67,8 @@ pub trait Parser<I: Tokenizer + 'static> {
 
     fn zero_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>>
     where
-        Self: Sized + 'static,
+        Self: Sized,
+        I: Clone,
     {
         self.one_or_more().or_default()
     }
@@ -82,8 +76,16 @@ pub trait Parser<I: Tokenizer + 'static> {
     fn one_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>>
     where
         Self: Sized,
+        I: Clone,
     {
-        OneOrMoreParser::new(self)
+        Many::new(
+            self,
+            |e| vec![e],
+            |mut v: Vec<Self::Output>, e| {
+                v.push(e);
+                v
+            },
+        )
     }
 
     fn chain<RF, R, F, O>(self, right_factory: RF, combiner: F) -> ChainParser<Self, RF, F>
@@ -96,13 +98,13 @@ pub trait Parser<I: Tokenizer + 'static> {
         ChainParser::new(self, right_factory, combiner)
     }
 
-    fn surround<L, R>(self, left: L, right: R) -> SurroundParser<L, Self, R>
+    fn surround<L, R>(self, left: L, right: R) -> impl Parser<I, Output = Self::Output>
     where
         Self: Sized,
+        I: Clone,
         L: Parser<I>,
-        L::Output: Undo,
         R: Parser<I>,
     {
-        SurroundParser::new(left, self, right)
+        left.and_keep_right(self).and_keep_left(right)
     }
 }

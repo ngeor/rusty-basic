@@ -19,7 +19,7 @@ use crate::{declaration, ParseError};
 // comment: ' comment
 // separator: eol|col
 
-pub fn program_parser_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Program> {
+pub fn program_parser_p() -> impl Parser<RcStringView, Output = Program> {
     ws_eol_col_zero_or_more()
         .and_opt_keep_right(main_program())
         .and_opt_keep_left(ws_eol_col_zero_or_more())
@@ -27,7 +27,7 @@ pub fn program_parser_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Pro
         .map(|opt| opt.unwrap_or_default())
 }
 
-fn main_program<I: Tokenizer + 'static>() -> impl Parser<I, Output = Program> {
+fn main_program() -> impl Parser<RcStringView, Output = Program> {
     global_statement_pos_p().and_opt(next_statements(), |first, opt_next| {
         let mut program = vec![first];
         if let Some(next) = opt_next {
@@ -37,7 +37,7 @@ fn main_program<I: Tokenizer + 'static>() -> impl Parser<I, Output = Program> {
     })
 }
 
-fn next_statements<I: Tokenizer + 'static>() -> impl Parser<I, Output = Program> {
+fn next_statements() -> impl Parser<RcStringView, Output = Program> {
     OptAndPC::new(
         whitespace(),
         next_statement().and_opt_keep_left(whitespace()),
@@ -46,7 +46,7 @@ fn next_statements<I: Tokenizer + 'static>() -> impl Parser<I, Output = Program>
     .zero_or_more()
 }
 
-fn next_statement<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalStatementPos> {
+fn next_statement() -> impl Parser<RcStringView, Output = GlobalStatementPos> {
     separator::separator()
         .and_without_undo_keep_right(OrParser::new(vec![
             // need to detect EOF, because the separator we detected might have been the last EOL of the file
@@ -58,11 +58,11 @@ fn next_statement<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalSta
                     .map(Some),
             ),
         ]))
-        .flat_map(|opt| match opt {
+        .flat_map(|input, opt| match opt {
             // map the statement
-            Some(s) => ParseResult::Ok(s),
+            Some(s) => Ok((input, s)),
             // map the EOF back to an incomplete result
-            None => ParseResult::None,
+            None => default_parse_error(input),
         })
 }
 
@@ -71,7 +71,7 @@ mod separator {
 
     use super::*;
 
-    pub fn separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
+    pub fn separator() -> impl Parser<RcStringView, Output = ()> {
         OrParser::new(vec![
             // EOL or colon separator
             Box::new(eol_or_colon_separator()),
@@ -82,19 +82,23 @@ mod separator {
         ])
     }
 
-    fn eol_or_colon_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
+    fn eol_or_colon_separator() -> impl Parser<RcStringView, Output = ()> {
         eol_col_one_or_more().and_opt(ws_eol_col_zero_or_more(), |_, _| ())
     }
 
-    fn raise_err<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
-        any_token().flat_map(|t| {
-            ParseResult::Err(ParseError::SyntaxError(format!("No separator: {}", t.text)))
+    fn raise_err() -> impl Parser<RcStringView, Output = ()> {
+        any_token().flat_map(|input, t| {
+            Err((
+                true,
+                input,
+                ParseError::SyntaxError(format!("No separator: {}", t.text)),
+            ))
         })
     }
 }
 
 /// Parses one or more tokens that are end of line or colon.
-fn eol_col_one_or_more<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
+fn eol_col_one_or_more() -> impl Parser<RcStringView, Output = ()> {
     any_token()
         .filter(|t| TokenType::Colon.matches(t) || TokenType::Eol.matches(t))
         .one_or_more()
@@ -102,7 +106,7 @@ fn eol_col_one_or_more<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> 
 }
 
 /// Parses zero or more tokens that are whitespace, end of line, or colon.
-fn ws_eol_col_zero_or_more<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
+fn ws_eol_col_zero_or_more() -> impl Parser<RcStringView, Output = ()> {
     any_token()
         .filter(|t| {
             TokenType::Colon.matches(t)
@@ -117,19 +121,20 @@ fn ws_eol_col_zero_or_more<I: Tokenizer + 'static>() -> impl Parser<I, Output = 
 /// If we're at EOF, the parser returns a happy empty result.
 /// Otherwise it returns a syntax error.
 /// This is a failsafe to ensure we have parsed the entire input.
-fn demand_eof<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
-    any_token().flat_map_negate_none(|t| {
-        ParseResult::Err(ParseError::SyntaxError(format!(
-            "Cannot parse, expected EOF {:?}",
-            t
-        )))
+fn demand_eof() -> impl Parser<RcStringView, Output = ()> {
+    any_token().flat_map_negate_none(|input, t| {
+        Err((
+            true,
+            input,
+            ParseError::SyntaxError(format!("Cannot parse, expected EOF {:?}", t)),
+        ))
     })
 }
 
 /// Parses a global statement.
 /// This includes regular statements, but also DEF types,
 /// declarations, implementations, and user-defined types.
-fn global_statement_pos_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = GlobalStatementPos> {
+fn global_statement_pos_p() -> impl Parser<RcStringView, Output = GlobalStatementPos> {
     OrParser::new(vec![
         Box::new(def_type::def_type_p().map(GlobalStatement::DefType)),
         Box::new(declaration::declaration_p()),

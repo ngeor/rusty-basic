@@ -5,7 +5,7 @@ use crate::statements::*;
 use crate::types::*;
 use crate::ParseError;
 
-pub fn while_wend_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
+pub fn while_wend_p() -> impl Parser<RcStringView, Output = Statement> {
     seq4(
         keyword(Keyword::While),
         ws_expr_pos_p().or_syntax_error("Expected: expression after WHILE"),

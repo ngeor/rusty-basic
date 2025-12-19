@@ -1,6 +1,6 @@
 // Mixed type or
 
-use crate::pc::{ParseResult, Parser, Tokenizer};
+use crate::pc::{ParseResult, Parser};
 use crate::{binary_parser_declaration, ParseError};
 
 pub enum ZipValue<L, R> {
@@ -47,32 +47,28 @@ pub fn opt_zip<L, R>(left: L, right: R) -> OptZip<L, R> {
     OptZip::new(left, right)
 }
 
-impl<I: Tokenizer + 'static, L, R> Parser<I> for OptZip<L, R>
+impl<I, L, R> Parser<I> for OptZip<L, R>
 where
     L: Parser<I>,
     R: Parser<I>,
 {
     type Output = ZipValue<L::Output, R::Output>;
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
-        let opt_left = match self.left.parse(tokenizer) {
-            ParseResult::Ok(x) => Some(x),
-            ParseResult::None | ParseResult::Expected(_) => None,
-            ParseResult::Err(err) => return ParseResult::Err(err),
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
+        let (tokenizer, opt_left) = match self.left.parse(tokenizer) {
+            Ok((input, x)) => (input, Some(x)),
+            Err((false, input, _)) => (input, None),
+            Err(err) => return Err(err),
         };
-        let opt_right = match self.right.parse(tokenizer) {
-            ParseResult::Ok(x) => Some(x),
-            ParseResult::None | ParseResult::Expected(_) => None,
-            ParseResult::Err(err) => return ParseResult::Err(err),
-        };
-        match opt_left {
-            Some(left) => match opt_right {
-                Some(right) => ParseResult::Ok(ZipValue::Both(left, right)),
-                _ => ParseResult::Ok(ZipValue::Left(left)),
+        match self.right.parse(tokenizer) {
+            Ok((input, r)) => match opt_left {
+                Some(l) => Ok((input, ZipValue::Both(l, r))),
+                None => Ok((input, ZipValue::Right(r))),
             },
-            None => match opt_right {
-                Some(right) => ParseResult::Ok(ZipValue::Right(right)),
-                _ => ParseResult::None,
+            Err((false, input, err)) => match opt_left {
+                Some(l) => Ok((input, ZipValue::Left(l))),
+                None => Err((false, input, err)),
             },
+            Err(err) => Err(err),
         }
     }
 }

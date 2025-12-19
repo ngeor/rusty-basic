@@ -1,4 +1,4 @@
-use rusty_common::Position;
+use rusty_common::{HasPos, Position};
 
 use super::row_col_view::*;
 use std::{
@@ -10,6 +10,18 @@ use std::{
 pub struct StringView {
     chars: Vec<char>,
     row_col: Vec<Position>,
+}
+
+impl StringView {
+    pub fn eof_row_col(&self) -> Position {
+        if self.row_col.is_empty() {
+            Position::start()
+        } else {
+            let mut pos = self.row_col[self.row_col.len() - 1];
+            pos.inc_col();
+            pos
+        }
+    }
 }
 
 impl From<&str> for StringView {
@@ -48,7 +60,7 @@ impl TryFrom<File> for StringView {
 #[derive(Clone)]
 pub struct RcStringView {
     buffer: Rc<StringView>,
-    position: usize,
+    index: usize,
 }
 
 impl<S> From<S> for RcStringView
@@ -73,7 +85,7 @@ impl RcStringView {
     pub fn new(buffer: StringView) -> Self {
         Self {
             buffer: Rc::new(buffer),
-            position: 0,
+            index: 0,
         }
     }
 
@@ -81,30 +93,40 @@ impl RcStringView {
         self.buffer.chars.len()
     }
 
-    pub fn position(&self) -> usize {
-        self.position
+    pub fn index(&self) -> usize {
+        self.index
     }
 
     pub fn char_at(&self, index: usize) -> char {
         self.buffer.chars[index]
     }
 
-    pub fn row_col(&self) -> Position {
-        self.buffer.row_col[self.position]
+    pub fn position(&self) -> Position {
+        if self.is_eof() {
+            self.buffer.eof_row_col()
+        } else {
+            self.buffer.row_col[self.index]
+        }
     }
 
     pub fn char(&self) -> char {
-        self.char_at(self.position)
+        self.char_at(self.index)
     }
 
     pub fn inc_position(self) -> Self {
         Self {
             buffer: self.buffer,
-            position: self.position + 1,
+            index: self.index + 1,
         }
     }
 
     pub fn is_eof(&self) -> bool {
-        self.position >= self.len()
+        self.index >= self.len()
+    }
+}
+
+impl HasPos for RcStringView {
+    fn pos(&self) -> Position {
+        self.position()
     }
 }

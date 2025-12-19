@@ -8,7 +8,7 @@ use crate::{DefType, Keyword, LetterRange, ParseError, TypeQualifier};
 // LetterRange  ::= <Letter> | <Letter>-<Letter>
 // Letter       ::= [a-zA-Z]
 
-pub fn def_type_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = DefType> {
+pub fn def_type_p() -> impl Parser<RcStringView, Output = DefType> {
     seq3(
         def_keyword_p(),
         whitespace().no_incomplete(),
@@ -17,7 +17,7 @@ pub fn def_type_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = DefType> 
     )
 }
 
-fn def_keyword_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = TypeQualifier> {
+fn def_keyword_p() -> impl Parser<RcStringView, Output = TypeQualifier> {
     keyword_map(&[
         (Keyword::DefInt, TypeQualifier::PercentInteger),
         (Keyword::DefLng, TypeQualifier::AmpersandLong),
@@ -27,27 +27,31 @@ fn def_keyword_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = TypeQualif
     ])
 }
 
-fn letter_ranges<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<LetterRange>> {
+fn letter_ranges() -> impl Parser<RcStringView, Output = Vec<LetterRange>> {
     csv_non_opt(letter_range(), "Expected: letter ranges")
 }
 
-fn letter_range<I: Tokenizer + 'static>() -> impl Parser<I, Output = LetterRange> {
+fn letter_range() -> impl Parser<RcStringView, Output = LetterRange> {
     letter()
         .no_incomplete()
         .and_opt_tuple(minus_sign().and_tuple(letter()))
-        .flat_map(|(l, opt_r)| match opt_r {
+        .flat_map(|input, (l, opt_r)| match opt_r {
             Some((_, r)) => {
                 if l < r {
-                    ParseResult::Ok(LetterRange::Range(l, r))
+                    Ok((input, LetterRange::Range(l, r)))
                 } else {
-                    ParseResult::Err(ParseError::syntax_error("Invalid letter range"))
+                    Err((
+                        true,
+                        input,
+                        ParseError::syntax_error("Invalid letter range"),
+                    ))
                 }
             }
-            None => ParseResult::Ok(LetterRange::Single(l)),
+            None => Ok((input, LetterRange::Single(l))),
         })
 }
 
-fn letter<I: Tokenizer + 'static>() -> impl Parser<I, Output = char> {
+fn letter() -> impl Parser<RcStringView, Output = char> {
     any_token_of(TokenType::Identifier)
         .filter(|token| token.text.chars().count() == 1)
         .map(token_to_char)

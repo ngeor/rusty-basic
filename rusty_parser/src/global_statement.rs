@@ -118,15 +118,12 @@ fn ws_eol_col_zero_or_more<I: Tokenizer + 'static>() -> impl Parser<I, Output = 
 /// Otherwise it returns a syntax error.
 /// This is a failsafe to ensure we have parsed the entire input.
 fn demand_eof<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
-    any_token().flat_map_ok_none_closures(
-        |t| {
-            ParseResult::Err(ParseError::SyntaxError(format!(
-                "Cannot parse, expected EOF {:?}",
-                t
-            )))
-        },
-        || ParseResult::Ok(()),
-    )
+    any_token().flat_map_negate_none(|t| {
+        ParseResult::Err(ParseError::SyntaxError(format!(
+            "Cannot parse, expected EOF {:?}",
+            t
+        )))
+    })
 }
 
 /// Parses a global statement.

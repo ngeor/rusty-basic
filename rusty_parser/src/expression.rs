@@ -732,16 +732,13 @@ pub mod guard {
     }
 
     fn lparen_guard<I: Tokenizer + 'static>() -> impl Parser<I, Output = Guard> {
-        peek_token().flat_map_ok_none_closures(
-            |token| {
-                if TokenType::LParen.matches(&token) {
-                    ParseResult::Ok(Guard::Peeked)
-                } else {
-                    ParseResult::None
-                }
-            },
-            || ParseResult::None,
-        )
+        peek_token().flat_map(|token| {
+            if TokenType::LParen.matches(&token) {
+                ParseResult::Ok(Guard::Peeked)
+            } else {
+                ParseResult::None
+            }
+        })
     }
 }
 

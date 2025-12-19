@@ -18,9 +18,9 @@ where
 
 // Flat map Ok and None using closures.
 
-parser_declaration!(pub struct FlatMapOkNoneClosures<ok_mapper: F, incomplete_mapper: G>);
+parser_declaration!(pub struct FlatMapOkNone<ok_mapper: F, incomplete_mapper: G>);
 
-impl<I: Tokenizer + 'static, P, F, G, U> Parser<I> for FlatMapOkNoneClosures<P, F, G>
+impl<I: Tokenizer + 'static, P, F, G, U> Parser<I> for FlatMapOkNone<P, F, G>
 where
     P: Parser<I>,
     F: Fn(P::Output) -> ParseResult<U, ParseError>,

@@ -1,5 +1,5 @@
 use crate::pc::and::{And, AndWithoutUndo};
-use crate::pc::flat_map::{FlatMap, FlatMapOkNoneClosures};
+use crate::pc::flat_map::{FlatMap, FlatMapOkNone};
 use crate::pc::many::OneOrMoreParser;
 use crate::pc::map::{Map, MapOkNone, MapOkNoneTrait, MapToDefault, MapToOption};
 use crate::pc::{
@@ -195,8 +195,7 @@ pub trait Parser<I: Tokenizer + 'static> {
     /// Flat map the result of this parser for successful and incomplete results.
     /// Mapping is done by the given closures.
     /// Other errors are never allowed to be re-mapped.
-    /// TODO: add some common helpers for incomplete_mapper == Ok(()) and incomplete_mapper == None
-    fn flat_map_ok_none_closures<F, G, U>(
+    fn flat_map_ok_none<F, G, U>(
         self,
         ok_mapper: F,
         incomplete_mapper: G,
@@ -206,7 +205,17 @@ pub trait Parser<I: Tokenizer + 'static> {
         F: Fn(Self::Output) -> ParseResult<U, ParseError>,
         G: Fn() -> ParseResult<U, ParseError>,
     {
-        FlatMapOkNoneClosures::new(self, ok_mapper, incomplete_mapper)
+        FlatMapOkNone::new(self, ok_mapper, incomplete_mapper)
+    }
+
+    /// Flat map the successful of this parser into an empty result.
+    /// The Failed result is negated and mapped into an empty successful result (i.e. `None` becomes `Ok(())`).
+    fn flat_map_negate_none<F>(self, ok_mapper: F) -> impl Parser<I, Output = ()>
+    where
+        Self: Sized,
+        F: Fn(Self::Output) -> ParseResult<(), ParseError>,
+    {
+        self.flat_map_ok_none(ok_mapper, || ParseResult::Ok(()))
     }
 
     /**

@@ -7,16 +7,13 @@ use crate::Keyword;
 fn dollar_sign_check<I: Tokenizer + 'static>(
     parser: impl Parser<I, Output = Token>,
 ) -> impl Parser<I, Output = Token> {
-    parser.and_keep_left(peek_token().flat_map_ok_none_closures(
-        |t| {
-            if TokenType::DollarSign.matches(&t) {
-                ParseResult::None
-            } else {
-                ParseResult::Ok(())
-            }
-        },
-        || ParseResult::Ok(()),
-    ))
+    parser.and_keep_left(peek_token().flat_map_negate_none(|t| {
+        if TokenType::DollarSign.matches(&t) {
+            ParseResult::None
+        } else {
+            ParseResult::Ok(())
+        }
+    }))
 }
 
 /// Matches the specific keyword. Ensures that it is not followed

@@ -27,7 +27,7 @@ impl CaseInsensitiveString {
     /// ```
     pub fn contains(&self, needle: char) -> bool {
         for c in self.chars() {
-            if c.to_ascii_uppercase() == needle.to_ascii_uppercase() {
+            if c.eq_ignore_ascii_case(&needle) {
                 return true;
             }
         }

@@ -1,7 +1,7 @@
 use rusty_common::Positioned;
 
 /// Represents parser errors.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum ParseError {
     // 1
     NextWithoutFor,
@@ -33,6 +33,7 @@ pub enum ParseError {
     DeviceIOError(String),
 
     // 62
+    #[default]
     InputPastEndOfFile,
 
     ElseWithoutIf,
@@ -44,12 +45,6 @@ pub enum ParseError {
     ElementNotDefined,
 
     LoopWithoutDo,
-}
-
-impl Default for ParseError {
-    fn default() -> Self {
-        Self::InputPastEndOfFile
-    }
 }
 
 impl ParseError {

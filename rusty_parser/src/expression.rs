@@ -699,17 +699,11 @@ pub mod guard {
     use crate::pc::*;
     use crate::pc_specific::{whitespace, TokenType};
 
+    #[derive(Default)]
     pub enum Guard {
+        #[default]
         Peeked,
         Whitespace,
-    }
-
-    // helps when mapping arguments with `unwrap_or_default`, where the guard
-    // is discarded anyway
-    impl Default for Guard {
-        fn default() -> Self {
-            Self::Peeked
-        }
     }
 
     impl Undo for Guard {

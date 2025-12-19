@@ -49,7 +49,7 @@ pub use logging::*;
 pub use loop_while::*;
 pub use map::Map;
 pub use map_err::*;
-pub use map_ok_none::{MapOkNone, MapOkNoneTrait};
+pub use map_ok_none::MapOkNone;
 pub use opt_and::*;
 pub use opt_zip::*;
 pub use or::*;

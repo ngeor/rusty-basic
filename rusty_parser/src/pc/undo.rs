@@ -35,7 +35,7 @@ where
 impl Undo for TokenList {
     fn undo(self, tokenizer: &mut impl Tokenizer) {
         let mut x = self;
-        while let Some(_) = x.pop() {
+        while x.pop().is_some() {
             tokenizer.unread();
         }
     }

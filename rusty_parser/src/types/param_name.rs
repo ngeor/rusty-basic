@@ -7,18 +7,13 @@ pub type ParameterPos = Positioned<Parameter>;
 pub type Parameters = Vec<ParameterPos>;
 
 // same as dim minus the "x as string * 5" and the array dimensions
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub enum ParamType {
+    #[default]
     Bare,
     BuiltIn(TypeQualifier, BuiltInStyle),
     UserDefined(BareNamePos),
     Array(Box<ParamType>),
-}
-
-impl Default for ParamType {
-    fn default() -> Self {
-        Self::Bare
-    }
 }
 
 impl VarTypeNewBuiltInCompact for ParamType {

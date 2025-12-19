@@ -6,19 +6,14 @@ use crate::{
 };
 use rusty_common::{AtPos, Position};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum DimType {
+    #[default]
     Bare,
     BuiltIn(TypeQualifier, BuiltInStyle),
     FixedLengthString(ExpressionPos, u16),
     UserDefined(BareNamePos),
     Array(ArrayDimensions, Box<DimType>),
-}
-
-impl Default for DimType {
-    fn default() -> Self {
-        Self::Bare
-    }
 }
 
 impl VarTypeNewBuiltInCompact for DimType {

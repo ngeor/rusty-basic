@@ -117,7 +117,7 @@ mod single_or_double_literal {
 
     pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
         OptAndPC::new(digits(), dot().then_demand(digits().no_incomplete()))
-            .and_opt(pound())
+            .and_opt_tuple(pound())
             .flat_map(|((opt_integer_digits, frac_digits), opt_pound)| {
                 let left = opt_integer_digits
                     .map(|token| token.text)
@@ -441,7 +441,7 @@ pub mod property {
 
     // cannot be followed by dot or type qualifier if qualified
     fn property<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Token, Option<Token>)> {
-        identifier().and_opt(type_qualifier())
+        identifier().and_opt_tuple(type_qualifier())
     }
 
     // can't use expression_pos_p because it will stack overflow

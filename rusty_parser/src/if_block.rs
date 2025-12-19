@@ -42,16 +42,15 @@ fn if_expr_then_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expressio
 
 fn single_line_if_else_p<I: Tokenizer + 'static>(
 ) -> impl Parser<I, Output = (Statements, Vec<ConditionalBlock>, Option<Statements>)> {
-    single_line_non_comment_statements_p()
-        .and_opt(
-            // comment or ELSE
-            whitespace()
-                .and(comment::comment_p().with_pos())
-                .keep_right()
-                .map(|s| vec![s])
-                .or(single_line_else_p()),
-        )
-        .map(|(l, r)| (l, vec![], r))
+    single_line_non_comment_statements_p().and_opt(
+        // comment or ELSE
+        whitespace()
+            .and(comment::comment_p().with_pos())
+            .keep_right()
+            .map(|s| vec![s])
+            .or(single_line_else_p()),
+        |l, r| (l, vec![], r),
+    )
 }
 
 fn single_line_else_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statements> {

@@ -125,7 +125,7 @@ pub fn name_with_dots<I: Tokenizer + 'static>() -> impl Parser<I, Output = Name>
 
 pub fn name_with_dots_as_tokens<I: Tokenizer + 'static>() -> impl Parser<I, Output = NameAsTokens> {
     OrParser::new(vec![
-        Box::new(identifier_with_dots().and_opt(type_qualifier())),
+        Box::new(identifier_with_dots().and_opt_tuple(type_qualifier())),
         Box::new(
             ensure_no_trailing_dot_or_qualifier(any_keyword_with_dollar_sign())
                 .map(|(keyword_token, dollar_token)| (vec![keyword_token], Some(dollar_token))),
@@ -150,18 +150,16 @@ fn ensure_no_trailing_dot_or_qualifier<I: Tokenizer + 'static, P>(
 fn ensure_no_trailing_dot<I: Tokenizer + 'static, P>(
     parser: impl Parser<I, Output = P>,
 ) -> impl Parser<I, Output = P> {
-    parser
-        .and_opt(peek_token().flat_map_ok_none_closures(
-            |token| {
-                if TokenType::Dot.matches(&token) {
-                    ParseResult::Err(ParseError::IdentifierCannotIncludePeriod)
-                } else {
-                    ParseResult::Ok(())
-                }
-            },
-            || ParseResult::Ok(()),
-        ))
-        .keep_left()
+    parser.and_opt_keep_left(peek_token().flat_map_ok_none_closures(
+        |token| {
+            if TokenType::Dot.matches(&token) {
+                ParseResult::Err(ParseError::IdentifierCannotIncludePeriod)
+            } else {
+                ParseResult::Ok(())
+            }
+        },
+        || ParseResult::Ok(()),
+    ))
 }
 
 /// Returns the result of the given parser,
@@ -169,20 +167,18 @@ fn ensure_no_trailing_dot<I: Tokenizer + 'static, P>(
 fn ensure_no_trailing_qualifier<I: Tokenizer + 'static, P>(
     parser: impl Parser<I, Output = P>,
 ) -> impl Parser<I, Output = P> {
-    parser
-        .and_opt(peek_token().flat_map_ok_none_closures(
-            |token| {
-                if is_type_qualifier(&token) {
-                    ParseResult::Err(ParseError::syntax_error(
-                        "Identifier cannot end with %, &, !, #, or $",
-                    ))
-                } else {
-                    ParseResult::Ok(())
-                }
-            },
-            || ParseResult::Ok(()),
-        ))
-        .keep_left()
+    parser.and_opt_keep_left(peek_token().flat_map_ok_none_closures(
+        |token| {
+            if is_type_qualifier(&token) {
+                ParseResult::Err(ParseError::syntax_error(
+                    "Identifier cannot end with %, &, !, #, or $",
+                ))
+            } else {
+                ParseResult::Ok(())
+            }
+        },
+        || ParseResult::Ok(()),
+    ))
 }
 
 pub type NameAsTokens = (TokenList, Option<Token>);

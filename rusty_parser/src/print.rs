@@ -10,12 +10,11 @@ use rusty_common::*;
 /// See [Print] for the definition.
 pub fn parse_print_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     keyword(Keyword::Print)
-        .and_opt(print_boundary().and(Seq3::new(
+        .and_opt_keep_right(print_boundary().and(Seq3::new(
             opt_file_handle_comma_p(),
             opt_using(),
             PrintArgsParser,
         )))
-        .keep_right()
         .map(|opt_args| opt_args.unwrap_or_default())
         .map(|(_, (opt_file_number, format_string, args))| {
             Statement::Print(Print {
@@ -29,8 +28,7 @@ pub fn parse_print_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statem
 
 pub fn parse_lprint_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     keyword(Keyword::LPrint)
-        .and_opt(print_boundary().and(Seq2::new(opt_using(), PrintArgsParser)))
-        .keep_right()
+        .and_opt_keep_right(print_boundary().and(Seq2::new(opt_using(), PrintArgsParser)))
         .map(|opt_args| opt_args.unwrap_or_default())
         .map(|(_, (format_string, args))| {
             Statement::Print(Print {

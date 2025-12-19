@@ -39,7 +39,7 @@ pub fn delimited_by<I: Tokenizer + 'static, P: Parser<I>, D: Parser<I>>(
     delimiter: D,
     trailing_error: ParseError,
 ) -> impl Parser<I, Output = Vec<P::Output>> {
-    parse_delimited_to_items(parser.and_opt(delimiter), trailing_error)
+    parse_delimited_to_items(parser.and_opt_tuple(delimiter), trailing_error)
 }
 
 /// Gets a list of items separated by a delimiter.

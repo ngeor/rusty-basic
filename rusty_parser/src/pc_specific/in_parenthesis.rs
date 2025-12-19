@@ -15,7 +15,7 @@ where
 }
 
 fn left_paren<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Token, Option<Token>)> {
-    any_token_of(TokenType::LParen).and_opt(whitespace())
+    any_token_of(TokenType::LParen).and_opt_tuple(whitespace())
 }
 
 fn right_paren<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Option<Token>, Token)> {

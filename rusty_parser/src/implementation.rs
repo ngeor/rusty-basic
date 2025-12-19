@@ -49,9 +49,10 @@ fn static_declaration_p<I: Tokenizer + 'static, P, T>(
 where
     P: Parser<I, Output = T> + 'static,
 {
-    parser
-        .and_opt(OptAndPC::new(whitespace(), keyword(Keyword::Static)))
-        .map(|(l, r)| (l, r.is_some()))
+    parser.and_opt(
+        OptAndPC::new(whitespace(), keyword(Keyword::Static)),
+        |l, r| (l, r.is_some()),
+    )
 }
 
 #[cfg(test)]

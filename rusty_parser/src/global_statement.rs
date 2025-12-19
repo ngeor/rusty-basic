@@ -21,31 +21,26 @@ use crate::{declaration, ParseError};
 
 pub fn program_parser_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Program> {
     ws_eol_col_zero_or_more()
-        .and_opt(main_program())
-        .keep_right()
-        .and_opt(ws_eol_col_zero_or_more())
-        .keep_left()
-        .and_opt(demand_eof())
-        .keep_left()
+        .and_opt_keep_right(main_program())
+        .and_opt_keep_left(ws_eol_col_zero_or_more())
+        .and_opt_keep_left(demand_eof())
         .map(|opt| opt.unwrap_or_default())
 }
 
 fn main_program<I: Tokenizer + 'static>() -> impl Parser<I, Output = Program> {
-    global_statement_pos_p()
-        .and_opt(next_statements())
-        .map(|(first, opt_next)| {
-            let mut program = vec![first];
-            if let Some(next) = opt_next {
-                program.extend(next);
-            }
-            program
-        })
+    global_statement_pos_p().and_opt(next_statements(), |first, opt_next| {
+        let mut program = vec![first];
+        if let Some(next) = opt_next {
+            program.extend(next);
+        }
+        program
+    })
 }
 
 fn next_statements<I: Tokenizer + 'static>() -> impl Parser<I, Output = Program> {
     OptAndPC::new(
         whitespace(),
-        next_statement().and_opt(whitespace()).keep_left(),
+        next_statement().and_opt_keep_left(whitespace()),
     )
     .keep_right()
     .zero_or_more()
@@ -88,9 +83,7 @@ mod separator {
     }
 
     fn eol_or_colon_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
-        eol_col_one_or_more()
-            .and_opt(ws_eol_col_zero_or_more())
-            .map(|_| ())
+        eol_col_one_or_more().and_opt(ws_eol_col_zero_or_more(), |_, _| ())
     }
 
     fn raise_err<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {

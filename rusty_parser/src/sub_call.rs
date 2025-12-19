@@ -50,7 +50,7 @@ impl<I: Tokenizer + 'static> Parser<I> for SubCallOrAssignment {
 impl SubCallOrAssignment {
     fn name_and_opt_eq_sign<I: Tokenizer + 'static>(
     ) -> impl Parser<I, Output = (ExpressionPos, Option<Token>)> {
-        expression::property::parser().and_opt(equal_sign())
+        expression::property::parser().and_opt_tuple(equal_sign())
     }
 }
 

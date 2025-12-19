@@ -15,13 +15,13 @@
 use crate::comment::comment_as_string_p;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::ParseError;
 use rusty_common::*;
 
 pub fn comment_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()> {
-    OptAndPC::new(whitespace(), any_token_of(TokenType::Eol))
-        .and_opt(any_token_of_two(TokenType::Eol, TokenType::Whitespace))
-        .map(|_| ())
+    OptAndPC::new(whitespace(), any_token_of(TokenType::Eol)).and_opt(
+        any_token_of_two(TokenType::Eol, TokenType::Whitespace),
+        |_, _| (),
+    )
 }
 
 /// Common separator reads a separator between statements.
@@ -52,11 +52,10 @@ pub fn common_separator<I: Tokenizer + 'static>() -> impl Parser<I, Output = ()>
     OptAndPC::new(
         whitespace(),
         OrParser::new(vec![
-            Box::new(
-                any_token_of_two(TokenType::Colon, TokenType::Eol)
-                    .and_opt(any_token_of_two(TokenType::Eol, TokenType::Whitespace).zero_or_more())
-                    .map(|_| ()),
-            ),
+            Box::new(any_token_of_two(TokenType::Colon, TokenType::Eol).and_opt(
+                any_token_of_two(TokenType::Eol, TokenType::Whitespace).zero_or_more(),
+                |_, _| (),
+            )),
             Box::new(no_separator_needed_before_comment()),
         ]),
     )

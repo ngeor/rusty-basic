@@ -98,15 +98,13 @@ mod type_definition {
     }
 
     fn built_in_string<I: Tokenizer + 'static>() -> impl Parser<I, Output = DimType> {
-        keyword(Keyword::String)
-            .and_opt(
-                star().then_demand(
-                    expression_pos_p().or_syntax_error("Expected: string length after *"),
-                ),
-            )
-            .map(|(_, opt_len)| match opt_len {
+        keyword(Keyword::String).and_opt(
+            star()
+                .then_demand(expression_pos_p().or_syntax_error("Expected: string length after *")),
+            |_, opt_len| match opt_len {
                 Some(len) => DimType::FixedLengthString(len, 0),
                 _ => DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),
-            })
+            },
+        )
     }
 }

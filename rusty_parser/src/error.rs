@@ -46,6 +46,12 @@ pub enum ParseError {
     LoopWithoutDo,
 }
 
+impl Default for ParseError {
+    fn default() -> Self {
+        Self::InputPastEndOfFile
+    }
+}
+
 impl ParseError {
     pub fn syntax_error(msg: &str) -> Self {
         ParseError::SyntaxError(msg.to_string())

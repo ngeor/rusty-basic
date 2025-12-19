@@ -52,13 +52,15 @@ where
             self.eof_pos.inc_col();
         }
         match self.parser.parse(reader) {
-            crate::pc_ng::ParseResult::Ok(remaining, token) => {
+            Ok((remaining, token)) => {
                 self.readers.push(remaining);
                 Some(token)
             }
-            crate::pc_ng::ParseResult::None(_) | crate::pc_ng::ParseResult::Expected(_, _) => None,
-            crate::pc_ng::ParseResult::Err(_, err) => {
-                panic!("temporary error in new tokenizer {:?}", err);
+            Err((fatal, err)) => {
+                if fatal {
+                    panic!("fatal error in new tokenizer {:?}", err)
+                }
+                None
             }
         }
     }
@@ -293,10 +295,10 @@ mod token_parsers {
             input: Self::Input,
         ) -> crate::pc_ng::ParseResult<Self::Input, Self::Output, Self::Error> {
             if input.is_eof() {
-                crate::pc_ng::ParseResult::None(input)
+                crate::pc_ng::default_parse_error()
             } else {
                 let pos = input.row_col();
-                crate::pc_ng::ParseResult::Ok(input, pos)
+                Ok((input, pos))
             }
         }
     }
@@ -349,6 +351,7 @@ mod string_parsers {
     impl<P> CharToStringParser for P
     where
         P: Parser<Output = char>,
+        P::Input: Clone,
     {
         type Input = P::Input;
         type Error = P::Error;
@@ -414,10 +417,10 @@ mod char_parsers {
             input: Self::Input,
         ) -> crate::pc_ng::ParseResult<Self::Input, Self::Output, Self::Error> {
             if input.is_eof() {
-                crate::pc_ng::ParseResult::None(input)
+                crate::pc_ng::default_parse_error()
             } else {
                 let ch = input.char();
-                crate::pc_ng::ParseResult::Ok(input.inc_position(), ch)
+                Ok((input.inc_position(), ch))
             }
         }
     }

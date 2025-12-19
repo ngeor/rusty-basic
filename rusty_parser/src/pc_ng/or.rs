@@ -10,21 +10,21 @@ impl<I, O, E> Or<I, O, E> {
     }
 }
 
-impl<I, O, E> Parser for Or<I, O, E> {
+impl<I, O, E> Parser for Or<I, O, E>
+where
+    I: Clone,
+{
     type Input = I;
     type Output = O;
     type Error = E;
 
-    fn parse(&self, mut input: Self::Input) -> ParseResult<Self::Input, Self::Output, Self::Error> {
-        for parser in &self.parsers {
-            match parser.parse(input) {
-                ParseResult::Ok(i, result) => return ParseResult::Ok(i, result),
-                ParseResult::None(remaining) | ParseResult::Expected(remaining, _) => {
-                    input = remaining;
-                }
-                ParseResult::Err(i, err) => return ParseResult::Err(i, err),
+    fn parse(&self, input: Self::Input) -> ParseResult<Self::Input, Self::Output, Self::Error> {
+        for i in 0..self.parsers.len() - 1 {
+            if let Ok(x) = self.parsers[i].parse(input.clone()) {
+                return Ok(x);
             }
         }
-        ParseResult::None(input)
+
+        self.parsers.last().unwrap().parse(input)
     }
 }

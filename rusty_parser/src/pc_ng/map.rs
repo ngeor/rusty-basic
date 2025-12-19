@@ -21,6 +21,6 @@ where
     type Error = P::Error;
 
     fn parse(&self, input: Self::Input) -> ParseResult<Self::Input, Self::Output, Self::Error> {
-        self.parser.parse(input).map(&self.mapper)
+        self.parser.parse(input).map_ok(&self.mapper)
     }
 }

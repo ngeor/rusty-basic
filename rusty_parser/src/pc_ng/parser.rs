@@ -20,7 +20,6 @@ pub trait Parser {
     ) -> impl Parser<Input = Self::Input, Output = O, Error = Self::Error>
     where
         Self: Sized,
-        Self::Input: Clone,
         R: Parser<Input = Self::Input, Error = Self::Error>,
         F: Fn(Self::Output, R::Output) -> O,
     {
@@ -33,7 +32,7 @@ pub trait Parser {
     ) -> impl Parser<Input = Self::Input, Output = Self::Output, Error = Self::Error>
     where
         Self: Sized,
-        Self::Input: Clone,
+        Self::Error: Default,
         F: Fn(&Self::Output) -> bool,
     {
         Filter::new(self, predicate)
@@ -57,6 +56,7 @@ pub trait Parser {
     ) -> impl Parser<Input = Self::Input, Output = O, Error = Self::Error>
     where
         Self: Sized,
+        Self::Input: Clone,
         S: Fn(Self::Output) -> O,
         A: Fn(O, Self::Output) -> O,
     {
@@ -79,6 +79,7 @@ pub trait Parser {
     ) -> impl Parser<Input = Self::Input, Output = Option<Self::Output>, Error = Self::Error>
     where
         Self: Sized,
+        Self::Input: Clone,
     {
         Opt::new(self)
     }

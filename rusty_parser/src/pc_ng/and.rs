@@ -19,7 +19,6 @@ impl<L, R, F> And<L, R, F> {
 impl<L, R, F, O> Parser for And<L, R, F>
 where
     L: Parser,
-    L::Input: Clone,
     R: Parser<Input = L::Input, Error = L::Error>,
     F: Fn(L::Output, R::Output) -> O,
 {
@@ -28,17 +27,10 @@ where
     type Error = L::Error;
 
     fn parse(&self, input: Self::Input) -> ParseResult<Self::Input, Self::Output, Self::Error> {
-        self.left.parse(input.clone()).flat_map(|i, left_result| {
-            match self.right.parse(i) {
-                ParseResult::Ok(i, right_result) => {
-                    ParseResult::Ok(i, (self.combiner)(left_result, right_result))
-                }
-                // return original input here
-                ParseResult::None(_) => ParseResult::None(input),
-                // return original input here
-                ParseResult::Expected(_, s) => ParseResult::Expected(input, s),
-                ParseResult::Err(i, err) => ParseResult::Err(i, err),
-            }
+        self.left.parse(input).flat_map(|i, left_result| {
+            self.right
+                .parse(i)
+                .map_ok(|right_result| (self.combiner)(left_result, right_result))
         })
     }
 }

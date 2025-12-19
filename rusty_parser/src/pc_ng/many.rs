@@ -19,6 +19,7 @@ impl<P, S, A> Many<P, S, A> {
 impl<P, S, A, O> Parser for Many<P, S, A>
 where
     P: Parser,
+    P::Input: Clone,
     S: Fn(P::Output) -> O,
     A: Fn(O, P::Output) -> O,
 {
@@ -30,19 +31,22 @@ where
         self.parser.parse(input).flat_map(|mut input, first_value| {
             let mut result = (self.seed)(first_value);
             loop {
+                let old_input = input.clone();
                 match self.parser.parse(input) {
-                    ParseResult::Ok(i, value) => {
+                    Ok((i, value)) => {
                         input = i;
                         result = (self.accumulator)(result, value);
                     }
-                    ParseResult::None(i) | ParseResult::Expected(i, _) => {
-                        input = i;
+                    Err((false, _)) => {
+                        input = old_input;
                         break;
                     }
-                    ParseResult::Err(i, err) => return ParseResult::Err(i, err),
+                    Err(e) => {
+                        return Err(e);
+                    }
                 }
             }
-            ParseResult::Ok(input, result)
+            Ok((input, result))
         })
     }
 }

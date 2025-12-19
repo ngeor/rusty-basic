@@ -41,7 +41,7 @@ impl Arguments {
         });
     }
 
-    pub fn iter(&self) -> Iter<ArgumentInfo> {
+    pub fn iter(&self) -> Iter<'_, ArgumentInfo> {
         self.v.iter()
     }
 

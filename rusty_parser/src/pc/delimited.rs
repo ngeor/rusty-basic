@@ -34,7 +34,7 @@ impl<L, R> Delimited<L> for (L, Option<R>) {
 }
 
 /// Gets a list of items separated by a delimiter.
-pub fn delimited_by<I: Tokenizer + 'static, P: Parser<I>, D: Parser<I>>(
+pub fn delimited_by<I: Tokenizer + 'static, P: Parser<I> + 'static, D: Parser<I> + 'static>(
     parser: P,
     delimiter: D,
     trailing_error: ParseError,

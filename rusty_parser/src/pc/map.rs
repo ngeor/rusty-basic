@@ -26,28 +26,25 @@ where
 // Both Ok and None get mapped to an Ok value.
 // TODO Therefore this is a NonOptParser.
 
-pub struct MapOkNoneTraitPC<P, F, O> {
-    parser: P,
-    mapper: F,
-    _marker: PhantomData<O>,
+pub struct MapOkNoneTraitPC<I: Tokenizer + 'static, O, U> {
+    parser: Box<dyn Parser<I, Output = O>>,
+    mapper: Box<dyn MapOk<O, U>>,
 }
 
-impl<P, F, O> MapOkNoneTraitPC<P, F, O> {
-    pub fn new(parser: P, mapper: F) -> Self {
+impl<I: Tokenizer + 'static, O, U> MapOkNoneTraitPC<I, O, U> {
+    pub fn new(
+        parser: impl Parser<I, Output = O> + 'static,
+        mapper: impl MapOk<O, U> + 'static,
+    ) -> Self {
         Self {
-            parser,
-            mapper,
-            _marker: PhantomData,
+            parser: Box::new(parser),
+            mapper: Box::new(mapper),
         }
     }
 }
 
-impl<I: Tokenizer + 'static, P, F, O> Parser<I> for MapOkNoneTraitPC<P, F, O>
-where
-    P: Parser<I>,
-    F: MapOk<P::Output, O>,
-{
-    type Output = O;
+impl<I: Tokenizer + 'static, O, U> Parser<I> for MapOkNoneTraitPC<I, O, U> {
+    type Output = U;
 
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.parser.parse(tokenizer) {

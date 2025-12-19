@@ -86,7 +86,7 @@ pub trait Parser<I: Tokenizer + 'static> {
     fn and_opt<R, F, O>(self, right: R, combiner: F) -> impl Parser<I, Output = O>
     where
         Self: Sized,
-        R: Parser<I>,
+        R: Parser<I> + 'static,
         F: Fn(Self::Output, Option<R::Output>) -> O,
     {
         self.and_without_undo(right.to_option(), combiner)
@@ -100,7 +100,7 @@ pub trait Parser<I: Tokenizer + 'static> {
     ) -> impl Parser<I, Output = (Self::Output, Option<R::Output>)>
     where
         Self: Sized,
-        R: Parser<I>,
+        R: Parser<I> + 'static,
     {
         self.and_opt(right, |l, r| (l, r))
     }
@@ -110,7 +110,7 @@ pub trait Parser<I: Tokenizer + 'static> {
     fn and_opt_keep_left<R>(self, right: R) -> impl Parser<I, Output = Self::Output>
     where
         Self: Sized,
-        R: Parser<I>,
+        R: Parser<I> + 'static,
     {
         self.and_opt(right, |l, _| l)
     }
@@ -120,7 +120,7 @@ pub trait Parser<I: Tokenizer + 'static> {
     fn and_opt_keep_right<R>(self, right: R) -> impl Parser<I, Output = Option<R::Output>>
     where
         Self: Sized,
-        R: Parser<I>,
+        R: Parser<I> + 'static,
     {
         self.and_opt(right, |_, r| r)
     }
@@ -161,22 +161,22 @@ pub trait Parser<I: Tokenizer + 'static> {
     /// The given mapper implements [MapOk] which takes care of the mapping.
     fn map_ok_trait<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
     where
-        Self: Sized,
-        F: MapOk<Self::Output, U>,
+        Self: Sized + 'static,
+        F: MapOk<Self::Output, U> + 'static,
     {
         MapOkNoneTraitPC::new(self, mapper)
     }
 
     fn to_option(self) -> impl Parser<I, Output = Option<Self::Output>>
     where
-        Self: Sized,
+        Self: Sized + 'static,
     {
         self.map_ok_trait(MapToOption)
     }
 
     fn or_default(self) -> impl Parser<I, Output = Self::Output>
     where
-        Self: Sized,
+        Self: Sized + 'static,
         Self::Output: Default,
     {
         self.map_ok_trait(MapToDefault)
@@ -291,7 +291,7 @@ pub trait Parser<I: Tokenizer + 'static> {
 
     fn zero_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>>
     where
-        Self: Sized,
+        Self: Sized + 'static,
     {
         self.one_or_more().or_default()
     }

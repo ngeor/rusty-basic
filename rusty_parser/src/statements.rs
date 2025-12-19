@@ -17,7 +17,7 @@ pub fn single_line_statements_p<I: Tokenizer + 'static>() -> impl Parser<I, Outp
     ))
 }
 
-fn delimited_by_colon<I: Tokenizer + 'static, P: Parser<I>>(
+fn delimited_by_colon<I: Tokenizer + 'static, P: Parser<I> + 'static>(
     parser: P,
 ) -> impl Parser<I, Output = Vec<P::Output>> {
     delimited_by(

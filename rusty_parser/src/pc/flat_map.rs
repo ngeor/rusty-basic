@@ -1,37 +1,37 @@
-use crate::pc::*;
-use crate::{parser_declaration, ParseError};
+use crate::pc::{ParseResult, Parser, Tokenizer};
+use crate::ParseError;
 
-// Flat map the successful result.
+pub trait FlatMap<I: Tokenizer + 'static>: Parser<I> {
+    /// Flat map the result of this parser for successful results.
+    fn flat_map<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
+    where
+        Self: Sized,
+        F: Fn(Self::Output) -> ParseResult<U, ParseError>;
+}
 
-parser_declaration!(pub struct FlatMap<mapper: F>);
-
-impl<I: Tokenizer + 'static, P, F, U> Parser<I> for FlatMap<P, F>
+impl<I, P> FlatMap<I> for P
 where
+    I: Tokenizer + 'static,
     P: Parser<I>,
-    F: Fn(P::Output) -> ParseResult<U, ParseError>,
 {
-    type Output = U;
-    fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
-        self.parser.parse(tokenizer).flat_map(&self.mapper)
+    fn flat_map<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
+    where
+        Self: Sized,
+        F: Fn(Self::Output) -> ParseResult<U, ParseError>,
+    {
+        FlatMapParser(self, mapper)
     }
 }
 
-// Flat map Ok and None using closures.
+struct FlatMapParser<P, F>(P, F);
 
-parser_declaration!(pub struct FlatMapOkNone<ok_mapper: F, incomplete_mapper: G>);
-
-impl<I: Tokenizer + 'static, P, F, G, U> Parser<I> for FlatMapOkNone<P, F, G>
+impl<I: Tokenizer + 'static, P, F, U> Parser<I> for FlatMapParser<P, F>
 where
     P: Parser<I>,
     F: Fn(P::Output) -> ParseResult<U, ParseError>,
-    G: Fn() -> ParseResult<U, ParseError>,
 {
     type Output = U;
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
-        match self.parser.parse(tokenizer) {
-            ParseResult::Ok(value) => (self.ok_mapper)(value),
-            ParseResult::None | ParseResult::Expected(_) => (self.incomplete_mapper)(),
-            ParseResult::Err(err) => ParseResult::Err(err),
-        }
+        self.0.parse(tokenizer).flat_map(&self.1)
     }
 }

@@ -3,11 +3,14 @@
 mod accumulate;
 mod allow_none_if;
 mod and;
+mod and_without_undo;
 mod any;
 mod chain;
 mod delimited;
 mod filter;
+mod filter_map;
 mod flat_map;
+mod flat_map_ok_none;
 mod iif;
 #[cfg(debug_assertions)]
 mod logging;
@@ -16,6 +19,7 @@ mod macros;
 mod many;
 mod map;
 mod map_err;
+mod map_ok_none;
 mod opt_and;
 mod opt_zip;
 mod or;
@@ -30,15 +34,22 @@ mod undo;
 
 pub use accumulate::*;
 pub use allow_none_if::*;
+pub use and::And;
+pub use and_without_undo::AndWithoutUndo;
 pub use any::*;
 pub use chain::*;
 pub use delimited::*;
-pub use filter::*;
+pub use filter::Filter;
+pub use filter_map::FilterMap;
+pub use flat_map::FlatMap;
+pub use flat_map_ok_none::FlatMapOkNone;
 pub use iif::*;
 #[cfg(debug_assertions)]
 pub use logging::*;
 pub use loop_while::*;
+pub use map::Map;
 pub use map_err::*;
+pub use map_ok_none::{MapOkNone, MapOkNoneTrait};
 pub use opt_and::*;
 pub use opt_zip::*;
 pub use or::*;

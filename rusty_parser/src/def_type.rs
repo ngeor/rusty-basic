@@ -34,7 +34,7 @@ fn letter_ranges<I: Tokenizer + 'static>() -> impl Parser<I, Output = Vec<Letter
 fn letter_range<I: Tokenizer + 'static>() -> impl Parser<I, Output = LetterRange> {
     letter()
         .no_incomplete()
-        .and_opt_tuple(minus_sign().and(letter()))
+        .and_opt_tuple(minus_sign().and_tuple(letter()))
         .flat_map(|(l, opt_r)| match opt_r {
             Some((_, r)) => {
                 if l < r {

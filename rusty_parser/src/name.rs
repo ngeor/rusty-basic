@@ -71,9 +71,7 @@ pub fn identifier_with_dots<I: Tokenizer + 'static>() -> impl Parser<I, Output =
         // to allow keywords, there must be at least one dot
         Box::new(
             seq2(
-                identifier_or_keyword()
-                    .and(dot())
-                    .map(|(left, right)| vec![left, right]),
+                identifier_or_keyword().and(dot(), |left, right| vec![left, right]),
                 identifier_or_keyword_or_dot().zero_or_more(),
                 |mut left_list, mut right_list| {
                     left_list.append(&mut right_list);

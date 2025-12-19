@@ -45,16 +45,14 @@ fn single_line_if_else_p<I: Tokenizer + 'static>(
     single_line_non_comment_statements_p().and_opt(
         // comment or ELSE
         whitespace()
-            .and(comment::comment_p().with_pos())
-            .keep_right()
-            .map(|s| vec![s])
+            .and(comment::comment_p().with_pos(), |_, s| vec![s])
             .or(single_line_else_p()),
         |l, r| (l, vec![], r),
     )
 }
 
 fn single_line_else_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statements> {
-    whitespace().and(keyword(Keyword::Else)).then_demand(
+    whitespace().and_tuple(keyword(Keyword::Else)).then_demand(
         single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
     )
 }

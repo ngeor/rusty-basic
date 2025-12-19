@@ -62,9 +62,7 @@ fn parse_for_p<I: Tokenizer + 'static>(
 }
 
 fn next_counter_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
-    whitespace()
-        .and(expression::property::parser())
-        .keep_right()
+    whitespace().and_keep_right(expression::property::parser())
 }
 
 #[cfg(test)]

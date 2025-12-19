@@ -85,7 +85,7 @@ where
 
 fn as_clause<I: Tokenizer + 'static>() -> impl Parser<I, Output = (Token, Token, Token)> {
     seq2(
-        whitespace().and(keyword(Keyword::As)),
+        whitespace().and_tuple(keyword(Keyword::As)),
         whitespace().no_incomplete(),
         |(a, b), c| (a, b, c),
     )

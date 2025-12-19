@@ -83,7 +83,7 @@ pub fn ws_expr_pos_ws_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Exp
 fn preceded_by_ws<I: Tokenizer + 'static>(
     parser: impl Parser<I, Output = ExpressionPos>,
 ) -> impl Parser<I, Output = ExpressionPos> {
-    guard::parser().and(parser).keep_right()
+    guard::parser().and_keep_right(parser)
 }
 
 fn followed_by_ws<I: Tokenizer + 'static>(
@@ -381,10 +381,12 @@ mod function_call_or_array_element {
 
     pub fn parser<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
         name_with_dots_as_tokens()
-            .and(in_parenthesis(csv(expression_pos_p()).or_default()))
-            .map(|(name_as_tokens, arguments)| {
-                Expression::FunctionCall(name_as_tokens.into(), arguments)
-            })
+            .and(
+                in_parenthesis(csv(expression_pos_p()).or_default()),
+                |name_as_tokens, arguments| {
+                    Expression::FunctionCall(name_as_tokens.into(), arguments)
+                },
+            )
             .with_pos()
     }
 }
@@ -663,7 +665,7 @@ pub mod file_handle {
         // if # and 0 -> BadFileNameOrNumber
         // if # without digits -> SyntaxError (Expected: digits after #)
         any_token_of(TokenType::Pound)
-            .and(any_token_of(TokenType::Digits).or_syntax_error("Expected: digits after #"))
+            .and_tuple(any_token_of(TokenType::Digits).or_syntax_error("Expected: digits after #"))
             .flat_map(|(pound, digits)| match digits.text.parse::<u8>() {
                 Ok(d) if d > 0 => ParseResult::Ok(FileHandle::from(d).at_pos(pound.pos)),
                 _ => ParseResult::Err(ParseError::BadFileNameOrNumber),
@@ -682,9 +684,7 @@ pub mod file_handle {
     }
 
     fn ws_file_handle<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
-        whitespace()
-            .and(file_handle_as_expression_pos_p())
-            .keep_right()
+        whitespace().and_keep_right(file_handle_as_expression_pos_p())
     }
 }
 

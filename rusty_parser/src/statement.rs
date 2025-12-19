@@ -57,10 +57,9 @@ pub fn single_line_statement_p<I: Tokenizer + 'static>() -> impl Parser<I, Outpu
 
 fn statement_label_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {
     // labels can have dots
-    identifier_with_dots()
-        .and(colon())
-        .keep_left()
-        .map(|tokens| Statement::Label(token_list_to_bare_name(tokens)))
+    identifier_with_dots().and(colon(), |tokens, _| {
+        Statement::Label(token_list_to_bare_name(tokens))
+    })
 }
 
 fn statement_go_to_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement> {

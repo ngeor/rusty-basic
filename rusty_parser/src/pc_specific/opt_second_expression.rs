@@ -40,7 +40,7 @@ fn parse_second<I: Tokenizer + 'static>(
 ) -> impl Parser<I, Output = Option<ExpressionPos>> {
     whitespace()
         .allow_none_if(is_paren)
-        .and(keyword(k))
+        .and_tuple(keyword(k))
         .then_demand(ws_expr_pos_p().or_fail(err(k)))
         .to_option()
 }

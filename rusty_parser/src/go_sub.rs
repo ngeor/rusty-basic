@@ -13,8 +13,7 @@ pub fn statement_return_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = S
     seq2(
         keyword(Keyword::Return),
         whitespace()
-            .and(bare_name_with_dots())
-            .keep_right()
+            .and_keep_right(bare_name_with_dots())
             .to_option(),
         |_, name| Statement::Return(name),
     )

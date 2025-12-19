@@ -27,13 +27,41 @@ pub trait Parser<I: Tokenizer + 'static> {
 
     /// Parses both the left and the right side.
     /// If the right side fails, parsing of the left side is undone.
-    fn and<R>(self, right: R) -> impl Parser<I, Output = (Self::Output, R::Output)>
+    fn and<R, F, O>(self, right: R, combiner: F) -> impl Parser<I, Output = O>
+    where
+        Self: Sized,
+        Self::Output: Undo,
+        R: Parser<I>,
+        F: Fn(Self::Output, R::Output) -> O,
+    {
+        AndPC::new(self, right, combiner)
+    }
+
+    fn and_tuple<R>(self, right: R) -> impl Parser<I, Output = (Self::Output, R::Output)>
     where
         Self: Sized,
         Self::Output: Undo,
         R: Parser<I>,
     {
-        AndPC::new(self, right)
+        self.and(right, |l, r| (l, r))
+    }
+
+    fn and_keep_left<R>(self, right: R) -> impl Parser<I, Output = Self::Output>
+    where
+        Self: Sized,
+        Self::Output: Undo,
+        R: Parser<I>,
+    {
+        self.and(right, |l, _| l)
+    }
+
+    fn and_keep_right<R>(self, right: R) -> impl Parser<I, Output = R::Output>
+    where
+        Self: Sized,
+        Self::Output: Undo,
+        R: Parser<I>,
+    {
+        self.and(right, |_, r| r)
     }
 
     /**
@@ -120,13 +148,6 @@ pub trait Parser<I: Tokenizer + 'static> {
         F: Fn(Self::Output) -> U,
     {
         MapPC::new(self, mapper)
-    }
-
-    fn keep_left<L, R>(self) -> impl Parser<I, Output = L>
-    where
-        Self: Sized + Parser<I, Output = (L, R)>,
-    {
-        self.map(|(l, _)| l)
     }
 
     fn keep_right<L, R>(self) -> impl Parser<I, Output = R>

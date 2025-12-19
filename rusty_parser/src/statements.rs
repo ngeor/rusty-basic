@@ -6,19 +6,15 @@ use crate::{statement, ParseError};
 
 pub fn single_line_non_comment_statements_p<I: Tokenizer + 'static>(
 ) -> impl Parser<I, Output = Statements> {
-    whitespace()
-        .and(delimited_by_colon(
-            statement::single_line_non_comment_statement_p().with_pos(),
-        ))
-        .keep_right()
+    whitespace().and_keep_right(delimited_by_colon(
+        statement::single_line_non_comment_statement_p().with_pos(),
+    ))
 }
 
 pub fn single_line_statements_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statements> {
-    whitespace()
-        .and(delimited_by_colon(
-            statement::single_line_statement_p().with_pos(),
-        ))
-        .keep_right()
+    whitespace().and_keep_right(delimited_by_colon(
+        statement::single_line_statement_p().with_pos(),
+    ))
 }
 
 fn delimited_by_colon<I: Tokenizer + 'static, P: Parser<I>>(

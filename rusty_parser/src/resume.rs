@@ -29,16 +29,11 @@ fn blank_resume<I: Tokenizer + 'static>() -> impl Parser<I, Output = ResumeOptio
 }
 
 fn resume_next<I: Tokenizer + 'static>() -> impl Parser<I, Output = ResumeOption> {
-    whitespace()
-        .and(keyword(Keyword::Next))
-        .map(|_| ResumeOption::Next)
+    whitespace().and(keyword(Keyword::Next), |_, _| ResumeOption::Next)
 }
 
 fn resume_label<I: Tokenizer + 'static>() -> impl Parser<I, Output = ResumeOption> {
-    whitespace()
-        .and(bare_name_with_dots())
-        .keep_right()
-        .map(ResumeOption::Label)
+    whitespace().and(bare_name_with_dots(), |_, r| ResumeOption::Label(r))
 }
 
 #[cfg(test)]

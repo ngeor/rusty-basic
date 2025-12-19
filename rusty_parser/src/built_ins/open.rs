@@ -68,7 +68,7 @@ fn parse_file_number_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Expr
 
 fn parse_len_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = ExpressionPos> {
     seq3(
-        whitespace().and(keyword(Keyword::Len)),
+        whitespace().and_tuple(keyword(Keyword::Len)),
         equal_sign().no_incomplete(),
         expression_pos_p().or_syntax_error("Expected: expression after LEN ="),
         |_, _, e| e,

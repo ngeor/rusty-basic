@@ -8,14 +8,12 @@ pub fn comment_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = Statement>
 }
 
 pub fn comment_as_string_p<I: Tokenizer + 'static>() -> impl Parser<I, Output = String> {
-    any_token_of(TokenType::SingleQuote)
-        .and(
-            any_token()
-                .filter(|t| !TokenType::Eol.matches(t))
-                .zero_or_more(),
-        )
-        .keep_right()
-        .map(token_list_to_string)
+    any_token_of(TokenType::SingleQuote).and(
+        any_token()
+            .filter(|t| !TokenType::Eol.matches(t))
+            .zero_or_more(),
+        |_, r| token_list_to_string(r),
+    )
 }
 
 #[cfg(test)]

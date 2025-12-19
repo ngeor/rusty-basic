@@ -1,23 +1,37 @@
 use crate::pc::{ParseResult, Parser, Tokenizer, Undo};
-use crate::{binary_parser_declaration, ParseError};
+use crate::ParseError;
 
 //
 // And (with undo if the left parser supports it)
 //
 
-binary_parser_declaration!(pub struct AndPC);
+pub struct AndPC<L, R, F> {
+    left: L,
+    right: R,
+    combiner: F,
+}
+impl<L, R, F> AndPC<L, R, F> {
+    pub fn new(left: L, right: R, combiner: F) -> Self {
+        Self {
+            left,
+            right,
+            combiner,
+        }
+    }
+}
 
-impl<I: Tokenizer + 'static, A, B> Parser<I> for AndPC<A, B>
+impl<I: Tokenizer + 'static, L, R, F, O> Parser<I> for AndPC<L, R, F>
 where
-    A: Parser<I>,
-    A::Output: Undo,
-    B: Parser<I>,
+    L: Parser<I>,
+    L::Output: Undo,
+    R: Parser<I>,
+    F: Fn(L::Output, R::Output) -> O,
 {
-    type Output = (A::Output, B::Output);
+    type Output = O;
     fn parse(&self, tokenizer: &mut I) -> ParseResult<Self::Output, ParseError> {
         match self.left.parse(tokenizer) {
             ParseResult::Ok(left) => match self.right.parse(tokenizer) {
-                ParseResult::Ok(right) => ParseResult::Ok((left, right)),
+                ParseResult::Ok(right) => ParseResult::Ok((self.combiner)(left, right)),
                 ParseResult::None => {
                     left.undo(tokenizer);
                     ParseResult::None

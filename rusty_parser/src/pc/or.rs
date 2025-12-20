@@ -32,45 +32,18 @@ impl<I, O> Parser<I> for OrParser<I, O> {
 pub trait Either<I: Clone>: Parser<I> {
     fn or<R>(self, other: R) -> impl Parser<I, Output = Self::Output>
     where
-        R: Parser<I, Output = Self::Output>;
+        R: Parser<I, Output = Self::Output> + 'static;
 }
 
 impl<I, P> Either<I> for P
 where
     I: Clone,
-    P: Parser<I>,
+    P: Parser<I> + 'static,
 {
     fn or<R>(self, other: R) -> impl Parser<I, Output = Self::Output>
     where
-        R: Parser<I, Output = Self::Output>,
+        R: Parser<I, Output = Self::Output> + 'static,
     {
-        EitherParser::new(self, other)
-    }
-}
-
-pub struct EitherParser<L, R> {
-    left: L,
-    right: R,
-}
-
-impl<L, R> EitherParser<L, R> {
-    pub fn new(left: L, right: R) -> Self {
-        Self { left, right }
-    }
-}
-
-impl<I, L, R> Parser<I> for EitherParser<L, R>
-where
-    L: Parser<I>,
-    R: Parser<I, Output = L::Output>,
-{
-    type Output = L::Output;
-
-    fn parse(&self, input: I) -> ParseResult<I, L::Output, ParseError> {
-        match self.left.parse(input) {
-            Ok(x) => Ok(x),
-            Err((false, input, _)) => self.right.parse(input),
-            Err(err) => Err(err),
-        }
+        OrParser::new(vec![Box::new(self), Box::new(other)])
     }
 }

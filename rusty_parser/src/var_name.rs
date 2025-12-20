@@ -26,7 +26,7 @@ use crate::{
 /// - `A`: The type of the array indicator
 /// - `P`: The parser that parses `T` for extended built-in types.
 pub fn var_name<T, A, P>(
-    array_p: impl Parser<RcStringView, Output = A>,
+    array_p: impl Parser<RcStringView, Output = A> + 'static,
     built_in_extended_factory: fn() -> P,
 ) -> impl Parser<RcStringView, Output = TypedName<T>>
 where

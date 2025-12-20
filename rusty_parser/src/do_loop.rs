@@ -30,7 +30,7 @@ fn do_condition_top() -> impl Parser<RcStringView, Output = DoLoop> {
 }
 
 fn do_condition_bottom() -> impl Parser<RcStringView, Output = DoLoop> {
-    seq5_non_opt(
+    seq5(
         ZeroOrMoreStatements::new(Keyword::Loop),
         keyword(Keyword::Loop).no_incomplete(),
         whitespace().no_incomplete(),

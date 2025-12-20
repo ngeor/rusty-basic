@@ -25,7 +25,7 @@ pub fn redim_var_pos_p() -> impl Parser<RcStringView, Output = DimVarPos> {
 }
 
 fn dim_or_redim(
-    array_dimensions_parser: impl Parser<RcStringView, Output = ArrayDimensions>,
+    array_dimensions_parser: impl Parser<RcStringView, Output = ArrayDimensions> + 'static,
 ) -> impl Parser<RcStringView, Output = DimVarPos> {
     var_name(array_dimensions_parser, built_in_extended_type).with_pos()
 }

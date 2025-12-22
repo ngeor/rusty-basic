@@ -29,16 +29,9 @@ impl<I, O> Parser<I> for OrParser<I, O> {
     }
 }
 
-pub trait Either<I: Clone>: Parser<I> {
-    fn or<R>(self, other: R) -> impl Parser<I, Output = Self::Output>
-    where
-        R: Parser<I, Output = Self::Output> + 'static;
-}
-
-impl<I, P> Either<I> for P
+pub trait Or<I>: Parser<I>
 where
-    I: Clone,
-    P: Parser<I> + 'static,
+    Self: Sized + 'static,
 {
     fn or<R>(self, other: R) -> impl Parser<I, Output = Self::Output>
     where
@@ -47,3 +40,5 @@ where
         OrParser::new(vec![Box::new(self), Box::new(other)])
     }
 }
+
+impl<I, P> Or<I> for P where P: Parser<I> + 'static {}

@@ -1,12 +1,17 @@
 use crate::pc::{default_parse_error, ParseResult, Parser};
 use crate::ParseError;
 
-pub trait Filter<I: Clone>: Parser<I> {
+pub trait Filter<I>: Parser<I>
+where
+    Self: Sized,
+    I: Clone,
+{
     fn filter<F>(self, predicate: F) -> impl Parser<I, Output = Self::Output>
     where
-        Self: Sized,
-
-        F: Fn(&Self::Output) -> bool;
+        F: Fn(&Self::Output) -> bool,
+    {
+        FilterParser(self, predicate)
+    }
 }
 
 impl<I, P> Filter<I> for P
@@ -14,14 +19,6 @@ where
     I: Clone,
     P: Parser<I>,
 {
-    fn filter<F>(self, predicate: F) -> impl Parser<I, Output = Self::Output>
-    where
-        Self: Sized,
-
-        F: Fn(&Self::Output) -> bool,
-    {
-        FilterParser(self, predicate)
-    }
 }
 
 struct FilterParser<P, F>(P, F);

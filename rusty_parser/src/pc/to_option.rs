@@ -1,23 +1,16 @@
 use crate::pc::{ParseResult, Parser};
 use crate::ParseError;
 
-pub trait ToOption<I>: Parser<I> {
-    fn to_option(self) -> impl Parser<I, Output = Option<Self::Output>>
-    where
-        Self: Sized;
-}
-
-impl<I, P> ToOption<I> for P
+pub trait ToOption<I>: Parser<I>
 where
-    P: Parser<I>,
+    Self: Sized,
 {
-    fn to_option(self) -> impl Parser<I, Output = Option<Self::Output>>
-    where
-        Self: Sized,
-    {
+    fn to_option(self) -> impl Parser<I, Output = Option<Self::Output>> {
         ToOptionParser::new(self)
     }
 }
+
+impl<I, P> ToOption<I> for P where P: Parser<I> {}
 
 struct ToOptionParser<P> {
     parser: P,

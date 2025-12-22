@@ -1,26 +1,24 @@
 use crate::pc::{default_parse_error, ParseResult, ParseResultTrait, Parser};
 use crate::ParseError;
 
-pub trait FilterMap<I: Clone>: Parser<I> {
-    fn filter_map<F, U>(self, predicate_mapper: F) -> impl Parser<I, Output = U>
-    where
-        Self: Sized,
-
-        F: Fn(&Self::Output) -> Option<U>;
-}
-
-impl<I: Clone, P> FilterMap<I> for P
+pub trait FilterMap<I>: Parser<I>
 where
-    P: Parser<I>,
+    Self: Sized,
+    I: Clone,
 {
     fn filter_map<F, U>(self, predicate_mapper: F) -> impl Parser<I, Output = U>
     where
-        Self: Sized,
-
         F: Fn(&Self::Output) -> Option<U>,
     {
         FilterMapParser(self, predicate_mapper)
     }
+}
+
+impl<I, P> FilterMap<I> for P
+where
+    I: Clone,
+    P: Parser<I>,
+{
 }
 
 struct FilterMapParser<P, F>(P, F);

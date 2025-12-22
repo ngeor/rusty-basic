@@ -1,33 +1,27 @@
 use crate::pc::{ParseResult, ParseResultTrait, Parser};
 use crate::ParseError;
 
-pub trait Map<I>: Parser<I> {
+pub trait Map<I>: Parser<I>
+where
+    Self: Sized,
+{
     fn map<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
     where
-        Self: Sized,
-        F: Fn(Self::Output) -> U;
+        F: Fn(Self::Output) -> U,
+    {
+        MapParser(self, mapper)
+    }
 
     #[deprecated]
     fn keep_right<L, R>(self) -> impl Parser<I, Output = R>
     where
-        Self: Sized + Parser<I, Output = (L, R)>,
+        Self: Parser<I, Output = (L, R)>,
     {
         self.map(|(_, r)| r)
     }
 }
 
-impl<I, P> Map<I> for P
-where
-    P: Parser<I>,
-{
-    fn map<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
-    where
-        Self: Sized,
-        F: Fn(Self::Output) -> U,
-    {
-        MapParser(self, mapper)
-    }
-}
+impl<I, P> Map<I> for P where P: Parser<I> {}
 
 struct MapParser<P, F>(P, F);
 

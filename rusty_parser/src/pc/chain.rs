@@ -1,10 +1,12 @@
 use crate::pc::{ParseResult, ParseResultTrait, Parser};
 use crate::ParseError;
 
-pub trait Chain<I>: Parser<I> {
+pub trait Chain<I>: Parser<I>
+where
+    Self: Sized,
+{
     fn chain<RF, R, F, O>(self, right_factory: RF, combiner: F) -> impl Parser<I, Output = O>
     where
-        Self: Sized,
         RF: Fn(&Self::Output) -> R,
         R: Parser<I>,
         F: Fn(Self::Output, R::Output) -> O,
@@ -13,7 +15,7 @@ pub trait Chain<I>: Parser<I> {
     }
 }
 
-impl<I, P: Parser<I>> Chain<I> for P {}
+impl<I, P> Chain<I> for P where P: Parser<I> {}
 
 struct ChainParser<L, R, F> {
     left: L,

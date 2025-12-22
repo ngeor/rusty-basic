@@ -1,10 +1,14 @@
 use crate::pc::{ParseResult, Parser};
 use crate::ParseError;
 
-pub trait OrDefault<I>: Parser<I> {
-    fn or_default(self) -> impl Parser<I, Output = Self::Output>
-    where
-        Self: Sized;
+pub trait OrDefault<I>: Parser<I>
+where
+    Self: Sized,
+    Self::Output: Default,
+{
+    fn or_default(self) -> impl Parser<I, Output = Self::Output> {
+        OrDefaultParser::new(self)
+    }
 }
 
 impl<I, P> OrDefault<I> for P
@@ -12,12 +16,6 @@ where
     P: Parser<I>,
     P::Output: Default,
 {
-    fn or_default(self) -> impl Parser<I, Output = Self::Output>
-    where
-        Self: Sized,
-    {
-        OrDefaultParser::new(self)
-    }
 }
 
 struct OrDefaultParser<P> {

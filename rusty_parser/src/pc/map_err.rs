@@ -1,28 +1,24 @@
 use crate::pc::{ParseResult, Parser};
 use crate::{parser_declaration, ParseError};
 
-pub trait Errors<I>: Parser<I> {
+pub trait Errors<I>: Parser<I>
+where
+    Self: Sized,
+{
     fn with_expected_message<F>(self, f: F) -> impl Parser<I, Output = Self::Output>
     where
-        Self: Sized,
         F: MessageProvider,
     {
         WithExpectedMessage::new(self, f)
     }
 
     #[deprecated]
-    fn or_fail(self, err: ParseError) -> impl Parser<I, Output = Self::Output>
-    where
-        Self: Sized,
-    {
+    fn or_fail(self, err: ParseError) -> impl Parser<I, Output = Self::Output> {
         OrFailParser::new(self, err)
     }
 
     #[deprecated]
-    fn no_incomplete(self) -> impl Parser<I, Output = Self::Output>
-    where
-        Self: Sized,
-    {
+    fn no_incomplete(self) -> impl Parser<I, Output = Self::Output> {
         NoIncompleteParser::new(self)
     }
 }

@@ -13,7 +13,7 @@ mod flat_map;
 mod flat_map_ok_none;
 mod iif;
 #[cfg(debug_assertions)]
-mod logging;
+pub mod logging;
 mod loop_while;
 mod macros;
 mod many;
@@ -43,8 +43,6 @@ pub use filter_map::FilterMap;
 pub use flat_map::FlatMap;
 pub use flat_map_ok_none::FlatMapOkNone;
 pub use iif::*;
-#[cfg(debug_assertions)]
-pub use logging::*;
 pub use loop_while::*;
 pub use many::Many;
 pub use map::Map;

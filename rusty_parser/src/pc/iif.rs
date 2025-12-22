@@ -1,6 +1,7 @@
 use crate::pc::{ParseResult, Parser};
 use crate::ParseError;
 
+#[deprecated]
 pub fn iif_p<L, R>(condition: bool, left: L, right: R) -> IIfParser<L, R> {
     IIfParser::new(condition, left, right)
 }

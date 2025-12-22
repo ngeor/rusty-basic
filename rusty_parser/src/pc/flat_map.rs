@@ -1,26 +1,20 @@
 use crate::pc::{ParseResult, ParseResultTrait, Parser};
 use crate::ParseError;
 
-pub trait FlatMap<I>: Parser<I> {
+pub trait FlatMap<I>: Parser<I>
+where
+    Self: Sized,
+{
     /// Flat map the result of this parser for successful results.
     fn flat_map<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
     where
-        Self: Sized,
-        F: Fn(I, Self::Output) -> ParseResult<I, U, ParseError>;
-}
-
-impl<I, P> FlatMap<I> for P
-where
-    P: Parser<I>,
-{
-    fn flat_map<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
-    where
-        Self: Sized,
         F: Fn(I, Self::Output) -> ParseResult<I, U, ParseError>,
     {
         FlatMapParser(self, mapper)
     }
 }
+
+impl<I, P> FlatMap<I> for P where P: Parser<I> {}
 
 struct FlatMapParser<P, F>(P, F);
 

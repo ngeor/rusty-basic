@@ -5,18 +5,23 @@ use crate::ParseError;
 // And (with undo)
 //
 
-pub trait And<I: Clone>: Parser<I> {
+pub trait And<I>: Parser<I>
+where
+    Self: Sized,
+    I: Clone,
+{
     /// Parses both the left and the right side.
     /// If the right side fails, parsing of the left side is undone.
     fn and<R, F, O>(self, right: R, combiner: F) -> impl Parser<I, Output = O>
     where
-        Self: Sized,
         R: Parser<I>,
-        F: Fn(Self::Output, R::Output) -> O;
+        F: Fn(Self::Output, R::Output) -> O,
+    {
+        AndParser::new(self, right, combiner)
+    }
 
     fn and_tuple<R>(self, right: R) -> impl Parser<I, Output = (Self::Output, R::Output)>
     where
-        Self: Sized,
         R: Parser<I>,
     {
         self.and(right, |l, r| (l, r))
@@ -24,7 +29,6 @@ pub trait And<I: Clone>: Parser<I> {
 
     fn and_keep_left<R>(self, right: R) -> impl Parser<I, Output = Self::Output>
     where
-        Self: Sized,
         R: Parser<I>,
     {
         self.and(right, |l, _| l)
@@ -32,7 +36,6 @@ pub trait And<I: Clone>: Parser<I> {
 
     fn and_keep_right<R>(self, right: R) -> impl Parser<I, Output = R::Output>
     where
-        Self: Sized,
         R: Parser<I>,
     {
         self.and(right, |_, r| r)
@@ -40,8 +43,6 @@ pub trait And<I: Clone>: Parser<I> {
 
     fn surround<L, R>(self, left: L, right: R) -> impl Parser<I, Output = Self::Output>
     where
-        Self: Sized,
-        I: Clone,
         L: Parser<I>,
         R: Parser<I>,
     {
@@ -54,14 +55,6 @@ where
     I: Clone,
     L: Parser<I>,
 {
-    fn and<R, F, O>(self, right: R, combiner: F) -> impl Parser<I, Output = O>
-    where
-        Self: Sized,
-        R: Parser<I>,
-        F: Fn(Self::Output, R::Output) -> O,
-    {
-        AndParser::new(self, right, combiner)
-    }
 }
 
 struct AndParser<L, R, F> {

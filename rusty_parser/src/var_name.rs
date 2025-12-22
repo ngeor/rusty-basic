@@ -1,11 +1,12 @@
 //! Used by dim_name and param_name who have almost identical parsing rules.
 
 use crate::name::{bare_name_without_dots, name_with_dots};
-use crate::pc::*;
+use crate::pc::supplier::supplier;
 use crate::pc_specific::*;
+use crate::{pc::*, TypeQualifier};
 use crate::{
-    BareName, Keyword, Name, ParseError, TypedName, VarTypeNewBuiltInCompact,
-    VarTypeNewUserDefined, VarTypeToArray,
+    BareName, Keyword, Name, TypedName, VarTypeNewBuiltInCompact, VarTypeNewUserDefined,
+    VarTypeToArray,
 };
 
 /// Parses a variable name (dim name or param name).
@@ -49,7 +50,7 @@ where
 /// Used in combination with [var_name], produces the type of the variable
 /// (e.g. [DimType] or [ParamType]).
 ///
-/// The parameters `name` and `array_param` have already been parsed by [var_name].
+/// The parameter `name` has already been parsed by [var_name].
 /// The `built_in_extended_factory` parses extended types (but only built-in).
 fn name_chain<T, F, P>(
     name: &Name,
@@ -66,7 +67,7 @@ where
     match name.qualifier() {
         // TODO do not use OrParser of 1 element as a workaround for dyn boxing
         // qualified name can't have an "AS" clause
-        Some(q) => OrParser::new(vec![Box::new(once_p(T::new_built_in_compact(q)))]),
+        Some(q) => OrParser::new(vec![Box::new(qualified_type(q))]),
         // bare names might have an "AS" clause
         _ => OrParser::new(vec![Box::new(
             as_clause()
@@ -78,9 +79,23 @@ where
                     )
                     .no_incomplete(),
                 )
-                .or(once_p(T::default())),
+                .or(bare_type()),
         )]),
     }
+}
+
+fn qualified_type<T>(q: TypeQualifier) -> impl Parser<RcStringView, Output = T>
+where
+    T: VarTypeNewBuiltInCompact,
+{
+    supplier(move || T::new_built_in_compact(q))
+}
+
+fn bare_type<T>() -> impl Parser<RcStringView, Output = T>
+where
+    T: Default,
+{
+    supplier(T::default)
 }
 
 fn as_clause() -> impl Parser<RcStringView, Output = (Token, Token, Token)> {
@@ -111,21 +126,4 @@ where
     bare_name_without_dots()
         .with_pos()
         .map(VarTypeNewUserDefined::new_user_defined)
-}
-
-/// A parser that returns the given value only once.
-#[deprecated]
-fn once_p<V>(value: V) -> Once<V> {
-    Once(value)
-}
-
-struct Once<V>(V);
-
-impl<V: Clone> Parser<RcStringView> for Once<V> {
-    type Output = V;
-
-    fn parse(&self, input: RcStringView) -> ParseResult<RcStringView, Self::Output, ParseError> {
-        // TODO remove the need for clone
-        Ok((input, self.0.clone()))
-    }
 }

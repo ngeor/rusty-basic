@@ -28,6 +28,7 @@ mod parsers;
 mod row_col_view;
 mod seq;
 mod string_view;
+pub mod supplier;
 mod to_option;
 mod tokenizers;
 

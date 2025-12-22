@@ -1,7 +1,35 @@
 use crate::pc::{ParseResult, Parser};
 use crate::{parser_declaration, ParseError};
 
-pub struct OrFailParser<P> {
+pub trait Errors<I>: Parser<I> {
+    fn with_expected_message<F>(self, f: F) -> impl Parser<I, Output = Self::Output>
+    where
+        Self: Sized,
+        F: MessageProvider,
+    {
+        WithExpectedMessage::new(self, f)
+    }
+
+    #[deprecated]
+    fn or_fail(self, err: ParseError) -> impl Parser<I, Output = Self::Output>
+    where
+        Self: Sized,
+    {
+        OrFailParser::new(self, err)
+    }
+
+    #[deprecated]
+    fn no_incomplete(self) -> impl Parser<I, Output = Self::Output>
+    where
+        Self: Sized,
+    {
+        NoIncompleteParser::new(self)
+    }
+}
+
+impl<I, P> Errors<I> for P where P: Parser<I> {}
+
+struct OrFailParser<P> {
     parser: P,
     err: ParseError,
 }
@@ -27,7 +55,7 @@ where
     }
 }
 
-parser_declaration!(pub struct NoIncompleteParser);
+parser_declaration!(struct NoIncompleteParser);
 
 impl<I, P> Parser<I> for NoIncompleteParser<P>
 where
@@ -43,7 +71,7 @@ where
     }
 }
 
-pub struct WithExpectedMessage<P, F>(P, F);
+struct WithExpectedMessage<P, F>(P, F);
 
 impl<P, F> WithExpectedMessage<P, F> {
     pub fn new(parser: P, f: F) -> Self {

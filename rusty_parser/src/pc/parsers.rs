@@ -1,8 +1,5 @@
 use crate::pc::many::Many;
-use crate::pc::{
-    AllowNoneIfParser, ChainParser, MessageProvider, NoIncompleteParser, OrDefault,
-    OrFailParser, ParseResult, WithExpectedMessage,
-};
+use crate::pc::{AllowNoneIfParser, ChainParser, OrDefault, ParseResult};
 use crate::ParseError;
 
 // TODO make QError generic param too
@@ -16,30 +13,6 @@ pub trait Parser<I> {
     /**
      * Not reviewed yet
      */
-
-    fn with_expected_message<F>(self, f: F) -> WithExpectedMessage<Self, F>
-    where
-        Self: Sized,
-        F: MessageProvider,
-    {
-        WithExpectedMessage::new(self, f)
-    }
-
-    #[deprecated]
-    fn or_fail(self, err: ParseError) -> OrFailParser<Self>
-    where
-        Self: Sized,
-    {
-        OrFailParser::new(self, err)
-    }
-
-    #[deprecated]
-    fn no_incomplete(self) -> NoIncompleteParser<Self>
-    where
-        Self: Sized,
-    {
-        NoIncompleteParser::new(self)
-    }
 
     #[cfg(debug_assertions)]
     fn logging(self, tag: &str) -> crate::pc::LoggingPC<Self>

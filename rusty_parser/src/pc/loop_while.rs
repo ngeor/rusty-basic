@@ -1,14 +1,17 @@
 use crate::pc::{default_parse_error, ParseResult, Parser};
 use crate::{parser_declaration, ParseError};
 
-pub trait LoopWhile<I> : Parser<I> {
+pub trait LoopWhile<I>: Parser<I> {
     fn loop_while<F>(self, predicate: F) -> impl Parser<I, Output = Vec<Self::Output>>
     where
         Self: Sized,
         F: Fn(&Self::Output) -> bool;
 }
 
-impl<I, P> LoopWhile<I> for P where P: Parser<I> {
+impl<I, P> LoopWhile<I> for P
+where
+    P: Parser<I>,
+{
     fn loop_while<F>(self, predicate: F) -> impl Parser<I, Output = Vec<Self::Output>>
     where
         Self: Sized,

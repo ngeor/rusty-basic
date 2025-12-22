@@ -12,7 +12,9 @@ pub fn in_parenthesis_csv_expressions_non_opt(
 
 /// Parses one or more expressions separated by comma.
 /// FIXME Unlike csv_expressions, the first expression does not need a separator!
-pub fn csv_expressions_non_opt(msg: &str) -> impl Parser<RcStringView, Output = Expressions> {
+pub fn csv_expressions_non_opt(
+    msg: &str,
+) -> impl Parser<RcStringView, Output = Expressions> + use<'_> {
     csv_non_opt(expression_pos_p(), msg)
 }
 

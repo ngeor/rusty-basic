@@ -12,7 +12,7 @@ pub fn csv<L: Parser<RcStringView>>(
 pub fn csv_non_opt<P: Parser<RcStringView>>(
     parser: P,
     err: &str,
-) -> impl Parser<RcStringView, Output = Vec<P::Output>> {
+) -> impl Parser<RcStringView, Output = Vec<P::Output>> + use<'_, P> {
     csv(parser).or_syntax_error(err)
 }
 

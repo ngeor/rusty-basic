@@ -1,6 +1,6 @@
 use crate::pc::many::Many;
 use crate::pc::{
-    AllowNoneIfParser, And, ChainParser, LoopWhile, MessageProvider, NoIncompleteParser, OrDefault,
+    AllowNoneIfParser, ChainParser, LoopWhile, MessageProvider, NoIncompleteParser, OrDefault,
     OrFailParser, ParseResult, WithExpectedMessage,
 };
 use crate::ParseError;
@@ -96,15 +96,5 @@ pub trait Parser<I> {
         F: Fn(Self::Output, R::Output) -> O,
     {
         ChainParser::new(self, right_factory, combiner)
-    }
-
-    fn surround<L, R>(self, left: L, right: R) -> impl Parser<I, Output = Self::Output>
-    where
-        Self: Sized,
-        I: Clone,
-        L: Parser<I>,
-        R: Parser<I>,
-    {
-        left.and_keep_right(self).and_keep_left(right)
     }
 }

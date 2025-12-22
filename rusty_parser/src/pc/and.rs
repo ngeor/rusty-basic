@@ -37,6 +37,16 @@ pub trait And<I: Clone>: Parser<I> {
     {
         self.and(right, |_, r| r)
     }
+
+    fn surround<L, R>(self, left: L, right: R) -> impl Parser<I, Output = Self::Output>
+    where
+        Self: Sized,
+        I: Clone,
+        L: Parser<I>,
+        R: Parser<I>,
+    {
+        left.and_keep_right(self).and_keep_left(right)
+    }
 }
 
 impl<I, L> And<I> for L

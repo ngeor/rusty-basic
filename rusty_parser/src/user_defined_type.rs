@@ -56,7 +56,7 @@ pub fn user_defined_type_p() -> impl Parser<RcStringView, Output = UserDefinedTy
         bare_name_without_dots().or_syntax_error("Expected: name after TYPE"),
         comments_and_whitespace_p(),
         elements_p(),
-        keyword_pair(Keyword::End, Keyword::Type).no_incomplete(),
+        keyword_pair(Keyword::End, Keyword::Type),
         |_, name, comments, elements, _| UserDefinedType::new(name, comments, elements),
     )
 }
@@ -70,9 +70,9 @@ fn elements_p() -> impl Parser<RcStringView, Output = Vec<ElementPos>> {
 fn element_pos_p() -> impl Parser<RcStringView, Output = ElementPos> {
     seq6(
         bare_name_without_dots(),
-        whitespace().no_incomplete(),
-        keyword(Keyword::As).no_incomplete(),
-        whitespace().no_incomplete(),
+        whitespace(),
+        keyword(Keyword::As),
+        whitespace(),
         element_type_p().or_syntax_error("Expected: element type"),
         comments_and_whitespace_p(),
         |element, _, _, _, element_type, comments| Element::new(element, element_type, comments),
@@ -90,7 +90,7 @@ fn element_type_p() -> impl Parser<RcStringView, Output = ElementType> {
         ])),
         Box::new(seq3(
             keyword(Keyword::String),
-            star().no_incomplete(),
+            star(),
             demand_string_length_p(),
             |_, _, e| ElementType::FixedLengthString(e, 0),
         )),

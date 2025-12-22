@@ -44,19 +44,14 @@ fn opt_using() -> impl Parser<RcStringView, Output = Option<ExpressionPos>> {
     seq3(
         keyword(Keyword::Using),
         ws_expr_pos_p().or_syntax_error("Expected: expression after USING"),
-        semicolon().no_incomplete(),
+        semicolon(),
         |_, using_expr, _| using_expr,
     )
     .to_option()
 }
 
 fn opt_file_handle_comma_p() -> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>> {
-    seq2(
-        file_handle_p(),
-        comma().no_incomplete(),
-        |file_handle, _| file_handle,
-    )
-    .to_option()
+    seq2(file_handle_p(), comma(), |file_handle, _| file_handle).to_option()
 }
 
 pub struct PrintArgsParser;

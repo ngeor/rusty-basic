@@ -41,10 +41,11 @@ macro_rules! seq_pc {
                 let (tokenizer, $first_type) = self.$first_type.parse(tokenizer)?;
 
                 $(
-                    // but the rest are not
+                    // but the rest are not...
                     let (tokenizer, $generic_type) = match self.$generic_type.parse(tokenizer) {
                         Ok(x) => x,
-                        Err(err) => return Err(err),
+                        // ... so convert any error to fatal
+                        Err((_, input, err)) => return Err((true, input, err)),
                     };
                 )+
                 Ok(

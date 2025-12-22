@@ -9,7 +9,7 @@ use crate::*;
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     seq4(
         keyword(Keyword::Input),
-        whitespace().no_incomplete(),
+        whitespace(),
         opt_file_handle_comma_p(),
         csv_expressions_non_opt("Expected: #file-number or variable"),
         |_, _, opt_file_number_pos, variables| {

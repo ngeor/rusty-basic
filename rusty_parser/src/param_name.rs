@@ -21,7 +21,7 @@ fn parameter_p() -> impl Parser<RcStringView, Output = Parameter> {
 fn array_indicator() -> impl Parser<RcStringView, Output = Option<(Token, Token)>> {
     Seq2::new(
         any_token_of(TokenType::LParen),
-        any_token_of(TokenType::RParen).no_incomplete(),
+        any_token_of(TokenType::RParen),
     )
     .to_option()
 }

@@ -11,9 +11,9 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
         keyword(Keyword::Field),
         // TODO: create a shortcut for whitespace().no_incomplete() and simple token parsers in general
         // they should have a different FilterParser implementation that does not require Undo capability
-        whitespace().no_incomplete(),
+        whitespace(),
         file_handle_p().or_syntax_error("Expected: file-number"),
-        comma().no_incomplete(),
+        comma(),
         csv_non_opt(field_item_p(), "Expected: field width"),
         |_, _, file_number, _, fields| {
             Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
@@ -24,8 +24,8 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
 fn field_item_p() -> impl Parser<RcStringView, Output = (ExpressionPos, NamePos)> {
     seq4(
         expr_pos_ws_p(),
-        keyword(Keyword::As).no_incomplete(),
-        whitespace().no_incomplete(),
+        keyword(Keyword::As),
+        whitespace(),
         name::name_with_dots()
             .with_pos()
             .or_syntax_error("Expected: variable name"),

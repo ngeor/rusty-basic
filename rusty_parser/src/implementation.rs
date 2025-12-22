@@ -15,7 +15,7 @@ fn function_implementation_p() -> impl Parser<RcStringView, Output = GlobalState
     seq3(
         static_declaration_p(declaration::function_declaration_p()),
         ZeroOrMoreStatements::new(Keyword::End),
-        keyword_pair(Keyword::End, Keyword::Function).no_incomplete(),
+        keyword_pair(Keyword::End, Keyword::Function),
         |((name, params), is_static), body, _| {
             GlobalStatement::FunctionImplementation(FunctionImplementation {
                 name,
@@ -31,7 +31,7 @@ fn sub_implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement>
     seq3(
         static_declaration_p(declaration::sub_declaration_p()),
         ZeroOrMoreStatements::new(Keyword::End),
-        keyword_pair(Keyword::End, Keyword::Sub).no_incomplete(),
+        keyword_pair(Keyword::End, Keyword::Sub),
         |((name, params), is_static), body, _| {
             GlobalStatement::SubImplementation(SubImplementation {
                 name,

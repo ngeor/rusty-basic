@@ -6,16 +6,13 @@ use crate::{Expression, Keyword, OnErrorOption, ParseError, Statement};
 use rusty_common::Positioned;
 
 pub fn statement_on_error_go_to_p() -> impl Parser<RcStringView, Output = Statement> {
-    Seq2::new(
-        keyword_pair(Keyword::On, Keyword::Error),
-        whitespace().no_incomplete(),
-    )
-    .and_without_undo_keep_right(
-        next()
-            .or(goto())
-            .or_syntax_error("Expected: GOTO or RESUME"),
-    )
-    .map(Statement::OnError)
+    Seq2::new(keyword_pair(Keyword::On, Keyword::Error), whitespace())
+        .and_without_undo_keep_right(
+            next()
+                .or(goto())
+                .or_syntax_error("Expected: GOTO or RESUME"),
+        )
+        .map(Statement::OnError)
 }
 
 fn next() -> impl Parser<RcStringView, Output = OnErrorOption> {

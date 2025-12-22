@@ -6,7 +6,7 @@ use crate::{dim_name, DimList, Keyword, Statement};
 pub fn dim_p() -> impl Parser<RcStringView, Output = Statement> {
     seq4(
         keyword(Keyword::Dim),
-        whitespace().no_incomplete(),
+        whitespace(),
         opt_shared_keyword(),
         csv_non_opt(dim_name::dim_var_pos_p(), "Expected: name after DIM"),
         |_, _, opt_shared, variables| {
@@ -22,7 +22,7 @@ pub fn dim_p() -> impl Parser<RcStringView, Output = Statement> {
 pub fn redim_p() -> impl Parser<RcStringView, Output = Statement> {
     seq4(
         keyword(Keyword::Redim),
-        whitespace().no_incomplete(),
+        whitespace(),
         opt_shared_keyword(),
         csv_non_opt(dim_name::redim_var_pos_p(), "Expected: name after REDIM"),
         |_, _, opt_shared, variables| {
@@ -35,7 +35,7 @@ pub fn redim_p() -> impl Parser<RcStringView, Output = Statement> {
 }
 
 fn opt_shared_keyword() -> impl Parser<RcStringView, Output = Option<(Token, Token)>> {
-    Seq2::new(keyword(Keyword::Shared), whitespace().no_incomplete()).to_option()
+    Seq2::new(keyword(Keyword::Shared), whitespace()).to_option()
 }
 
 #[cfg(test)]

@@ -35,7 +35,7 @@ fn if_expr_then_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
     seq3(
         keyword(Keyword::If),
         expression::ws_expr_pos_ws_p().or_syntax_error("Expected: expression after IF"),
-        keyword(Keyword::Then).no_incomplete(),
+        keyword(Keyword::Then),
         |_, m, _| m,
     )
 }
@@ -65,7 +65,7 @@ fn multi_line_if_p(
         ZeroOrMoreStatements::new_multi(vec![Keyword::End, Keyword::Else, Keyword::ElseIf]),
         else_if_block_p().zero_or_more(),
         else_block_p().to_option(),
-        keyword_pair(Keyword::End, Keyword::If).no_incomplete(),
+        keyword_pair(Keyword::End, Keyword::If),
         |if_block, else_if_blocks, opt_else, _| (if_block, else_if_blocks, opt_else),
     )
 }
@@ -74,7 +74,7 @@ fn else_if_expr_then_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
     seq3(
         keyword(Keyword::ElseIf),
         expression::ws_expr_pos_ws_p().or_syntax_error("Expected: expression after ELSEIF"),
-        keyword(Keyword::Then).no_incomplete(),
+        keyword(Keyword::Then),
         |_, m, _| m,
     )
 }

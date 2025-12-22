@@ -33,16 +33,12 @@ fn keyword_unchecked(k: Keyword) -> impl Parser<RcStringView, Output = Token> {
 
 // TODO 1. rename to keyword_ws like expressions 2. add ws_keyword and ws_keyword_ws
 pub fn keyword_followed_by_whitespace_p(k: Keyword) -> impl Parser<RcStringView> {
-    Seq2::new(keyword_unchecked(k), whitespace().no_incomplete())
+    Seq2::new(keyword_unchecked(k), whitespace())
 }
 
 // TODO add keyword_pair_ws
 pub fn keyword_pair(first: Keyword, second: Keyword) -> impl Parser<RcStringView> {
-    Seq3::new(
-        keyword_unchecked(first),
-        whitespace().no_incomplete(),
-        keyword(second).no_incomplete(),
-    )
+    Seq3::new(keyword_unchecked(first), whitespace(), keyword(second))
 }
 
 pub fn any_keyword_with_dollar_sign() -> impl Parser<RcStringView, Output = (Token, Token)> {

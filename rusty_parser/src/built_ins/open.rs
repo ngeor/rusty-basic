@@ -32,16 +32,15 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
 fn parse_open_mode_p() -> impl Parser<RcStringView, Output = Positioned<FileMode>> {
     seq4(
         keyword(Keyword::For),
-        whitespace().no_incomplete(),
+        whitespace(),
         keyword_map(&[
             (Keyword::Append, FileMode::Append),
             (Keyword::Input, FileMode::Input),
             (Keyword::Output, FileMode::Output),
             (Keyword::Random, FileMode::Random),
         ])
-        .with_pos()
-        .no_incomplete(),
-        whitespace().no_incomplete(),
+        .with_pos(),
+        whitespace(),
         |_, _, file_mode, _| file_mode,
     )
 }
@@ -50,9 +49,9 @@ fn parse_open_mode_p() -> impl Parser<RcStringView, Output = Positioned<FileMode
 fn parse_open_access_p() -> impl Parser<RcStringView, Output = Positioned<FileAccess>> {
     seq4(
         keyword(Keyword::Access),
-        whitespace().no_incomplete(),
-        keyword(Keyword::Read).with_pos().no_incomplete(),
-        whitespace().no_incomplete(),
+        whitespace(),
+        keyword(Keyword::Read).with_pos(),
+        whitespace(),
         |_, _, positioned, _| FileAccess::Read.at(&positioned),
     )
 }
@@ -68,7 +67,7 @@ fn parse_file_number_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
 fn parse_len_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
     seq3(
         whitespace().and_tuple(keyword(Keyword::Len)),
-        equal_sign().no_incomplete(),
+        equal_sign(),
         expression_pos_p().or_syntax_error("Expected: expression after LEN ="),
         |_, _, e| e,
     )

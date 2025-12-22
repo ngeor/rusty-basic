@@ -12,7 +12,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
 fn parse_args() -> impl Parser<RcStringView, Output = Expressions> {
     seq3(
         ws_expr_pos_ws_p(),
-        keyword(Keyword::To).no_incomplete(),
+        keyword(Keyword::To),
         ws_expr_pos_p().or_syntax_error("Expected: expression"),
         |l, _, r| vec![l, r],
     )

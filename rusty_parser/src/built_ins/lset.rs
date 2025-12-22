@@ -7,11 +7,11 @@ use rusty_common::*;
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     seq5(
         keyword(Keyword::LSet),
-        whitespace().no_incomplete(),
+        whitespace(),
         name::name_with_dots()
             .with_pos()
             .or_syntax_error("Expected: variable after LSET"),
-        equal_sign().no_incomplete(),
+        equal_sign(),
         expression_pos_p().or_syntax_error("Expected: expression"),
         |_, _, name_pos, _, value_expr_pos| {
             Statement::BuiltInSubCall(BuiltInSub::LSet, build_args(name_pos, value_expr_pos))

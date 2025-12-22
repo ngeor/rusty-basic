@@ -30,7 +30,7 @@ pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement> {
 pub fn function_declaration_p() -> impl Parser<RcStringView, Output = (NamePos, Parameters)> {
     seq4(
         keyword(Keyword::Function),
-        whitespace().no_incomplete(),
+        whitespace(),
         name::name_with_dots()
             .with_pos()
             .or_syntax_error("Expected: function name"),
@@ -44,7 +44,7 @@ pub fn function_declaration_p() -> impl Parser<RcStringView, Output = (NamePos, 
 pub fn sub_declaration_p() -> impl Parser<RcStringView, Output = (BareNamePos, Parameters)> {
     seq4(
         keyword(Keyword::Sub),
-        whitespace().no_incomplete(),
+        whitespace(),
         name::bare_name_with_dots()
             .with_pos()
             .or_syntax_error("Expected: sub name"),

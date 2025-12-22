@@ -9,12 +9,9 @@ use crate::{DefType, Keyword, LetterRange, ParseError, TypeQualifier};
 // Letter       ::= [a-zA-Z]
 
 pub fn def_type_p() -> impl Parser<RcStringView, Output = DefType> {
-    seq3(
-        def_keyword_p(),
-        whitespace().no_incomplete(),
-        letter_ranges(),
-        |l, _, r| DefType::new(l, r),
-    )
+    seq3(def_keyword_p(), whitespace(), letter_ranges(), |l, _, r| {
+        DefType::new(l, r)
+    })
 }
 
 fn def_keyword_p() -> impl Parser<RcStringView, Output = TypeQualifier> {

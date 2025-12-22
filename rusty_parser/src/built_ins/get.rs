@@ -14,9 +14,9 @@ pub fn parse_get_or_put(
 ) -> impl Parser<RcStringView, Output = Statement> {
     seq5(
         keyword(k),
-        whitespace().no_incomplete(),
+        whitespace(),
         file_handle_p().or_syntax_error("Expected: file-number"),
-        comma().no_incomplete(),
+        comma(),
         expression_pos_p().or_syntax_error("Expected: record-number"),
         move |_, _, file_number_pos, _, record_number_expr_pos| {
             Statement::BuiltInSubCall(

@@ -7,11 +7,11 @@ use crate::types::{Keyword, Statement};
 pub fn constant_p() -> impl Parser<RcStringView, Output = Statement> {
     seq5(
         keyword(Keyword::Const),
-        whitespace().no_incomplete(),
+        whitespace(),
         name::name_with_dots()
             .with_pos()
             .or_syntax_error("Expected: const name"),
-        equal_sign().no_incomplete(),
+        equal_sign(),
         expression_pos_p().or_syntax_error("Expected: const value"),
         |_, _, const_name, _, const_value_expr| Statement::Const(const_name, const_value_expr),
     )

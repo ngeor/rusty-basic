@@ -152,7 +152,7 @@ mod string_literal {
         seq3(
             string_delimiter(),
             inside_string(),
-            string_delimiter().no_incomplete(),
+            string_delimiter(),
             |_, token_list, _| Expression::StringLiteral(token_list_to_string(token_list)),
         )
         .with_pos()

@@ -96,12 +96,8 @@ where
     supplier(T::default)
 }
 
-fn as_clause() -> impl Parser<RcStringView, Output = (Token, Token, Token)> {
-    seq2(
-        whitespace().and_tuple(keyword(Keyword::As)),
-        whitespace().no_incomplete(),
-        |(a, b), c| (a, b, c),
-    )
+fn as_clause() -> impl Parser<RcStringView, Output = Token> {
+    keyword(Keyword::As).surround(whitespace(), whitespace())
 }
 
 fn extended<T, F, P>(

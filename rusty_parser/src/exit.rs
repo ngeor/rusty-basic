@@ -5,12 +5,11 @@ use crate::{ExitObject, Keyword, Statement};
 pub fn statement_exit_p() -> impl Parser<RcStringView, Output = Statement> {
     seq3(
         keyword(Keyword::Exit),
-        whitespace().no_incomplete(),
+        whitespace(),
         keyword_map(&[
             (Keyword::Function, ExitObject::Function),
             (Keyword::Sub, ExitObject::Sub),
-        ])
-        .no_incomplete(),
+        ]),
         |_, _, exit_object| Statement::Exit(exit_object),
     )
 }

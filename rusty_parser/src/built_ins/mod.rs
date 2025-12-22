@@ -65,7 +65,7 @@ fn parse_built_in_sub_with_opt_args(
 ) -> impl Parser<RcStringView, Output = Statement> {
     seq3(
         keyword(k),
-        whitespace().no_incomplete(),
+        whitespace(),
         csv_allow_missing(),
         move |_, _, opt_args| {
             Statement::BuiltInSubCall(built_in_sub, map_opt_args_to_flags(opt_args))
@@ -101,7 +101,7 @@ fn csv_allow_missing() -> impl Parser<RcStringView, Output = Vec<Option<Expressi
 
 /// Used in `INPUT` and `LINE INPUT`, parsing an optional file number.
 fn opt_file_handle_comma_p() -> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>> {
-    seq2(file_handle_p(), comma().no_incomplete(), |l, _| l).to_option()
+    seq2(file_handle_p(), comma(), |l, _| l).to_option()
 }
 
 /// Used in `INPUT` and `LINE INPUT`, converts an optional file-number into arguments.

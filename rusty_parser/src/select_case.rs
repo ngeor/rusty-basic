@@ -22,7 +22,7 @@ pub fn select_case_p() -> impl Parser<RcStringView, Output = Statement> {
         select_case_expr_p(),
         comments_and_whitespace_p(),
         case_blocks(),
-        keyword_pair(Keyword::End, Keyword::Select).no_incomplete(),
+        keyword_pair(Keyword::End, Keyword::Select),
         |expr, inline_comments, all_case_blocks: Vec<CaseBlock>, _| {
             // TODO 1 do not clone 2 fail if multiple ELSE blocks 3 fail if ELSE block is not the last one
             // TODO revisit this

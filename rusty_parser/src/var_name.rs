@@ -1,6 +1,7 @@
 //! Used by dim_name and param_name who have almost identical parsing rules.
 
 use crate::name::{bare_name_without_dots, name_with_dots};
+use crate::pc::boxed::boxed;
 use crate::pc::supplier::supplier;
 use crate::pc_specific::*;
 use crate::{pc::*, TypeQualifier};
@@ -60,27 +61,24 @@ where
     T: Clone + Default + 'static,
     T: VarTypeNewBuiltInCompact,
     T: VarTypeNewUserDefined,
-    F: Fn() -> P,
+    F: Fn() -> P + 'static,
     P: Parser<RcStringView, Output = T> + 'static,
 {
-    let has_dots = name.bare_name().contains('.');
     match name.qualifier() {
-        // TODO do not use OrParser of 1 element as a workaround for dyn boxing
         // qualified name can't have an "AS" clause
-        Some(q) => OrParser::new(vec![Box::new(qualified_type(q))]),
+        Some(q) => boxed(qualified_type(q)),
         // bare names might have an "AS" clause
-        _ => OrParser::new(vec![Box::new(
-            as_clause()
-                .and_without_undo_keep_right(
-                    iif_p(
-                        has_dots,
-                        built_in_extended_factory(),
-                        any_extended(built_in_extended_factory()),
+        _ => {
+            let allow_user_defined = !name.bare_name().contains('.');
+
+            boxed(
+                as_clause()
+                    .and_without_undo_keep_right(
+                        extended(allow_user_defined, built_in_extended_factory).no_incomplete(),
                     )
-                    .no_incomplete(),
-                )
-                .or(bare_type()),
-        )]),
+                    .or(bare_type()),
+            )
+        }
     }
 }
 
@@ -104,6 +102,22 @@ fn as_clause() -> impl Parser<RcStringView, Output = (Token, Token, Token)> {
         whitespace().no_incomplete(),
         |(a, b), c| (a, b, c),
     )
+}
+
+fn extended<T, F, P>(
+    allow_user_defined: bool,
+    built_in_extended_factory: F,
+) -> impl Parser<RcStringView, Output = T>
+where
+    T: VarTypeNewUserDefined + 'static,
+    F: Fn() -> P,
+    P: Parser<RcStringView, Output = T> + 'static,
+{
+    if allow_user_defined {
+        boxed(any_extended(built_in_extended_factory()))
+    } else {
+        boxed(built_in_extended_factory())
+    }
 }
 
 fn any_extended<T>(

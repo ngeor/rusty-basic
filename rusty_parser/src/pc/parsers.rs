@@ -1,6 +1,6 @@
 use crate::pc::many::Many;
 use crate::pc::{
-    AllowNoneIfParser, ChainParser, LoopWhile, MessageProvider, NoIncompleteParser, OrDefault,
+    AllowNoneIfParser, ChainParser, MessageProvider, NoIncompleteParser, OrDefault,
     OrFailParser, ParseResult, WithExpectedMessage,
 };
 use crate::ParseError;
@@ -16,15 +16,6 @@ pub trait Parser<I> {
     /**
      * Not reviewed yet
      */
-
-    fn loop_while<F>(self, predicate: F) -> LoopWhile<Self, F>
-    where
-        Self: Sized,
-        I: Clone,
-        F: Fn(&Self::Output) -> bool,
-    {
-        LoopWhile::new(self, predicate)
-    }
 
     fn with_expected_message<F>(self, f: F) -> WithExpectedMessage<Self, F>
     where

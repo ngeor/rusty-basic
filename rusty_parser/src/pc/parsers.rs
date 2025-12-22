@@ -1,5 +1,4 @@
-use crate::pc::many::Many;
-use crate::pc::{ChainParser, OrDefault, ParseResult};
+use crate::pc::{ChainParser, ParseResult};
 use crate::ParseError;
 
 // TODO make QError generic param too
@@ -13,29 +12,6 @@ pub trait Parser<I> {
     /**
      * Not reviewed yet
      */
-
-    fn zero_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>>
-    where
-        Self: Sized,
-        I: Clone,
-    {
-        self.one_or_more().or_default()
-    }
-
-    fn one_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>>
-    where
-        Self: Sized,
-        I: Clone,
-    {
-        Many::new(
-            self,
-            |e| vec![e],
-            |mut v: Vec<Self::Output>, e| {
-                v.push(e);
-                v
-            },
-        )
-    }
 
     fn chain<RF, R, F, O>(self, right_factory: RF, combiner: F) -> ChainParser<Self, RF, F>
     where

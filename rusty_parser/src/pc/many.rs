@@ -1,17 +1,46 @@
 use crate::{
-    pc::{ParseResult, ParseResultTrait, Parser},
+    pc::{OrDefault, ParseResult, ParseResultTrait, Parser},
     ParseError,
 };
 
-pub struct Many<P, S, A> {
+pub trait Many<I>: Parser<I>
+where
+    Self: Sized,
+{
+    fn many<O, S, A>(self, seed: S, accumulator: A) -> impl Parser<I, Output = O>
+    where
+        S: Fn(Self::Output) -> O,
+        A: Fn(O, Self::Output) -> O,
+    {
+        ManyParser::new(self, seed, accumulator)
+    }
+
+    fn one_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>> {
+        self.many(
+            |e| vec![e],
+            |mut v: Vec<Self::Output>, e| {
+                v.push(e);
+                v
+            },
+        )
+    }
+
+    fn zero_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>> {
+        self.one_or_more().or_default()
+    }
+}
+
+impl<I, P> Many<I> for P where P: Parser<I> {}
+
+struct ManyParser<P, S, A> {
     parser: P,
     seed: S,
     accumulator: A,
 }
 
-impl<P, S, A> Many<P, S, A> {
+impl<P, S, A> ManyParser<P, S, A> {
     pub fn new(parser: P, seed: S, accumulator: A) -> Self {
-        Many {
+        ManyParser {
             parser,
             seed,
             accumulator,
@@ -19,7 +48,7 @@ impl<P, S, A> Many<P, S, A> {
     }
 }
 
-impl<I, P, S, A, O> Parser<I> for Many<P, S, A>
+impl<I, P, S, A, O> Parser<I> for ManyParser<P, S, A>
 where
     P: Parser<I>,
     S: Fn(P::Output) -> O,

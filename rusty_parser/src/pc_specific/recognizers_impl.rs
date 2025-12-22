@@ -274,7 +274,7 @@ mod string_parsers {
         P: Parser<I, Output = char>,
     {
         fn concatenate(self) -> impl Parser<I, Output = String> {
-            Many::new(self, String::from, |mut s: String, c| {
+            self.many(String::from, |mut s: String, c| {
                 s.push(c);
                 s
             })

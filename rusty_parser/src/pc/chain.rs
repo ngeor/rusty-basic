@@ -1,7 +1,21 @@
 use crate::pc::{ParseResult, ParseResultTrait, Parser};
 use crate::ParseError;
 
-pub struct ChainParser<L, R, F> {
+pub trait Chain<I>: Parser<I> {
+    fn chain<RF, R, F, O>(self, right_factory: RF, combiner: F) -> impl Parser<I, Output = O>
+    where
+        Self: Sized,
+        RF: Fn(&Self::Output) -> R,
+        R: Parser<I>,
+        F: Fn(Self::Output, R::Output) -> O,
+    {
+        ChainParser::new(self, right_factory, combiner)
+    }
+}
+
+impl<I, P: Parser<I>> Chain<I> for P {}
+
+struct ChainParser<L, R, F> {
     left: L,
     right: R,
     combiner: F,

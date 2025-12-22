@@ -11,14 +11,6 @@ where
     {
         MapParser(self, mapper)
     }
-
-    #[deprecated]
-    fn keep_right<L, R>(self) -> impl Parser<I, Output = R>
-    where
-        Self: Parser<I, Output = (L, R)>,
-    {
-        self.map(|(_, r)| r)
-    }
 }
 
 impl<I, P> Map<I> for P where P: Parser<I> {}

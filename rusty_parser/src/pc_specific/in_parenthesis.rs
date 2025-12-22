@@ -19,7 +19,7 @@ fn left_paren() -> impl Parser<RcStringView, Output = (Token, Option<Token>)> {
 }
 
 fn right_paren() -> impl Parser<RcStringView, Output = (Option<Token>, Token)> {
-    OptAndPC::new(
+    opt_and_tuple(
         whitespace(),
         any_token_of(TokenType::RParen).no_incomplete(),
     )

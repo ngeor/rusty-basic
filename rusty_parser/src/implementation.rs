@@ -48,7 +48,7 @@ where
     P: Parser<RcStringView, Output = T>,
 {
     parser.and_opt(
-        OptAndPC::new(whitespace(), keyword(Keyword::Static)),
+        opt_and_tuple(whitespace(), keyword(Keyword::Static)),
         |l, r| (l, r.is_some()),
     )
 }

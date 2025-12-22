@@ -83,7 +83,7 @@ fn case_block() -> impl Parser<RcStringView, Output = CaseBlock> {
 }
 
 fn continue_after_case() -> impl Parser<RcStringView, Output = CaseBlock> {
-    OptAndPC::new(
+    opt_and_keep_right(
         whitespace(),
         seq2(
             OrParser::new(vec![
@@ -97,7 +97,6 @@ fn continue_after_case() -> impl Parser<RcStringView, Output = CaseBlock> {
             },
         ),
     )
-    .keep_right()
 }
 
 fn case_expression_list() -> impl Parser<RcStringView, Output = Vec<CaseExpression>> {
@@ -118,11 +117,9 @@ mod case_expression_parser {
     fn case_is() -> impl Parser<RcStringView, Output = CaseExpression> {
         seq3(
             keyword(Keyword::Is),
-            OptAndPC::new(whitespace(), relational_operator_p())
-                .keep_right()
+            opt_and_keep_right(whitespace(), relational_operator_p())
                 .or_syntax_error("Expected: Operator after IS"),
-            OptAndPC::new(whitespace(), expression_pos_p())
-                .keep_right()
+            opt_and_keep_right(whitespace(), expression_pos_p())
                 .or_syntax_error("Expected: expression after IS operator"),
             |_, Positioned { element, .. }, r| CaseExpression::Is(element, r),
         )

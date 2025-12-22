@@ -114,12 +114,11 @@ mod system {
     use crate::{Keyword, Statement};
 
     pub fn parse_system_p() -> impl Parser<RcStringView, Output = Statement> {
-        keyword(Keyword::System)
-            .and_without_undo_keep_right(
-                OptAndPC::new(whitespace(), peek_eof_or_statement_separator())
-                    .or_syntax_error("Expected: end-of-statement"),
-            )
-            .map(|_| Statement::System)
+        keyword(Keyword::System).and_without_undo(
+            opt_and_tuple(whitespace(), peek_eof_or_statement_separator())
+                .or_syntax_error("Expected: end-of-statement"),
+            |_, _| Statement::System,
+        )
     }
 
     #[cfg(test)]

@@ -18,7 +18,7 @@ use crate::pc_specific::*;
 use rusty_common::*;
 
 pub fn comment_separator() -> impl Parser<RcStringView, Output = ()> {
-    OptAndPC::new(whitespace(), any_token_of(TokenType::Eol)).and_opt(
+    opt_and_tuple(whitespace(), any_token_of(TokenType::Eol)).and_opt(
         any_token_of_two(TokenType::Eol, TokenType::Whitespace),
         |_, _| (),
     )
@@ -49,7 +49,7 @@ pub fn comment_separator() -> impl Parser<RcStringView, Output = ()> {
 /// ws* (colon | eol) (ws | eol)*
 /// ws* ' ! (where `!` stands for read and undo)
 pub fn common_separator() -> impl Parser<RcStringView, Output = ()> {
-    OptAndPC::new(
+    opt_and(
         whitespace(),
         OrParser::new(vec![
             Box::new(any_token_of_two(TokenType::Colon, TokenType::Eol).and_opt(
@@ -58,8 +58,8 @@ pub fn common_separator() -> impl Parser<RcStringView, Output = ()> {
             )),
             Box::new(no_separator_needed_before_comment()),
         ]),
+        |_, _| (),
     )
-    .map(|_| ())
 }
 
 pub fn no_separator_needed_before_comment() -> impl Parser<RcStringView, Output = ()> {
@@ -89,12 +89,11 @@ pub fn peek_eof_or_statement_separator() -> impl Parser<RcStringView, Output = (
 // TODO review all parsers that return a collection, implement some `accumulate` method
 /// Reads multiple comments and the surrounding whitespace.
 pub fn comments_and_whitespace_p() -> impl Parser<RcStringView, Output = Vec<Positioned<String>>> {
-    OptAndPC::new(
+    opt_and_keep_right(
         whitespace(),
         OptZip::new(comment_separator(), comment_as_string_p().with_pos())
             .one_or_more()
             .map(ZipValue::collect_right)
             .or_default(),
     )
-    .keep_right()
 }

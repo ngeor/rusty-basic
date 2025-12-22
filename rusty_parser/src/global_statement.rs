@@ -38,11 +38,10 @@ fn main_program() -> impl Parser<RcStringView, Output = Program> {
 }
 
 fn next_statements() -> impl Parser<RcStringView, Output = Program> {
-    OptAndPC::new(
+    opt_and_keep_right(
         whitespace(),
         next_statement().and_opt_keep_left(whitespace()),
     )
-    .keep_right()
     .zero_or_more()
 }
 

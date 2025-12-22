@@ -117,11 +117,18 @@ mod single_or_double_literal {
     // TODO support more qualifiers besides '#'
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
-        OptAndPC::new(
+        // TODO this is difficult to understand
+        opt_and_tuple(
+            // read integer digits optionally (might start with . e.g. `.123`)
             digits(),
+            // read dot and demand digits after decimal point
+            // if dot is missing, the parser returns an empty result
+            // the "deal breaker" is therefore the dot
             dot().and_without_undo_keep_right(digits().no_incomplete()),
         )
+        // and parse optinally a type qualifier such as `#`
         .and_opt_tuple(pound())
+        // done parsing, flat map everything
         .flat_map(|input, ((opt_integer_digits, frac_digits), opt_pound)| {
             let left = opt_integer_digits
                 .map(|token| token.text)
@@ -581,7 +588,7 @@ mod binary_expression {
         }
 
         fn operator(is_paren: bool) -> impl Parser<RcStringView, Output = Positioned<Operator>> {
-            OptAndPC::new(
+            opt_and_tuple(
                 whitespace(),
                 any_token()
                     .filter_map(Self::map_token_to_operator)

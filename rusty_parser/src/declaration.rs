@@ -55,11 +55,11 @@ pub fn sub_declaration_p() -> impl Parser<RcStringView, Output = (BareNamePos, P
 
 // result ::= "" | "(" ")" | "(" parameter (,parameter)* ")"
 fn declaration_parameters_p() -> impl Parser<RcStringView, Output = Parameters> {
-    OptAndPC::new(
+    // TODO remove the need for the double .or_default()
+    opt_and_keep_right(
         whitespace(),
         in_parenthesis(csv(parameter_pos_p()).or_default()),
     )
-    .keep_right()
     .or_default()
 }
 

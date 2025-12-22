@@ -1,4 +1,4 @@
-use crate::pc::{ParseResult, Parser};
+use crate::pc::{ParseResult, Parser, ToOption};
 use crate::ParseError;
 
 //
@@ -93,4 +93,45 @@ where
             Err(err) => Err(err),
         }
     }
+}
+
+/// Parses the left side optionally and then the right side.
+/// If the right side fails, the left side is reverted too.
+/// The combiner function is used to create the final result.
+pub fn opt_and<I, L, R, F, O>(
+    left: impl Parser<I, Output = L>,
+    right: impl Parser<I, Output = R>,
+    combiner: F,
+) -> impl Parser<I, Output = O>
+where
+    I: Clone,
+    F: Fn(Option<L>, R) -> O,
+{
+    left.to_option().and(right, combiner)
+}
+
+/// Parses the left side optionally and then the right side.
+/// If the right side fails, the left side is reverted too.
+/// The result is a tuple of the (optional) left side and the right side.
+pub fn opt_and_tuple<I, L, R>(
+    left: impl Parser<I, Output = L>,
+    right: impl Parser<I, Output = R>,
+) -> impl Parser<I, Output = (Option<L>, R)>
+where
+    I: Clone,
+{
+    opt_and(left, right, |l, r| (l, r))
+}
+
+/// Parses the left side optionally and then the right side.
+/// If the right side fails, the left side is reverted too.
+/// The result is the right side only, the left is discarded.
+pub fn opt_and_keep_right<I, L, R>(
+    left: impl Parser<I, Output = L>,
+    right: impl Parser<I, Output = R>,
+) -> impl Parser<I, Output = R>
+where
+    I: Clone,
+{
+    opt_and(left, right, |_, r| r)
 }

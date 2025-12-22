@@ -14,14 +14,6 @@ pub trait Parser<I> {
      * Not reviewed yet
      */
 
-    #[cfg(debug_assertions)]
-    fn logging(self, tag: &str) -> crate::pc::LoggingPC<Self>
-    where
-        Self: Sized,
-    {
-        crate::pc::LoggingPC::new(self, tag.to_owned())
-    }
-
     fn allow_none_if(self, condition: bool) -> AllowNoneIfParser<Self>
     where
         Self: Sized,

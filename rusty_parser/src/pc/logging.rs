@@ -1,10 +1,23 @@
+#[cfg(debug_assertions)]
 use crate::pc::parsers::Parser;
 use crate::pc::{ParseResult, RcStringView};
 use crate::{parser_declaration, ParseError};
 
+#[allow(dead_code)]
+pub trait Logging: Parser<RcStringView> {
+    fn logging(self, tag: &str) -> impl Parser<RcStringView, Output = Self::Output>
+    where
+        Self: Sized,
+        Self::Output: std::fmt::Debug,
+    {
+        LoggingParser::new(self, tag.to_owned())
+    }
+}
+
+impl<P> Logging for P where P: Parser<RcStringView> {}
+
 parser_declaration!(
-    #[allow(dead_code)]
-    pub struct LoggingPC {
+    struct LoggingParser {
         tag: String,
     }
 );
@@ -21,7 +34,7 @@ fn indentation() -> String {
     s
 }
 
-impl<P> Parser<RcStringView> for LoggingPC<P>
+impl<P> Parser<RcStringView> for LoggingParser<P>
 where
     P: Parser<RcStringView>,
     P::Output: std::fmt::Debug,

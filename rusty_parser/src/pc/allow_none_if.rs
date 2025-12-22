@@ -1,7 +1,19 @@
 use crate::pc::{ParseResult, Parser};
 use crate::{parser_declaration, ParseError};
+
+pub trait AllowNoneIf<I> : Parser<I> {
+    fn allow_none_if(self, condition: bool) -> impl Parser<I, Output = Option<Self::Output>>
+    where
+        Self: Sized,
+    {
+        AllowNoneIfParser::new(self, condition)
+    }
+}
+
+impl<I, P> AllowNoneIf<I> for P where P: Parser<I> {}
+
 parser_declaration!(
-    pub struct AllowNoneIfParser {
+    struct AllowNoneIfParser {
         condition: bool,
     }
 );

@@ -1,5 +1,5 @@
 use crate::pc::many::Many;
-use crate::pc::{AllowNoneIfParser, ChainParser, OrDefault, ParseResult};
+use crate::pc::{ChainParser, OrDefault, ParseResult};
 use crate::ParseError;
 
 // TODO make QError generic param too
@@ -13,13 +13,6 @@ pub trait Parser<I> {
     /**
      * Not reviewed yet
      */
-
-    fn allow_none_if(self, condition: bool) -> AllowNoneIfParser<Self>
-    where
-        Self: Sized,
-    {
-        AllowNoneIfParser::new(self, condition)
-    }
 
     fn zero_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>>
     where

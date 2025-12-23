@@ -1,5 +1,6 @@
-use crate::NameContext;
+use crate::names::compacts_info::CompactsInfo;
 use crate::names::name_info::NameInfo;
+use crate::NameContext;
 use crate::{const_value_resolver::ConstLookup, names::ImplicitVars};
 use rusty_common::CaseInsensitiveString;
 use rusty_parser::specific::{
@@ -230,18 +231,14 @@ impl Names {
                 );
             }
             None => {
-                let mut map: HashMap<TypeQualifier, VariableInfo> = HashMap::new();
+                let mut map = CompactsInfo::default();
                 Self::insert_in_compacts(&mut map, q, variable_info);
                 self.map.insert(bare_name, NameInfo::Compacts(map));
             }
         }
     }
 
-    fn insert_in_compacts(
-        map: &mut HashMap<TypeQualifier, VariableInfo>,
-        q: TypeQualifier,
-        variable_info: VariableInfo,
-    ) {
+    fn insert_in_compacts(map: &mut CompactsInfo, q: TypeQualifier, variable_info: VariableInfo) {
         debug_assert!(match map.get(&q) {
             Some(existing_v) => {
                 existing_v.redim_info.is_some()

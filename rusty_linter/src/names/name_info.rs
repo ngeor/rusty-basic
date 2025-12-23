@@ -1,11 +1,10 @@
-use std::collections::HashMap;
-
-use rusty_parser::specific::{TypeQualifier, VariableInfo};
+use rusty_parser::specific::VariableInfo;
 use rusty_variant::Variant;
 
+use crate::names::compacts_info::CompactsInfo;
 
 pub enum NameInfo {
     Constant(Variant),
-    Compacts(HashMap<TypeQualifier, VariableInfo>),
+    Compacts(CompactsInfo),
     Extended(VariableInfo),
 }

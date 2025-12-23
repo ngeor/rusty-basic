@@ -39,7 +39,10 @@ impl DimVar {
 
 impl From<QualifiedName> for DimVar {
     fn from(qualified_name: QualifiedName) -> Self {
-        let (bare_name, qualifier) = qualified_name.into_inner();
+        let QualifiedName {
+            bare_name,
+            qualifier,
+        } = qualified_name;
         Self::new_compact_local(bare_name, qualifier)
     }
 }

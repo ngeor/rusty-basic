@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use crate::names::names_inner::NamesInner;
 use crate::names::traits::ManyNamesTrait;
-use crate::NameContext;
 use crate::{const_value_resolver::ConstLookup, names::ImplicitVars};
+use crate::{NameContext, SubprogramName};
 use rusty_common::CaseInsensitiveString;
 use rusty_parser::specific::{
-    BareName, BuiltInStyle, HasExpressionType, RedimInfo, TypeQualifier,
+    BareName, BuiltInStyle, HasExpressionType, QualifiedName, RedimInfo, TypeQualifier,
     VarTypeIsExtended, VariableInfo,
 };
 use rusty_variant::Variant;
@@ -29,10 +31,11 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 5b. An extended variable cannot co-exist with other symbols of the same name
 */
 
+type Key = Option<SubprogramName>;
+
 pub struct Names {
-    data: NamesOneLevel,
-    parent: Option<Box<Self>>,
-    current_function_name: Option<BareName>,
+    data: HashMap<Key, NamesOneLevel>,
+    current_key: Key,
 }
 
 /// Stores the data relevant to one level only (i.e. global symbols, or a FUNCTION, or a SUB).
@@ -42,28 +45,42 @@ pub struct Names {
 struct NamesOneLevel(NamesInner, ImplicitVars);
 
 impl Names {
-    pub fn new(parent: Option<Box<Self>>, current_function_name: Option<BareName>) -> Self {
+    pub fn new() -> Self {
+        let mut data: HashMap<Key, NamesOneLevel> = HashMap::new();
+        // insert GLOBAL scope
+        data.insert(None, NamesOneLevel::default());
         Self {
-            data: NamesOneLevel::default(),
-            parent,
-            current_function_name,
+            data,
+            current_key: None,
         }
     }
 
-    pub fn new_root() -> Self {
-        Self::new(None, None)
+    fn current_data(&self) -> &NamesOneLevel {
+        self.data.get(&self.current_key).unwrap()
+    }
+
+    fn current_data_mut(&mut self) -> &mut NamesOneLevel {
+        self.data.get_mut(&self.current_key).unwrap()
     }
 
     pub fn get_implicit_vars_mut(&mut self) -> &mut ImplicitVars {
-        &mut self.data.1
+        &mut self.current_data_mut().1
     }
 
     pub fn names(&self) -> &NamesInner {
-        &self.data.0
+        &self.current_data().0
     }
 
     pub fn names_mut(&mut self) -> &mut NamesInner {
-        &mut self.data.0
+        &mut self.current_data_mut().0
+    }
+
+    /// Returns the global names, but only if we are currently within a sub program.
+    fn global_names(&self) -> Option<&NamesInner> {
+        match &self.current_key {
+            Some(_) => self.data.get(&None).map(|x| &x.0),
+            None => None,
+        }
     }
 
     pub fn get_compact_var_recursively(
@@ -71,51 +88,18 @@ impl Names {
         bare_name: &BareName,
         qualifier: TypeQualifier,
     ) -> Option<&VariableInfo> {
-        match self.names().get_compact(bare_name, qualifier) {
-            Some(variable_info) => Some(variable_info),
-            _ => match &self.parent {
-                Some(parent_names) => {
-                    parent_names.get_compact_shared_var_recursively(bare_name, qualifier)
-                }
-                _ => None,
-            },
-        }
-    }
-
-    fn get_compact_shared_var_recursively(
-        &self,
-        bare_name: &BareName,
-        qualifier: TypeQualifier,
-    ) -> Option<&VariableInfo> {
-        match Self::require_shared(self.names().get_compact(bare_name, qualifier)) {
-            Some(variable_info) => Some(variable_info),
-            _ => match &self.parent {
-                Some(parent_names) => {
-                    parent_names.get_compact_shared_var_recursively(bare_name, qualifier)
-                }
-                _ => None,
-            },
-        }
+        self.names().get_compact(bare_name, qualifier).or_else(|| {
+            self.global_names().and_then(|global_names| {
+                Self::require_shared(global_names.get_compact(bare_name, qualifier))
+            })
+        })
     }
 
     pub fn get_extended_var_recursively(&self, bare_name: &BareName) -> Option<&VariableInfo> {
-        match self.names().get_extended(bare_name) {
-            Some(variable_info) => Some(variable_info),
-            _ => match &self.parent {
-                Some(parent_names) => parent_names.get_extended_shared_var_recursively(bare_name),
-                _ => None,
-            },
-        }
-    }
-
-    fn get_extended_shared_var_recursively(&self, bare_name: &BareName) -> Option<&VariableInfo> {
-        match Self::require_shared(self.names().get_extended(bare_name)) {
-            Some(variable_info) => Some(variable_info),
-            _ => match &self.parent {
-                Some(parent_names) => parent_names.get_extended_shared_var_recursively(bare_name),
-                _ => None,
-            },
-        }
+        self.names().get_extended(bare_name).or_else(|| {
+            self.global_names()
+                .and_then(|global_names| Self::require_shared(global_names.get_extended(bare_name)))
+        })
     }
 
     fn require_shared(opt_variable_info: Option<&VariableInfo>) -> Option<&VariableInfo> {
@@ -140,26 +124,14 @@ impl Names {
     }
 
     pub fn get_const_value_recursively(&self, bare_name: &BareName) -> Option<&Variant> {
-        match self.names().get_const_value(bare_name) {
-            Some(v) => Some(v),
-            _ => {
-                if let Some(boxed_parent) = &self.parent {
-                    boxed_parent.get_const_value_recursively(bare_name)
-                } else {
-                    None
-                }
-            }
-        }
+        self.names().get_const_value(bare_name).or_else(|| {
+            self.global_names()
+                .and_then(|global_names| global_names.get_const_value(bare_name))
+        })
     }
 
     pub fn contains_const_recursively(&self, bare_name: &BareName) -> bool {
-        if self.names().get_const_value(bare_name).is_some() {
-            true
-        } else if let Some(boxed_parent) = &self.parent {
-            boxed_parent.contains_const_recursively(bare_name)
-        } else {
-            false
-        }
+        self.get_const_value_recursively(bare_name).is_some()
     }
 
     pub fn insert<T: HasExpressionType + VarTypeIsExtended>(
@@ -182,48 +154,51 @@ impl Names {
     }
 
     pub fn is_in_function(&self, function_name: &BareName) -> bool {
-        match &self.current_function_name {
-            Some(f) => f == function_name,
+        match &self.current_key {
+            Some(SubprogramName::Function(QualifiedName { bare_name, .. })) => {
+                bare_name == function_name
+            }
             _ => false,
         }
     }
 
     pub fn is_in_subprogram(&self) -> bool {
-        self.parent.is_some()
+        self.current_key.is_some()
     }
 
     pub fn get_name_context(&self) -> NameContext {
-        if self.parent.is_some() {
-            if self.current_function_name.is_some() {
-                NameContext::Function
-            } else {
-                NameContext::Sub
-            }
-        } else {
-            NameContext::Global
+        match &self.current_key {
+            Some(SubprogramName::Function(_)) => NameContext::Function,
+            Some(SubprogramName::Sub(_)) => NameContext::Sub,
+            None => NameContext::Global,
         }
     }
 
-    pub fn pop_parent(self) -> Option<Self> {
-        self.parent.map(|boxed_parent| *boxed_parent)
+    pub fn push(&mut self, subprogram_name: SubprogramName) {
+        let key = Some(subprogram_name);
+        debug_assert!(
+            self.data.get(&key).is_none(),
+            "should not encounter same function/sub twice!"
+        );
+        self.current_key = key.clone();
+        self.data.insert(key, NamesOneLevel::default());
+    }
+
+    pub fn pop(&mut self) {
+        debug_assert!(
+            self.current_key.is_some(),
+            "should not pop context from the global level"
+        );
+        self.current_key = None;
     }
 
     pub fn find_name_or_shared_in_parent(
         &self,
         bare_name: &BareName,
     ) -> Vec<(BuiltInStyle, &VariableInfo)> {
-        self.find_name(bare_name, false)
-    }
-
-    fn find_name(
-        &self,
-        bare_name: &BareName,
-        only_shared: bool,
-    ) -> Vec<(BuiltInStyle, &VariableInfo)> {
-        let mut result = self.names().collect_var_info(bare_name, only_shared);
-
-        if let Some(boxed_parent) = &self.parent {
-            result.extend(boxed_parent.find_name(bare_name, true).into_iter());
+        let mut result = self.names().collect_var_info(bare_name, false);
+        if let Some(global_names) = self.global_names() {
+            result.extend(global_names.collect_var_info(bare_name, true).into_iter());
         }
         result
     }
@@ -231,12 +206,9 @@ impl Names {
 
 impl ConstLookup for Names {
     fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
-        match self.names().get_const_value(name) {
-            Some(v) => Some(v),
-            _ => match &self.parent {
-                Some(boxed_parent) => boxed_parent.get_resolved_constant(name),
-                _ => None,
-            },
-        }
+        self.names().get_const_value(name).or_else(|| {
+            self.global_names()
+                .and_then(|global_names| global_names.get_const_value(name))
+        })
     }
 }

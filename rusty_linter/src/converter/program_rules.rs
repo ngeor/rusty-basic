@@ -1,8 +1,9 @@
-use crate::converter::context::Context;
 use crate::converter::pos_context::PosContext;
 use crate::converter::traits::Convertible;
 use crate::error::LintErrorPos;
 use crate::names::ImplicitVars;
+use crate::type_resolver::IntoQualified;
+use crate::{converter::context::Context, SubprogramName};
 use rusty_common::{AtPos, HasPos, Positioned};
 use rusty_parser::specific::{
     DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement,
@@ -67,12 +68,22 @@ fn on_function_implementation(
         body,
         is_static,
     } = function_implementation;
-    let (resolved_function_name, resolved_params) =
-        ctx.push_function_context(unresolved_function_name, params)?;
+
+    // resolve the function's qualified name
+    let resolved_function_name = unresolved_function_name.to_qualified(&ctx.resolver);
+
+    // push a new naming scope for the FUNCTION
+    ctx.names.push(SubprogramName::Function(
+        resolved_function_name.clone().demand_qualified(),
+    ));
+
+    // convert the function parameters
+    let params = params.convert(ctx)?;
+
     let mapped = FunctionImplementation {
         name: resolved_function_name.at_pos(pos),
-        params: resolved_params,
-        body: convert_block_hoisting_implicits(body, ctx)?,
+        params,
+        body: convert_block_hoisting_implicit_vars_and_pop_name_scope(body, ctx)?,
         is_static,
     };
     Ok(mapped)
@@ -88,11 +99,16 @@ fn on_sub_implementation(
         body,
         is_static,
     } = sub_implementation;
-    let mapped_params = ctx.push_sub_context(params)?;
+
+    // push a new naming scope for the SUB
+    ctx.names.push(SubprogramName::Sub(name.element.clone()));
+
+    // convert the parameters
+    let params = params.convert(ctx)?;
     let mapped = SubImplementation {
         name,
-        params: mapped_params,
-        body: convert_block_hoisting_implicits(body, ctx)?,
+        params,
+        body: convert_block_hoisting_implicit_vars_and_pop_name_scope(body, ctx)?,
         is_static,
     };
     Ok(mapped)
@@ -107,12 +123,12 @@ fn on_sub_implementation(
 //      DIM C
 //      DIM A
 //      A = B + C
-fn convert_block_hoisting_implicits(
+fn convert_block_hoisting_implicit_vars_and_pop_name_scope(
     statements: Statements,
     ctx: &mut Context,
 ) -> Result<Statements, LintErrorPos> {
     let mut result = statements.convert(ctx)?;
-    let implicit_vars = ctx.pop_context();
+    let implicit_vars = collect_implicit_vars_and_pop_name_scope(ctx);
     let mut implicit_dim: Statements = implicit_vars
         .into_iter()
         .map(
@@ -138,4 +154,13 @@ fn on_statement(
         .into_iter()
         .map(|statement_pos| statement_pos.map(GlobalStatement::Statement))
         .collect())
+}
+
+fn collect_implicit_vars_and_pop_name_scope(ctx: &mut Context) -> ImplicitVars {
+    // collect implicit vars
+    let mut implicit_vars = ImplicitVars::new();
+    implicit_vars.append(&mut ctx.names.get_implicit_vars_mut());
+    // restore the global naming scope
+    ctx.names.pop();
+    implicit_vars
 }

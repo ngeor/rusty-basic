@@ -8,8 +8,8 @@ use std::convert::TryFrom;
 /// Example: `name$`, `age%`.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct QualifiedName {
-    bare_name: BareName,
-    qualifier: TypeQualifier,
+    pub bare_name: BareName,
+    pub qualifier: TypeQualifier,
 }
 
 impl QualifiedName {
@@ -18,10 +18,6 @@ impl QualifiedName {
             bare_name,
             qualifier,
         }
-    }
-
-    pub fn into_inner(self) -> (BareName, TypeQualifier) {
-        (self.bare_name, self.qualifier)
     }
 }
 

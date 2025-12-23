@@ -2,25 +2,21 @@
 
 use rusty_parser::specific::QualifiedNamePos;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum DimContext {
     /// Normal DIM statement
+    #[default]
     Default,
 
     /// REDIM statement
     Redim,
 }
 
-impl Default for DimContext {
-    fn default() -> Self {
-        Self::Default
-    }
-}
-
 /// Indicates the context in which an expression is being resolved.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub enum ExprContext {
     /// Default context (typically r-side expression)
+    #[default]
     Default,
 
     /// Assignment (typically l-side expression)
@@ -31,12 +27,6 @@ pub enum ExprContext {
 
     /// Used in resolving left-side of property expressions
     ResolvingPropertyOwner,
-}
-
-impl Default for ExprContext {
-    fn default() -> Self {
-        Self::Default
-    }
 }
 
 /// Alias for the implicit variables collected during evaluating something.

@@ -69,25 +69,30 @@ impl ExistingArrayWithParenthesis {
             _ => false,
         }
     }
+
+    fn get_var_info<'a>(ctx: &'a Context, name: &Name) -> Option<&'a VariableInfo> {
+        Self::get_extended_var_info(ctx, name.bare_name())
+            .or_else(|| Self::get_compact_var_info(ctx, name))
+    }
+
+    fn get_extended_var_info<'a>(
+        ctx: &'a Context,
+        bare_name: &BareName,
+    ) -> Option<&'a VariableInfo> {
+        ctx.names.get_extended_var_recursively(bare_name)
+    }
+
+    fn get_compact_var_info<'a>(ctx: &'a Context, name: &Name) -> Option<&'a VariableInfo> {
+        let qualifier = name.qualify(ctx);
+        ctx.names
+            .get_compact_var_recursively(name.bare_name(), qualifier)
+    }
 }
 
 impl FuncResolve for ExistingArrayWithParenthesis {
     fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool {
-        let bare_name = name.bare_name();
-        self.var_info = ctx
-            .names
-            .get_extended_var_recursively(bare_name)
-            .map(Clone::clone);
-        if self.var_info.is_some() {
-            self.is_array()
-        } else {
-            let qualifier = name.qualify(ctx);
-            self.var_info = ctx
-                .names
-                .get_compact_var_recursively(bare_name, qualifier)
-                .map(Clone::clone);
-            self.is_array()
-        }
+        self.var_info = Self::get_var_info(ctx, name).map(Clone::clone);
+        self.is_array()
     }
 
     fn resolve(

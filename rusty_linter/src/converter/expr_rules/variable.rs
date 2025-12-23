@@ -1,6 +1,7 @@
 use crate::converter::expr_rules::*;
 use crate::converter::types::ExprContext;
 use crate::error::{LintError, LintErrorPos};
+use crate::names::ManyNamesTrait;
 use crate::type_resolver::{IntoQualified, IntoTypeQualifier};
 use crate::{
     qualifier_of_const_variant, qualify_name, try_built_in_function, try_qualify, HasSubs,
@@ -134,9 +135,7 @@ impl VarResolve for ExistingConst {
                 .get_const_value_recursively(name.bare_name())
                 .cloned()
         } else {
-            ctx.names
-                .get_const_value_no_recursion(name.bare_name())
-                .cloned()
+            ctx.names.names().get_const_value(name.bare_name()).cloned()
         };
         self.opt_v.is_some()
     }

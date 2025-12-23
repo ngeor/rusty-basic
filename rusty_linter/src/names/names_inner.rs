@@ -12,6 +12,9 @@ use crate::names::{
 pub struct NamesInner(HashMap<BareName, NameInfo>);
 
 impl NamesInner {
+    /// Returns true if this name is a constant, or an extended variable,
+    /// or a compact variable. In the case of compact variables, multiple may
+    /// exist with the same bare name, e.g. `A$` and `A%`.
     pub fn contains_key(&self, bare_name: &BareName) -> bool {
         self.0.contains_key(bare_name)
     }

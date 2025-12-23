@@ -59,11 +59,12 @@ impl Names {
         &mut self.implicit_vars
     }
 
-    /// Returns true if this name is a constant, or an extended variable,
-    /// or a compact variable. In the case of compact variables, multiple may
-    /// exist with the same bare name, e.g. `A$` and `A%`.
-    pub fn contains_key(&self, bare_name: &BareName) -> bool {
-        self.names_inner.contains_key(bare_name)
+    pub fn names(&self) -> &NamesInner {
+        &self.names_inner
+    }
+
+    pub fn names_mut(&mut self) -> &mut NamesInner {
+        &mut self.names_inner
     }
 
     pub fn get_compact_var_recursively(
@@ -135,19 +136,12 @@ impl Names {
         &self,
         bare_name: &BareName,
     ) -> bool {
-        self.contains_key(bare_name) || self.get_extended_var_recursively(bare_name).is_some()
-    }
-
-    pub fn contains_const(&self, bare_name: &BareName) -> bool {
-        self.get_const_value_no_recursion(bare_name).is_some()
-    }
-
-    pub fn get_const_value_no_recursion(&self, bare_name: &BareName) -> Option<&Variant> {
-        self.names_inner.get_const_value(bare_name)
+        self.names().contains_key(bare_name)
+            || self.get_extended_var_recursively(bare_name).is_some()
     }
 
     pub fn get_const_value_recursively(&self, bare_name: &BareName) -> Option<&Variant> {
-        match self.get_const_value_no_recursion(bare_name) {
+        match self.names().get_const_value(bare_name) {
             Some(v) => Some(v),
             _ => {
                 if let Some(boxed_parent) = &self.parent {
@@ -160,7 +154,7 @@ impl Names {
     }
 
     pub fn contains_const_recursively(&self, bare_name: &BareName) -> bool {
-        if self.contains_const(bare_name) {
+        if self.names().get_const_value(bare_name).is_some() {
             true
         } else if let Some(boxed_parent) = &self.parent {
             boxed_parent.contains_const_recursively(bare_name)
@@ -186,10 +180,6 @@ impl Names {
         } else {
             self.names_inner.insert_compact(bare_name, variable_info)
         }
-    }
-
-    pub fn insert_const(&mut self, bare_name: BareName, v: Variant) {
-        self.names_inner.insert_const(bare_name, v);
     }
 
     pub fn is_in_function(&self, function_name: &BareName) -> bool {
@@ -242,7 +232,7 @@ impl Names {
 
 impl ConstLookup for Names {
     fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
-        match self.get_const_value_no_recursion(name) {
+        match self.names().get_const_value(name) {
             Some(v) => Some(v),
             _ => match &self.parent {
                 Some(boxed_parent) => boxed_parent.get_resolved_constant(name),

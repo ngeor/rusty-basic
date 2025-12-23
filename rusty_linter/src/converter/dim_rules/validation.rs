@@ -1,5 +1,6 @@
 use crate::converter::context::Context;
 use crate::error::{LintError, LintErrorPos};
+use crate::names::ManyNamesTrait;
 use crate::type_resolver::IntoTypeQualifier;
 use crate::{HasFunctions, HasSubs, HasUserDefinedTypes, LintResult};
 use rusty_common::{AtPos, Positioned};
@@ -34,10 +35,9 @@ fn cannot_clash_with_local_constants<T>(
     var_name: &TypedName<T>,
     ctx: &Context,
 ) -> Result<(), LintError> {
-    if ctx.names.contains_const(&var_name.bare_name) {
-        Err(LintError::DuplicateDefinition)
-    } else {
-        Ok(())
+    match ctx.names.names().get_const_value(&var_name.bare_name) {
+        Some(_) => Err(LintError::DuplicateDefinition),
+        _ => Ok(()),
     }
 }
 

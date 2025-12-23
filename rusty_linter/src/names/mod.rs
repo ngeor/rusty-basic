@@ -7,3 +7,4 @@ mod traits;
 
 pub use implicit_vars::ImplicitVars;
 pub use names::Names;
+pub use traits::*;

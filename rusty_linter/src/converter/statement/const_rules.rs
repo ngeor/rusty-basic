@@ -52,6 +52,8 @@ fn new_const(
             .cast(const_name.qualifier().unwrap())
             .with_err_at(&right_side)?
     };
-    ctx.names.insert_const(const_name.into(), final_value);
+    ctx.names
+        .names_mut()
+        .insert_const(const_name.into(), final_value);
     Ok(())
 }

@@ -215,39 +215,13 @@ impl Variables {
     }
 
     pub fn array_names(&self) -> impl Iterator<Item = &Name> {
-        self.map
-            .keys()
-            .filter(move |key| self.map.get(*key).unwrap().value.is_array())
-    }
-
-    pub fn peek_non_array(&self, address: usize) -> Result<u8, RuntimeError> {
-        let mut offset: usize = 0;
-        for RuntimeVariableInfo { value, .. } in self.map.values() {
-            if !value.is_array() {
-                let len = value.byte_size();
-                if offset <= address && address < offset + len {
-                    return value.peek_byte(address - offset);
-                }
-
-                offset += len;
-            }
-        }
-        panic!("Could not find variable at address {}", address)
-    }
-
-    pub fn poke_non_array(&mut self, address: usize, byte_value: u8) -> Result<(), RuntimeError> {
-        let mut offset: usize = 0;
-        for RuntimeVariableInfo { value, .. } in self.map.values_mut() {
-            if !value.is_array() {
-                let len = value.byte_size();
-                if offset <= address && address < offset + len {
-                    return value.poke_byte(address - offset, byte_value);
-                }
-
-                offset += len;
-            }
-        }
-        panic!("Could not find variable at address {}", address)
+        self.map.keys().filter(move |key| match self.map.get(*key) {
+            Some(RuntimeVariableInfo {
+                value: Variant::VArray(_),
+                ..
+            }) => true,
+            _ => false,
+        })
     }
 }
 

@@ -372,11 +372,6 @@ impl Variant {
             _ => Err(VariantError::TypeMismatch),
         }
     }
-
-    // TODO #[deprecated]
-    pub fn is_array(&self) -> bool {
-        matches!(self, Self::VArray(_))
-    }
 }
 
 impl PartialEq for Variant {

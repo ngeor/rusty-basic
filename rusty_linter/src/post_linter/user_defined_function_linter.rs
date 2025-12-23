@@ -2,7 +2,7 @@ use crate::error::{LintError, LintErrorPos};
 use crate::pre_linter::ResolvedParamTypes;
 use crate::{CanCastTo, HasFunctions, LintPosResult, ResolvedParamType};
 use rusty_common::*;
-use rusty_parser::*;
+use rusty_parser::specific::*;
 
 use super::post_conversion_linter::PostConversionLinter;
 

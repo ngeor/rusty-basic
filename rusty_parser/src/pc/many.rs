@@ -1,7 +1,5 @@
-use crate::{
-    pc::{OrDefault, ParseResult, ParseResultTrait, Parser},
-    ParseError,
-};
+use crate::error::ParseError;
+use crate::pc::{OrDefault, ParseResult, ParseResultTrait, Parser};
 
 pub trait Many<I>: Parser<I>
 where

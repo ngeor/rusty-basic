@@ -1,5 +1,9 @@
 use crate::pc::Token;
-use crate::*;
+use crate::specific::{
+    BareNamePos, BuiltInStyle, ExpressionType, HasExpressionType, TypeQualifier, TypedName,
+    VarTypeIsExtended, VarTypeNewBuiltInCompact, VarTypeNewBuiltInExtended, VarTypeNewUserDefined,
+    VarTypeQualifier, VarTypeToArray, VarTypeToUserDefinedRecursively,
+};
 use rusty_common::Positioned;
 
 pub type Parameter = TypedName<ParamType>;

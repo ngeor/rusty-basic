@@ -1,8 +1,8 @@
 use rusty_common::{HasPos, Positioned};
 
+use crate::error::ParseError;
 use crate::pc::{Errors, Parser};
 use crate::pc_specific::WithPosMapper;
-use crate::ParseError;
 
 pub trait SpecificTrait<I: HasPos>: Parser<I>
 where

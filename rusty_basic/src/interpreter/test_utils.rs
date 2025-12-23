@@ -235,7 +235,7 @@ impl Stdlib for MockStdlib {
 #[macro_export]
 macro_rules! assert_has_variable {
     ($int:expr, $name:expr, $expected_value:expr) => {
-        let name = rusty_parser::Name::from($name);
+        let name = rusty_parser::specific::Name::from($name);
         let value = $int.context().get_by_name(&name);
         assert_eq!(value, rusty_variant::Variant::from($expected_value));
     };

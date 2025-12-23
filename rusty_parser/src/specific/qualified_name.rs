@@ -1,7 +1,7 @@
-use crate::types::{BareName, Name, TypeQualifier};
+use crate::specific::{BareName, Name, TypeQualifier};
 use rusty_common::*;
 // TODO #[cfg(test)]
-use crate::ParseError;
+use crate::error::ParseError;
 use std::convert::TryFrom;
 
 /// A qualified name is a bare name followed by a built-in type qualifier.

@@ -1,7 +1,7 @@
 use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::write_printer::WritePrinter;
 use crate::RuntimeError;
-use rusty_parser::{FileAccess, FileHandle, FileMode};
+use rusty_parser::specific::{FileAccess, FileHandle, FileMode};
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, SeekFrom, Write};

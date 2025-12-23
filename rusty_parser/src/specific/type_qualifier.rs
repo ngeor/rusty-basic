@@ -1,5 +1,5 @@
 // TODO #[cfg(test)]
-use crate::ParseError;
+use crate::error::ParseError;
 use std::convert::TryFrom;
 use std::fmt::Display;
 

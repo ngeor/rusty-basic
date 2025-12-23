@@ -1,8 +1,9 @@
+use crate::built_ins::built_in_sub::BuiltInSub;
 use crate::expression::expression_pos_p;
 use crate::expression::file_handle::file_handle_p;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::*;
+use crate::specific::*;
 
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     parse_get_or_put(Keyword::Get, BuiltInSub::Get)

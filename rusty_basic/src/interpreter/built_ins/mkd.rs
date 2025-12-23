@@ -2,7 +2,7 @@ use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::string_utils::to_ascii_string;
 use crate::RuntimeError;
 use rusty_linter::QBNumberCast;
-use rusty_parser::BuiltInFunction;
+use rusty_parser::built_ins::built_in_function::BuiltInFunction;
 use rusty_variant::f64_to_bytes;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {

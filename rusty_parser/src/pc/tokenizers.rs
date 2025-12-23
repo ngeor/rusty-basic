@@ -1,4 +1,3 @@
-use crate::BareName;
 use rusty_common::Position;
 
 pub type TokenKind = u8;
@@ -20,8 +19,4 @@ pub type TokenList = Vec<Token>;
 
 pub fn token_list_to_string(tokens: TokenList) -> String {
     tokens.into_iter().map(|token| token.text).collect()
-}
-
-pub fn token_list_to_bare_name(tokens: TokenList) -> BareName {
-    BareName::new(token_list_to_string(tokens))
 }

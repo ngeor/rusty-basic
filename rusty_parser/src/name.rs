@@ -1,6 +1,7 @@
+use crate::error::ParseError;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::{BareName, Name, ParseError, TypeQualifier};
+use crate::specific::{BareName, Name, TypeQualifier};
 
 const MAX_LENGTH: usize = 40;
 
@@ -208,6 +209,10 @@ pub fn token_to_type_qualifier(token: &Token) -> TypeQualifier {
     } else {
         panic!("Unsupported token")
     }
+}
+
+pub fn token_list_to_bare_name(tokens: TokenList) -> BareName {
+    BareName::new(token_list_to_string(tokens))
 }
 
 #[cfg(test)]

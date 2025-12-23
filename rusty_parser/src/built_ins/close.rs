@@ -1,10 +1,11 @@
+use crate::built_ins::BuiltInSub;
 use crate::expression::expression_pos_p;
 use crate::expression::file_handle::{
     file_handle_as_expression_pos_p, guarded_file_handle_or_expression_p,
 };
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::*;
+use crate::specific::*;
 
 // <result> ::= <CLOSE> | <CLOSE><file_handles>
 // file_handles ::= <first_file_handle> | <first_file_handle> <opt-ws> "," <opt-ws> <next_file_handles>
@@ -38,6 +39,9 @@ fn file_handle_or_expression_p() -> impl Parser<RcStringView, Output = Expressio
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
+    use crate::built_ins::built_in_sub::BuiltInSub;
+    use crate::error::ParseError;
+    use crate::specific::*;
     use crate::test_utils::*;
     use crate::*;
     use rusty_common::*;

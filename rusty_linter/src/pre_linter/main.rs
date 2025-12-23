@@ -6,7 +6,7 @@ use crate::type_resolver::IntoTypeQualifier;
 use crate::type_resolver_impl::TypeResolverImpl;
 use crate::{LintPosResult, LintResult, ResolvedParamType};
 use rusty_common::*;
-use rusty_parser::*;
+use rusty_parser::specific::*;
 
 pub struct MainContext {
     resolver: TypeResolverImpl,

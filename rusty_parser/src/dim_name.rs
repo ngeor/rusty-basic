@@ -1,7 +1,7 @@
 use crate::dim_name::type_definition::built_in_extended_type;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::types::*;
+use crate::specific::*;
 use crate::var_name::var_name;
 
 /// Parses a declared name. Possible options:
@@ -33,6 +33,7 @@ fn dim_or_redim(
 mod array_dimensions {
     use crate::pc::*;
     use crate::pc_specific::*;
+    use crate::specific::*;
     use crate::*;
 
     pub fn array_dimensions_p() -> impl Parser<RcStringView, Output = ArrayDimensions> {
@@ -65,7 +66,7 @@ mod type_definition {
     use crate::expression::expression_pos_p;
     use crate::pc::*;
     use crate::pc_specific::*;
-    use crate::*;
+    use crate::specific::*;
 
     pub fn built_in_extended_type() -> impl Parser<RcStringView, Output = DimType> {
         OrParser::new(vec![

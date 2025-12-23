@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use crate::specific::Statement;
     use crate::test_utils::*;
     use crate::*;
 

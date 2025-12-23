@@ -1,8 +1,8 @@
 use crate::declaration;
 use crate::pc::*;
 use crate::pc_specific::*;
+use crate::specific::*;
 use crate::statements::ZeroOrMoreStatements;
-use crate::types::*;
 
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
@@ -57,6 +57,7 @@ where
 mod tests {
     use super::*;
     use crate::assert_parser_err;
+    use crate::error::ParseError;
     use crate::test_utils::*;
     use crate::*;
     use rusty_common::*;

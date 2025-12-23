@@ -7,7 +7,7 @@ use crate::post_linter::{
     user_defined_function_linter, user_defined_sub_linter,
 };
 use crate::{HasFunctions, HasSubs};
-use rusty_parser::Program;
+use rusty_parser::specific::Program;
 
 pub fn post_linter(
     result: Program,

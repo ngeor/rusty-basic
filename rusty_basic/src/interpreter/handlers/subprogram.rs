@@ -1,5 +1,5 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use rusty_parser::{Name, Parameter, QualifiedName};
+use rusty_parser::specific::{Name, Parameter, QualifiedName};
 
 pub fn begin_collect_arguments<T: InterpreterTrait>(interpreter: &mut T) {
     interpreter.context_mut().begin_collecting_arguments();

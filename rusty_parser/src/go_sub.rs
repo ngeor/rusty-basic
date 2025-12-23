@@ -1,7 +1,7 @@
 use crate::name::bare_name_with_dots;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::{Keyword, Statement};
+use crate::specific::{Keyword, Statement};
 
 pub fn statement_go_sub_p() -> impl Parser<RcStringView, Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoSub)
@@ -22,7 +22,7 @@ pub fn statement_return_p() -> impl Parser<RcStringView, Output = Statement> {
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
-    use crate::ParseError;
+    use crate::error::ParseError;
 
     #[test]
     fn go_sub_without_label() {

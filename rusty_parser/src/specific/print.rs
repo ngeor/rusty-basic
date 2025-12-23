@@ -1,4 +1,4 @@
-use crate::{ExpressionPos, FileHandle};
+use crate::specific::{ExpressionPos, FileHandle};
 
 /// A call to the PRINT sub.
 /// As separators are important (even trailing needs to be preserved), PRINT has

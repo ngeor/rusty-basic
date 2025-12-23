@@ -3,7 +3,7 @@ use crate::assert_linter_ok_global_statements;
 use crate::test_utils::linter_ok;
 use crate::LintError;
 use rusty_common::*;
-use rusty_parser::{
+use rusty_parser::specific::{
     BareName, BuiltInStyle, Expression, GlobalStatement, ParamType, Parameter, Print, Statement,
     SubImplementation, TypeQualifier,
 };

@@ -1,7 +1,8 @@
 use crate::error::LintErrorPos;
 use crate::LintPosResult;
 use rusty_common::*;
-use rusty_parser::*;
+use rusty_parser::built_ins::built_in_sub::BuiltInSub;
+use rusty_parser::specific::*;
 
 /// Visits the converted program and transforms it into a different program.
 ///

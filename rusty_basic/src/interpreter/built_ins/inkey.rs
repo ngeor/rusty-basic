@@ -1,7 +1,7 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::RuntimeError;
 use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
-use rusty_parser::BuiltInFunction;
+use rusty_parser::built_ins::built_in_function::BuiltInFunction;
 use std::time::Duration;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {

@@ -3,7 +3,7 @@ use crate::error::{LintError, LintErrorPos};
 use crate::pre_linter::ConstantMap;
 use crate::CastVariant;
 use rusty_common::{AtPos, Positioned};
-use rusty_parser::{BareName, ExpressionPos, Name, NamePos};
+use rusty_parser::specific::{BareName, ExpressionPos, Name, NamePos};
 
 // calculate global constant values
 pub fn global_const(

@@ -1,6 +1,6 @@
 use rusty_common::*;
 
-use super::{
+use crate::specific::{
     BareName, BareNamePos, DefType, Name, NamePos, Parameter, Parameters, Statement, Statements,
     UserDefinedType,
 };

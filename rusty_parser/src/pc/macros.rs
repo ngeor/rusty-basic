@@ -67,7 +67,7 @@ macro_rules! lazy_parser {
         impl Parser<$input_type> for $struct_name {
             type Output = $output_type;
 
-            fn parse(&self, tokenizer: $input_type) -> ParseResult<$input_type, $output_type, $crate::ParseError> {
+            fn parse(&self, tokenizer: $input_type) -> ParseResult<$input_type, $output_type, $crate::error::ParseError> {
                 let parser = Self::create_parser();
                 parser.parse(tokenizer)
             }

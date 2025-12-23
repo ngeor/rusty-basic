@@ -1,7 +1,7 @@
 use crate::converter::dim_rules::dim_list_state::DimListState;
 use crate::type_resolver::TypeResolver;
 use rusty_common::{HasPos, Position};
-use rusty_parser::TypeQualifier;
+use rusty_parser::specific::TypeQualifier;
 use std::ops::{Deref, DerefMut};
 
 pub struct DimNameState<'a, 'b> {

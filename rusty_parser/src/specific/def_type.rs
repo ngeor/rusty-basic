@@ -1,4 +1,4 @@
-use super::{LetterRange, TypeQualifier};
+use crate::specific::{LetterRange, TypeQualifier};
 
 /// Represents a definition of default type, such as DEFINT A-Z.
 #[derive(Clone, Debug, PartialEq, Eq)]

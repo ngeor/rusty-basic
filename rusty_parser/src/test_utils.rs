@@ -1,7 +1,8 @@
 use std::fs::File;
 
-use crate::types::*;
-use crate::{parse, parse_main_file, parse_main_str, ParseError, ParseErrorPos};
+use crate::error::{ParseError, ParseErrorPos};
+use crate::specific::*;
+use crate::{parse, parse_main_file, parse_main_str};
 use rusty_common::*;
 
 pub fn parse_str_no_pos(input: &str) -> Vec<GlobalStatement> {
@@ -161,7 +162,7 @@ macro_rules! assert_sub_call {
     ($actual_statement: expr, $expected_name: expr) => {
         match $actual_statement {
             Statement::SubCall(actual_bare_name, actual_args) => {
-                let expected_bare_name: $crate::types::BareName = $expected_name.into();
+                let expected_bare_name: $crate::specific::BareName = $expected_name.into();
                 assert_eq!(actual_bare_name, expected_bare_name, "SubCall name mismatch");
                 assert!(actual_args.is_empty(), "Expected no args in SubCall");
             }
@@ -172,9 +173,9 @@ macro_rules! assert_sub_call {
     ($actual_statement: expr, $expected_name: expr, $($arg: expr),+) => {
         match $actual_statement {
             Statement::SubCall(actual_bare_name, actual_args) => {
-                let expected_bare_name: $crate::types::BareName = $expected_name.into();
+                let expected_bare_name: $crate::specific::BareName = $expected_name.into();
                 assert_eq!(actual_bare_name, expected_bare_name, "SubCall name mismatch");
-                let actual_args_no_pos: Vec<$crate::Expression> = rusty_common::NoPosContainer::no_pos(actual_args);
+                let actual_args_no_pos: Vec<$crate::specific::Expression> = rusty_common::NoPosContainer::no_pos(actual_args);
                 assert_eq!(actual_args_no_pos, vec![$($arg),+]);
             }
             _ => panic!("Expected SubCall")
@@ -200,7 +201,7 @@ macro_rules! assert_built_in_sub_call {
         match result {
             Statement::BuiltInSubCall(actual_name, actual_args) => {
                 assert_eq!(actual_name, $expected_name);
-                let actual_args_no_pos: Vec<$crate::Expression> = rusty_common::NoPosContainer::no_pos(actual_args);
+                let actual_args_no_pos: Vec<$crate::specific::Expression> = rusty_common::NoPosContainer::no_pos(actual_args);
                 assert_eq!(actual_args_no_pos, vec![$($arg),+]);
             }
             _ => panic!("Expected built-in sub call {:?}", $expected_name)
@@ -236,7 +237,7 @@ macro_rules! assert_expression {
 #[macro_export]
 macro_rules! assert_literal_expression {
     ($left:expr, $right:expr) => {
-        $crate::assert_expression!($left, $crate::types::Expression::from($right));
+        $crate::assert_expression!($left, $crate::specific::Expression::from($right));
     };
 }
 
@@ -244,7 +245,10 @@ macro_rules! assert_literal_expression {
 macro_rules! assert_parser_err {
     // TODO use this more for syntax errors
     ($input:expr, $expected_err:literal) => {
-        $crate::assert_parser_err!($input, $crate::ParseError::syntax_error($expected_err));
+        $crate::assert_parser_err!(
+            $input,
+            $crate::error::ParseError::syntax_error($expected_err)
+        );
     };
 
     ($input:expr, $expected_err:expr) => {
@@ -284,7 +288,7 @@ macro_rules! assert_global_assignment {
 macro_rules! assert_function_declaration {
     ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
         match $crate::parse($input).demand_single().element() {
-            $crate::GlobalStatement::FunctionDeclaration(name, parameters) => {
+            $crate::specific::GlobalStatement::FunctionDeclaration(name, parameters) => {
                 assert_eq!(
                     name.element(),
                     $expected_function_name,
@@ -295,7 +299,7 @@ macro_rules! assert_function_declaration {
                     $expected_params.len(),
                     "Parameter count mismatch"
                 );
-                let parameters_no_pos: Vec<$crate::Parameter> =
+                let parameters_no_pos: Vec<$crate::specific::Parameter> =
                     rusty_common::NoPosContainer::no_pos(parameters);
                 for i in 0..parameters_no_pos.len() {
                     assert_eq!(parameters_no_pos[i], $expected_params[i], "Parameter {}", i);
@@ -311,7 +315,7 @@ macro_rules! assert_function_declaration {
 macro_rules! assert_def_type {
     ($input:expr, $expected_qualifier:expr, $expected_ranges:expr) => {
         match $crate::parse($input).demand_single().element() {
-            $crate::GlobalStatement::DefType(def_type) => {
+            $crate::specific::GlobalStatement::DefType(def_type) => {
                 let def_type_qualifier = def_type.qualifier();
                 assert_eq!(def_type_qualifier, $expected_qualifier);
                 assert_eq!(def_type.ranges(), &$expected_ranges);
@@ -328,13 +332,13 @@ macro_rules! assert_parse_dim_extended_built_in {
         let p = $crate::parse(&input).demand_single_statement();
         assert_eq!(
             p,
-            $crate::Statement::Dim($crate::DimList {
+            $crate::specific::Statement::Dim($crate::specific::DimList {
                 shared: false,
-                variables: vec![$crate::DimNameBuilder::new()
+                variables: vec![$crate::specific::DimNameBuilder::new()
                     .bare_name($name)
-                    .dim_type($crate::DimType::BuiltIn(
+                    .dim_type($crate::specific::DimType::BuiltIn(
                         TypeQualifier::$qualifier,
-                        $crate::BuiltInStyle::Extended
+                        $crate::specific::BuiltInStyle::Extended
                     ))
                     .build()
                     .at_rc(1, 5)]
@@ -365,7 +369,7 @@ macro_rules! assert_parse_dim_compact {
         assert_eq!(
             p,
             Statement::Dim(
-                $crate::DimVar::new_compact_local($name, TypeQualifier::$qualifier)
+                $crate::specific::DimVar::new_compact_local($name, TypeQualifier::$qualifier)
                     .into_list_rc(1, 5)
             )
         );

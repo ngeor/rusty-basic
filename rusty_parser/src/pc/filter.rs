@@ -1,5 +1,5 @@
+use crate::error::ParseError;
 use crate::pc::{default_parse_error, ParseResult, Parser};
-use crate::ParseError;
 
 pub trait Filter<I>: Parser<I>
 where

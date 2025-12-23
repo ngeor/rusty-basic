@@ -3,7 +3,7 @@ use crate::error::{LintError, LintErrorPos};
 use crate::type_resolver::IntoTypeQualifier;
 use crate::{HasFunctions, HasSubs, HasUserDefinedTypes, LintResult};
 use rusty_common::{AtPos, Positioned};
-use rusty_parser::{
+use rusty_parser::specific::{
     DimVar, Parameter, TypedName, VarTypeIsExtended, VarTypeQualifier,
     VarTypeToUserDefinedRecursively,
 };

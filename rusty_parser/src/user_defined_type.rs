@@ -42,13 +42,13 @@
 //
 // Type must be defined Before DECLARE SUB
 
+use crate::error::ParseError;
 use crate::expression::expression_pos_p;
 use crate::name::bare_name_without_dots;
 use crate::pc::*;
 use crate::pc_specific::*;
+use crate::specific::{Element, ElementPos, ElementType, ExpressionPos, Keyword, UserDefinedType};
 use crate::statement_separator::comments_and_whitespace_p;
-use crate::types::{Element, ElementPos, ElementType, ExpressionPos, Keyword, UserDefinedType};
-use crate::ParseError;
 
 pub fn user_defined_type_p() -> impl Parser<RcStringView, Output = UserDefinedType> {
     seq5(
@@ -109,6 +109,8 @@ fn demand_string_length_p() -> impl Parser<RcStringView, Output = ExpressionPos>
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
+    use crate::error::ParseError;
+    use crate::specific::*;
     use crate::test_utils::*;
     use crate::*;
     use rusty_common::AtPos;

@@ -1,5 +1,5 @@
+use crate::error::ParseError;
 use crate::pc::*;
-use crate::ParseError;
 
 /// Represents a value that has is followed by optional delimiter.
 pub trait Delimited<T> {

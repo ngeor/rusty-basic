@@ -1,6 +1,6 @@
 use crate::error::{LintError, LintErrorPos};
 use rusty_common::*;
-use rusty_parser::{Expression, ExpressionType, ForLoop, TypeQualifier, VariableInfo};
+use rusty_parser::specific::{Expression, ExpressionType, ForLoop, TypeQualifier, VariableInfo};
 
 use super::post_conversion_linter::*;
 

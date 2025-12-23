@@ -2,7 +2,7 @@ use crate::const_value_resolver::ConstLookup;
 use crate::converter::types::Implicits;
 use crate::NameContext;
 use rusty_common::CaseInsensitiveString;
-use rusty_parser::{
+use rusty_parser::specific::{
     BareName, BuiltInStyle, HasExpressionType, QualifiedNamePos, RedimInfo, TypeQualifier,
     VarTypeIsExtended, VariableInfo,
 };

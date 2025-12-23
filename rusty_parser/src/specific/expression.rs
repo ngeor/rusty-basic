@@ -1,6 +1,11 @@
-use crate::*;
 use rusty_common::*;
 use rusty_variant::{MIN_INTEGER, MIN_LONG};
+
+use crate::built_ins::built_in_function::BuiltInFunction;
+use crate::specific::{
+    ExpressionType, FileHandle, HasExpressionType, Name, Operator, TypeQualifier, UnaryOperator,
+    VariableInfo,
+};
 
 // TODO move traits and logic that is linter specific to linter (including CanCastTo from common)
 

@@ -1,7 +1,8 @@
+use crate::built_ins::built_in_sub::BuiltInSub;
 use crate::expression::csv_expressions_first_guarded;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::*;
+use crate::specific::*;
 
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     seq2(
@@ -13,6 +14,8 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
 
 #[cfg(test)]
 mod tests {
+    use crate::built_ins::built_in_sub::BuiltInSub;
+    use crate::specific::Statement;
     use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
     use crate::*;
 

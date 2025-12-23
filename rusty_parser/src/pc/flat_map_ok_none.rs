@@ -1,5 +1,5 @@
+use crate::error::ParseError;
 use crate::pc::*;
-use crate::ParseError;
 
 pub trait FlatMapOkNone<I>: Parser<I>
 where

@@ -1,8 +1,8 @@
 use crate::name::bare_name_with_dots;
 use crate::pc::*;
 use crate::pc_specific::*;
+use crate::specific::{Keyword, ResumeOption, Statement};
 use crate::statement_separator::peek_eof_or_statement_separator;
-use crate::{Keyword, ResumeOption, Statement};
 
 // RESUME
 // RESUME NEXT
@@ -39,7 +39,7 @@ fn resume_label() -> impl Parser<RcStringView, Output = ResumeOption> {
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
-    use crate::ParseError;
+    use crate::error::ParseError;
 
     #[test]
     fn resume_with_invalid_option() {

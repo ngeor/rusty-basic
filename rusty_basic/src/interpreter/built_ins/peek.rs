@@ -1,8 +1,9 @@
+use rusty_parser::built_ins::built_in_function::BuiltInFunction;
+
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::keyboard::get_indicator_keys;
 use crate::interpreter::variant_casts::VariantCasts;
 use crate::RuntimeError;
-use rusty_parser::BuiltInFunction;
 
 pub const INDICATOR_KEYS_ADDRESS: usize = 1047;
 

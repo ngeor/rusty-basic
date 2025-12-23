@@ -25,7 +25,8 @@ pub use self::qb_casting::{CastVariant, QBNumberCast};
 pub use self::traits::*;
 pub use self::types::*;
 
-use rusty_parser::{BuiltInFunction, ExpressionType, Name, TypeQualifier};
+use rusty_parser::built_ins::built_in_function::BuiltInFunction;
+use rusty_parser::specific::{ExpressionType, Name, TypeQualifier};
 use rusty_variant::Variant;
 
 // TODO move to a module

@@ -1,6 +1,6 @@
 use crate::const_value_resolver::ConstLookup;
 use crate::{LintError, LintErrorPos};
-use rusty_parser::{Expression, ExpressionPos, TypeQualifier};
+use rusty_parser::specific::{Expression, ExpressionPos, TypeQualifier};
 use rusty_variant::{Variant, MAX_INTEGER};
 
 pub fn validate_string_length(

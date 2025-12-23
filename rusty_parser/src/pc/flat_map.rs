@@ -1,5 +1,5 @@
+use crate::error::ParseError;
 use crate::pc::{ParseResult, ParseResultTrait, Parser};
-use crate::ParseError;
 
 pub trait FlatMap<I>: Parser<I>
 where

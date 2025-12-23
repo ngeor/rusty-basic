@@ -3,11 +3,11 @@
 use crate::name::{bare_name_without_dots, name_with_dots};
 use crate::pc::boxed::boxed;
 use crate::pc::supplier::supplier;
+use crate::pc::*;
 use crate::pc_specific::*;
-use crate::{pc::*, TypeQualifier};
-use crate::{
-    BareName, Keyword, Name, TypedName, VarTypeNewBuiltInCompact, VarTypeNewUserDefined,
-    VarTypeToArray,
+use crate::specific::{
+    BareName, Keyword, Name, TypeQualifier, TypedName, VarTypeNewBuiltInCompact,
+    VarTypeNewUserDefined, VarTypeToArray,
 };
 
 /// Parses a variable name (dim name or param name).

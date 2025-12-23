@@ -2,7 +2,7 @@ use super::post_conversion_linter::*;
 use crate::error::{LintError, LintErrorPos};
 use crate::LintResult;
 use rusty_common::*;
-use rusty_parser::*;
+use rusty_parser::specific::*;
 use std::collections::{HashMap, HashSet};
 
 #[derive(Default)]

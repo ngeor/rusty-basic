@@ -8,7 +8,7 @@ use crate::converter::types::DimContext;
 use crate::error::LintErrorPos;
 use crate::{LintError, LintPosResult};
 use rusty_common::*;
-use rusty_parser::*;
+use rusty_parser::specific::*;
 
 impl<'a> Convertible<DimListState<'a>> for DimList {
     fn convert(self, ctx: &mut DimListState<'a>) -> Result<Self, LintErrorPos> {

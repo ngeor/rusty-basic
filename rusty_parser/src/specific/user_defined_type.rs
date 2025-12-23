@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::slice::Iter;
 
-use crate::types::{
+use crate::specific::{
     BareName, BareNamePos, ExpressionPos, ExpressionType, HasExpressionType, Name, TypeQualifier,
 };
 use rusty_common::Positioned;

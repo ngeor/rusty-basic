@@ -2,10 +2,10 @@ use crate::comment;
 use crate::expression;
 use crate::pc::*;
 use crate::pc_specific::*;
+use crate::specific::*;
 use crate::statements::{
     single_line_non_comment_statements_p, single_line_statements_p, ZeroOrMoreStatements,
 };
-use crate::types::*;
 
 pub fn if_block_p() -> impl Parser<RcStringView, Output = Statement> {
     seq2(
@@ -98,9 +98,10 @@ fn else_block_p() -> impl Parser<RcStringView, Output = Statements> {
 mod tests {
     use super::super::test_utils::*;
     use crate::assert_parser_err;
+    use crate::error::ParseError;
+    use crate::specific::*;
     use crate::*;
     use rusty_common::*;
-
     #[test]
     fn test_if() {
         let input = "IF X THEN\r\nFlint X\r\nEND IF";

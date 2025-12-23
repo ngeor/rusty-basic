@@ -3,7 +3,7 @@ use super::user_defined_function_linter::lint_call_args;
 use crate::error::{LintError, LintErrorPos};
 use crate::HasSubs;
 use rusty_common::*;
-use rusty_parser::Expressions;
+use rusty_parser::specific::Expressions;
 
 pub struct UserDefinedSubLinter<'a, R> {
     pub context: &'a R,

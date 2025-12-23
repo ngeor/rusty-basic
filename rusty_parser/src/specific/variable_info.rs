@@ -1,4 +1,4 @@
-use crate::{BareName, ExpressionType, TypeQualifier};
+use crate::specific::{BareName, ExpressionType, TypeQualifier};
 
 /// Additional info for variable expression
 #[derive(Clone, Debug, PartialEq)]

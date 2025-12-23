@@ -2,7 +2,7 @@ use super::post_conversion_linter::PostConversionLinter;
 use crate::error::{LintError, LintErrorPos};
 use crate::CanCastTo;
 use rusty_common::AtPos;
-use rusty_parser::{CaseExpression, ExpressionPos};
+use rusty_parser::specific::{CaseExpression, ExpressionPos};
 
 pub struct SelectCaseLinter;
 

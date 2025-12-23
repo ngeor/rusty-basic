@@ -2,7 +2,7 @@ use crate::name;
 use crate::param_name::parameter_pos_p;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::types::*;
+use crate::specific::*;
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)
 // FunctionDeclaration   ::= FUNCTION<ws+><Name><ws*><DeclarationParameters>
@@ -65,6 +65,8 @@ fn declaration_parameters_p() -> impl Parser<RcStringView, Output = Parameters> 
 
 #[cfg(test)]
 mod tests {
+    use crate::error::ParseError;
+    use crate::specific::*;
     use crate::test_utils::*;
     use crate::*;
     use crate::{assert_function_declaration, assert_parser_err};

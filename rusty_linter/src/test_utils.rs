@@ -1,5 +1,6 @@
 use crate::{lint, HasUserDefinedTypes, LintErrorPos};
-use rusty_parser::{parse, Program};
+use rusty_parser::parse;
+use rusty_parser::specific::Program;
 
 /// Lints the given string and returns the results.
 ///
@@ -67,10 +68,10 @@ macro_rules! assert_linter_err {
 #[macro_export]
 macro_rules! assert_linter_ok_global_statements {
     ($program:expr, $($statement: expr),+) => {
-        let program: rusty_parser::Program = $crate::test_utils::linter_ok($program);
-        let global_statements: Vec<rusty_parser::Statement> = program.into_iter()
+        let program: rusty_parser::specific::Program = $crate::test_utils::linter_ok($program);
+        let global_statements: Vec<rusty_parser::specific::Statement> = program.into_iter()
             .map(|rusty_common::Positioned { element, .. }| match element {
-                rusty_parser::GlobalStatement::Statement(s) => s,
+                rusty_parser::specific::GlobalStatement::Statement(s) => s,
                 _ => {panic!("Expected only top level statements, found {:?}", element);}
             } )
             .collect();

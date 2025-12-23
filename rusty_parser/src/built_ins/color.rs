@@ -1,6 +1,7 @@
+use crate::built_ins::built_in_sub::BuiltInSub;
 use crate::built_ins::parse_built_in_sub_with_opt_args;
 use crate::pc::*;
-use crate::*;
+use crate::specific::*;
 
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     parse_built_in_sub_with_opt_args(Keyword::Color, BuiltInSub::Color)
@@ -9,8 +10,11 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
+    use crate::built_ins::built_in_sub::BuiltInSub;
+    use crate::error::ParseError;
+    use crate::parse;
+    use crate::specific::Statement;
     use crate::test_utils::*;
-    use crate::*;
 
     #[test]
     fn parse_foreground_only() {

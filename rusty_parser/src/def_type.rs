@@ -1,6 +1,7 @@
+use crate::error::ParseError;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::{DefType, Keyword, LetterRange, ParseError, TypeQualifier};
+use crate::specific::{DefType, Keyword, LetterRange, TypeQualifier};
 
 // DefType      ::= <DefKeyword><ws+><LetterRanges>
 // DefKeyword   ::= DEFSNG|DEFDBL|DEFSTR|DEFINT|DEFLNG
@@ -61,6 +62,8 @@ fn token_to_char(token: Token) -> char {
 
 #[cfg(test)]
 mod tests {
+    use crate::error::ParseError;
+    use crate::specific::*;
     use crate::test_utils::*;
     use crate::*;
     use crate::{assert_def_type, assert_parser_err};

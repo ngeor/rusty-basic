@@ -1,8 +1,9 @@
+use crate::error::ParseError;
 use crate::pc::*;
 use crate::pc_specific::*;
+use crate::specific::*;
+use crate::statement;
 use crate::statement_separator::{comment_separator, common_separator};
-use crate::types::*;
-use crate::{statement, ParseError};
 
 pub fn single_line_non_comment_statements_p() -> impl Parser<RcStringView, Output = Statements> {
     whitespace().and_keep_right(delimited_by_colon(

@@ -1,6 +1,6 @@
 use crate::pre_linter::{FunctionSignature, SubSignature};
 use rusty_common::Positioned;
-use rusty_parser::{BareName, BuiltInStyle, QualifiedName, TypeQualifier};
+use rusty_parser::specific::{BareName, BuiltInStyle, QualifiedName, TypeQualifier};
 use std::collections::HashMap;
 
 pub type SubMap = HashMap<BareName, Positioned<SubSignature>>;

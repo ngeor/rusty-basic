@@ -4,7 +4,7 @@ use crate::converter::traits::Convertible;
 use crate::converter::types::ExprContext;
 use crate::error::LintErrorPos;
 use rusty_common::{AtPos, HasPos, Positioned};
-use rusty_parser::{Expression, ExpressionPos, Statement};
+use rusty_parser::specific::{Expression, ExpressionPos, Statement};
 
 pub fn on_assignment(
     left: Expression,

@@ -1,10 +1,10 @@
+use crate::built_ins::built_in_sub::BuiltInSub;
 use crate::expression::file_handle::guarded_file_handle_or_expression_p;
 use crate::expression::{expression_pos_p, ws_expr_pos_ws_p};
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::*;
+use crate::specific::*;
 use rusty_common::*;
-
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     seq6(
         keyword(Keyword::Open),
@@ -99,10 +99,12 @@ fn map_opt_len(opt_len: Option<ExpressionPos>) -> ExpressionPos {
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
+    use crate::built_ins::built_in_sub::BuiltInSub;
+    use crate::error::ParseError;
+    use crate::specific::*;
     use crate::test_utils::*;
     use crate::*;
     use rusty_common::*;
-
     #[test]
     fn test_open_for_input_access_read_as_file_handle_with_spaces() {
         let input = r#"OPEN "FILE.TXT" FOR INPUT ACCESS READ AS #1"#;

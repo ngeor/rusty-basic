@@ -1,7 +1,5 @@
-use crate::{
-    pc::{ParseResult, Parser},
-    ParseError,
-};
+use crate::error::ParseError;
+use crate::pc::{ParseResult, Parser};
 
 pub fn supplier<I, F, O>(f: F) -> impl Parser<I, Output = O>
 where

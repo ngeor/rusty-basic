@@ -1,4 +1,4 @@
-use crate::types::{BareName, ExpressionType, HasExpressionType, QualifiedName, TypeQualifier};
+use crate::specific::{BareName, ExpressionType, HasExpressionType, QualifiedName, TypeQualifier};
 use rusty_common::Positioned;
 #[cfg(test)]
 use std::convert::TryFrom;

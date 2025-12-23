@@ -1,11 +1,11 @@
 use rusty_common::Position;
 
+use crate::error::ParseError;
 use crate::pc::*;
 use crate::pc_specific::recognizers_impl::string_parsers::CharToStringParser;
 use crate::pc_specific::recognizers_impl::token_parsers::StringToTokenParser;
 use crate::pc_specific::TokenType;
-use crate::ParseError;
-use crate::SORTED_KEYWORDS_STR;
+use crate::specific::SORTED_KEYWORDS_STR;
 use std::fs::File;
 
 // TODO keyword --> ensure not followed by dollar sign

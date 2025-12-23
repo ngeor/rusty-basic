@@ -36,7 +36,7 @@ macro_rules! seq_pc {
             type Output = ($first_type, $($generic_type),+ );
 
             #[allow(non_snake_case)]
-            fn parse(&self, tokenizer: _I) -> ParseResult<_I, Self::Output, $crate::ParseError> {
+            fn parse(&self, tokenizer: _I) -> ParseResult<_I, Self::Output, $crate::error::ParseError> {
                 // the first is allowed to return incomplete
                 let (tokenizer, $first_type) = self.$first_type.parse(tokenizer)?;
 

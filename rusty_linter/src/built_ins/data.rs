@@ -1,7 +1,7 @@
 use crate::error::{LintError, LintErrorPos};
 use crate::NameContext;
 use rusty_common::AtPos;
-use rusty_parser::{Expression, ExpressionPos, Expressions};
+use rusty_parser::specific::{Expression, ExpressionPos, Expressions};
 
 pub fn lint(args: &Expressions, name_context: NameContext) -> Result<(), LintErrorPos> {
     if name_context == NameContext::Global {

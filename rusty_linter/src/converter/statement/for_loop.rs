@@ -2,7 +2,7 @@ use crate::converter::context::Context;
 use crate::converter::traits::Convertible;
 use crate::converter::types::ExprContext;
 use crate::error::LintErrorPos;
-use rusty_parser::ForLoop;
+use rusty_parser::specific::ForLoop;
 
 impl Convertible for ForLoop {
     fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {

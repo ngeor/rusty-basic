@@ -1,9 +1,9 @@
 use crate::expression;
 use crate::pc::*;
 use crate::pc_specific::*;
+use crate::specific::*;
 use crate::statement_separator::comments_and_whitespace_p;
 use crate::statements::ZeroOrMoreStatements;
-use crate::types::*;
 
 // SELECT CASE expr ' comment
 // CASE 1
@@ -107,7 +107,8 @@ mod case_expression_parser {
     use crate::expression::expression_pos_p;
     use crate::pc::*;
     use crate::pc_specific::*;
-    use crate::{CaseExpression, Keyword, Operator};
+    use crate::specific::opt_second_expression_after_keyword;
+    use crate::specific::{CaseExpression, Keyword, Operator};
     use rusty_common::Positioned;
 
     pub fn parser() -> impl Parser<RcStringView, Output = CaseExpression> {
@@ -152,10 +153,11 @@ mod case_expression_parser {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
+    use crate::error::ParseError;
+    use crate::specific::*;
     use crate::*;
     use crate::{assert_parser_err, bin_exp, int_lit, paren_exp};
     use rusty_common::*;
-
     #[test]
     fn test_select_case_inline_comment() {
         let input = r#"

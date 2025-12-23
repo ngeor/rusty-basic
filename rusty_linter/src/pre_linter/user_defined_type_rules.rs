@@ -2,7 +2,7 @@ use crate::error::{LintError, LintErrorPos};
 use crate::pre_linter::ConstantMap;
 use crate::string_length::validate_string_length;
 use rusty_common::{AtPos, Positioned};
-use rusty_parser::{
+use rusty_parser::specific::{
     BareName, Element, ElementPos, ElementType, Expression, UserDefinedType, UserDefinedTypes,
 };
 use std::collections::HashMap;

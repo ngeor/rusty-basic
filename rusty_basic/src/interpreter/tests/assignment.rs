@@ -8,7 +8,7 @@ use crate::RuntimeError;
 macro_rules! assert_assign_ok {
     ($program:expr, $expected_variable_name:expr, $expected_value:expr) => {
         let interpreter = interpret($program);
-        let name = rusty_parser::Name::from($expected_variable_name);
+        let name = rusty_parser::specific::Name::from($expected_variable_name);
         assert_eq!(
             interpreter.context().get_by_name(&name),
             rusty_variant::Variant::from($expected_value)

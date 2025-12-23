@@ -1,14 +1,15 @@
+use crate::built_ins::built_in_sub::BuiltInSub;
 use crate::expression::expression_pos_p;
+use crate::name::name_with_dots;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::*;
+use crate::specific::*;
 use rusty_common::*;
-
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     seq5(
         keyword(Keyword::LSet),
         whitespace(),
-        name::name_with_dots()
+        name_with_dots()
             .with_pos()
             .or_syntax_error("Expected: variable after LSET"),
         equal_sign(),

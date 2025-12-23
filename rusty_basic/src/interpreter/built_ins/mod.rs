@@ -45,9 +45,11 @@ mod varseg;
 mod view_print;
 mod width;
 
+use rusty_parser::built_ins::built_in_function::BuiltInFunction;
+use rusty_parser::built_ins::built_in_sub::BuiltInSub;
+
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::RuntimeError;
-use rusty_parser::{BuiltInFunction, BuiltInSub};
 
 pub fn run_sub<S: InterpreterTrait>(
     s: &BuiltInSub,

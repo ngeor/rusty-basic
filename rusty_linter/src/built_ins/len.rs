@@ -1,7 +1,7 @@
 use crate::error::{LintError, LintErrorPos};
 use crate::CanCastTo;
 use rusty_common::AtPos;
-use rusty_parser::{
+use rusty_parser::specific::{
     ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType, TypeQualifier,
 };
 

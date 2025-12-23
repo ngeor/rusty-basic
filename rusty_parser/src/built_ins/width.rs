@@ -1,9 +1,9 @@
+use crate::built_ins::built_in_sub::BuiltInSub;
 use crate::built_ins::csv_allow_missing;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::*;
+use crate::specific::*;
 use rusty_common::*;
-
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Width)
         .and_without_undo_keep_right(csv_allow_missing())
@@ -24,8 +24,11 @@ fn map_arg(arg: Option<ExpressionPos>) -> Expressions {
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
+    use crate::built_ins::built_in_sub::BuiltInSub;
+    use crate::error::ParseError;
+    use crate::parse;
+    use crate::specific::*;
     use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
-    use crate::{parse, BuiltInSub, ParseError, Statement};
 
     #[test]
     fn parse_row_col() {

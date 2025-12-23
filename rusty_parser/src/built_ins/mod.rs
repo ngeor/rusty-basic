@@ -1,5 +1,5 @@
-mod built_in_function;
-mod built_in_sub;
+pub mod built_in_function;
+pub mod built_in_sub;
 mod close;
 mod cls;
 mod color;
@@ -20,15 +20,13 @@ mod string_fn;
 mod view_print;
 mod width;
 
-pub use self::built_in_function::BuiltInFunction;
-pub use self::built_in_sub::BuiltInSub;
-
+use crate::built_ins::built_in_sub::BuiltInSub;
 use crate::expression::expression_pos_p;
 use crate::expression::file_handle::file_handle_p;
+use crate::lazy_parser;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::{lazy_parser, FileHandle};
-use crate::{Expression, ExpressionPos, Expressions, Keyword, Statement};
+use crate::specific::*;
 use rusty_common::{AtPos, Position, Positioned};
 
 // Parses built-in subs which have a special syntax.

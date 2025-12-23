@@ -1,6 +1,6 @@
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::{ExitObject, Keyword, Statement};
+use crate::specific::{ExitObject, Keyword, Statement};
 
 pub fn statement_exit_p() -> impl Parser<RcStringView, Output = Statement> {
     seq3(
@@ -17,7 +17,7 @@ pub fn statement_exit_p() -> impl Parser<RcStringView, Output = Statement> {
 #[cfg(test)]
 mod tests {
     use crate::assert_parser_err;
-    use crate::ParseError;
+    use crate::error::ParseError;
 
     #[test]
     fn exit_without_object() {

@@ -3,7 +3,7 @@ use crate::converter::context::Context;
 use crate::error::{LintError, LintErrorPos};
 use crate::{qualifier_of_const_variant, CastVariant, HasFunctions, HasSubs, LintResult};
 use rusty_common::*;
-use rusty_parser::*;
+use rusty_parser::specific::*;
 
 pub fn on_const(
     ctx: &mut Context,

@@ -1,5 +1,5 @@
 mod assignment;
-mod built_ins;
+pub mod built_ins;
 mod comment;
 mod constant;
 mod declaration;
@@ -7,7 +7,7 @@ mod def_type;
 mod dim;
 mod dim_name;
 mod do_loop;
-mod error;
+pub mod error;
 mod exit;
 mod expression;
 mod for_loop;
@@ -23,11 +23,11 @@ mod pc_specific;
 mod print;
 mod resume;
 mod select_case;
+pub mod specific;
 mod statement;
 mod statement_separator;
 mod statements;
 mod sub_call;
-mod types;
 mod user_defined_type;
 mod var_name;
 mod while_wend;
@@ -35,16 +35,14 @@ mod while_wend;
 #[cfg(test)]
 pub mod test_utils;
 
-pub use built_ins::{BuiltInFunction, BuiltInSub};
-pub use error::*;
-pub use types::*;
-
 use rusty_common::AtPos;
 use std::fs::File;
 
+use crate::error::ParseErrorPos;
 use crate::global_statement::program_parser_p;
 use crate::pc::*;
 use crate::pc_specific::{create_file_tokenizer, create_string_tokenizer};
+use crate::specific::Program;
 
 /// Parses a QBasic file.
 ///
@@ -90,9 +88,9 @@ fn parse_main_str(input: String) -> Result<Program, ParseErrorPos> {
 
 #[cfg(test)]
 mod tests {
+    use crate::built_ins::built_in_sub::BuiltInSub;
+    use crate::specific::*;
     use crate::test_utils::*;
-    use crate::types::*;
-    use crate::BuiltInSub;
     use rusty_common::*;
 
     #[test]

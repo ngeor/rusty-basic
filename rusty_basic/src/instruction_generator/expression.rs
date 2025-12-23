@@ -1,6 +1,6 @@
 use super::{Instruction, InstructionGenerator, RootPath};
 use rusty_common::*;
-use rusty_parser::*;
+use rusty_parser::specific::*;
 use rusty_variant::Variant;
 
 impl InstructionGenerator {

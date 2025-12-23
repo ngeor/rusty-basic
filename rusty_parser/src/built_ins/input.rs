@@ -1,8 +1,9 @@
+use crate::built_ins::built_in_sub::BuiltInSub;
 use crate::built_ins::{encode_opt_file_handle_arg, opt_file_handle_comma_p};
 use crate::expression::csv_expressions_non_opt;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::*;
+use crate::specific::*;
 
 // INPUT variable-list
 // INPUT #file-number%, variable-list
@@ -24,6 +25,9 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
 mod tests {
     use crate::assert_built_in_sub_call;
     use crate::assert_parser_err;
+    use crate::built_ins::built_in_sub::BuiltInSub;
+    use crate::error::ParseError;
+    use crate::specific::*;
     use crate::test_utils::*;
     use crate::*;
 

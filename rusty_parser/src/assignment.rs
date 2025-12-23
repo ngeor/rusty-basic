@@ -2,6 +2,8 @@
 mod tests {
     use crate::assert_global_assignment;
     use crate::assert_parser_err;
+    use crate::error::ParseError;
+    use crate::specific::*;
     use crate::test_utils::*;
     use crate::*;
     use rusty_common::*;

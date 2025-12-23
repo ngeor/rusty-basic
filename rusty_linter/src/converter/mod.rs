@@ -14,7 +14,7 @@ use crate::converter::context::Context;
 use crate::converter::traits::Convertible;
 use crate::pre_linter::PreLinterResult;
 use crate::LintErrorPos;
-use rusty_parser::Program;
+use rusty_parser::specific::Program;
 
 pub fn convert(
     program: Program,

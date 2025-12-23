@@ -1,5 +1,6 @@
+use crate::error::ParseError;
+use crate::parser_declaration;
 use crate::pc::{ParseResult, Parser};
-use crate::{parser_declaration, ParseError};
 
 pub trait AllowNoneIf<I>: Parser<I>
 where

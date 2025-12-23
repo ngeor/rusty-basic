@@ -1,6 +1,6 @@
+use crate::error::ParseError;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::ParseError;
 
 /// Comma separated list of items.
 pub fn csv<L: Parser<RcStringView>>(

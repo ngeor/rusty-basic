@@ -14,7 +14,7 @@ use crate::converter::types::{DimContext, ExprContext};
 use crate::error::{LintError, LintErrorPos};
 use crate::{LintPosResult, NameContext};
 use rusty_common::*;
-use rusty_parser::{ExitObject, Statement, StatementPos, Statements};
+use rusty_parser::specific::{ExitObject, Statement, StatementPos, Statements};
 
 impl Convertible<Context, Option<StatementPos>> for StatementPos {
     fn convert(self, ctx: &mut Context) -> Result<Option<StatementPos>, LintErrorPos> {

@@ -1,7 +1,8 @@
+use crate::built_ins::built_in_sub::BuiltInSub;
 use crate::expression::expression_pos_p;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::*;
+use crate::specific::*;
 
 // DEF SEG(=expr)?
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
@@ -22,6 +23,8 @@ fn equal_sign_and_expression() -> impl Parser<RcStringView, Output = ExpressionP
 
 #[cfg(test)]
 mod tests {
+    use crate::built_ins::built_in_sub::BuiltInSub;
+    use crate::specific::Statement;
     use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
     use crate::*;
 

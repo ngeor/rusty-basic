@@ -1,5 +1,5 @@
+use crate::error::ParseError;
 use crate::pc::ParseResult;
-use crate::ParseError;
 
 /// A parser uses the given input in order to produce a result.
 pub trait Parser<I> {

@@ -1,6 +1,6 @@
 use crate::pc::{Errors, Map, Parser, RcStringView};
 use crate::pc_specific::{keyword_choice, keyword_syntax_error};
-use crate::Keyword;
+use crate::specific::Keyword;
 
 pub fn keyword_map<T, K>(mappings: K) -> impl Parser<RcStringView, Output = T>
 where

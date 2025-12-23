@@ -2,7 +2,10 @@ use crate::converter::context::Context;
 use crate::converter::traits::Convertible;
 use crate::converter::types::ExprContext;
 use crate::error::LintErrorPos;
-use rusty_parser::{BareName, BuiltInSub, Expressions, Statement};
+use rusty_parser::{
+    built_ins::built_in_sub::BuiltInSub,
+    specific::{BareName, Expressions, Statement},
+};
 
 impl Context {
     pub fn sub_call(

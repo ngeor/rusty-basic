@@ -2,7 +2,7 @@ use crate::assert_linter_err;
 use crate::test_utils::linter_ok;
 use crate::LintError;
 use rusty_common::*;
-use rusty_parser::*;
+use rusty_parser::specific::*;
 
 #[test]
 fn test_dim_duplicate_definition_same_builtin_type() {

@@ -1,5 +1,5 @@
+use crate::error::ParseError;
 use crate::pc::{ParseResult, Parser, ToOption};
-use crate::ParseError;
 
 //
 // And (with undo)

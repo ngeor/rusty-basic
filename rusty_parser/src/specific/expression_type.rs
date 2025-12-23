@@ -1,4 +1,4 @@
-use crate::{BareName, TypeQualifier};
+use crate::specific::{BareName, TypeQualifier};
 
 /// The resolved type of an expression.
 #[derive(Clone, Debug, PartialEq)]

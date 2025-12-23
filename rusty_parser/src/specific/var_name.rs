@@ -1,4 +1,4 @@
-use crate::{BareName, BareNamePos, ExpressionType, HasExpressionType, TypeQualifier};
+use crate::specific::{BareName, BareNamePos, ExpressionType, HasExpressionType, TypeQualifier};
 
 /// A variable name with a type.
 ///

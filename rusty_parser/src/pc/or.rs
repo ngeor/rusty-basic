@@ -1,5 +1,5 @@
+use crate::error::ParseError;
 use crate::pc::*;
-use crate::ParseError;
 
 pub struct OrParser<I, O> {
     parsers: Vec<Box<dyn Parser<I, Output = O>>>,

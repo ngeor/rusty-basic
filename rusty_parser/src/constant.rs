@@ -2,7 +2,7 @@ use crate::expression::expression_pos_p;
 use crate::name;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::types::{Keyword, Statement};
+use crate::specific::{Keyword, Statement};
 
 pub fn constant_p() -> impl Parser<RcStringView, Output = Statement> {
     seq5(
@@ -20,6 +20,7 @@ pub fn constant_p() -> impl Parser<RcStringView, Output = Statement> {
 #[cfg(test)]
 mod tests {
     use super::super::test_utils::*;
+    use crate::specific::*;
     use crate::*;
     use rusty_common::*;
 

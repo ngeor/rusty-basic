@@ -12,7 +12,8 @@ use crate::LintPosResult;
 use expr_state::ExprState;
 use pos_expr_state::PosExprState;
 use rusty_common::*;
-use rusty_parser::*;
+use rusty_parser::built_ins::built_in_function::BuiltInFunction;
+use rusty_parser::specific::*;
 
 mod expr_state {
     use crate::converter::context::Context;

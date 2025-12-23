@@ -4,7 +4,7 @@ use crate::converter::traits::Convertible;
 use crate::converter::types::Implicits;
 use crate::error::LintErrorPos;
 use rusty_common::{AtPos, HasPos, Positioned};
-use rusty_parser::{
+use rusty_parser::specific::{
     DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement,
     Statements, SubImplementation,
 };

@@ -1,5 +1,6 @@
+use crate::binary_parser_declaration;
+use crate::error::ParseError;
 use crate::pc::{ParseResult, ParseResultTrait, Parser};
-use crate::{binary_parser_declaration, ParseError};
 
 binary_parser_declaration!(pub struct AccumulateParser);
 

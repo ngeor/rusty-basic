@@ -6,7 +6,7 @@ use crate::string_length::validate_string_length;
 use crate::type_resolver::IntoTypeQualifier;
 use crate::LintResult;
 use rusty_common::*;
-use rusty_parser::*;
+use rusty_parser::specific::*;
 
 pub fn on_redim_type<'a, 'b>(
     var_type: DimType,

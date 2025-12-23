@@ -1,7 +1,7 @@
 use crate::lazy_parser;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::types::*;
+use crate::specific::*;
 
 /// `( expr [, expr]* )`
 pub fn in_parenthesis_csv_expressions_non_opt(
@@ -107,7 +107,7 @@ fn eager_expression_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos>
 mod single_or_double_literal {
     use crate::pc::*;
     use crate::pc_specific::{digits, dot, pound, SpecificTrait};
-    use crate::*;
+    use crate::specific::*;
 
     // single ::= <digits> . <digits>
     // single ::= . <digits> (without leading zero)
@@ -153,7 +153,7 @@ mod single_or_double_literal {
 mod string_literal {
     use crate::pc::*;
     use crate::pc_specific::*;
-    use crate::{Expression, ExpressionPos};
+    use crate::specific::*;
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
         seq3(
@@ -179,9 +179,10 @@ mod string_literal {
 }
 
 mod integer_or_long_literal {
+    use crate::error::ParseError;
     use crate::pc::*;
     use crate::pc_specific::{SpecificTrait, TokenType};
-    use crate::*;
+    use crate::specific::*;
     use rusty_variant::{BitVec, BitVecIntOrLong, MAX_INTEGER, MAX_LONG};
 
     // result ::= <digits> | <hex-digits> | <oct-digits>
@@ -302,7 +303,7 @@ mod variable {
     use crate::name::{name_with_dots_as_tokens, token_to_type_qualifier, NameAsTokens};
     use crate::pc::*;
     use crate::pc_specific::{SpecificTrait, TokenType};
-    use crate::*;
+    use crate::specific::*;
     use std::collections::VecDeque;
 
     // variable ::= <identifier-with-dots>
@@ -381,7 +382,7 @@ mod function_call_or_array_element {
     use crate::name::name_with_dots_as_tokens;
     use crate::pc::*;
     use crate::pc_specific::{csv, in_parenthesis, SpecificTrait};
-    use crate::*;
+    use crate::specific::*;
 
     // function_call ::= <function-name> "(" <expr>* ")"
     // function-name ::= <identifier-with-dots>
@@ -406,11 +407,12 @@ mod function_call_or_array_element {
 }
 
 pub mod property {
+    use crate::error::ParseError;
     use crate::expression::{function_call_or_array_element, variable};
     use crate::name::{identifier, token_to_type_qualifier, type_qualifier};
     use crate::pc::*;
     use crate::pc_specific::{dot, SpecificTrait};
-    use crate::*;
+    use crate::specific::*;
 
     // property ::= <expr> "." <property-name>
     // property-name ::= <identifier-without-dot>
@@ -488,7 +490,7 @@ mod built_in_function_call {
     use crate::built_ins::built_in_function_call_p;
     use crate::pc::{Parser, RcStringView};
     use crate::pc_specific::SpecificTrait;
-    use crate::ExpressionPos;
+    use crate::specific::*;
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
         built_in_function_call_p().with_pos()
@@ -496,15 +498,14 @@ mod built_in_function_call {
 }
 
 mod binary_expression {
+    use crate::error::ParseError;
     use crate::expression::{
         built_in_function_call, expression_pos_p, guard, integer_or_long_literal, parenthesis,
         property, single_or_double_literal, string_literal, unary_expression,
     };
     use crate::pc::*;
     use crate::pc_specific::{whitespace, SpecificTrait, TokenType};
-    use crate::{
-        ExpressionPos, ExpressionPosTrait, ExpressionTrait, Keyword, Operator, ParseError,
-    };
+    use crate::specific::*;
     use rusty_common::Positioned;
 
     // result ::= <non-bin-expr> <operator> <expr>
@@ -643,7 +644,7 @@ mod unary_expression {
     use crate::expression::{expression_pos_p, guard};
     use crate::pc::*;
     use crate::pc_specific::{keyword, minus_sign, SpecificTrait};
-    use crate::{ExpressionPos, ExpressionPosTrait, Keyword, UnaryOperator};
+    use crate::specific::*;
     use rusty_common::Positioned;
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
@@ -668,7 +669,7 @@ mod parenthesis {
     use crate::expression::expression_pos_p;
     use crate::pc::*;
     use crate::pc_specific::{in_parenthesis, SpecificTrait};
-    use crate::{Expression, ExpressionPos};
+    use crate::specific::*;
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos> {
         in_parenthesis(
@@ -682,10 +683,11 @@ mod parenthesis {
 pub mod file_handle {
     //! Used by PRINT and built-ins
 
+    use crate::error::ParseError;
     use crate::expression::ws_expr_pos_p;
     use crate::pc::*;
     use crate::pc_specific::*;
-    use crate::{Expression, ExpressionPos, FileHandle, ParseError};
+    use crate::specific::*;
     use rusty_common::*;
 
     pub fn file_handle_p() -> impl Parser<RcStringView, Output = Positioned<FileHandle>> {
@@ -750,7 +752,9 @@ pub mod guard {
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::*;
+    use crate::error::ParseError;
+    use crate::specific::*;
+    use crate::test_utils::*;
     use crate::*;
     use crate::{assert_expression, assert_literal_expression, assert_parser_err, expr};
     use rusty_common::*;

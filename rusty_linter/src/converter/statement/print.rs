@@ -1,7 +1,7 @@
 use crate::converter::context::Context;
 use crate::converter::traits::Convertible;
 use crate::error::LintErrorPos;
-use rusty_parser::{Print, PrintArg};
+use rusty_parser::specific::{Print, PrintArg};
 
 impl Convertible for Print {
     fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {

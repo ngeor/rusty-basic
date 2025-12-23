@@ -1,6 +1,6 @@
 use crate::RuntimeError;
 use rusty_linter::QBNumberCast;
-use rusty_parser::FileHandle;
+use rusty_parser::specific::FileHandle;
 use rusty_variant::Variant;
 use std::convert::TryFrom;
 

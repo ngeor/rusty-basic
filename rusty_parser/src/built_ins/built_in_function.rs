@@ -1,5 +1,5 @@
 use crate::keyword_enum;
-use crate::{QualifiedName, TypeQualifier};
+use crate::specific::{QualifiedName, TypeQualifier};
 use rusty_common::*;
 use std::borrow::Borrow;
 use std::convert::TryFrom;

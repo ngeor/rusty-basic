@@ -1,6 +1,6 @@
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::types::*;
+use crate::specific::*;
 
 /// Tries to read a comment.
 pub fn comment_p() -> impl Parser<RcStringView, Output = Statement> {
@@ -18,6 +18,7 @@ pub fn comment_as_string_p() -> impl Parser<RcStringView, Output = String> {
 
 #[cfg(test)]
 mod tests {
+    use crate::specific::*;
     use crate::*;
 
     #[test]

@@ -1,5 +1,5 @@
+use crate::error::ParseError;
 use crate::pc::{ParseResult, Parser};
-use crate::ParseError;
 
 pub trait ToOption<I>: Parser<I>
 where

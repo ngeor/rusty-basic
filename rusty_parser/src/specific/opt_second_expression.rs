@@ -1,8 +1,8 @@
+use crate::error::ParseError;
 use crate::expression::ws_expr_pos_p;
 use crate::pc::{AllowNoneIf, And, AndWithoutUndo, Chain, Errors, Parser, RcStringView, ToOption};
 use crate::pc_specific::{keyword, whitespace};
-use crate::types::Keyword;
-use crate::{ExpressionPos, ExpressionTrait, ParseError};
+use crate::specific::{ExpressionPos, ExpressionTrait, Keyword};
 
 /// Finds the rightmost expression of a given type,
 /// so that it can be determined if it ended in parenthesis or not.

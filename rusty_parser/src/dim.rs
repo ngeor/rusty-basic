@@ -1,6 +1,8 @@
+use crate::dim_name::dim_var_pos_p;
+use crate::dim_name::redim_var_pos_p;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::{dim_name, DimList, Keyword, Statement};
+use crate::specific::*;
 
 /// Parses DIM statement
 pub fn dim_p() -> impl Parser<RcStringView, Output = Statement> {
@@ -8,7 +10,7 @@ pub fn dim_p() -> impl Parser<RcStringView, Output = Statement> {
         keyword(Keyword::Dim),
         whitespace(),
         opt_shared_keyword(),
-        csv_non_opt(dim_name::dim_var_pos_p(), "Expected: name after DIM"),
+        csv_non_opt(dim_var_pos_p(), "Expected: name after DIM"),
         |_, _, opt_shared, variables| {
             Statement::Dim(DimList {
                 shared: opt_shared.is_some(),
@@ -24,7 +26,7 @@ pub fn redim_p() -> impl Parser<RcStringView, Output = Statement> {
         keyword(Keyword::Redim),
         whitespace(),
         opt_shared_keyword(),
-        csv_non_opt(dim_name::redim_var_pos_p(), "Expected: name after REDIM"),
+        csv_non_opt(redim_var_pos_p(), "Expected: name after REDIM"),
         |_, _, opt_shared, variables| {
             Statement::Redim(DimList {
                 shared: opt_shared.is_some(),
@@ -40,11 +42,12 @@ fn opt_shared_keyword() -> impl Parser<RcStringView, Output = Option<(Token, Tok
 
 #[cfg(test)]
 mod tests {
+    use crate::error::ParseError;
+    use crate::specific::*;
     use crate::test_utils::*;
     use crate::*;
     use crate::{assert_parse_dim_compact, assert_parse_dim_extended_built_in, assert_parser_err};
     use rusty_common::*;
-
     #[test]
     fn test_parse_dim_extended_built_in() {
         assert_parse_dim_extended_built_in!("A", "SINGLE", BangSingle);

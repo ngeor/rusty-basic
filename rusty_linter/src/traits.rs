@@ -1,5 +1,5 @@
 use crate::{FunctionMap, ResolvedParamType, SubMap};
-use rusty_parser::{
+use rusty_parser::specific::{
     Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UserDefinedTypes,
 };
 
@@ -28,7 +28,7 @@ impl CanCastTo<TypeQualifier> for TypeQualifier {
     ///
     /// ```
     /// use rusty_linter::CanCastTo;
-    /// use rusty_parser::TypeQualifier;
+    /// use rusty_parser::specific::TypeQualifier;
     ///
     /// assert!(TypeQualifier::BangSingle.can_cast_to(&TypeQualifier::PercentInteger));
     /// assert!(TypeQualifier::DollarString.can_cast_to(&TypeQualifier::DollarString));

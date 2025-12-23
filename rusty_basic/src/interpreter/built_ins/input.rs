@@ -2,7 +2,7 @@ use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Input;
 use crate::RuntimeError;
 use rusty_linter::qualifier_of_variant;
-use rusty_parser::{FileHandle, TypeQualifier};
+use rusty_parser::specific::{FileHandle, TypeQualifier};
 use rusty_variant::Variant;
 use std::convert::TryFrom;
 

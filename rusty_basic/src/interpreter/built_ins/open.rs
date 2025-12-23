@@ -2,7 +2,7 @@ use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
 use crate::RuntimeError;
 use rusty_linter::QBNumberCast;
-use rusty_parser::{FileAccess, FileHandle, FileMode};
+use rusty_parser::specific::{FileAccess, FileHandle, FileMode};
 use rusty_variant::Variant;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {

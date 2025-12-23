@@ -2,7 +2,9 @@ use crate::error::{LintError, LintErrorPos};
 use crate::pre_linter::{FunctionSignature, ResolvedParamTypes, SubSignature};
 use crate::type_resolver::{IntoTypeQualifier, TypeResolver};
 use rusty_common::*;
-use rusty_parser::{BareName, BuiltInFunction, BuiltInSub, Name};
+use rusty_parser::built_ins::built_in_function::BuiltInFunction;
+use rusty_parser::built_ins::built_in_sub::BuiltInSub;
+use rusty_parser::specific::{BareName, Name};
 use std::collections::HashMap;
 
 pub struct SubprogramContext<T> {

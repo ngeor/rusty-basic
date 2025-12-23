@@ -1,8 +1,10 @@
+use crate::built_ins::built_in_sub::BuiltInSub;
 use crate::expression::expr_pos_ws_p;
 use crate::expression::file_handle::file_handle_p;
+use crate::name::name_with_dots;
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::*;
+use crate::specific::*;
 use rusty_common::*;
 
 /// Example: FIELD #1, 10 AS FirstName$, 20 AS LastName$
@@ -26,7 +28,7 @@ fn field_item_p() -> impl Parser<RcStringView, Output = (ExpressionPos, NamePos)
         expr_pos_ws_p(),
         keyword(Keyword::As),
         whitespace(),
-        name::name_with_dots()
+        name_with_dots()
             .with_pos()
             .or_syntax_error("Expected: variable name"),
         |width, _, _, name| (width, name),

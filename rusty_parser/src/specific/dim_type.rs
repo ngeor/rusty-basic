@@ -1,4 +1,4 @@
-use crate::{
+use crate::specific::{
     ArrayDimensions, BareNamePos, BuiltInStyle, Expression, ExpressionPos, ExpressionType,
     HasExpressionType, TypeQualifier, VarTypeIsExtended, VarTypeNewBuiltInCompact,
     VarTypeNewBuiltInExtended, VarTypeNewUserDefined, VarTypeQualifier, VarTypeToArray,

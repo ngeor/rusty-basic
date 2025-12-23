@@ -2,7 +2,7 @@ use crate::arg_validation::ArgValidation;
 use crate::error::{LintError, LintErrorPos};
 use crate::CanCastTo;
 use rusty_common::AtPos;
-use rusty_parser::{Expressions, TypeQualifier};
+use rusty_parser::specific::{Expressions, TypeQualifier};
 
 pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     if args.len() != 2 {

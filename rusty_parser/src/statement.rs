@@ -1,11 +1,14 @@
+use crate::comment;
 use crate::constant;
 use crate::dim;
 use crate::do_loop;
+use crate::error::ParseError;
 use crate::exit::statement_exit_p;
 use crate::for_loop;
 use crate::go_sub::{statement_go_sub_p, statement_return_p};
 use crate::if_block;
 use crate::lazy_parser;
+use crate::name::token_list_to_bare_name;
 use crate::name::{bare_name_with_dots, identifier_with_dots};
 use crate::on_error::statement_on_error_go_to_p;
 use crate::pc::*;
@@ -13,10 +16,9 @@ use crate::pc_specific::*;
 use crate::print;
 use crate::resume::statement_resume_p;
 use crate::select_case;
+use crate::specific::*;
 use crate::sub_call;
-use crate::types::*;
 use crate::while_wend;
-use crate::{comment, ParseError};
 
 lazy_parser!(pub fn statement_p<I = RcStringView, Output = Statement> ; struct LazyStatementP ; OrParser::new(vec![
     Box::new(statement_label_p()),
@@ -82,7 +84,7 @@ fn illegal_starting_keywords() -> impl Parser<RcStringView, Output = Statement> 
 mod end {
     use crate::pc::*;
     use crate::pc_specific::*;
-    use crate::{Keyword, Statement};
+    use crate::specific::{Keyword, Statement};
 
     pub fn parse_end_p() -> impl Parser<RcStringView, Output = Statement> {
         keyword(Keyword::End).map(|_| Statement::End)
@@ -91,7 +93,7 @@ mod end {
     #[cfg(test)]
     mod tests {
         use crate::assert_parser_err;
-        use crate::ParseError;
+        use crate::error::ParseError;
 
         #[test]
         fn test_sub_call_end_no_args_allowed() {
@@ -110,8 +112,8 @@ mod end {
 mod system {
     use crate::pc::*;
     use crate::pc_specific::*;
+    use crate::specific::{Keyword, Statement};
     use crate::statement_separator::peek_eof_or_statement_separator;
-    use crate::{Keyword, Statement};
 
     pub fn parse_system_p() -> impl Parser<RcStringView, Output = Statement> {
         keyword(Keyword::System).and_without_undo(
@@ -124,7 +126,7 @@ mod system {
     #[cfg(test)]
     mod tests {
         use crate::assert_parser_err;
-        use crate::ParseError;
+        use crate::error::ParseError;
 
         #[test]
         fn test_sub_call_system_no_args_allowed() {
@@ -140,6 +142,7 @@ mod system {
 
 #[cfg(test)]
 mod tests {
+    use crate::specific::*;
     use crate::test_utils::*;
     use crate::*;
     use rusty_common::*;

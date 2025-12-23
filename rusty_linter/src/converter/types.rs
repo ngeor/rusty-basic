@@ -1,6 +1,6 @@
 //! Contains simple types and type aliases.
 
-use rusty_parser::QualifiedNamePos;
+use rusty_parser::specific::QualifiedNamePos;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DimContext {

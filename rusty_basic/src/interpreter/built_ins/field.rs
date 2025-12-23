@@ -2,7 +2,7 @@ use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Field;
 use crate::interpreter::variant_casts::VariantCasts;
 use crate::RuntimeError;
-use rusty_parser::FileHandle;
+use rusty_parser::specific::FileHandle;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let len = interpreter.context().variables().len();

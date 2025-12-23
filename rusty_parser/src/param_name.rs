@@ -1,6 +1,6 @@
 use crate::pc::*;
 use crate::pc_specific::*;
-use crate::types::*;
+use crate::specific::*;
 use crate::var_name::var_name;
 
 /// Parses a Param name. Possible options:

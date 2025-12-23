@@ -1,6 +1,6 @@
 use crate::pc::*;
 use crate::pc_specific::{any_token_of, TokenType};
-use crate::Keyword;
+use crate::specific::Keyword;
 
 /// Matches one of the given keywords.
 pub fn keyword_choice(

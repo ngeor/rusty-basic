@@ -20,7 +20,7 @@ use crate::interpreter::Stdlib;
 use crate::{RuntimeError, RuntimeErrorPos};
 use rusty_common::*;
 use rusty_linter::{HasUserDefinedTypes, QBNumberCast};
-use rusty_parser::UserDefinedTypes;
+use rusty_parser::specific::UserDefinedTypes;
 use rusty_variant::Variant;
 use std::collections::VecDeque;
 

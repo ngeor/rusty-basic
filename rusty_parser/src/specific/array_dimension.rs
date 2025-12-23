@@ -1,4 +1,4 @@
-use crate::ExpressionPos;
+use crate::specific::ExpressionPos;
 
 pub type ArrayDimensions = Vec<ArrayDimension>;
 

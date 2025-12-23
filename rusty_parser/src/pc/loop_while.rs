@@ -1,5 +1,6 @@
+use crate::error::ParseError;
+use crate::parser_declaration;
 use crate::pc::{default_parse_error, ParseResult, Parser};
-use crate::{parser_declaration, ParseError};
 
 pub trait LoopWhile<I>: Parser<I>
 where

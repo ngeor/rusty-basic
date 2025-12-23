@@ -1,7 +1,7 @@
 use crate::interpreter::byte_size::QByteSize;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::RuntimeError;
-use rusty_parser::BuiltInFunction;
+use rusty_parser::built_ins::built_in_function::BuiltInFunction;
 use rusty_variant::Variant;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {

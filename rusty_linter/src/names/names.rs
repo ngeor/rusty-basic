@@ -30,20 +30,23 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 */
 
 pub struct Names {
-    names_inner: NamesInner,
-    current_function_name: Option<BareName>,
+    data: NamesOneLevel,
     parent: Option<Box<Self>>,
-    // TODO implicit_vars has nothing to do with Names, it's only here because of the convenience of pushing/popping a Names context
-    implicit_vars: ImplicitVars,
+    current_function_name: Option<BareName>,
 }
+
+/// Stores the data relevant to one level only (i.e. global symbols, or a FUNCTION, or a SUB).
+/// Collects constant and variable names in [NamesInner] and implicit variables in [ImplicitVars].
+/// TODO merge [ImplicitVars] into [NamesInner]
+#[derive(Default)]
+struct NamesOneLevel(NamesInner, ImplicitVars);
 
 impl Names {
     pub fn new(parent: Option<Box<Self>>, current_function_name: Option<BareName>) -> Self {
         Self {
-            names_inner: NamesInner::default(),
-            current_function_name,
+            data: NamesOneLevel::default(),
             parent,
-            implicit_vars: ImplicitVars::new(),
+            current_function_name,
         }
     }
 
@@ -52,15 +55,15 @@ impl Names {
     }
 
     pub fn get_implicit_vars_mut(&mut self) -> &mut ImplicitVars {
-        &mut self.implicit_vars
+        &mut self.data.1
     }
 
     pub fn names(&self) -> &NamesInner {
-        &self.names_inner
+        &self.data.0
     }
 
     pub fn names_mut(&mut self) -> &mut NamesInner {
-        &mut self.names_inner
+        &mut self.data.0
     }
 
     pub fn get_compact_var_recursively(
@@ -68,7 +71,7 @@ impl Names {
         bare_name: &BareName,
         qualifier: TypeQualifier,
     ) -> Option<&VariableInfo> {
-        match self.names_inner.get_compact(bare_name, qualifier) {
+        match self.names().get_compact(bare_name, qualifier) {
             Some(variable_info) => Some(variable_info),
             _ => match &self.parent {
                 Some(parent_names) => {
@@ -84,7 +87,7 @@ impl Names {
         bare_name: &BareName,
         qualifier: TypeQualifier,
     ) -> Option<&VariableInfo> {
-        match Self::require_shared(self.names_inner.get_compact(bare_name, qualifier)) {
+        match Self::require_shared(self.names().get_compact(bare_name, qualifier)) {
             Some(variable_info) => Some(variable_info),
             _ => match &self.parent {
                 Some(parent_names) => {
@@ -96,7 +99,7 @@ impl Names {
     }
 
     pub fn get_extended_var_recursively(&self, bare_name: &BareName) -> Option<&VariableInfo> {
-        match self.names_inner.get_extended(bare_name) {
+        match self.names().get_extended(bare_name) {
             Some(variable_info) => Some(variable_info),
             _ => match &self.parent {
                 Some(parent_names) => parent_names.get_extended_shared_var_recursively(bare_name),
@@ -106,7 +109,7 @@ impl Names {
     }
 
     fn get_extended_shared_var_recursively(&self, bare_name: &BareName) -> Option<&VariableInfo> {
-        match Self::require_shared(self.names_inner.get_extended(bare_name)) {
+        match Self::require_shared(self.names().get_extended(bare_name)) {
             Some(variable_info) => Some(variable_info),
             _ => match &self.parent {
                 Some(parent_names) => parent_names.get_extended_shared_var_recursively(bare_name),
@@ -172,9 +175,9 @@ impl Names {
             redim_info,
         };
         if dim_type.is_extended() {
-            self.names_inner.insert_extended(bare_name, variable_info)
+            self.names_mut().insert_extended(bare_name, variable_info)
         } else {
-            self.names_inner.insert_compact(bare_name, variable_info)
+            self.names_mut().insert_compact(bare_name, variable_info)
         }
     }
 
@@ -217,7 +220,7 @@ impl Names {
         bare_name: &BareName,
         only_shared: bool,
     ) -> Vec<(BuiltInStyle, &VariableInfo)> {
-        let mut result = self.names_inner.collect_var_info(bare_name, only_shared);
+        let mut result = self.names().collect_var_info(bare_name, only_shared);
 
         if let Some(boxed_parent) = &self.parent {
             result.extend(boxed_parent.find_name(bare_name, true).into_iter());

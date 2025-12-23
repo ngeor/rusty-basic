@@ -5,8 +5,8 @@ pub fn begin_collect_arguments<T: InterpreterTrait>(interpreter: &mut T) {
     interpreter.context_mut().begin_collecting_arguments();
 }
 
-pub fn enqueue_to_return_stack<T: InterpreterTrait>(interpreter: &mut T, idx: &usize) {
-    let v = interpreter.context()[*idx].clone();
+pub fn enqueue_to_return_stack<T: InterpreterTrait>(interpreter: &mut T, index: usize) {
+    let v = interpreter.context()[index].clone();
     interpreter.by_ref_stack().push_back(v);
 }
 

@@ -79,7 +79,7 @@ impl FileInfo {
 
     pub fn get_current_field_list(&self) -> Option<&Vec<Field>> {
         match self.current_field_list_index {
-            Some(idx) => self.field_lists.get(idx),
+            Some(index) => self.field_lists.get(index),
             _ => None,
         }
     }

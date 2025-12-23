@@ -7,29 +7,29 @@ use rusty_parser::{
 };
 
 pub trait ArgValidation {
-    fn require_integer_argument(&self, idx: usize) -> Result<(), LintErrorPos>;
+    fn require_integer_argument(&self, index: usize) -> Result<(), LintErrorPos>;
 
-    fn require_long_argument(&self, idx: usize) -> Result<(), LintErrorPos>;
+    fn require_long_argument(&self, index: usize) -> Result<(), LintErrorPos>;
 
-    fn require_double_argument(&self, idx: usize) -> Result<(), LintErrorPos>;
+    fn require_double_argument(&self, index: usize) -> Result<(), LintErrorPos>;
 
-    fn require_numeric_argument(&self, idx: usize) -> Result<(), LintErrorPos>;
+    fn require_numeric_argument(&self, index: usize) -> Result<(), LintErrorPos>;
 
-    fn require_string_argument(&self, idx: usize) -> Result<(), LintErrorPos>;
+    fn require_string_argument(&self, index: usize) -> Result<(), LintErrorPos>;
 
     /// Demands that the argument at the given index is a string variable.
     /// This is a strict check, it doesn't allow array elements or
     /// user defined properties of string value.
-    fn require_string_variable(&self, idx: usize) -> Result<(), LintErrorPos>;
+    fn require_string_variable(&self, index: usize) -> Result<(), LintErrorPos>;
 
     /// Demands that the argument at the given index is a ref value
     /// that can be cast into a string. This allows for string variables,
     /// array elements, properties of user defined types.
-    fn require_string_ref(&self, idx: usize) -> Result<(), LintErrorPos>;
+    fn require_string_ref(&self, index: usize) -> Result<(), LintErrorPos>;
 
-    fn require_variable_of_built_in_type(&self, idx: usize) -> Result<(), LintErrorPos>;
+    fn require_variable_of_built_in_type(&self, index: usize) -> Result<(), LintErrorPos>;
 
-    fn require_variable(&self, idx: usize) -> Result<(), LintErrorPos>;
+    fn require_variable(&self, index: usize) -> Result<(), LintErrorPos>;
 
     fn require_one_argument(&self) -> Result<(), LintErrorPos>;
 
@@ -55,39 +55,43 @@ pub trait ArgValidation {
             .and_then(|_| self.require_variable(0))
     }
 
-    fn expr(&self, idx: usize) -> &Expression {
-        &self.expr_pos(idx).element
+    fn expr(&self, index: usize) -> &Expression {
+        &self.expr_pos(index).element
     }
 
-    fn expr_pos(&self, idx: usize) -> &ExpressionPos;
+    fn expr_pos(&self, index: usize) -> &ExpressionPos;
 
-    fn require_predicate<F>(&self, idx: usize, predicate: F) -> Result<(), LintErrorPos>
+    fn require_predicate<F>(&self, index: usize, predicate: F) -> Result<(), LintErrorPos>
     where
         F: Fn(&Expression) -> bool,
     {
-        if predicate(self.expr(idx)) {
+        if predicate(self.expr(index)) {
             Ok(())
         } else {
-            Err(LintError::ArgumentTypeMismatch.at(self.expr_pos(idx)))
+            Err(LintError::ArgumentTypeMismatch.at(self.expr_pos(index)))
         }
     }
 }
 
 impl ArgValidation for Expressions {
-    fn require_integer_argument(&self, idx: usize) -> Result<(), LintErrorPos> {
-        self.require_predicate(idx, |expr| expr.can_cast_to(&TypeQualifier::PercentInteger))
+    fn require_integer_argument(&self, index: usize) -> Result<(), LintErrorPos> {
+        self.require_predicate(index, |expr| {
+            expr.can_cast_to(&TypeQualifier::PercentInteger)
+        })
     }
 
-    fn require_long_argument(&self, idx: usize) -> Result<(), LintErrorPos> {
-        self.require_predicate(idx, |expr| expr.can_cast_to(&TypeQualifier::AmpersandLong))
+    fn require_long_argument(&self, index: usize) -> Result<(), LintErrorPos> {
+        self.require_predicate(index, |expr| {
+            expr.can_cast_to(&TypeQualifier::AmpersandLong)
+        })
     }
 
-    fn require_double_argument(&self, idx: usize) -> Result<(), LintErrorPos> {
-        self.require_predicate(idx, |expr| expr.can_cast_to(&TypeQualifier::HashDouble))
+    fn require_double_argument(&self, index: usize) -> Result<(), LintErrorPos> {
+        self.require_predicate(index, |expr| expr.can_cast_to(&TypeQualifier::HashDouble))
     }
 
-    fn require_numeric_argument(&self, idx: usize) -> Result<(), LintErrorPos> {
-        self.require_predicate(idx, |expr| {
+    fn require_numeric_argument(&self, index: usize) -> Result<(), LintErrorPos> {
+        self.require_predicate(index, |expr| {
             if let ExpressionType::BuiltIn(q) = expr.expression_type() {
                 q != TypeQualifier::DollarString
             } else {
@@ -96,12 +100,12 @@ impl ArgValidation for Expressions {
         })
     }
 
-    fn require_string_argument(&self, idx: usize) -> Result<(), LintErrorPos> {
-        self.require_predicate(idx, |expr| expr.can_cast_to(&TypeQualifier::DollarString))
+    fn require_string_argument(&self, index: usize) -> Result<(), LintErrorPos> {
+        self.require_predicate(index, |expr| expr.can_cast_to(&TypeQualifier::DollarString))
     }
 
-    fn require_string_variable(&self, idx: usize) -> Result<(), LintErrorPos> {
-        match self.expr(idx) {
+    fn require_string_variable(&self, index: usize) -> Result<(), LintErrorPos> {
+        match self.expr(index) {
             Expression::Variable(
                 _,
                 VariableInfo {
@@ -109,13 +113,13 @@ impl ArgValidation for Expressions {
                     ..
                 },
             ) => Ok(()),
-            Expression::Variable(_, _) => Err(LintError::ArgumentTypeMismatch.at(&self[idx])),
-            _ => Err(LintError::VariableRequired.at(&self[idx])),
+            Expression::Variable(_, _) => Err(LintError::ArgumentTypeMismatch.at(&self[index])),
+            _ => Err(LintError::VariableRequired.at(&self[index])),
         }
     }
 
-    fn require_string_ref(&self, idx: usize) -> Result<(), LintErrorPos> {
-        match self.expr(idx) {
+    fn require_string_ref(&self, index: usize) -> Result<(), LintErrorPos> {
+        match self.expr(index) {
             Expression::Variable(
                 _,
                 VariableInfo {
@@ -133,15 +137,15 @@ impl ArgValidation for Expressions {
                 if expression_type.can_cast_to(&TypeQualifier::DollarString) {
                     Ok(())
                 } else {
-                    Err(LintError::ArgumentTypeMismatch.at(&self[idx]))
+                    Err(LintError::ArgumentTypeMismatch.at(&self[index]))
                 }
             }
-            _ => Err(LintError::VariableRequired.at(&self[idx])),
+            _ => Err(LintError::VariableRequired.at(&self[index])),
         }
     }
 
-    fn require_variable_of_built_in_type(&self, idx: usize) -> Result<(), LintErrorPos> {
-        match self.expr(idx) {
+    fn require_variable_of_built_in_type(&self, index: usize) -> Result<(), LintErrorPos> {
+        match self.expr(index) {
             Expression::Variable(
                 _,
                 VariableInfo {
@@ -157,17 +161,17 @@ impl ArgValidation for Expressions {
             )
             | Expression::Property(_, _, expression_type) => match expression_type {
                 ExpressionType::BuiltIn(_) | ExpressionType::FixedLengthString(_) => Ok(()),
-                _ => Err(LintError::ArgumentTypeMismatch.at(&self[idx])),
+                _ => Err(LintError::ArgumentTypeMismatch.at(&self[index])),
             },
-            _ => Err(LintError::VariableRequired.at(&self[idx])),
+            _ => Err(LintError::VariableRequired.at(&self[index])),
         }
     }
 
-    fn require_variable(&self, idx: usize) -> Result<(), LintErrorPos> {
-        if self.expr(idx).is_by_ref() {
+    fn require_variable(&self, index: usize) -> Result<(), LintErrorPos> {
+        if self.expr(index).is_by_ref() {
             Ok(())
         } else {
-            Err(LintError::VariableRequired.at(&self[idx]))
+            Err(LintError::VariableRequired.at(&self[index]))
         }
     }
 
@@ -187,7 +191,7 @@ impl ArgValidation for Expressions {
         }
     }
 
-    fn expr_pos(&self, idx: usize) -> &ExpressionPos {
-        self.get(idx).unwrap()
+    fn expr_pos(&self, index: usize) -> &ExpressionPos {
+        self.get(index).unwrap()
     }
 }

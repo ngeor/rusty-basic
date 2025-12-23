@@ -13,7 +13,7 @@ pub struct PrintState {
     file_handle: FileHandle,
     format_string: Option<String>,
     should_skip_new_line: bool,
-    format_string_idx: usize,
+    format_string_index: usize,
 }
 
 impl PrintState {
@@ -23,7 +23,7 @@ impl PrintState {
             file_handle: 0.into(),
             format_string: None,
             should_skip_new_line: false,
-            format_string_idx: 0,
+            format_string_index: 0,
         }
     }
 
@@ -31,7 +31,7 @@ impl PrintState {
         self.printer_type = PrinterType::Print;
         self.file_handle = 0.into();
         self.format_string = None;
-        self.format_string_idx = 0;
+        self.format_string_index = 0;
     }
 
     pub fn get_printer_type(&self) -> PrinterType {
@@ -95,7 +95,7 @@ impl PrintState {
         let format_string_chars: Vec<char> = self.format_string.as_ref().unwrap().chars().collect();
         print_remaining_non_formatting_chars(
             format_string_chars.as_slice(),
-            &mut self.format_string_idx,
+            &mut self.format_string_index,
         )
     }
 
@@ -106,18 +106,18 @@ impl PrintState {
         }
 
         // ensure we are in the range of chars
-        self.format_string_idx %= format_string_chars.len();
+        self.format_string_index %= format_string_chars.len();
 
         // copy from format_string until we hit a formatting character
         let mut result = print_non_formatting_chars(
             format_string_chars.as_slice(),
-            &mut self.format_string_idx,
+            &mut self.format_string_index,
         )?;
 
         // format the argument using the formatting character
         let second_part = print_formatting_chars(
             format_string_chars.as_slice(),
-            &mut self.format_string_idx,
+            &mut self.format_string_index,
             v,
         )?;
         result.push_str(&second_part);
@@ -128,11 +128,11 @@ impl PrintState {
 
 fn print_non_formatting_chars(
     format_string_chars: &[char],
-    idx: &mut usize,
+    index: &mut usize,
 ) -> Result<String, RuntimeError> {
     // copy from format_string until we hit a formatting character
     let mut buf: String = String::new();
-    let starting_index = *idx;
+    let starting_index = *index;
     let mut i = starting_index;
     while !is_formatting_char(format_string_chars[i]) {
         buf.push(format_string_chars[i]);
@@ -142,7 +142,7 @@ fn print_non_formatting_chars(
             return Err(RuntimeError::IllegalFunctionCall);
         }
     }
-    *idx = i;
+    *index = i;
     Ok(buf)
 }
 
@@ -152,32 +152,32 @@ fn is_formatting_char(ch: char) -> bool {
 
 fn print_remaining_non_formatting_chars(
     format_string_chars: &[char],
-    idx: &mut usize,
+    index: &mut usize,
 ) -> Result<String, RuntimeError> {
     // copy from format_string until we hit a formatting character
     let mut buf: String = String::new();
-    let starting_index = *idx;
+    let starting_index = *index;
     let mut i = starting_index;
     while i < format_string_chars.len() && !is_formatting_char(format_string_chars[i]) {
         buf.push(format_string_chars[i]);
         i += 1;
     }
-    *idx = i;
+    *index = i;
     Ok(buf)
 }
 
 fn print_formatting_chars(
     format_string_chars: &[char],
-    idx: &mut usize,
+    index: &mut usize,
     v: Variant,
 ) -> Result<String, RuntimeError> {
-    match format_string_chars[*idx] {
-        '#' => numeric_formatting::print_digit_formatting_chars(format_string_chars, idx, v),
-        '\\' => print_string_formatting_chars(format_string_chars, idx, v),
-        '!' => print_first_char_formatting_chars(format_string_chars, idx, v),
+    match format_string_chars[*index] {
+        '#' => numeric_formatting::print_digit_formatting_chars(format_string_chars, index, v),
+        '\\' => print_string_formatting_chars(format_string_chars, index, v),
+        '!' => print_first_char_formatting_chars(format_string_chars, index, v),
         _ => Err(RuntimeError::Other(format!(
             "Not a formatting character: {}",
-            format_string_chars[*idx]
+            format_string_chars[*index]
         ))),
     }
 }
@@ -190,17 +190,17 @@ mod numeric_formatting {
 
     pub fn print_digit_formatting_chars(
         format_string_chars: &[char],
-        idx: &mut usize,
+        index: &mut usize,
         v: Variant,
     ) -> Result<String, RuntimeError> {
-        debug_assert_eq!(format_string_chars[*idx], '#');
+        debug_assert_eq!(format_string_chars[*index], '#');
         // collect just the formatting chars e.g. ###,###.##
-        let number_format_chars: &[char] = format_string_chars[*idx..]
+        let number_format_chars: &[char] = format_string_chars[*index..]
             .split(|ch| *ch != '#' && *ch != ',' && *ch != '.')
             .next()
             .expect("Should find at least one formatting character");
         // increment the index
-        *idx += number_format_chars.len();
+        *index += number_format_chars.len();
         // split at decimal point
         let mut decimal_split = number_format_chars.split(|ch| *ch == '.');
         let integer_part = decimal_split.next().unwrap();
@@ -314,22 +314,22 @@ mod numeric_formatting {
 
 fn print_string_formatting_chars(
     format_string_chars: &[char],
-    idx: &mut usize,
+    index: &mut usize,
     v: Variant,
 ) -> Result<String, RuntimeError> {
-    debug_assert_eq!(format_string_chars[*idx], '\\');
-    *idx += 1;
+    debug_assert_eq!(format_string_chars[*index], '\\');
+    *index += 1;
     let mut counter: usize = 2;
-    while *idx < format_string_chars.len() && format_string_chars[*idx] != '\\' {
-        if format_string_chars[*idx] != ' ' {
+    while *index < format_string_chars.len() && format_string_chars[*index] != '\\' {
+        if format_string_chars[*index] != ' ' {
             // only spaces should be allowed within backslashes
             return Err(RuntimeError::IllegalFunctionCall);
         }
-        *idx += 1;
+        *index += 1;
         counter += 1;
     }
-    if *idx < format_string_chars.len() {
-        *idx += 1;
+    if *index < format_string_chars.len() {
+        *index += 1;
         if let Variant::VString(mut s) = v {
             fix_length(&mut s, counter);
             Ok(s)
@@ -344,14 +344,14 @@ fn print_string_formatting_chars(
 
 fn print_first_char_formatting_chars(
     format_string_chars: &[char],
-    idx: &mut usize,
+    index: &mut usize,
     v: Variant,
 ) -> Result<String, RuntimeError> {
-    debug_assert_eq!(format_string_chars[*idx], '!');
+    debug_assert_eq!(format_string_chars[*index], '!');
     if let Variant::VString(s) = v {
         let ch = s.chars().next().ok_or(RuntimeError::IllegalFunctionCall)?;
         let result = String::from(ch);
-        *idx += 1;
+        *index += 1;
         Ok(result)
     } else {
         Err(RuntimeError::TypeMismatch)

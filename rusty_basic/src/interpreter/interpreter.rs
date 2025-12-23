@@ -413,8 +413,8 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                 self.context.pop();
                 self.stacktrace.remove(0);
             }
-            Instruction::EnqueueToReturnStack(idx) => {
-                subprogram::enqueue_to_return_stack(self, idx);
+            Instruction::EnqueueToReturnStack(index) => {
+                subprogram::enqueue_to_return_stack(self, *index);
             }
             Instruction::DequeueFromReturnStack => {
                 subprogram::dequeue_from_return_stack(self);

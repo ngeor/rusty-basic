@@ -50,8 +50,8 @@ impl InstructionGenerator {
             .clone();
         self.generate_push_named_args_instructions(&function_parameters, &args, pos);
         self.push_stack(subprogram_name.clone(), pos);
-        let idx = self.instructions.len();
-        self.push(Instruction::PushRet(idx + 2), pos);
+        let index = self.instructions.len();
+        self.push(Instruction::PushRet(index + 2), pos);
         self.jump_to_subprogram(&subprogram_name, pos);
         // TODO find different way for by ref args
         // stash by-ref variables
@@ -77,8 +77,8 @@ impl InstructionGenerator {
             .clone();
         self.generate_push_named_args_instructions(&sub_impl_parameters, &args, pos);
         self.push_stack(subprogram_name.clone(), pos);
-        let idx = self.instructions.len();
-        self.push(Instruction::PushRet(idx + 2), pos); // points to "generate_stash_by_ref_args"
+        let index = self.instructions.len();
+        self.push(Instruction::PushRet(index + 2), pos); // points to "generate_stash_by_ref_args"
         self.jump_to_subprogram(&subprogram_name, pos);
         self.generate_stash_by_ref_args(&args);
         self.push(Instruction::PopStack, pos);
@@ -115,9 +115,9 @@ impl InstructionGenerator {
     }
 
     fn generate_stash_by_ref_args(&mut self, args: &Expressions) {
-        for (idx, Positioned { element: arg, pos }) in args.iter().enumerate() {
+        for (index, Positioned { element: arg, pos }) in args.iter().enumerate() {
             if arg.is_by_ref() {
-                self.push(Instruction::EnqueueToReturnStack(idx), *pos);
+                self.push(Instruction::EnqueueToReturnStack(index), *pos);
             }
         }
     }

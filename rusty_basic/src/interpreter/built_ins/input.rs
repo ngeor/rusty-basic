@@ -9,27 +9,27 @@ use std::convert::TryFrom;
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let mut file_handle: FileHandle = FileHandle::default();
     let mut has_file_handle = false;
-    for idx in 0..interpreter.context().variables().len() {
-        let v: &Variant = &interpreter.context()[idx];
+    for index in 0..interpreter.context().variables().len() {
+        let v: &Variant = &interpreter.context()[index];
         match v {
             Variant::VInteger(f) => {
-                if idx == 0 {
+                if index == 0 {
                     has_file_handle = *f == 1;
-                } else if idx == 1 {
+                } else if index == 1 {
                     if has_file_handle {
                         file_handle = FileHandle::try_from(*f)
                             .map_err(|_| RuntimeError::BadFileNameOrNumber)?;
                     } else {
                         // input integer variable
-                        do_input_one_var(interpreter, idx, file_handle)?;
+                        do_input_one_var(interpreter, index, file_handle)?;
                     }
                 } else {
                     // input integer variable
-                    do_input_one_var(interpreter, idx, file_handle)?;
+                    do_input_one_var(interpreter, index, file_handle)?;
                 }
             }
             _ => {
-                do_input_one_var(interpreter, idx, file_handle)?;
+                do_input_one_var(interpreter, index, file_handle)?;
             }
         }
     }
@@ -38,18 +38,18 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError>
 
 fn do_input_one_var<S: InterpreterTrait>(
     interpreter: &mut S,
-    idx: usize,
+    index: usize,
     file_handle: FileHandle,
 ) -> Result<(), RuntimeError> {
     let raw_input: String = raw_input(interpreter, file_handle)?;
-    let q: TypeQualifier = qualifier(interpreter, idx)?;
+    let q: TypeQualifier = qualifier(interpreter, index)?;
     let new_value: Variant = match q {
         TypeQualifier::BangSingle => Variant::from(parse_single_input(raw_input)?),
         TypeQualifier::DollarString => Variant::from(raw_input),
         TypeQualifier::PercentInteger => Variant::from(parse_int_input(raw_input)?),
         _ => todo!("INPUT type {} not supported yet", q),
     };
-    interpreter.context_mut()[idx] = new_value;
+    interpreter.context_mut()[index] = new_value;
     Ok(())
 }
 
@@ -69,9 +69,9 @@ fn raw_input<S: InterpreterTrait>(
 
 fn qualifier<S: InterpreterTrait>(
     interpreter: &S,
-    idx: usize,
+    index: usize,
 ) -> Result<TypeQualifier, RuntimeError> {
-    qualifier_of_variant(&interpreter.context()[idx]).map_err(RuntimeError::from)
+    qualifier_of_variant(&interpreter.context()[index]).map_err(RuntimeError::from)
 }
 
 fn parse_single_input(s: String) -> Result<f32, RuntimeError> {

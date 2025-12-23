@@ -1,10 +1,8 @@
 use crate::instruction_generator::Path;
 use crate::interpreter::arguments::{ArgumentInfo, Arguments};
 use crate::interpreter::byte_size::QByteSize;
-use crate::interpreter::context::{PeekByte, PokeByte};
 use crate::interpreter::handlers::allocation::allocate_built_in;
 use crate::interpreter::indexed_map::IndexedMap;
-use crate::RuntimeError;
 use rusty_parser::{BareName, DimType, DimVar, Name, ParamType, Parameter, TypeQualifier};
 use rusty_variant::{Variant, V_FALSE};
 
@@ -156,12 +154,12 @@ impl Variables {
         self.map.get(name).map(|r| &r.value)
     }
 
-    pub fn get(&self, idx: usize) -> Option<&Variant> {
-        self.map.get_by_index(idx).map(|r| &r.value)
+    pub fn get(&self, index: usize) -> Option<&Variant> {
+        self.map.get_by_index(index).map(|r| &r.value)
     }
 
-    pub fn get_mut(&mut self, idx: usize) -> Option<&mut Variant> {
-        self.map.get_by_index_mut(idx).map(|r| &mut r.value)
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Variant> {
+        self.map.get_by_index_mut(index).map(|r| &mut r.value)
     }
 
     pub fn apply_arguments(&mut self, arguments: Arguments) {
@@ -200,8 +198,10 @@ impl Variables {
         }
     }
 
-    pub fn get_arg_path(&self, idx: usize) -> Option<&Path> {
-        self.map.get_by_index(idx).and_then(|r| r.arg_path.as_ref())
+    pub fn get_arg_path(&self, index: usize) -> Option<&Path> {
+        self.map
+            .get_by_index(index)
+            .and_then(|r| r.arg_path.as_ref())
     }
 
     pub fn calculate_var_ptr(&self, name: &Name) -> usize {

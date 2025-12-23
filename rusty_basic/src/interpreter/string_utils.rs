@@ -2,8 +2,8 @@
 /// or pads it with spaces if it is not long enough.
 pub fn fix_length(s: &mut String, len: usize) {
     // truncate string that contains null
-    if let Some(idx) = s.find('\0') {
-        while s.len() > idx {
+    if let Some(index) = s.find('\0') {
+        while s.len() > index {
             s.pop();
         }
     }

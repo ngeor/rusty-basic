@@ -3,19 +3,19 @@ use rusty_variant::Variant;
 
 #[derive(Default)]
 pub struct DataSegment {
-    v: Vec<Variant>,
-    idx: usize,
+    values: Vec<Variant>,
+    index: usize,
 }
 
 impl DataSegment {
-    pub fn push(&mut self, v: Variant) {
-        self.v.push(v);
+    pub fn push(&mut self, value: Variant) {
+        self.values.push(value);
     }
 
     pub fn pop(&mut self) -> Result<Variant, RuntimeError> {
-        match self.v.get(self.idx) {
+        match self.values.get(self.index) {
             Some(v) => {
-                self.idx += 1;
+                self.index += 1;
                 Ok(v.clone())
             }
             _ => Err(RuntimeError::OutOfData),

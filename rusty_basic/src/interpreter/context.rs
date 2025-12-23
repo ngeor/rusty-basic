@@ -350,15 +350,15 @@ impl Context {
                 }
             }
         } else {
-            let mut idx = 1;
+            let mut index = 1;
             for block in self.memory_blocks.iter() {
                 for var in block.variables.iter() {
                     if let Variant::VArray(v_arr) = var {
-                        if idx == seg - VAR_SEG_BASE {
+                        if index == seg - VAR_SEG_BASE {
                             // found the array
                             return v_arr.peek_byte(address);
                         } else {
-                            idx += 1;
+                            index += 1;
                         }
                     }
                 }
@@ -385,15 +385,15 @@ impl Context {
                 }
             }
         } else {
-            let mut idx = 1;
+            let mut index = 1;
             for block in self.memory_blocks.iter_mut() {
                 for var in block.variables.iter_mut() {
                     if let Variant::VArray(v_arr) = var {
-                        if idx == seg - VAR_SEG_BASE {
+                        if index == seg - VAR_SEG_BASE {
                             // found the array
                             return v_arr.poke_byte(address, byte_value);
                         } else {
-                            idx += 1;
+                            index += 1;
                         }
                     }
                 }

@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::slice::{Iter, IterMut};
 
 /// A key-value map that can also access values by their insertion order.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct IndexedMap<K, V>
 where
     K: Eq + Hash,
@@ -29,27 +29,25 @@ where
                 self.values[*existing_index] = value;
             }
             _ => {
-                let idx = self.values.len();
+                let index = self.values.len();
                 self.values.push(value);
-                self.keys_to_indices.insert(key, idx);
+                self.keys_to_indices.insert(key, index);
             }
         }
     }
 
     pub fn get(&self, key: &K) -> Option<&V> {
-        self.get_index_of_key(key).and_then(|x| self.values.get(x))
+        self.keys_to_indices
+            .get(key)
+            .and_then(|index| self.values.get(*index))
     }
 
-    fn get_index_of_key(&self, key: &K) -> Option<usize> {
-        self.keys_to_indices.get(key).copied()
+    pub fn get_by_index(&self, index: usize) -> Option<&V> {
+        self.values.get(index)
     }
 
-    pub fn get_by_index(&self, idx: usize) -> Option<&V> {
-        self.values.get(idx)
-    }
-
-    pub fn get_by_index_mut(&mut self, idx: usize) -> Option<&mut V> {
-        self.values.get_mut(idx)
+    pub fn get_by_index_mut(&mut self, index: usize) -> Option<&mut V> {
+        self.values.get_mut(index)
     }
 
     pub fn get_or_create<F>(&mut self, key: K, creator: F) -> &mut V
@@ -94,7 +92,7 @@ where
     K: Eq + Hash,
 {
     owner: &'a IndexedMap<K, V>,
-    idx: usize,
+    index: usize,
 }
 
 impl<'a, K, V> KeysIterator<'a, K, V>
@@ -102,7 +100,7 @@ where
     K: Eq + Hash,
 {
     pub fn new(owner: &'a IndexedMap<K, V>) -> Self {
-        Self { owner, idx: 0 }
+        Self { owner, index: 0 }
     }
 }
 
@@ -113,14 +111,14 @@ where
     type Item = &'a K;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.idx < self.owner.len() {
+        if self.index < self.owner.len() {
             let result = self
                 .owner
                 .keys_to_indices
                 .iter()
-                .find(|(_, index)| **index == self.idx)
+                .find(|(_, index)| **index == self.index)
                 .map(|(key, _)| key);
-            self.idx += 1;
+            self.index += 1;
             result
         } else {
             None

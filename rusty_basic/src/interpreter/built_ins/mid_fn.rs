@@ -18,17 +18,17 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError>
 }
 
 fn do_mid(s: &str, start: usize, opt_length: Option<usize>) -> Result<String, RuntimeError> {
-    let start_idx: usize = start - 1;
+    let start_index: usize = start - 1;
     match opt_length {
         Some(length) => {
-            let end: usize = if start_idx + length > s.len() {
+            let end: usize = if start_index + length > s.len() {
                 s.len()
             } else {
-                start_idx + length
+                start_index + length
             };
-            Ok(s.get(start_idx..end).unwrap_or_default().to_string())
+            Ok(s.get(start_index..end).unwrap_or_default().to_string())
         }
-        None => Ok(s.get(start_idx..).unwrap_or_default().to_string()),
+        None => Ok(s.get(start_index..).unwrap_or_default().to_string()),
     }
 }
 

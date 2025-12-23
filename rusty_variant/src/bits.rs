@@ -52,8 +52,8 @@ impl BitVec {
 
     pub fn convert_to_int_or_long_expr(mut self) -> Result<BitVecIntOrLong, OverflowError> {
         match Self::find_first_non_zero_bit(&self.v) {
-            Some(idx) => {
-                let bit_count = self.len() - idx;
+            Some(index) => {
+                let bit_count = self.len() - index;
                 if bit_count == 0 {
                     // optimization
                     Ok(BitVecIntOrLong::Int(0))
@@ -62,7 +62,7 @@ impl BitVec {
                         // inject one bit for the sign bit
                         self.v.insert(0, false);
                     }
-                    let i: i32 = bits_to_i32(&self.v[idx..]);
+                    let i: i32 = bits_to_i32(&self.v[index..]);
                     Ok(BitVecIntOrLong::Int(i))
                 } else if bit_count <= LONG_BITS {
                     // it fits in a long
@@ -70,7 +70,7 @@ impl BitVec {
                         // inject one bit for the sign bit
                         self.v.insert(0, false);
                     }
-                    let l: i64 = bits_to_i64(&self.v[idx..]);
+                    let l: i64 = bits_to_i64(&self.v[index..]);
                     Ok(BitVecIntOrLong::Long(l))
                 } else {
                     Err(OverflowError)
@@ -103,19 +103,19 @@ impl From<i32> for BitVec {
     fn from(a: i32) -> Self {
         let mut result: [bool; INT_BITS] = [false; INT_BITS];
         let mut x: i32 = a;
-        let mut idx = INT_BITS;
+        let mut index = INT_BITS;
         if x > 0 {
-            while x > 0 && idx > 0 {
-                idx -= 1;
-                result[idx] = (x & 1) == 1;
+            while x > 0 && index > 0 {
+                index -= 1;
+                result[index] = (x & 1) == 1;
                 x >>= 1;
             }
         } else if x < 0 {
             x = -x - 1;
             result = [true; INT_BITS];
-            while x > 0 && idx > 0 {
-                idx -= 1;
-                result[idx] = (x & 1) == 0;
+            while x > 0 && index > 0 {
+                index -= 1;
+                result[index] = (x & 1) == 0;
                 x >>= 1;
             }
         }
@@ -130,13 +130,13 @@ macro_rules! bits_to_integer_type {
             debug_assert!(!bits.is_empty());
             let mut x: $integer_type = 0;
             let sign = bits[0];
-            let mut idx = 1;
-            while idx < bits.len() {
+            let mut index = 1;
+            while index < bits.len() {
                 x <<= 1;
-                if bits[idx] != sign {
+                if bits[index] != sign {
                     x |= 1;
                 }
-                idx += 1;
+                index += 1;
             }
             if sign {
                 -x - 1

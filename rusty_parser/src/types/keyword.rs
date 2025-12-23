@@ -41,10 +41,10 @@ macro_rules! keyword_enum {
 
         impl AsRef<str> for $name {
             fn as_ref(&self) -> &str {
-                let idx = $all_names
+                let index = $all_names
                     .binary_search(self)
                     .expect("Should never happen");
-                $all_names_as_str[idx]
+                $all_names_as_str[index]
             }
         }
 
@@ -53,7 +53,7 @@ macro_rules! keyword_enum {
 
             fn try_from(s: &CaseInsensitiveStr) -> Result<$name, usize> {
                 $all_names_as_case_insensitive_str.binary_search(&s)
-                    .map(|idx| $all_names[idx])
+                    .map(|index| $all_names[index])
             }
         }
 

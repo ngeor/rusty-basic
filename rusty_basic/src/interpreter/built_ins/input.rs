@@ -98,9 +98,7 @@ mod tests {
     use crate::assert_has_variable;
     use crate::assert_interpreter_err;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
-    use crate::interpreter::test_utils::{
-        interpret, interpret_with_raw_input, MockInterpreterTrait,
-    };
+    use crate::interpreter::test_utils::{interpret, interpret_with_raw_input};
     use rusty_variant::Variant;
 
     fn assert_input<T>(

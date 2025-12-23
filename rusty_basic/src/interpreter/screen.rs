@@ -28,8 +28,10 @@ pub trait Screen {
     fn reset_view_print(&mut self);
 }
 
+#[cfg(test)]
 pub struct HeadlessScreen {}
 
+#[cfg(test)]
 impl Screen for HeadlessScreen {
     fn cls(&self) -> Result<(), RuntimeError> {
         Ok(())

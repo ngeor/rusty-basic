@@ -9,8 +9,7 @@ use crate::interpreter::Stdlib;
 use crate::RuntimeErrorPos;
 use rusty_linter;
 use rusty_linter::{lint, HasUserDefinedTypes};
-use rusty_parser::{parse_main_file, Name};
-use rusty_variant::Variant;
+use rusty_parser::parse_main_file;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -20,11 +19,6 @@ type MockStdout = WritePrinter<Vec<u8>>;
 pub trait MockInterpreterTrait:
     InterpreterTrait<TStdOut = MockStdout, TStdIn = ReadInputSource<MockStdin>, TLpt1 = MockStdout>
 {
-    // TODO #[deprecated]
-    fn get_variable_str(&self, name: &str) -> Variant {
-        let name = Name::from(name);
-        self.context().get_by_name(&name)
-    }
 }
 
 impl<S> MockInterpreterTrait for S where
@@ -241,10 +235,9 @@ impl Stdlib for MockStdlib {
 #[macro_export]
 macro_rules! assert_has_variable {
     ($int:expr, $name:expr, $expected_value:expr) => {
-        assert_eq!(
-            $int.get_variable_str($name),
-            rusty_variant::Variant::from($expected_value)
-        );
+        let name = rusty_parser::Name::from($name);
+        let value = $int.context().get_by_name(&name);
+        assert_eq!(value, rusty_variant::Variant::from($expected_value));
     };
 }
 

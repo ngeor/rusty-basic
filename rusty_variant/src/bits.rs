@@ -14,7 +14,7 @@ pub const MAX_INTEGER: i32 = 32767;
 pub const MIN_LONG: i64 = -2147483648;
 pub const MAX_LONG: i64 = 2147483647;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub struct BitVec {
     // msb -> lsb
     v: Vec<bool>,
@@ -24,7 +24,7 @@ pub struct OverflowError;
 
 impl BitVec {
     pub fn new() -> Self {
-        Self { v: vec![] }
+        Self::default()
     }
 
     pub fn len(&self) -> usize {
@@ -438,8 +438,8 @@ pub fn bytes_to_f64(bytes: &[u8]) -> f64 {
 
     // 1.significant * 2 ^ exponent - bias
     let mut result: f64 = 1.0;
-    for i in 0..significant_bits.len() {
-        if significant_bits[i] {
+    for (i, bit) in significant_bits.iter().enumerate() {
+        if *bit {
             result += 2.0_f64.powi(-(i as i32) - 1);
         }
     }

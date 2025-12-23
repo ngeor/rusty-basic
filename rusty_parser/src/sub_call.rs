@@ -30,10 +30,7 @@ impl Parser<RcStringView> for SubCallOrAssignment {
                 },
                 opt_equal_sign,
             ),
-        ) = match Self::name_and_opt_eq_sign().parse(tokenizer) {
-            Ok(x) => x,
-            Err(err) => return Err(err),
-        };
+        ) = Self::name_and_opt_eq_sign().parse(tokenizer)?;
 
         match opt_equal_sign {
             Some(_) => expression::expression_pos_p()

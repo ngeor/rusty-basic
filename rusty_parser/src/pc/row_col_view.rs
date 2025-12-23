@@ -1,6 +1,6 @@
 use rusty_common::Position;
 
-pub fn create_row_col_view(chars: &Vec<char>) -> Vec<Position> {
+pub fn create_row_col_view(chars: &[char]) -> Vec<Position> {
     let mut data = Vec::new();
     let mut row = 1;
     let mut col = 1;

@@ -532,10 +532,7 @@ mod binary_expression {
             &self,
             tokenizer: RcStringView,
         ) -> ParseResult<RcStringView, ExpressionPos, ParseError> {
-            let (tokenizer, first) = match Self::non_bin_expr().parse(tokenizer) {
-                Ok(x) => x,
-                Err(err) => return Err(err),
-            };
+            let (tokenizer, first) = Self::non_bin_expr().parse(tokenizer)?;
 
             let is_paren = first.is_parenthesis();
             match Self::operator(is_paren).parse(tokenizer) {

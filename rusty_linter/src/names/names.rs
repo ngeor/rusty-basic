@@ -1,5 +1,6 @@
 use crate::names::compacts_info::CompactsInfo;
 use crate::names::name_info::NameInfo;
+use crate::names::names_inner::NamesInner;
 use crate::NameContext;
 use crate::{const_value_resolver::ConstLookup, names::ImplicitVars};
 use rusty_common::CaseInsensitiveString;
@@ -8,7 +9,6 @@ use rusty_parser::specific::{
     VarTypeIsExtended, VariableInfo,
 };
 use rusty_variant::Variant;
-use std::collections::HashMap;
 
 /*
 
@@ -31,7 +31,7 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 */
 
 pub struct Names {
-    map: HashMap<BareName, NameInfo>,
+    names_inner: NamesInner,
     current_function_name: Option<BareName>,
     parent: Option<Box<Self>>,
     // TODO implicit_vars has nothing to do with Names, it's only here because of the convenience of pushing/popping a Names context
@@ -41,7 +41,7 @@ pub struct Names {
 impl Names {
     pub fn new(parent: Option<Box<Self>>, current_function_name: Option<BareName>) -> Self {
         Self {
-            map: HashMap::new(),
+            names_inner: NamesInner::default(),
             current_function_name,
             parent,
             implicit_vars: ImplicitVars::new(),
@@ -64,7 +64,7 @@ impl Names {
     /// or a compact variable. In the case of compact variables, multiple may
     /// exist with the same bare name, e.g. `A$` and `A%`.
     pub fn contains(&self, bare_name: &BareName) -> bool {
-        self.map.contains_key(bare_name)
+        self.names_inner.contains_key(bare_name)
     }
 
     pub fn get_compact_var_recursively(
@@ -88,7 +88,7 @@ impl Names {
         bare_name: &BareName,
         qualifier: TypeQualifier,
     ) -> Option<&VariableInfo> {
-        match self.map.get(bare_name) {
+        match self.names_inner.get(bare_name) {
             Some(NameInfo::Compacts(qualifiers)) => qualifiers.get(&qualifier),
             _ => None,
         }
@@ -121,7 +121,7 @@ impl Names {
     }
 
     fn get_local_extended_var(&self, bare_name: &BareName) -> Option<&VariableInfo> {
-        match self.map.get(bare_name) {
+        match self.names_inner.get(bare_name) {
             Some(NameInfo::Extended(variable_info)) => Some(variable_info),
             _ => None,
         }
@@ -162,7 +162,7 @@ impl Names {
     }
 
     pub fn get_const_value_no_recursion(&self, bare_name: &BareName) -> Option<&Variant> {
-        match self.map.get(bare_name) {
+        match self.names_inner.get(bare_name) {
             Some(NameInfo::Constant(v)) => Some(v),
             _ => None,
         }
@@ -211,8 +211,8 @@ impl Names {
     }
 
     pub fn insert_const(&mut self, bare_name: BareName, v: Variant) {
-        debug_assert!(!self.map.contains_key(&bare_name));
-        self.map.insert(bare_name, NameInfo::Constant(v));
+        debug_assert!(!self.names_inner.contains_key(&bare_name));
+        self.names_inner.insert(bare_name, NameInfo::Constant(v));
     }
 
     fn insert_compact(&mut self, bare_name: BareName, variable_info: VariableInfo) {
@@ -220,7 +220,7 @@ impl Names {
             .expression_type
             .opt_qualifier()
             .expect("Should be resolved");
-        match self.map.get_mut(&bare_name) {
+        match self.names_inner.get_mut(&bare_name) {
             Some(NameInfo::Compacts(compacts)) => {
                 Self::insert_in_compacts(compacts, q, variable_info);
             }
@@ -233,7 +233,7 @@ impl Names {
             None => {
                 let mut map = CompactsInfo::default();
                 Self::insert_in_compacts(&mut map, q, variable_info);
-                self.map.insert(bare_name, NameInfo::Compacts(map));
+                self.names_inner.insert(bare_name, NameInfo::Compacts(map));
             }
         }
     }
@@ -251,7 +251,7 @@ impl Names {
     }
 
     fn insert_extended(&mut self, bare_name: BareName, variable_context: VariableInfo) {
-        debug_assert!(match self.map.get(&bare_name) {
+        debug_assert!(match self.names_inner.get(&bare_name) {
             Some(NameInfo::Extended(v)) => {
                 v.redim_info.is_some()
             }
@@ -260,7 +260,7 @@ impl Names {
                 true
             }
         });
-        self.map
+        self.names_inner
             .insert(bare_name, NameInfo::Extended(variable_context));
     }
 
@@ -304,7 +304,7 @@ impl Names {
         only_shared: bool,
     ) -> Vec<(BuiltInStyle, &VariableInfo)> {
         let mut result = Vec::<(BuiltInStyle, &VariableInfo)>::new();
-        if let Some(name_info) = self.map.get(bare_name) {
+        if let Some(name_info) = self.names_inner.get(bare_name) {
             match name_info {
                 NameInfo::Compacts(map) => {
                     result.extend(

@@ -187,20 +187,20 @@ impl Expression {
         }
     }
 
-    // TODO #[cfg(test)]
+    #[cfg(test)]
     pub fn var_unresolved(s: &str) -> Self {
         let name: Name = s.into();
         Self::Variable(name, VariableInfo::unresolved())
     }
 
-    // TODO #[cfg(test)]
+    // TODO #[cfg(test)] but used by rusty_linter too
     pub fn var_resolved(s: &str) -> Self {
         let name: Name = s.into();
         let expression_type = name.expression_type();
         Self::Variable(name, VariableInfo::new_local(expression_type))
     }
 
-    // TODO #[cfg(test)]
+    // TODO #[cfg(test)] but used by rusty_linter too
     pub fn var_user_defined(name: &str, type_name: &str) -> Self {
         Self::Variable(
             name.into(),

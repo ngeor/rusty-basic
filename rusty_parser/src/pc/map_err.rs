@@ -12,12 +12,10 @@ where
         WithExpectedMessage::new(self, f)
     }
 
-    #[deprecated]
     fn or_fail(self, err: ParseError) -> impl Parser<I, Output = Self::Output> {
         OrFailParser::new(self, err)
     }
 
-    #[deprecated]
     fn no_incomplete(self) -> impl Parser<I, Output = Self::Output> {
         NoIncompleteParser::new(self)
     }

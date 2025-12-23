@@ -1,4 +1,5 @@
 use crate::NameContext;
+use crate::names::name_info::NameInfo;
 use crate::{const_value_resolver::ConstLookup, names::ImplicitVars};
 use rusty_common::CaseInsensitiveString;
 use rusty_parser::specific::{
@@ -346,10 +347,4 @@ impl ConstLookup for Names {
             },
         }
     }
-}
-
-enum NameInfo {
-    Constant(Variant),
-    Compacts(HashMap<TypeQualifier, VariableInfo>),
-    Extended(VariableInfo),
 }

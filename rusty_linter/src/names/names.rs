@@ -1,6 +1,5 @@
-use crate::const_value_resolver::ConstLookup;
-use crate::converter::types::Implicits;
 use crate::NameContext;
+use crate::{const_value_resolver::ConstLookup, names::Implicits};
 use rusty_common::CaseInsensitiveString;
 use rusty_parser::specific::{
     BareName, BuiltInStyle, HasExpressionType, QualifiedNamePos, RedimInfo, TypeQualifier,

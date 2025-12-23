@@ -1,7 +1,7 @@
-use crate::converter::names::Names;
 use crate::converter::traits::Convertible;
-use crate::converter::types::Implicits;
 use crate::error::LintErrorPos;
+use crate::names::Implicits;
+use crate::names::Names;
 use crate::pre_linter::PreLinterResult;
 use crate::type_resolver::{IntoQualified, TypeResolver};
 use crate::type_resolver_impl::TypeResolverImpl;

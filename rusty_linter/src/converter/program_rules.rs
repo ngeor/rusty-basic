@@ -1,8 +1,8 @@
 use crate::converter::context::Context;
 use crate::converter::pos_context::PosContext;
 use crate::converter::traits::Convertible;
-use crate::converter::types::Implicits;
 use crate::error::LintErrorPos;
+use crate::names::Implicits;
 use rusty_common::{AtPos, HasPos, Positioned};
 use rusty_parser::specific::{
     DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement,

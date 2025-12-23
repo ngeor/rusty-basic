@@ -5,6 +5,7 @@ mod const_value_resolver;
 mod converter;
 mod error;
 mod linter;
+mod names;
 mod post_linter;
 mod pre_linter;
 mod qb_casting;

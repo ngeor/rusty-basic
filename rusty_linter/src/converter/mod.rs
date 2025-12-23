@@ -3,7 +3,6 @@
 mod context;
 mod dim_rules;
 mod expr_rules;
-mod names;
 mod pos_context;
 mod program_rules;
 mod statement;

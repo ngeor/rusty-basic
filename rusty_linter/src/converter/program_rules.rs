@@ -11,13 +11,14 @@ use rusty_parser::specific::{
 
 impl Convertible for Program {
     fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {
-        let mut result: Self = vec![];
+        // collect the global statements
+        let mut global_statements: Self = vec![];
         for Positioned { element, pos } in self {
-            let global_statements = element.convert_in(ctx, pos)?;
-            result.extend(global_statements.into_iter());
+            let expanded_statements_for_element = element.convert_in(ctx, pos)?;
+            global_statements.extend(expanded_statements_for_element.into_iter());
         }
 
-        // insert implicits at the top
+        // collect implicitly defined variables
         let mut implicits = Implicits::new();
         implicits.append(ctx.names.get_implicits());
         let mut implicit_statements: Self = implicits
@@ -27,7 +28,9 @@ impl Convertible for Program {
                     .at_pos(pos)
             })
             .collect();
-        implicit_statements.append(&mut result);
+
+        // insert them at the top of the program
+        implicit_statements.append(&mut global_statements);
         Ok(implicit_statements)
     }
 }

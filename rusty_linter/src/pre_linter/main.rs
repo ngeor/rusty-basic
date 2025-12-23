@@ -8,7 +8,7 @@ use crate::{LintPosResult, LintResult, ResolvedParamType};
 use rusty_common::*;
 use rusty_parser::specific::*;
 
-pub struct MainContext {
+struct MainContext {
     resolver: TypeResolverImpl,
     user_defined_types: UserDefinedTypes,
     functions: FunctionContext,

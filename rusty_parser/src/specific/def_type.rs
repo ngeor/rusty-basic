@@ -9,7 +9,7 @@ pub struct DefType {
 
 impl DefType {
     pub fn new(qualifier: TypeQualifier, ranges: Vec<LetterRange>) -> Self {
-        DefType { qualifier, ranges }
+        Self { qualifier, ranges }
     }
 
     pub fn ranges(&self) -> &Vec<LetterRange> {

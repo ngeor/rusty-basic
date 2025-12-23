@@ -28,7 +28,7 @@ impl From<&str> for StringView {
     fn from(value: &str) -> Self {
         let chars: Vec<char> = value.chars().collect();
         let row_col = create_row_col_view(&chars);
-        StringView { chars, row_col }
+        Self { chars, row_col }
     }
 }
 

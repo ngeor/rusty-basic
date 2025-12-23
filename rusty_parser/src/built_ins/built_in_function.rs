@@ -120,33 +120,33 @@ impl From<BuiltInFunction> for CaseInsensitiveString {
 // BuiltInFunction -> TypeQualifier
 
 impl From<&BuiltInFunction> for TypeQualifier {
-    fn from(x: &BuiltInFunction) -> TypeQualifier {
+    fn from(x: &BuiltInFunction) -> Self {
         match x {
-            BuiltInFunction::Chr => TypeQualifier::DollarString,
-            BuiltInFunction::Cvd => TypeQualifier::HashDouble,
-            BuiltInFunction::Environ => TypeQualifier::DollarString,
-            BuiltInFunction::Eof => TypeQualifier::PercentInteger,
-            BuiltInFunction::Err => TypeQualifier::PercentInteger,
-            BuiltInFunction::InKey => TypeQualifier::DollarString,
-            BuiltInFunction::InStr => TypeQualifier::PercentInteger,
-            BuiltInFunction::LBound => TypeQualifier::PercentInteger,
-            BuiltInFunction::LCase => TypeQualifier::DollarString,
-            BuiltInFunction::Left => TypeQualifier::DollarString,
-            BuiltInFunction::Len => TypeQualifier::PercentInteger,
-            BuiltInFunction::LTrim => TypeQualifier::DollarString,
-            BuiltInFunction::Mid => TypeQualifier::DollarString,
-            BuiltInFunction::Mkd => TypeQualifier::DollarString,
-            BuiltInFunction::Peek => TypeQualifier::PercentInteger,
-            BuiltInFunction::Right => TypeQualifier::DollarString,
-            BuiltInFunction::RTrim => TypeQualifier::DollarString,
-            BuiltInFunction::Space => TypeQualifier::DollarString,
-            BuiltInFunction::Str => TypeQualifier::DollarString,
-            BuiltInFunction::String => TypeQualifier::DollarString,
-            BuiltInFunction::UBound => TypeQualifier::PercentInteger,
-            BuiltInFunction::UCase => TypeQualifier::DollarString,
-            BuiltInFunction::Val => TypeQualifier::BangSingle,
-            BuiltInFunction::VarPtr => TypeQualifier::PercentInteger,
-            BuiltInFunction::VarSeg => TypeQualifier::PercentInteger,
+            BuiltInFunction::Chr => Self::DollarString,
+            BuiltInFunction::Cvd => Self::HashDouble,
+            BuiltInFunction::Environ => Self::DollarString,
+            BuiltInFunction::Eof => Self::PercentInteger,
+            BuiltInFunction::Err => Self::PercentInteger,
+            BuiltInFunction::InKey => Self::DollarString,
+            BuiltInFunction::InStr => Self::PercentInteger,
+            BuiltInFunction::LBound => Self::PercentInteger,
+            BuiltInFunction::LCase => Self::DollarString,
+            BuiltInFunction::Left => Self::DollarString,
+            BuiltInFunction::Len => Self::PercentInteger,
+            BuiltInFunction::LTrim => Self::DollarString,
+            BuiltInFunction::Mid => Self::DollarString,
+            BuiltInFunction::Mkd => Self::DollarString,
+            BuiltInFunction::Peek => Self::PercentInteger,
+            BuiltInFunction::Right => Self::DollarString,
+            BuiltInFunction::RTrim => Self::DollarString,
+            BuiltInFunction::Space => Self::DollarString,
+            BuiltInFunction::Str => Self::DollarString,
+            BuiltInFunction::String => Self::DollarString,
+            BuiltInFunction::UBound => Self::PercentInteger,
+            BuiltInFunction::UCase => Self::DollarString,
+            BuiltInFunction::Val => Self::BangSingle,
+            BuiltInFunction::VarPtr => Self::PercentInteger,
+            BuiltInFunction::VarSeg => Self::PercentInteger,
         }
     }
 }
@@ -163,7 +163,7 @@ impl From<BuiltInFunction> for QualifiedName {
 // CaseInsensitiveString -> BuiltInFunction
 
 impl BuiltInFunction {
-    pub fn try_parse<S>(s: &S) -> Option<BuiltInFunction>
+    pub fn try_parse<S>(s: &S) -> Option<Self>
     where
         S: Borrow<CaseInsensitiveStr>,
     {

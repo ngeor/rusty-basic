@@ -114,7 +114,7 @@ mod pos_expr_state {
 
 impl<'a> Convertible<ExprState<'a>> for ExpressionPos {
     fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, LintErrorPos> {
-        let Positioned { element: expr, pos } = self;
+        let Self { element: expr, pos } = self;
         expr.convert_in(ctx, pos)
             .map(|expr| expr.at_pos(pos))
             .patch_err_pos(&pos)
@@ -124,7 +124,7 @@ impl<'a> Convertible<ExprState<'a>> for ExpressionPos {
 impl<'a> Convertible<ExprState<'a>> for Box<ExpressionPos> {
     fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, LintErrorPos> {
         let unboxed = *self;
-        unboxed.convert(ctx).map(Box::new)
+        unboxed.convert(ctx).map(Self::new)
     }
 }
 
@@ -136,38 +136,34 @@ impl<'a, 'b> Convertible<PosExprState<'a, 'b>> for Expression {
     fn convert(self, ctx: &mut PosExprState<'a, 'b>) -> Result<Self, LintErrorPos> {
         match self {
             // literals
-            Expression::SingleLiteral(_)
-            | Expression::DoubleLiteral(_)
-            | Expression::StringLiteral(_)
-            | Expression::IntegerLiteral(_)
-            | Expression::LongLiteral(_) => Ok(self),
+            Self::SingleLiteral(_)
+            | Self::DoubleLiteral(_)
+            | Self::StringLiteral(_)
+            | Self::IntegerLiteral(_)
+            | Self::LongLiteral(_) => Ok(self),
             // parenthesis
-            Expression::Parenthesis(box_child) => {
-                box_child.convert(ctx).map(Expression::Parenthesis)
-            }
+            Self::Parenthesis(box_child) => box_child.convert(ctx).map(Expression::Parenthesis),
             // unary
-            Expression::UnaryExpression(unary_operator, box_child) => {
+            Self::UnaryExpression(unary_operator, box_child) => {
                 unary::convert(ctx, unary_operator, *box_child)
             }
             // binary
-            Expression::BinaryExpression(binary_operator, left, right, _expr_type) => {
+            Self::BinaryExpression(binary_operator, left, right, _expr_type) => {
                 binary::convert(ctx, binary_operator, *left, *right)
             }
             // variables
-            Expression::Variable(name, variable_info) => {
-                variable::convert(ctx, name, variable_info)
-            }
-            Expression::ArrayElement(_name, _indices, _variable_info) => {
+            Self::Variable(name, variable_info) => variable::convert(ctx, name, variable_info),
+            Self::ArrayElement(_name, _indices, _variable_info) => {
                 panic!(
                     "Parser is not supposed to produce any ArrayElement expressions, only FunctionCall"
                 )
             }
-            Expression::Property(box_left_side, property_name, _expr_type) => {
+            Self::Property(box_left_side, property_name, _expr_type) => {
                 property::convert(ctx, box_left_side, property_name)
             }
             // function call
-            Expression::FunctionCall(name, args) => function::convert(ctx, name, args),
-            Expression::BuiltInFunctionCall(built_in_function, args) => {
+            Self::FunctionCall(name, args) => function::convert(ctx, name, args),
+            Self::BuiltInFunctionCall(built_in_function, args) => {
                 built_in_function::convert(ctx, built_in_function, args)
             }
         }

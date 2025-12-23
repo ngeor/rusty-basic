@@ -188,7 +188,7 @@ pub type NameAsTokens = (TokenList, Option<Token>);
 impl From<NameAsTokens> for Name {
     fn from(name_as_tokens: NameAsTokens) -> Self {
         let (name_tokens, opt_q) = name_as_tokens;
-        Name::new(
+        Self::new(
             token_list_to_bare_name(name_tokens),
             opt_q.as_ref().map(token_to_type_qualifier),
         )

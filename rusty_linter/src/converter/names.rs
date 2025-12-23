@@ -32,7 +32,7 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 pub struct Names {
     map: HashMap<BareName, NameInfo>,
     current_function_name: Option<BareName>,
-    parent: Option<Box<Names>>,
+    parent: Option<Box<Self>>,
     // TODO implicits has nothing to do with Names, it's only here because of the convenience of pushing/popping a Names context
     implicits: Implicits,
 }

@@ -48,51 +48,51 @@ pub enum Expression {
     /// - A.B (A left, B right)
     /// - A(1).B ( A(1) left, B right)
     /// - A.B.C (A.B left, C right)
-    Property(Box<Expression>, Name, ExpressionType),
+    Property(Box<Self>, Name, ExpressionType),
 }
 
 pub type ExpressionPos = Positioned<Expression>;
 pub type Expressions = Vec<ExpressionPos>;
 
 impl From<f32> for Expression {
-    fn from(f: f32) -> Expression {
-        Expression::SingleLiteral(f)
+    fn from(f: f32) -> Self {
+        Self::SingleLiteral(f)
     }
 }
 
 impl From<f64> for Expression {
-    fn from(f: f64) -> Expression {
-        Expression::DoubleLiteral(f)
+    fn from(f: f64) -> Self {
+        Self::DoubleLiteral(f)
     }
 }
 
 impl From<String> for Expression {
-    fn from(f: String) -> Expression {
-        Expression::StringLiteral(f)
+    fn from(f: String) -> Self {
+        Self::StringLiteral(f)
     }
 }
 
 impl From<&str> for Expression {
-    fn from(f: &str) -> Expression {
+    fn from(f: &str) -> Self {
         f.to_string().into()
     }
 }
 
 impl From<i32> for Expression {
-    fn from(f: i32) -> Expression {
-        Expression::IntegerLiteral(f)
+    fn from(f: i32) -> Self {
+        Self::IntegerLiteral(f)
     }
 }
 
 impl From<i64> for Expression {
-    fn from(f: i64) -> Expression {
-        Expression::LongLiteral(f)
+    fn from(f: i64) -> Self {
+        Self::LongLiteral(f)
     }
 }
 
 impl From<FileHandle> for Expression {
     fn from(file_handle: FileHandle) -> Self {
-        Expression::IntegerLiteral(file_handle.into())
+        Self::IntegerLiteral(file_handle.into())
     }
 }
 
@@ -190,19 +190,19 @@ impl Expression {
     // TODO #[cfg(test)]
     pub fn var_unresolved(s: &str) -> Self {
         let name: Name = s.into();
-        Expression::Variable(name, VariableInfo::unresolved())
+        Self::Variable(name, VariableInfo::unresolved())
     }
 
     // TODO #[cfg(test)]
     pub fn var_resolved(s: &str) -> Self {
         let name: Name = s.into();
         let expression_type = name.expression_type();
-        Expression::Variable(name, VariableInfo::new_local(expression_type))
+        Self::Variable(name, VariableInfo::new_local(expression_type))
     }
 
     // TODO #[cfg(test)]
     pub fn var_user_defined(name: &str, type_name: &str) -> Self {
-        Expression::Variable(
+        Self::Variable(
             name.into(),
             VariableInfo::new_local(ExpressionType::UserDefined(type_name.into())),
         )
@@ -296,7 +296,7 @@ impl ExpressionPosTrait for ExpressionPos {
     /// `NOT A AND B` would be parsed as `NOT (A AND B)`, needs to flip into `(NOT A) AND B`
     fn apply_unary_priority_order(self, op: UnaryOperator, op_pos: Position) -> Self {
         if self.should_flip_unary(op) {
-            let Positioned { element, pos } = self;
+            let Self { element, pos } = self;
             match element {
                 Expression::BinaryExpression(r_op, r_left, r_right, _) => {
                     // apply the unary operator to the left of the binary expr
@@ -382,17 +382,15 @@ impl ExpressionTrait for Expression {
 
     fn should_flip_unary(&self, op: UnaryOperator) -> bool {
         match self {
-            Expression::BinaryExpression(r_op, _, _, _) => {
-                op == UnaryOperator::Minus || r_op.is_binary()
-            }
+            Self::BinaryExpression(r_op, _, _, _) => op == UnaryOperator::Minus || r_op.is_binary(),
             _ => false,
         }
     }
 
     fn should_flip_binary(&self) -> bool {
         match self {
-            Expression::BinaryExpression(l_op, _, l_right, _) => match &l_right.element {
-                Expression::BinaryExpression(r_op, _, _, _) => {
+            Self::BinaryExpression(l_op, _, l_right, _) => match &l_right.element {
+                Self::BinaryExpression(r_op, _, _, _) => {
                     l_op.is_arithmetic() && (r_op.is_relational() || r_op.is_binary())
                         || l_op.is_relational() && r_op.is_binary()
                         || *l_op == Operator::And && *r_op == Operator::Or
@@ -409,9 +407,7 @@ impl ExpressionTrait for Expression {
     fn is_by_ref(&self) -> bool {
         matches!(
             self,
-            Expression::Variable(_, _)
-                | Expression::ArrayElement(_, _, _)
-                | Expression::Property(_, _, _)
+            Self::Variable(_, _) | Self::ArrayElement(_, _, _) | Self::Property(_, _, _)
         )
     }
 }

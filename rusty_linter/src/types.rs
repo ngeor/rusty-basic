@@ -27,5 +27,5 @@ pub enum NameContext {
 pub enum ResolvedParamType {
     BuiltIn(TypeQualifier, BuiltInStyle),
     UserDefined(BareName),
-    Array(Box<ResolvedParamType>),
+    Array(Box<Self>),
 }

@@ -17,7 +17,7 @@ pub enum ParamType {
     Bare,
     BuiltIn(TypeQualifier, BuiltInStyle),
     UserDefined(BareNamePos),
-    Array(Box<ParamType>),
+    Array(Box<Self>),
 }
 
 impl VarTypeNewBuiltInCompact for ParamType {

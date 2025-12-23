@@ -62,7 +62,7 @@ impl VariantCasts for Variant {
     /// Use it only at runtime if the linter has guaranteed the type.
     fn to_str_unchecked(&self) -> &str {
         match self {
-            Variant::VString(s) => s,
+            Self::VString(s) => s,
             _ => panic!("Variant was not a string {:?}", self),
         }
     }

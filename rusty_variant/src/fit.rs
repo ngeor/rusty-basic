@@ -17,7 +17,7 @@ impl IsInRange for i32 {
 
 impl IsInRange for i64 {
     fn is_in_integer_range(self) -> bool {
-        self >= (MIN_INTEGER as i64) && self <= (MAX_INTEGER as i64)
+        self >= (MIN_INTEGER as Self) && self <= (MAX_INTEGER as Self)
     }
 
     fn is_in_long_range(self) -> bool {

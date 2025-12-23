@@ -267,7 +267,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
         screen: TScreen,
         user_defined_types_holder: U,
     ) -> Self {
-        Interpreter {
+        Self {
             stdlib,
             stdin,
             stdout,

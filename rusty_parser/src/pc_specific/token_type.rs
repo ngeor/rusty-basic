@@ -99,7 +99,7 @@ impl TokenType {
 impl From<TokenType> for u8 {
     fn from(token_type: TokenType) -> Self {
         let index = token_type.to_index();
-        debug_assert!(index < u8::MAX.into());
-        index as u8
+        debug_assert!(index < Self::MAX.into());
+        index as Self
     }
 }

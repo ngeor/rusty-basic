@@ -27,6 +27,6 @@ impl<'a> Convertible<PosContext<'a>> for Parameter {
         } = self;
         let var_type = on_param_type(var_type, &bare_name, ctx)?;
         ctx.names.insert(bare_name.clone(), &var_type, false, None);
-        Ok(Parameter::new(bare_name, var_type))
+        Ok(Self::new(bare_name, var_type))
     }
 }

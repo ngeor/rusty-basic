@@ -9,7 +9,7 @@ impl Convertible for SelectCase {
         let case_blocks = self.case_blocks.convert(ctx)?;
         let else_block = self.else_block.convert(ctx)?;
         let inline_comments = self.inline_comments;
-        Ok(SelectCase {
+        Ok(Self {
             expr,
             case_blocks,
             else_block,
@@ -22,7 +22,7 @@ impl Convertible for CaseBlock {
     fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {
         let expression_list = self.expression_list.convert(ctx)?;
         let statements = self.statements.convert(ctx)?;
-        Ok(CaseBlock {
+        Ok(Self {
             expression_list,
             statements,
         })
@@ -32,14 +32,12 @@ impl Convertible for CaseBlock {
 impl Convertible for CaseExpression {
     fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {
         match self {
-            CaseExpression::Simple(e) => e.convert_in_default(ctx).map(CaseExpression::Simple),
-            CaseExpression::Is(op, e) => {
-                e.convert_in_default(ctx).map(|e| CaseExpression::Is(op, e))
-            }
-            CaseExpression::Range(from, to) => {
+            Self::Simple(e) => e.convert_in_default(ctx).map(CaseExpression::Simple),
+            Self::Is(op, e) => e.convert_in_default(ctx).map(|e| Self::Is(op, e)),
+            Self::Range(from, to) => {
                 let from = from.convert_in_default(ctx)?;
                 let to = to.convert_in_default(ctx)?;
-                Ok(CaseExpression::Range(from, to))
+                Ok(Self::Range(from, to))
             }
         }
     }

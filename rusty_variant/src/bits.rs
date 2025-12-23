@@ -151,7 +151,7 @@ bits_to_integer_type!(bits_to_i32, i32, INT_BITS);
 bits_to_integer_type!(bits_to_i64, i64, LONG_BITS);
 
 impl From<BitVec> for i32 {
-    fn from(bits: BitVec) -> i32 {
+    fn from(bits: BitVec) -> Self {
         if bits.len() != INT_BITS {
             panic!("should be {} bits, was {}", INT_BITS, bits.len());
         }
@@ -160,7 +160,7 @@ impl From<BitVec> for i32 {
 }
 
 impl From<BitVec> for i64 {
-    fn from(bits: BitVec) -> i64 {
+    fn from(bits: BitVec) -> Self {
         if bits.len() != LONG_BITS {
             panic!("should be {} bits, was {}", LONG_BITS, bits.len());
         }
@@ -183,14 +183,14 @@ impl std::ops::IndexMut<usize> for BitVec {
 }
 
 impl std::ops::BitAnd for BitVec {
-    type Output = BitVec;
+    type Output = Self;
 
     fn bitand(self, rhs: Self) -> Self::Output {
         if self.len() != rhs.len() {
             panic!("Incompatible BitVec");
         }
 
-        let mut result = BitVec::new();
+        let mut result = Self::new();
         for i in 0..self.len() {
             result.v.push(self[i] && rhs[i]);
         }
@@ -199,13 +199,13 @@ impl std::ops::BitAnd for BitVec {
 }
 
 impl std::ops::BitOr for BitVec {
-    type Output = BitVec;
+    type Output = Self;
 
     fn bitor(self, rhs: Self) -> Self::Output {
         if self.len() != rhs.len() {
             panic!("Incompatible BitVec");
         }
-        let mut result = BitVec::new();
+        let mut result = Self::new();
         for i in 0..self.len() {
             result.v.push(self[i] || rhs[i]);
         }

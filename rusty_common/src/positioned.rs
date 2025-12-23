@@ -11,7 +11,7 @@ pub struct Positioned<T> {
 
 impl<T> Positioned<T> {
     pub fn new(element: T, pos: Position) -> Self {
-        Positioned { element, pos }
+        Self { element, pos }
     }
 
     pub fn element(self) -> T {
@@ -22,7 +22,7 @@ impl<T> Positioned<T> {
     where
         F: FnOnce(T) -> U,
     {
-        let Positioned { element, pos } = self;
+        let Self { element, pos } = self;
         let mapped: U = op(element);
         Positioned {
             element: mapped,

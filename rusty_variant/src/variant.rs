@@ -29,7 +29,7 @@ trait ApproximateCmp {
 }
 
 impl ApproximateCmp for f32 {
-    fn cmp(left: &f32, right: &f32) -> Ordering {
+    fn cmp(left: &Self, right: &Self) -> Ordering {
         let diff = left - right;
         if diff < -0.00001 {
             Ordering::Less
@@ -42,7 +42,7 @@ impl ApproximateCmp for f32 {
 }
 
 impl ApproximateCmp for f64 {
-    fn cmp(left: &f64, right: &f64) -> Ordering {
+    fn cmp(left: &Self, right: &Self) -> Ordering {
         let diff = left - right;
         if diff < -0.00001 {
             Ordering::Less
@@ -72,13 +72,13 @@ impl ApproximateEqToInt for i64 {
 
 impl ApproximateEqToInt for f32 {
     fn approximate_eq(self, right: i32) -> bool {
-        (self - right as f32).abs() < 0.00001
+        (self - right as Self).abs() < 0.00001
     }
 }
 
 impl ApproximateEqToInt for f64 {
     fn approximate_eq(self, right: i32) -> bool {
-        (self - right as f64).abs() < 0.00001
+        (self - right as Self).abs() < 0.00001
     }
 }
 
@@ -105,30 +105,30 @@ macro_rules! div {
 impl Variant {
     pub fn try_cmp(&self, other: &Self) -> Result<Ordering, VariantError> {
         match self {
-            Variant::VSingle(f_left) => match other {
-                Variant::VSingle(f_right) => Ok(ApproximateCmp::cmp(f_left, f_right)),
-                Variant::VDouble(d_right) => Ok(ApproximateCmp::cmp(&(*f_left as f64), d_right)),
-                Variant::VInteger(i_right) => Ok(ApproximateCmp::cmp(f_left, &(*i_right as f32))),
-                Variant::VLong(l_right) => Ok(ApproximateCmp::cmp(f_left, &(*l_right as f32))),
+            Self::VSingle(f_left) => match other {
+                Self::VSingle(f_right) => Ok(ApproximateCmp::cmp(f_left, f_right)),
+                Self::VDouble(d_right) => Ok(ApproximateCmp::cmp(&(*f_left as f64), d_right)),
+                Self::VInteger(i_right) => Ok(ApproximateCmp::cmp(f_left, &(*i_right as f32))),
+                Self::VLong(l_right) => Ok(ApproximateCmp::cmp(f_left, &(*l_right as f32))),
                 _ => other.try_cmp(self).map(|x| x.reverse()),
             },
-            Variant::VDouble(d_left) => match other {
-                Variant::VDouble(d_right) => Ok(ApproximateCmp::cmp(d_left, d_right)),
-                Variant::VInteger(i_right) => Ok(ApproximateCmp::cmp(d_left, &(*i_right as f64))),
-                Variant::VLong(l_right) => Ok(ApproximateCmp::cmp(d_left, &(*l_right as f64))),
+            Self::VDouble(d_left) => match other {
+                Self::VDouble(d_right) => Ok(ApproximateCmp::cmp(d_left, d_right)),
+                Self::VInteger(i_right) => Ok(ApproximateCmp::cmp(d_left, &(*i_right as f64))),
+                Self::VLong(l_right) => Ok(ApproximateCmp::cmp(d_left, &(*l_right as f64))),
                 _ => other.try_cmp(self).map(|x| x.reverse()),
             },
-            Variant::VString(s_left) => match other {
-                Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
+            Self::VString(s_left) => match other {
+                Self::VString(s_right) => Ok(s_left.cmp(s_right)),
                 _ => Err(VariantError::TypeMismatch),
             },
-            Variant::VInteger(i_left) => match other {
-                Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
-                Variant::VLong(l_right) => Ok((*i_left as i64).cmp(l_right)),
+            Self::VInteger(i_left) => match other {
+                Self::VInteger(i_right) => Ok(i_left.cmp(i_right)),
+                Self::VLong(l_right) => Ok((*i_left as i64).cmp(l_right)),
                 _ => other.try_cmp(self).map(|x| x.reverse()),
             },
-            Variant::VLong(l_left) => match other {
-                Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
+            Self::VLong(l_left) => match other {
+                Self::VLong(l_right) => Ok(l_left.cmp(l_right)),
                 _ => other.try_cmp(self).map(|x| x.reverse()),
             },
             _ => Err(VariantError::TypeMismatch),
@@ -137,24 +137,24 @@ impl Variant {
 
     fn cmp_same_type_only(&self, other: &Self) -> Result<Ordering, VariantError> {
         match self {
-            Variant::VSingle(f_left) => match other {
-                Variant::VSingle(f_right) => Ok(ApproximateCmp::cmp(f_left, f_right)),
+            Self::VSingle(f_left) => match other {
+                Self::VSingle(f_right) => Ok(ApproximateCmp::cmp(f_left, f_right)),
                 _ => Err(VariantError::TypeMismatch),
             },
-            Variant::VDouble(d_left) => match other {
-                Variant::VDouble(d_right) => Ok(ApproximateCmp::cmp(d_left, d_right)),
+            Self::VDouble(d_left) => match other {
+                Self::VDouble(d_right) => Ok(ApproximateCmp::cmp(d_left, d_right)),
                 _ => Err(VariantError::TypeMismatch),
             },
-            Variant::VString(s_left) => match other {
-                Variant::VString(s_right) => Ok(s_left.cmp(s_right)),
+            Self::VString(s_left) => match other {
+                Self::VString(s_right) => Ok(s_left.cmp(s_right)),
                 _ => Err(VariantError::TypeMismatch),
             },
-            Variant::VInteger(i_left) => match other {
-                Variant::VInteger(i_right) => Ok(i_left.cmp(i_right)),
+            Self::VInteger(i_left) => match other {
+                Self::VInteger(i_right) => Ok(i_left.cmp(i_right)),
                 _ => Err(VariantError::TypeMismatch),
             },
-            Variant::VLong(l_left) => match other {
-                Variant::VLong(l_right) => Ok(l_left.cmp(l_right)),
+            Self::VLong(l_left) => match other {
+                Self::VLong(l_right) => Ok(l_left.cmp(l_right)),
                 _ => Err(VariantError::TypeMismatch),
             },
             _ => Err(VariantError::TypeMismatch),
@@ -163,21 +163,21 @@ impl Variant {
 
     pub fn negate(self) -> Result<Self, VariantError> {
         match self {
-            Variant::VSingle(n) => Ok(Variant::VSingle(-n)),
-            Variant::VDouble(n) => Ok(Variant::VDouble(-n)),
-            Variant::VInteger(n) => {
+            Self::VSingle(n) => Ok(Self::VSingle(-n)),
+            Self::VDouble(n) => Ok(Self::VDouble(-n)),
+            Self::VInteger(n) => {
                 if n <= MIN_INTEGER {
                     // prevent converting -32768 to 32768
                     Err(VariantError::Overflow)
                 } else {
-                    Ok(Variant::VInteger(-n))
+                    Ok(Self::VInteger(-n))
                 }
             }
-            Variant::VLong(n) => {
+            Self::VLong(n) => {
                 if n <= MIN_LONG {
                     Err(VariantError::Overflow)
                 } else {
-                    Ok(Variant::VLong(-n))
+                    Ok(Self::VLong(-n))
                 }
             }
             _ => Err(VariantError::TypeMismatch),
@@ -186,40 +186,40 @@ impl Variant {
 
     pub fn unary_not(self) -> Result<Self, VariantError> {
         match self {
-            Variant::VSingle(f) => Ok(Variant::VSingle(-f.round() - 1.0)),
-            Variant::VDouble(d) => Ok(Variant::VDouble(-d.round() - 1.0)),
-            Variant::VInteger(n) => Ok(Variant::VInteger(-n - 1)),
-            Variant::VLong(n) => Ok(Variant::VLong(-n - 1)),
+            Self::VSingle(f) => Ok(Self::VSingle(-f.round() - 1.0)),
+            Self::VDouble(d) => Ok(Self::VDouble(-d.round() - 1.0)),
+            Self::VInteger(n) => Ok(Self::VInteger(-n - 1)),
+            Self::VLong(n) => Ok(Self::VLong(-n - 1)),
             _ => Err(VariantError::TypeMismatch),
         }
     }
 
     pub fn plus(self, other: Self) -> Result<Self, VariantError> {
         match self {
-            Variant::VSingle(f_left) => match other {
-                Variant::VSingle(f_right) => Ok(Variant::VSingle(f_left + f_right)),
-                Variant::VDouble(d_right) => Ok(Variant::VDouble(f_left as f64 + d_right)),
-                Variant::VInteger(i_right) => Ok(Variant::VSingle(f_left + i_right as f32)),
-                Variant::VLong(l_right) => Ok(Variant::VSingle(f_left + l_right as f32)),
+            Self::VSingle(f_left) => match other {
+                Self::VSingle(f_right) => Ok(Self::VSingle(f_left + f_right)),
+                Self::VDouble(d_right) => Ok(Self::VDouble(f_left as f64 + d_right)),
+                Self::VInteger(i_right) => Ok(Self::VSingle(f_left + i_right as f32)),
+                Self::VLong(l_right) => Ok(Self::VSingle(f_left + l_right as f32)),
                 _ => other.plus(self),
             },
-            Variant::VDouble(d_left) => match other {
-                Variant::VDouble(d_right) => Ok(Variant::VDouble(d_left + d_right)),
-                Variant::VInteger(i_right) => Ok(Variant::VDouble(d_left + i_right as f64)),
-                Variant::VLong(l_right) => Ok(Variant::VDouble(d_left + l_right as f64)),
+            Self::VDouble(d_left) => match other {
+                Self::VDouble(d_right) => Ok(Self::VDouble(d_left + d_right)),
+                Self::VInteger(i_right) => Ok(Self::VDouble(d_left + i_right as f64)),
+                Self::VLong(l_right) => Ok(Self::VDouble(d_left + l_right as f64)),
                 _ => other.plus(self),
             },
-            Variant::VString(s_left) => match other {
-                Variant::VString(s_right) => Ok(Variant::VString(format!("{}{}", s_left, s_right))),
+            Self::VString(s_left) => match other {
+                Self::VString(s_right) => Ok(Self::VString(format!("{}{}", s_left, s_right))),
                 _ => Err(VariantError::TypeMismatch),
             },
-            Variant::VInteger(i_left) => match other {
-                Variant::VInteger(i_right) => Ok(Variant::VInteger(i_left + i_right)),
-                Variant::VLong(l_right) => Ok(Variant::VLong(i_left as i64 + l_right)),
+            Self::VInteger(i_left) => match other {
+                Self::VInteger(i_right) => Ok(Self::VInteger(i_left + i_right)),
+                Self::VLong(l_right) => Ok(Self::VLong(i_left as i64 + l_right)),
                 _ => other.plus(self),
             },
-            Variant::VLong(l_left) => match other {
-                Variant::VLong(l_right) => Ok(Variant::VLong(l_left + l_right)),
+            Self::VLong(l_left) => match other {
+                Self::VLong(l_right) => Ok(Self::VLong(l_left + l_right)),
                 _ => other.plus(self),
             },
             _ => Err(VariantError::TypeMismatch),
@@ -228,26 +228,26 @@ impl Variant {
 
     pub fn minus(self, other: Self) -> Result<Self, VariantError> {
         match self {
-            Variant::VSingle(f_left) => match other {
-                Variant::VSingle(f_right) => Ok(Variant::VSingle(f_left - f_right)),
-                Variant::VDouble(d_right) => Ok(Variant::VDouble(f_left as f64 - d_right)),
-                Variant::VInteger(i_right) => Ok(Variant::VSingle(f_left - i_right as f32)),
-                Variant::VLong(l_right) => Ok(Variant::VSingle(f_left - l_right as f32)),
+            Self::VSingle(f_left) => match other {
+                Self::VSingle(f_right) => Ok(Self::VSingle(f_left - f_right)),
+                Self::VDouble(d_right) => Ok(Self::VDouble(f_left as f64 - d_right)),
+                Self::VInteger(i_right) => Ok(Self::VSingle(f_left - i_right as f32)),
+                Self::VLong(l_right) => Ok(Self::VSingle(f_left - l_right as f32)),
                 _ => other.minus(self).and_then(|x| x.negate()),
             },
-            Variant::VDouble(d_left) => match other {
-                Variant::VDouble(d_right) => Ok(Variant::VDouble(d_left - d_right)),
-                Variant::VInteger(i_right) => Ok(Variant::VDouble(d_left - i_right as f64)),
-                Variant::VLong(l_right) => Ok(Variant::VDouble(d_left - l_right as f64)),
+            Self::VDouble(d_left) => match other {
+                Self::VDouble(d_right) => Ok(Self::VDouble(d_left - d_right)),
+                Self::VInteger(i_right) => Ok(Self::VDouble(d_left - i_right as f64)),
+                Self::VLong(l_right) => Ok(Self::VDouble(d_left - l_right as f64)),
                 _ => other.minus(self).and_then(|x| x.negate()),
             },
-            Variant::VInteger(i_left) => match other {
-                Variant::VInteger(i_right) => Ok(Variant::VInteger(i_left - i_right)),
-                Variant::VLong(l_right) => Ok(Variant::VLong(i_left as i64 - l_right)),
+            Self::VInteger(i_left) => match other {
+                Self::VInteger(i_right) => Ok(Self::VInteger(i_left - i_right)),
+                Self::VLong(l_right) => Ok(Self::VLong(i_left as i64 - l_right)),
                 _ => other.minus(self).and_then(|x| x.negate()),
             },
-            Variant::VLong(l_left) => match other {
-                Variant::VLong(l_right) => Ok(Variant::VLong(l_left - l_right)),
+            Self::VLong(l_left) => match other {
+                Self::VLong(l_right) => Ok(Self::VLong(l_left - l_right)),
                 _ => other.minus(self).and_then(|x| x.negate()),
             },
             _ => Err(VariantError::TypeMismatch),
@@ -256,26 +256,26 @@ impl Variant {
 
     pub fn multiply(self, other: Self) -> Result<Self, VariantError> {
         match self {
-            Variant::VSingle(f_left) => match other {
-                Variant::VSingle(f_right) => Ok(Variant::VSingle(f_left * f_right)),
-                Variant::VDouble(d_right) => Ok(Variant::VDouble(f_left as f64 * d_right)),
-                Variant::VInteger(i_right) => Ok(Variant::VSingle(f_left * i_right as f32)),
-                Variant::VLong(l_right) => Ok(Variant::VSingle(f_left * l_right as f32)),
+            Self::VSingle(f_left) => match other {
+                Self::VSingle(f_right) => Ok(Self::VSingle(f_left * f_right)),
+                Self::VDouble(d_right) => Ok(Self::VDouble(f_left as f64 * d_right)),
+                Self::VInteger(i_right) => Ok(Self::VSingle(f_left * i_right as f32)),
+                Self::VLong(l_right) => Ok(Self::VSingle(f_left * l_right as f32)),
                 _ => Err(VariantError::TypeMismatch),
             },
-            Variant::VDouble(d_left) => match other {
-                Variant::VDouble(d_right) => Ok(Variant::VDouble(d_left * d_right)),
-                Variant::VInteger(i_right) => Ok(Variant::VDouble(d_left * i_right as f64)),
-                Variant::VLong(l_right) => Ok(Variant::VDouble(d_left * l_right as f64)),
+            Self::VDouble(d_left) => match other {
+                Self::VDouble(d_right) => Ok(Self::VDouble(d_left * d_right)),
+                Self::VInteger(i_right) => Ok(Self::VDouble(d_left * i_right as f64)),
+                Self::VLong(l_right) => Ok(Self::VDouble(d_left * l_right as f64)),
                 _ => other.multiply(self),
             },
-            Variant::VInteger(i_left) => match other {
-                Variant::VInteger(i_right) => Ok(Variant::VInteger(i_left * i_right)),
-                Variant::VLong(l_right) => Ok(Variant::VLong(i_left as i64 * l_right)),
+            Self::VInteger(i_left) => match other {
+                Self::VInteger(i_right) => Ok(Self::VInteger(i_left * i_right)),
+                Self::VLong(l_right) => Ok(Self::VLong(i_left as i64 * l_right)),
                 _ => other.multiply(self),
             },
-            Variant::VLong(l_left) => match other {
-                Variant::VLong(l_right) => Ok(Variant::VLong(l_left * l_right)),
+            Self::VLong(l_left) => match other {
+                Self::VLong(l_right) => Ok(Self::VLong(l_left * l_right)),
                 _ => other.multiply(self),
             },
             _ => Err(VariantError::TypeMismatch),
@@ -284,32 +284,32 @@ impl Variant {
 
     pub fn divide(self, other: Self) -> Result<Self, VariantError> {
         match self {
-            Variant::VSingle(f_left) => match other {
-                Variant::VSingle(f_right) => div!(f_left, f_right),
-                Variant::VDouble(d_right) => div!(f_left, d_right, f64),
-                Variant::VInteger(i_right) => div!(f_left, i_right, f32),
-                Variant::VLong(l_right) => div!(f_left, l_right, f32),
+            Self::VSingle(f_left) => match other {
+                Self::VSingle(f_right) => div!(f_left, f_right),
+                Self::VDouble(d_right) => div!(f_left, d_right, f64),
+                Self::VInteger(i_right) => div!(f_left, i_right, f32),
+                Self::VLong(l_right) => div!(f_left, l_right, f32),
                 _ => Err(VariantError::TypeMismatch),
             },
-            Variant::VDouble(d_left) => match other {
-                Variant::VSingle(f_right) => div!(d_left, f_right, f64),
-                Variant::VDouble(d_right) => div!(d_left, d_right),
-                Variant::VInteger(i_right) => div!(d_left, i_right, f64),
-                Variant::VLong(l_right) => div!(d_left, l_right, f64),
+            Self::VDouble(d_left) => match other {
+                Self::VSingle(f_right) => div!(d_left, f_right, f64),
+                Self::VDouble(d_right) => div!(d_left, d_right),
+                Self::VInteger(i_right) => div!(d_left, i_right, f64),
+                Self::VLong(l_right) => div!(d_left, l_right, f64),
                 _ => Err(VariantError::TypeMismatch),
             },
-            Variant::VInteger(i_left) => match other {
-                Variant::VSingle(f_right) => div!(i_left, f_right, f32),
-                Variant::VDouble(d_right) => div!(i_left, d_right, f64),
-                Variant::VInteger(i_right) => div!(i_left, i_right, f32),
-                Variant::VLong(l_right) => div!(i_left, l_right, f32),
+            Self::VInteger(i_left) => match other {
+                Self::VSingle(f_right) => div!(i_left, f_right, f32),
+                Self::VDouble(d_right) => div!(i_left, d_right, f64),
+                Self::VInteger(i_right) => div!(i_left, i_right, f32),
+                Self::VLong(l_right) => div!(i_left, l_right, f32),
                 _ => Err(VariantError::TypeMismatch),
             },
-            Variant::VLong(l_left) => match other {
-                Variant::VSingle(f_right) => div!(l_left, f_right, f32),
-                Variant::VDouble(d_right) => div!(l_left, d_right, f64),
-                Variant::VInteger(i_right) => div!(l_left, i_right, f32),
-                Variant::VLong(l_right) => div!(l_left, l_right, f32),
+            Self::VLong(l_left) => match other {
+                Self::VSingle(f_right) => div!(l_left, f_right, f32),
+                Self::VDouble(d_right) => div!(l_left, d_right, f64),
+                Self::VInteger(i_right) => div!(l_left, i_right, f32),
+                Self::VLong(l_right) => div!(l_left, l_right, f32),
                 _ => Err(VariantError::TypeMismatch),
             },
             _ => Err(VariantError::TypeMismatch),
@@ -323,12 +323,12 @@ impl Variant {
             Err(VariantError::DivisionByZero)
         } else {
             match round_left {
-                Variant::VInteger(i_left) => match round_right {
-                    Variant::VInteger(i_right) => Ok(Variant::VInteger(i_left % i_right)),
-                    Variant::VLong(_) => Err(VariantError::Overflow),
+                Self::VInteger(i_left) => match round_right {
+                    Self::VInteger(i_right) => Ok(Self::VInteger(i_left % i_right)),
+                    Self::VLong(_) => Err(VariantError::Overflow),
                     _ => Err(VariantError::TypeMismatch),
                 },
-                Variant::VLong(_) => Err(VariantError::Overflow),
+                Self::VLong(_) => Err(VariantError::Overflow),
                 _ => Err(VariantError::TypeMismatch),
             }
         }
@@ -336,27 +336,27 @@ impl Variant {
 
     fn round(self) -> Result<Self, VariantError> {
         match self {
-            Variant::VSingle(f) => Ok(f.round().fit_to_type()),
-            Variant::VDouble(d) => Ok(d.round().fit_to_type()),
-            Variant::VInteger(_) | Variant::VLong(_) => Ok(self),
+            Self::VSingle(f) => Ok(f.round().fit_to_type()),
+            Self::VDouble(d) => Ok(d.round().fit_to_type()),
+            Self::VInteger(_) | Self::VLong(_) => Ok(self),
             _ => Err(VariantError::TypeMismatch),
         }
     }
 
     fn is_approximately_zero(&self) -> Result<bool, VariantError> {
         match self {
-            Variant::VSingle(f) => Ok((*f).approximate_eq(0)),
-            Variant::VDouble(d) => Ok((*d).approximate_eq(0)),
-            Variant::VInteger(i) => Ok(*i == 0),
-            Variant::VLong(l) => Ok(*l == 0),
+            Self::VSingle(f) => Ok((*f).approximate_eq(0)),
+            Self::VDouble(d) => Ok((*d).approximate_eq(0)),
+            Self::VInteger(i) => Ok(*i == 0),
+            Self::VLong(l) => Ok(*l == 0),
             _ => Err(VariantError::TypeMismatch),
         }
     }
 
     pub fn and(self, other: Self) -> Result<Self, VariantError> {
         match self {
-            Variant::VInteger(a) => match other {
-                Variant::VInteger(b) => Ok(Variant::VInteger(qb_and(a, b))),
+            Self::VInteger(a) => match other {
+                Self::VInteger(b) => Ok(Self::VInteger(qb_and(a, b))),
                 _ => Err(VariantError::TypeMismatch),
             },
             _ => Err(VariantError::TypeMismatch),
@@ -365,8 +365,8 @@ impl Variant {
 
     pub fn or(self, other: Self) -> Result<Self, VariantError> {
         match self {
-            Variant::VInteger(a) => match other {
-                Variant::VInteger(b) => Ok(Variant::VInteger(qb_or(a, b))),
+            Self::VInteger(a) => match other {
+                Self::VInteger(b) => Ok(Self::VInteger(qb_or(a, b))),
                 _ => Err(VariantError::TypeMismatch),
             },
             _ => Err(VariantError::TypeMismatch),
@@ -386,11 +386,11 @@ impl PartialEq for Variant {
 impl Display for Variant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Variant::VSingle(n) => write!(f, "{}", n),
-            Variant::VDouble(n) => write!(f, "{}", n),
-            Variant::VString(s) => write!(f, "{}", s),
-            Variant::VInteger(n) => write!(f, "{}", n),
-            Variant::VLong(n) => write!(f, "{}", n),
+            Self::VSingle(n) => write!(f, "{}", n),
+            Self::VDouble(n) => write!(f, "{}", n),
+            Self::VString(s) => write!(f, "{}", s),
+            Self::VInteger(n) => write!(f, "{}", n),
+            Self::VLong(n) => write!(f, "{}", n),
             _ => Err(std::fmt::Error),
         }
     }
@@ -402,37 +402,37 @@ impl Display for Variant {
 
 impl From<f32> for Variant {
     fn from(f: f32) -> Self {
-        Variant::VSingle(f)
+        Self::VSingle(f)
     }
 }
 
 impl From<f64> for Variant {
     fn from(f: f64) -> Self {
-        Variant::VDouble(f)
+        Self::VDouble(f)
     }
 }
 
 impl From<String> for Variant {
     fn from(s: String) -> Self {
-        Variant::VString(s)
+        Self::VString(s)
     }
 }
 
 impl From<&str> for Variant {
     fn from(s: &str) -> Self {
-        Variant::VString(s.to_string())
+        Self::VString(s.to_string())
     }
 }
 
 impl From<i32> for Variant {
     fn from(i: i32) -> Self {
-        Variant::VInteger(i)
+        Self::VInteger(i)
     }
 }
 
 impl From<i64> for Variant {
     fn from(i: i64) -> Self {
-        Variant::VLong(i)
+        Self::VLong(i)
     }
 }
 

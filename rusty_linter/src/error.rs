@@ -82,7 +82,7 @@ pub trait LintPosResult<T> {
 }
 
 impl<T> LintPosResult<T> for Result<T, LintErrorPos> {
-    fn patch_err_pos(self, pos: &impl HasPos) -> Result<T, LintErrorPos> {
+    fn patch_err_pos(self, pos: &impl HasPos) -> Self {
         self.map_err(|e| {
             if e.pos() == Position::zero() {
                 Positioned::new(e.element(), pos.pos())

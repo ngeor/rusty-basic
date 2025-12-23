@@ -59,7 +59,7 @@ impl IntoQualified for BareName {
 // Name -> Name. If already qualified, it doesn't use the resolver.
 
 impl IntoQualified for Name {
-    type Output = Name;
+    type Output = Self;
 
     fn to_qualified(self, resolver: &impl TypeResolver) -> Self::Output {
         match self {

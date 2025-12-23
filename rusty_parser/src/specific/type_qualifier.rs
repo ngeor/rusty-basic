@@ -25,17 +25,17 @@ pub enum TypeQualifier {
 impl TryFrom<char> for TypeQualifier {
     type Error = ParseError;
 
-    fn try_from(ch: char) -> Result<TypeQualifier, ParseError> {
+    fn try_from(ch: char) -> Result<Self, ParseError> {
         if ch == '!' {
-            Ok(TypeQualifier::BangSingle)
+            Ok(Self::BangSingle)
         } else if ch == '#' {
-            Ok(TypeQualifier::HashDouble)
+            Ok(Self::HashDouble)
         } else if ch == '$' {
-            Ok(TypeQualifier::DollarString)
+            Ok(Self::DollarString)
         } else if ch == '%' {
-            Ok(TypeQualifier::PercentInteger)
+            Ok(Self::PercentInteger)
         } else if ch == '&' {
-            Ok(TypeQualifier::AmpersandLong)
+            Ok(Self::AmpersandLong)
         } else {
             Err(ParseError::syntax_error("Expected: %, &, !, # or $"))
         }
@@ -45,7 +45,7 @@ impl TryFrom<char> for TypeQualifier {
 // TypeQualifier -> char (for implementing Display trait)
 
 impl From<TypeQualifier> for char {
-    fn from(q: TypeQualifier) -> char {
+    fn from(q: TypeQualifier) -> Self {
         match q {
             TypeQualifier::BangSingle => '!',
             TypeQualifier::HashDouble => '#',

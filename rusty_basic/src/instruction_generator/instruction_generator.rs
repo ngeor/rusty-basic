@@ -47,8 +47,8 @@ pub struct InstructionGeneratorResult {
 #[derive(Clone, Debug)]
 pub enum Path {
     Root(RootPath),
-    ArrayElement(Box<Path>, Vec<Variant>),
-    Property(Box<Path>, BareName),
+    ArrayElement(Box<Self>, Vec<Variant>),
+    Property(Box<Self>, BareName),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

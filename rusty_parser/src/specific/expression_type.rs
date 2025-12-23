@@ -8,15 +8,15 @@ pub enum ExpressionType {
     BuiltIn(TypeQualifier),
     FixedLengthString(u16),
     UserDefined(BareName),
-    Array(Box<ExpressionType>),
+    Array(Box<Self>),
 }
 
 impl ExpressionType {
     pub fn opt_qualifier(&self) -> Option<TypeQualifier> {
         match self {
-            ExpressionType::BuiltIn(expr_q) => Some(*expr_q),
-            ExpressionType::FixedLengthString(_) => Some(TypeQualifier::DollarString),
-            ExpressionType::Array(boxed_expr_type) => boxed_expr_type.opt_qualifier(),
+            Self::BuiltIn(expr_q) => Some(*expr_q),
+            Self::FixedLengthString(_) => Some(TypeQualifier::DollarString),
+            Self::Array(boxed_expr_type) => boxed_expr_type.opt_qualifier(),
             _ => None,
         }
     }

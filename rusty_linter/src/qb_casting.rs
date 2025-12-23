@@ -36,7 +36,7 @@ impl QBNumberCast<i32> for f32 {
     fn try_cast(&self) -> Result<i32, LintError> {
         if self.is_finite() {
             let r = self.round();
-            if r >= (MIN_INTEGER as f32) && r <= (MAX_INTEGER as f32) {
+            if r >= (MIN_INTEGER as Self) && r <= (MAX_INTEGER as Self) {
                 Ok(r as i32)
             } else {
                 Err(LintError::Overflow)
@@ -51,7 +51,7 @@ impl QBNumberCast<i64> for f32 {
     fn try_cast(&self) -> Result<i64, LintError> {
         if self.is_finite() {
             let r = self.round();
-            if r >= (MIN_LONG as f32) && r <= (MAX_LONG as f32) {
+            if r >= (MIN_LONG as Self) && r <= (MAX_LONG as Self) {
                 Ok(r as i64)
             } else {
                 Err(LintError::Overflow)
@@ -72,7 +72,7 @@ impl QBNumberCast<i32> for f64 {
     fn try_cast(&self) -> Result<i32, LintError> {
         if self.is_finite() {
             let r = self.round();
-            if r >= (MIN_INTEGER as f64) && r <= (MAX_INTEGER as f64) {
+            if r >= (MIN_INTEGER as Self) && r <= (MAX_INTEGER as Self) {
                 Ok(r as i32)
             } else {
                 Err(LintError::Overflow)
@@ -87,7 +87,7 @@ impl QBNumberCast<i64> for f64 {
     fn try_cast(&self) -> Result<i64, LintError> {
         if self.is_finite() {
             let r = self.round();
-            if r >= (MIN_LONG as f64) && r <= (MAX_LONG as f64) {
+            if r >= (MIN_LONG as Self) && r <= (MAX_LONG as Self) {
                 Ok(r as i64)
             } else {
                 Err(LintError::Overflow)
@@ -130,7 +130,7 @@ impl QBNumberCast<f64> for i64 {
 
 impl QBNumberCast<i32> for i64 {
     fn try_cast(&self) -> Result<i32, LintError> {
-        if *self >= (MIN_INTEGER as i64) && *self <= (MAX_INTEGER as i64) {
+        if *self >= (MIN_INTEGER as Self) && *self <= (MAX_INTEGER as Self) {
             Ok(*self as i32)
         } else {
             Err(LintError::Overflow)
@@ -208,10 +208,10 @@ impl CastVariant for Variant {
 impl QBNumberCast<bool> for Variant {
     fn try_cast(&self) -> Result<bool, LintError> {
         match self {
-            Variant::VSingle(n) => Ok(*n != 0.0),
-            Variant::VDouble(n) => Ok(*n != 0.0),
-            Variant::VInteger(n) => Ok(*n != 0),
-            Variant::VLong(n) => Ok(*n != 0),
+            Self::VSingle(n) => Ok(*n != 0.0),
+            Self::VDouble(n) => Ok(*n != 0.0),
+            Self::VInteger(n) => Ok(*n != 0),
+            Self::VLong(n) => Ok(*n != 0),
             _ => Err(LintError::TypeMismatch),
         }
     }

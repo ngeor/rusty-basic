@@ -80,6 +80,6 @@ impl SubprogramInfoRepository {
 impl From<SubprogramInfoCollector> for SubprogramInfoRepository {
     fn from(subprogram_info_collector: SubprogramInfoCollector) -> Self {
         let SubprogramInfoCollector { map } = subprogram_info_collector;
-        SubprogramInfoRepository::new(map)
+        Self::new(map)
     }
 }

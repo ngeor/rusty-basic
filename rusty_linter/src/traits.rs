@@ -21,7 +21,7 @@ pub trait CanCastTo<T> {
     fn can_cast_to(&self, target: &T) -> bool;
 }
 
-impl CanCastTo<TypeQualifier> for TypeQualifier {
+impl CanCastTo<Self> for TypeQualifier {
     /// Checks if this `TypeQualifier` can be cast into the given one.
     ///
     /// # Examples
@@ -53,7 +53,7 @@ impl CanCastTo<TypeQualifier> for ExpressionType {
     }
 }
 
-impl CanCastTo<ExpressionType> for ExpressionType {
+impl CanCastTo<Self> for ExpressionType {
     fn can_cast_to(&self, other: &Self) -> bool {
         match self {
             Self::BuiltIn(q_left) => match other {
@@ -93,8 +93,8 @@ impl CanCastTo<Expression> for ExpressionPos {
     }
 }
 
-impl CanCastTo<ExpressionPos> for ExpressionPos {
-    fn can_cast_to(&self, target: &ExpressionPos) -> bool {
+impl CanCastTo<Self> for ExpressionPos {
+    fn can_cast_to(&self, target: &Self) -> bool {
         self.expression_type()
             .can_cast_to(&target.expression_type())
     }

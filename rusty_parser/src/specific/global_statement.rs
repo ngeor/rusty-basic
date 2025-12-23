@@ -64,7 +64,7 @@ pub enum GlobalStatement {
 
 impl From<Statement> for GlobalStatement {
     fn from(s: Statement) -> Self {
-        GlobalStatement::Statement(s)
+        Self::Statement(s)
     }
 }
 

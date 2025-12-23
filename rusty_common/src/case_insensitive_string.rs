@@ -99,14 +99,14 @@ impl Borrow<CaseInsensitiveStr> for CaseInsensitiveString {
 }
 
 impl From<String> for CaseInsensitiveString {
-    fn from(x: String) -> CaseInsensitiveString {
-        CaseInsensitiveString::new(x)
+    fn from(x: String) -> Self {
+        Self::new(x)
     }
 }
 
 impl From<&str> for CaseInsensitiveString {
-    fn from(x: &str) -> CaseInsensitiveString {
-        CaseInsensitiveString::new(x.to_owned())
+    fn from(x: &str) -> Self {
+        Self::new(x.to_owned())
     }
 }
 

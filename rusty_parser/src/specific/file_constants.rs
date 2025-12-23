@@ -17,7 +17,7 @@ pub const FILE_MODE_RANDOM: u8 = 4;
 // TODO move these outside the common module
 
 impl From<FileMode> for u8 {
-    fn from(f: FileMode) -> u8 {
+    fn from(f: FileMode) -> Self {
         match f {
             FileMode::Append => FILE_MODE_APPEND,
             FileMode::Input => FILE_MODE_INPUT,
@@ -28,15 +28,15 @@ impl From<FileMode> for u8 {
 }
 
 impl From<u8> for FileMode {
-    fn from(i: u8) -> FileMode {
+    fn from(i: u8) -> Self {
         if i == FILE_MODE_APPEND {
-            FileMode::Append
+            Self::Append
         } else if i == FILE_MODE_INPUT {
-            FileMode::Input
+            Self::Input
         } else if i == FILE_MODE_OUTPUT {
-            FileMode::Output
+            Self::Output
         } else if i == FILE_MODE_RANDOM {
-            FileMode::Random
+            Self::Random
         } else {
             panic!("Unsupported file mode {}", i)
         }
@@ -55,7 +55,7 @@ pub const FILE_ACCESS_READ: u8 = 2;
 pub const FILE_ACCESS_WRITE: u8 = 3;
 
 impl From<FileAccess> for u8 {
-    fn from(f: FileAccess) -> u8 {
+    fn from(f: FileAccess) -> Self {
         match f {
             FileAccess::Unspecified => FILE_ACCESS_UNSPECIFIED,
             FileAccess::Read => FILE_ACCESS_READ,
@@ -65,13 +65,13 @@ impl From<FileAccess> for u8 {
 }
 
 impl From<u8> for FileAccess {
-    fn from(i: u8) -> FileAccess {
+    fn from(i: u8) -> Self {
         if i == FILE_ACCESS_UNSPECIFIED {
-            FileAccess::Unspecified
+            Self::Unspecified
         } else if i == FILE_ACCESS_READ {
-            FileAccess::Read
+            Self::Read
         } else if i == FILE_ACCESS_WRITE {
-            FileAccess::Write
+            Self::Write
         } else {
             panic!("Unsupported file access {}", i)
         }
@@ -89,14 +89,14 @@ impl FileHandle {
 }
 
 impl From<u8> for FileHandle {
-    fn from(x: u8) -> FileHandle {
-        FileHandle(x)
+    fn from(x: u8) -> Self {
+        Self(x)
     }
 }
 
 impl From<FileHandle> for i32 {
-    fn from(file_handle: FileHandle) -> i32 {
-        file_handle.0 as i32
+    fn from(file_handle: FileHandle) -> Self {
+        file_handle.0 as Self
     }
 }
 

@@ -14,7 +14,7 @@ impl Convertible for ForLoop {
         let step = self.step.convert_in_default(ctx)?;
         let statements = self.statements.convert(ctx)?;
         let next_counter = self.next_counter.convert_in(ctx, ExprContext::Assignment)?;
-        Ok(ForLoop {
+        Ok(Self {
             variable_name,
             lower_bound,
             upper_bound,

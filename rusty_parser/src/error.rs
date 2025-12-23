@@ -49,7 +49,7 @@ pub enum ParseError {
 
 impl ParseError {
     pub fn syntax_error(msg: &str) -> Self {
-        ParseError::SyntaxError(msg.to_string())
+        Self::SyntaxError(msg.to_string())
     }
 }
 

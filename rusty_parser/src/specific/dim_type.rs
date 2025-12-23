@@ -13,7 +13,7 @@ pub enum DimType {
     BuiltIn(TypeQualifier, BuiltInStyle),
     FixedLengthString(ExpressionPos, u16),
     UserDefined(BareNamePos),
-    Array(ArrayDimensions, Box<DimType>),
+    Array(ArrayDimensions, Box<Self>),
 }
 
 impl VarTypeNewBuiltInCompact for DimType {
@@ -58,7 +58,7 @@ impl VarTypeToUserDefinedRecursively for DimType {
 
 impl DimType {
     pub fn fixed_length_string(len: u16, pos: Position) -> Self {
-        DimType::FixedLengthString(Expression::IntegerLiteral(len as i32).at_pos(pos), len)
+        Self::FixedLengthString(Expression::IntegerLiteral(len as i32).at_pos(pos), len)
     }
 }
 

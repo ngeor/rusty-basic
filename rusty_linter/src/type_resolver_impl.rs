@@ -25,7 +25,7 @@ fn char_to_alphabet_index(ch: char) -> usize {
 
 impl TypeResolverImpl {
     pub fn new() -> Self {
-        TypeResolverImpl {
+        Self {
             ranges: [TypeQualifier::BangSingle; LETTER_COUNT],
         }
     }

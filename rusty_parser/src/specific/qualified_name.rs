@@ -14,7 +14,7 @@ pub struct QualifiedName {
 
 impl QualifiedName {
     pub fn new(bare_name: BareName, qualifier: TypeQualifier) -> Self {
-        QualifiedName {
+        Self {
             bare_name,
             qualifier,
         }
@@ -34,10 +34,10 @@ impl From<QualifiedName> for Name {
 // TODO #[cfg(test)]
 impl TryFrom<&str> for QualifiedName {
     type Error = ParseError;
-    fn try_from(s: &str) -> Result<QualifiedName, ParseError> {
+    fn try_from(s: &str) -> Result<Self, ParseError> {
         let mut buf = s.to_owned();
         let last_ch: char = buf.pop().unwrap();
-        TypeQualifier::try_from(last_ch).map(|q| QualifiedName::new(BareName::new(buf), q))
+        TypeQualifier::try_from(last_ch).map(|q| Self::new(BareName::new(buf), q))
     }
 }
 

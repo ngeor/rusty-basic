@@ -81,23 +81,23 @@ impl BuiltInSub {
     /// Some statements are implemented a built-in subs (e.g. `CLOSE`, `OPEN`), but
     /// they can't hit this function, as they are represented by keywords and are
     /// parsed by custom parsers.
-    pub fn parse_non_keyword_sub(s: &str) -> Option<BuiltInSub> {
+    pub fn parse_non_keyword_sub(s: &str) -> Option<Self> {
         if s.eq_ignore_ascii_case("Beep") {
-            Some(BuiltInSub::Beep)
+            Some(Self::Beep)
         } else if s.eq_ignore_ascii_case("Call") {
-            Some(BuiltInSub::CallAbsolute)
+            Some(Self::CallAbsolute)
         } else if s.eq_ignore_ascii_case("Cls") {
-            Some(BuiltInSub::Cls)
+            Some(Self::Cls)
         } else if s.eq_ignore_ascii_case("Color") {
-            Some(BuiltInSub::Color)
+            Some(Self::Color)
         } else if s.eq_ignore_ascii_case("Environ") {
-            Some(BuiltInSub::Environ)
+            Some(Self::Environ)
         } else if s.eq_ignore_ascii_case("Kill") {
-            Some(BuiltInSub::Kill)
+            Some(Self::Kill)
         } else if s.eq_ignore_ascii_case("Poke") {
-            Some(BuiltInSub::Poke)
+            Some(Self::Poke)
         } else if s.eq_ignore_ascii_case("Screen") {
-            Some(BuiltInSub::Screen)
+            Some(Self::Screen)
         } else {
             None
         }

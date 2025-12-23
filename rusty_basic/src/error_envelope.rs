@@ -90,9 +90,7 @@ pub trait PatchErrPos<Pos, TResult> {
     fn patch_err_pos(self, p: Pos) -> TResult;
 }
 
-impl<Pos: HasPos, T, E> PatchErrPos<&Pos, Result<T, ErrorEnvelope<E>>>
-    for Result<T, ErrorEnvelope<E>>
-{
+impl<Pos: HasPos, T, E> PatchErrPos<&Pos, Self> for Result<T, ErrorEnvelope<E>> {
     fn patch_err_pos(self, p: &Pos) -> Self {
         self.map_err(|e| e.patch_pos(p.pos()))
     }

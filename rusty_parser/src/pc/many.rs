@@ -38,7 +38,7 @@ struct ManyParser<P, S, A> {
 
 impl<P, S, A> ManyParser<P, S, A> {
     pub fn new(parser: P, seed: S, accumulator: A) -> Self {
-        ManyParser {
+        Self {
             parser,
             seed,
             accumulator,

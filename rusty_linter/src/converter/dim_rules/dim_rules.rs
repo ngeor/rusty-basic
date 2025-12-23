@@ -19,7 +19,7 @@ impl<'a> Convertible<DimListState<'a>> for DimList {
             let new_dim_name = element.convert(&mut new_state).patch_err_pos(&pos)?;
             new_variables.push(new_dim_name.at_pos(pos));
         }
-        Ok(DimList {
+        Ok(Self {
             variables: new_variables,
             shared,
         })
@@ -43,7 +43,7 @@ impl<'a, 'b> Convertible<DimNameState<'a, 'b>> for DimVar {
         let shared = ctx.is_shared();
         ctx.names
             .insert(bare_name.clone(), &var_type, shared, redim_info);
-        Ok(DimVar::new(bare_name, var_type))
+        Ok(Self::new(bare_name, var_type))
     }
 }
 

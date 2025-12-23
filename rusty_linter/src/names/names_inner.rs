@@ -8,6 +8,8 @@ use crate::names::{
     traits::{ManyNamesTrait, SingleNameTrait},
 };
 
+/// Stores information about multiple constants or variable names.
+/// This struct does not support multiple levels (e.g. `FUNCTION` or `SUB`).
 #[derive(Default)]
 pub struct NamesInner(HashMap<BareName, NameInfo>);
 

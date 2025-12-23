@@ -1,8 +1,10 @@
 use rusty_parser::specific::{BuiltInStyle, TypeQualifier, VariableInfo};
 use rusty_variant::Variant;
 
-use crate::names::{compacts_info::CompactsInfo, traits::SingleNameTrait};
+use crate::names::{compacts::Compacts, traits::SingleNameTrait};
 
+/// Stores information about a constant or variable name.
+/// The name itself isn't stored here.
 pub struct NameInfo(NameInfoInner);
 
 impl NameInfo {
@@ -11,7 +13,7 @@ impl NameInfo {
     }
 
     pub fn compacts() -> Self {
-        Self(NameInfoInner::Compacts(CompactsInfo::default()))
+        Self(NameInfoInner::Compacts(Compacts::default()))
     }
 
     pub fn extended(variable_info: VariableInfo) -> Self {
@@ -41,9 +43,12 @@ impl SingleNameTrait for NameInfo {
     }
 }
 
+/// Nested enum for [NameInfo].
+/// The external struct is preventing direct access to the enum members
+/// outside of the module.
 enum NameInfoInner {
     Constant(Variant),
-    Compacts(CompactsInfo),
+    Compacts(Compacts),
     Extended(VariableInfo),
 }
 

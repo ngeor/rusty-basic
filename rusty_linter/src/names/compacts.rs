@@ -5,10 +5,14 @@ use rusty_variant::Variant;
 
 use crate::names::traits::SingleNameTrait;
 
+/// Stores information about compact variables of the same name.
+/// The name of the variable isn't stored in this struct.
+/// With compact variables, it's possible to have the same name
+/// but with different types e.g. `A$` and `A%`.
 #[derive(Default)]
-pub struct CompactsInfo(HashMap<TypeQualifier, VariableInfo>);
+pub struct Compacts(HashMap<TypeQualifier, VariableInfo>);
 
-impl SingleNameTrait for CompactsInfo {
+impl SingleNameTrait for Compacts {
     fn get_compact(&self, qualifier: TypeQualifier) -> Option<&VariableInfo> {
         self.0.get(&qualifier)
     }

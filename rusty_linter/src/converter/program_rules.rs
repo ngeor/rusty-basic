@@ -20,7 +20,7 @@ impl Convertible for Program {
 
         // collect implicitly defined variables
         let mut implicit_vars = ImplicitVars::new();
-        implicit_vars.append(ctx.names.get_implicits());
+        implicit_vars.append(ctx.names.get_implicit_vars_mut());
         let mut implicit_statements: Self = implicit_vars
             .into_iter()
             .map(|Positioned { element, pos }| {

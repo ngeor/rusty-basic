@@ -4,7 +4,7 @@ use crate::NameContext;
 use crate::{const_value_resolver::ConstLookup, names::ImplicitVars};
 use rusty_common::CaseInsensitiveString;
 use rusty_parser::specific::{
-    BareName, BuiltInStyle, HasExpressionType, QualifiedNamePos, RedimInfo, TypeQualifier,
+    BareName, BuiltInStyle, HasExpressionType, RedimInfo, TypeQualifier,
     VarTypeIsExtended, VariableInfo,
 };
 use rusty_variant::Variant;
@@ -51,11 +51,7 @@ impl Names {
         Self::new(None, None)
     }
 
-    pub fn add_implicit(&mut self, name_pos: QualifiedNamePos) {
-        self.implicit_vars.push(name_pos);
-    }
-
-    pub fn get_implicits(&mut self) -> &mut ImplicitVars {
+    pub fn get_implicit_vars_mut(&mut self) -> &mut ImplicitVars {
         &mut self.implicit_vars
     }
 

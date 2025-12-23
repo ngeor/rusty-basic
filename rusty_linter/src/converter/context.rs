@@ -73,7 +73,7 @@ impl Context {
         let mut current = std::mem::replace(&mut self.names, temp_dummy);
         // collect implicit vars
         let mut implicit_vars = ImplicitVars::new();
-        implicit_vars.append(current.get_implicits());
+        implicit_vars.append(&mut current.get_implicit_vars_mut());
         // set parent as current
         self.names = current.pop_parent().expect("Stack underflow");
         implicit_vars

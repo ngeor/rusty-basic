@@ -1,4 +1,4 @@
-mod compacts_info;
+mod compacts;
 mod implicit_vars;
 mod name_info;
 mod names;

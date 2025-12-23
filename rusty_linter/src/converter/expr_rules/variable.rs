@@ -70,8 +70,7 @@ pub fn add_as_new_implicit_var(ctx: &mut PosExprState, name: Name) -> Expression
 
     let var_info = VariableInfo::new_built_in(q, false);
     let pos = ctx.pos();
-    ctx.names
-        .add_implicit(resolved_name.clone().demand_qualified().at_pos(pos));
+    ctx.names.get_implicit_vars_mut().push(resolved_name.clone().demand_qualified().at_pos(pos));
     Expression::Variable(resolved_name, var_info)
 }
 

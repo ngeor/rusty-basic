@@ -1,8 +1,12 @@
 use std::collections::HashMap;
 
-use rusty_parser::specific::BareName;
+use rusty_parser::specific::{BareName, TypeQualifier, VariableInfo};
+use rusty_variant::Variant;
 
-use crate::names::name_info::NameInfo;
+use crate::names::{
+    name_info::NameInfo,
+    traits::{ManyNamesTrait, SingleNameTrait},
+};
 
 #[derive(Default)]
 pub struct NamesInner(HashMap<BareName, NameInfo>);
@@ -12,15 +16,70 @@ impl NamesInner {
         self.0.contains_key(bare_name)
     }
 
-    pub fn get(&self, bare_name: &BareName) -> Option<&NameInfo> {
-        self.0.get(bare_name)
+    pub fn insert_const(&mut self, bare_name: BareName, v: Variant) {
+        debug_assert!(!self.0.contains_key(&bare_name));
+        self.0.insert(bare_name, NameInfo::constant(v));
     }
 
-    pub fn get_mut(&mut self, bare_name: &BareName) -> Option<&mut NameInfo> {
-        self.0.get_mut(bare_name)
+    pub fn insert_extended(&mut self, bare_name: BareName, variable_context: VariableInfo) {
+        // if it exists as REDIM extended, it's okay
+        // all other cases where it already exists are not okay
+        debug_assert!(match self.0.get(&bare_name) {
+            Some(name_info) => {
+                match name_info.get_extended() {
+                    Some(e) => e.redim_info.is_some(),
+                    _ => false,
+                }
+            }
+            None => {
+                true
+            }
+        });
+        self.0
+            .insert(bare_name, NameInfo::extended(variable_context));
+    }
+}
+
+impl ManyNamesTrait for NamesInner {
+    fn get_compact(&self, bare_name: &BareName, qualifier: TypeQualifier) -> Option<&VariableInfo> {
+        self.0
+            .get(bare_name)
+            .and_then(|name_info| name_info.get_compact(qualifier))
     }
 
-    pub fn insert(&mut self, bare_name: BareName, name_info: NameInfo) {
-        self.0.insert(bare_name, name_info);
+    fn get_extended(&self, bare_name: &BareName) -> Option<&VariableInfo> {
+        self.0
+            .get(bare_name)
+            .and_then(|name_info| name_info.get_extended())
+    }
+
+    fn get_const_value(&self, bare_name: &BareName) -> Option<&rusty_variant::Variant> {
+        self.0
+            .get(bare_name)
+            .and_then(|name_info| name_info.get_const_value())
+    }
+
+    fn collect_var_info(
+        &self,
+        bare_name: &BareName,
+        only_shared: bool,
+    ) -> Vec<(rusty_parser::specific::BuiltInStyle, &VariableInfo)> {
+        self.0
+            .get(bare_name)
+            .map(|name_info| name_info.collect_var_info(only_shared))
+            .unwrap_or_default()
+    }
+
+    fn insert_compact(&mut self, bare_name: BareName, variable_info: VariableInfo) {
+        match self.0.get_mut(&bare_name) {
+            Some(name_info) => {
+                name_info.insert_compact(variable_info);
+            }
+            None => {
+                let mut name_info = NameInfo::compacts();
+                name_info.insert_compact(variable_info);
+                self.0.insert(bare_name, name_info);
+            }
+        }
     }
 }

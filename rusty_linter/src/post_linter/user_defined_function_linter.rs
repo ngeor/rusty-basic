@@ -7,7 +7,7 @@ use rusty_parser::specific::*;
 use super::post_conversion_linter::PostConversionLinter;
 
 pub struct UserDefinedFunctionLinter<'a, R> {
-    pub context: &'a R,
+    pub linter_context: &'a R,
 }
 
 pub fn lint_call_args(
@@ -157,7 +157,7 @@ where
 {
     fn visit_function(&self, name: &Name, args: &Expressions) -> Result<(), LintErrorPos> {
         if let Name::Qualified(bare_name, qualifier) = name {
-            match self.context.functions().get(bare_name) {
+            match self.linter_context.functions().get(bare_name) {
                 Some(function_signature_pos) => {
                     if function_signature_pos.element.qualifier() != *qualifier {
                         Err(LintError::TypeMismatch.at(function_signature_pos))

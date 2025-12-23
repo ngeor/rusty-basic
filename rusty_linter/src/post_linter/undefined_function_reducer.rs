@@ -6,7 +6,7 @@ use rusty_parser::specific::Expression;
 
 /// Finds undefined functions and converts them to zeroes.
 pub struct UndefinedFunctionReducer<'a, R> {
-    pub context: &'a R,
+    pub linter_context: &'a R,
 }
 
 impl<'a, R> ExpressionReducer for UndefinedFunctionReducer<'a, R>
@@ -25,7 +25,11 @@ where
                 Ok(Expression::UnaryExpression(op, Box::new(mapped_child)))
             }
             Expression::FunctionCall(name, args) => {
-                if self.context.functions().contains_key(name.bare_name()) {
+                if self
+                    .linter_context
+                    .functions()
+                    .contains_key(name.bare_name())
+                {
                     Ok(Expression::FunctionCall(
                         name,
                         self.visit_expressions(args)?,

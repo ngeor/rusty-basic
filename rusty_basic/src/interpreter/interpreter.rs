@@ -49,7 +49,7 @@ pub struct Interpreter<
     screen: Box<dyn Screen>,
 
     /// Holds the definition of user defined types
-    user_defined_types_holder: U,
+    linter_context: U,
 
     /// Contains variables and constants, collects function/sub arguments.
     context: Context,
@@ -91,7 +91,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
     HasUserDefinedTypes for Interpreter<TStdlib, TStdIn, TStdOut, TLpt1, U>
 {
     fn user_defined_types(&self) -> &UserDefinedTypes {
-        self.user_defined_types_holder.user_defined_types()
+        self.linter_context.user_defined_types()
     }
 }
 
@@ -245,15 +245,13 @@ pub type DefaultInterpreter<U> = Interpreter<
     U,
 >;
 
-pub fn new_default_interpreter<U: HasUserDefinedTypes>(
-    user_defined_types: U,
-) -> DefaultInterpreter<U> {
+pub fn new_default_interpreter<U: HasUserDefinedTypes>(linter_context: U) -> DefaultInterpreter<U> {
     let stdlib = DefaultStdlib;
     let stdin = ReadInputSource::new(std::io::stdin());
     let stdout = WritePrinter::new(std::io::stdout());
     let lpt1 = WritePrinter::new(Lpt1Write {});
     let screen = CrossTermScreen::default();
-    Interpreter::new(stdlib, stdin, stdout, lpt1, screen, user_defined_types)
+    Interpreter::new(stdlib, stdin, stdout, lpt1, screen, linter_context)
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUserDefinedTypes>
@@ -265,7 +263,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
         stdout: TStdOut,
         lpt1: TLpt1,
         screen: TScreen,
-        user_defined_types_holder: U,
+        linter_context: U,
     ) -> Self {
         Self {
             stdlib,
@@ -279,7 +277,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
             register_stack: vec![Registers::new()],
             stacktrace: vec![],
             file_manager: FileManager::new(),
-            user_defined_types_holder,
+            linter_context,
             var_path_stack: VecDeque::new(),
             by_ref_stack: VecDeque::new(),
             function_result: None,

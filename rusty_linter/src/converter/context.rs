@@ -9,7 +9,6 @@ pub struct Context {
     pre_linter_result: PreLinterResult,
     pub resolver: TypeResolverImpl,
     // TODO make this private
-    // TODO propagate this to instruction_generator, so that it won't read VariableInfo from Expression
     pub names: Names,
 }
 
@@ -56,9 +55,5 @@ impl Context {
         self.functions()
             .get(bare_name)
             .map(|function_signature_pos| function_signature_pos.element.qualifier())
-    }
-
-    pub fn pre_linter_result(self) -> PreLinterResult {
-        self.pre_linter_result
     }
 }

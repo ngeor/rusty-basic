@@ -11,20 +11,18 @@ use rusty_parser::specific::Program;
 
 pub fn post_linter(
     result: Program,
-    pre_linter_result: &(impl HasFunctions + HasSubs),
+    linter_context: &(impl HasFunctions + HasSubs),
 ) -> Result<Program, LintErrorPos> {
     // lint
-    apply_linters(&result, pre_linter_result)?;
+    apply_linters(&result, linter_context)?;
     // reduce
-    let mut reducer = undefined_function_reducer::UndefinedFunctionReducer {
-        context: pre_linter_result,
-    };
+    let mut reducer = undefined_function_reducer::UndefinedFunctionReducer { linter_context };
     reducer.visit_program(result)
 }
 
 fn apply_linters(
     result: &Program,
-    pre_linter_result: &(impl HasFunctions + HasSubs),
+    linter_context: &(impl HasFunctions + HasSubs),
 ) -> Result<(), LintErrorPos> {
     let mut linter = for_next_counter_match_linter::ForNextCounterMatch {};
     linter.visit_program(result)?;
@@ -38,14 +36,10 @@ fn apply_linters(
     let mut linter = print_linter::PrintLinter {};
     linter.visit_program(result)?;
 
-    let mut linter = user_defined_function_linter::UserDefinedFunctionLinter {
-        context: pre_linter_result,
-    };
+    let mut linter = user_defined_function_linter::UserDefinedFunctionLinter { linter_context };
     linter.visit_program(result)?;
 
-    let mut linter = user_defined_sub_linter::UserDefinedSubLinter {
-        context: pre_linter_result,
-    };
+    let mut linter = user_defined_sub_linter::UserDefinedSubLinter { linter_context };
     linter.visit_program(result)?;
 
     let mut linter = select_case_linter::SelectCaseLinter {};

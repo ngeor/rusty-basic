@@ -6,7 +6,7 @@ use rusty_common::*;
 use rusty_parser::specific::Expressions;
 
 pub struct UserDefinedSubLinter<'a, R> {
-    pub context: &'a R,
+    pub linter_context: &'a R,
 }
 
 impl<'a, R> PostConversionLinter for UserDefinedSubLinter<'a, R>
@@ -18,7 +18,7 @@ where
         name: &CaseInsensitiveString,
         args: &Expressions,
     ) -> Result<(), LintErrorPos> {
-        match self.context.subs().get(name) {
+        match self.linter_context.subs().get(name) {
             Some(sub_signature_pos) => {
                 lint_call_args(args, sub_signature_pos.element.param_types())
             }

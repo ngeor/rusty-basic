@@ -8,7 +8,7 @@ pub fn lint(program: Program) -> Result<(Program, impl HasUserDefinedTypes), Lin
     // first pass, get user defined types and functions/subs
     let pre_linter_result = pre_lint_program(&program)?;
     // convert to fully typed
-    let (pre_linter_result, program) = convert(program, pre_linter_result)?;
+    let (context, program) = convert(program, pre_linter_result)?;
     // lint and reduce
-    post_linter(program, &pre_linter_result).map(|program| (program, pre_linter_result))
+    post_linter(program, &context).map(|program| (program, context))
 }

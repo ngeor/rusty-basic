@@ -18,9 +18,7 @@ use rusty_parser::specific::Program;
 pub fn convert(
     program: Program,
     pre_linter_result: PreLinterResult,
-) -> Result<(PreLinterResult, Program), LintErrorPos> {
+) -> Result<(Context, Program), LintErrorPos> {
     let mut context = Context::new(pre_linter_result);
-    program
-        .convert(&mut context)
-        .map(|p| (context.pre_linter_result(), p))
+    program.convert(&mut context).map(|p| (context, p))
 }

@@ -26,20 +26,17 @@ fn main() {
 
 fn on_parsed(program: Program, run_options: RunOptions) {
     match lint(program) {
-        Ok((linted_program, user_defined_types_holder)) => {
-            on_linted(linted_program, user_defined_types_holder, run_options)
+        Ok((linted_program, linter_context)) => {
+            on_linted(linted_program, linter_context, run_options)
         }
         Err(e) => eprintln!("Could not lint program. {:?}", e),
     }
 }
 
-fn on_linted(
-    program: Program,
-    user_defined_types_holder: impl HasUserDefinedTypes,
-    run_options: RunOptions,
-) {
+fn on_linted(program: Program, linter_context: impl HasUserDefinedTypes, run_options: RunOptions) {
+    // TODO propagate linter_context to instruction_generator, so that it won't read VariableInfo from Expression
     let instruction_generator_result = generate_instructions(program);
-    let mut interpreter = new_default_interpreter(user_defined_types_holder);
+    let mut interpreter = new_default_interpreter(linter_context);
     run_options.set_current_dir_if_apache();
     match interpreter.interpret(instruction_generator_result) {
         Ok(_) => (),

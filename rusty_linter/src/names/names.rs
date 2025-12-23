@@ -1,5 +1,5 @@
 use crate::NameContext;
-use crate::{const_value_resolver::ConstLookup, names::Implicits};
+use crate::{const_value_resolver::ConstLookup, names::ImplicitVars};
 use rusty_common::CaseInsensitiveString;
 use rusty_parser::specific::{
     BareName, BuiltInStyle, HasExpressionType, QualifiedNamePos, RedimInfo, TypeQualifier,
@@ -32,8 +32,8 @@ pub struct Names {
     map: HashMap<BareName, NameInfo>,
     current_function_name: Option<BareName>,
     parent: Option<Box<Self>>,
-    // TODO implicits has nothing to do with Names, it's only here because of the convenience of pushing/popping a Names context
-    implicits: Implicits,
+    // TODO implicit_vars has nothing to do with Names, it's only here because of the convenience of pushing/popping a Names context
+    implicit_vars: ImplicitVars,
 }
 
 impl Names {
@@ -42,7 +42,7 @@ impl Names {
             map: HashMap::new(),
             current_function_name,
             parent,
-            implicits: Implicits::new(),
+            implicit_vars: ImplicitVars::new(),
         }
     }
 
@@ -51,11 +51,11 @@ impl Names {
     }
 
     pub fn add_implicit(&mut self, name_pos: QualifiedNamePos) {
-        self.implicits.push(name_pos);
+        self.implicit_vars.push(name_pos);
     }
 
-    pub fn get_implicits(&mut self) -> &mut Implicits {
-        &mut self.implicits
+    pub fn get_implicits(&mut self) -> &mut ImplicitVars {
+        &mut self.implicit_vars
     }
 
     /// Returns true if this name is a constant, or an extended variable,

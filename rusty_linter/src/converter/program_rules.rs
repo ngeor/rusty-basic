@@ -2,7 +2,7 @@ use crate::converter::context::Context;
 use crate::converter::pos_context::PosContext;
 use crate::converter::traits::Convertible;
 use crate::error::LintErrorPos;
-use crate::names::Implicits;
+use crate::names::ImplicitVars;
 use rusty_common::{AtPos, HasPos, Positioned};
 use rusty_parser::specific::{
     DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement,
@@ -19,9 +19,9 @@ impl Convertible for Program {
         }
 
         // collect implicitly defined variables
-        let mut implicits = Implicits::new();
-        implicits.append(ctx.names.get_implicits());
-        let mut implicit_statements: Self = implicits
+        let mut implicit_vars = ImplicitVars::new();
+        implicit_vars.append(ctx.names.get_implicits());
+        let mut implicit_statements: Self = implicit_vars
             .into_iter()
             .map(|Positioned { element, pos }| {
                 GlobalStatement::Statement(Statement::Dim(DimVar::from(element).into_list(pos)))
@@ -112,8 +112,8 @@ fn convert_block_hoisting_implicits(
     ctx: &mut Context,
 ) -> Result<Statements, LintErrorPos> {
     let mut result = statements.convert(ctx)?;
-    let implicits = ctx.pop_context();
-    let mut implicit_dim: Statements = implicits
+    let implicit_vars = ctx.pop_context();
+    let mut implicit_dim: Statements = implicit_vars
         .into_iter()
         .map(
             |Positioned {
@@ -131,7 +131,7 @@ fn on_statement(
     statement: Statement,
     ctx: &mut PosContext,
 ) -> Result<Vec<GlobalStatementPos>, LintErrorPos> {
-    // a statement might be converted into multiple statements due to implicits
+    // a statement might be converted into multiple statements due to implicit vars
     let statements = vec![statement.at_pos(ctx.pos())];
     let statements = statements.convert(ctx)?;
     Ok(statements

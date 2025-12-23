@@ -1,6 +1,6 @@
 use crate::converter::traits::Convertible;
 use crate::error::LintErrorPos;
-use crate::names::Implicits;
+use crate::names::ImplicitVars;
 use crate::names::Names;
 use crate::pre_linter::PreLinterResult;
 use crate::type_resolver::{IntoQualified, TypeResolver};
@@ -66,17 +66,17 @@ impl Context {
         Ok((converted_function_name, params.convert(self)?))
     }
 
-    pub fn pop_context(&mut self) -> Implicits {
+    pub fn pop_context(&mut self) -> ImplicitVars {
         // temp object for mem swap
         let temp_dummy = Names::new_root();
         // take current "self.names" and store into "current"
         let mut current = std::mem::replace(&mut self.names, temp_dummy);
-        // collect implicits
-        let mut implicits = Implicits::new();
-        implicits.append(current.get_implicits());
+        // collect implicit vars
+        let mut implicit_vars = ImplicitVars::new();
+        implicit_vars.append(current.get_implicits());
         // set parent as current
         self.names = current.pop_parent().expect("Stack underflow");
-        implicits
+        implicit_vars
     }
 
     pub fn is_in_subprogram(&self) -> bool {

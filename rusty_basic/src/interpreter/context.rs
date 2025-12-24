@@ -5,8 +5,8 @@ use crate::interpreter::variables::Variables;
 use crate::RuntimeError;
 use rusty_common::*;
 use rusty_linter::{QBNumberCast, SubprogramName};
-use rusty_parser::specific::{BareName, TypeQualifier};
 use rusty_parser::BuiltInFunction;
+use rusty_parser::{BareName, TypeQualifier};
 use rusty_variant::{bytes_to_i32, i32_to_bytes, UserDefinedTypeValue, VArray, Variant};
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -163,7 +163,7 @@ impl Context {
     }
 
     #[cfg(test)]
-    pub fn get_by_name(&self, name: &rusty_parser::specific::Name) -> Variant {
+    pub fn get_by_name(&self, name: &rusty_parser::Name) -> Variant {
         self.variables()
             .get_by_name(name)
             .map(Clone::clone)

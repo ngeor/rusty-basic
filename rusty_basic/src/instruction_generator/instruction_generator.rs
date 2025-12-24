@@ -5,13 +5,13 @@ use crate::instruction_generator::subprogram_info::{
 use crate::RuntimeError;
 use rusty_common::{AtPos, CaseInsensitiveString, Position, Positioned};
 use rusty_linter::SubprogramName;
-use rusty_parser::specific::{
+use rusty_parser::BuiltInFunction;
+use rusty_parser::BuiltInSub;
+use rusty_parser::{
     BareName, DimVar, Expression, ExpressionPos, ExpressionType, FileHandle,
     FunctionImplementation, GlobalStatement, HasExpressionType, Name, Parameter, Program,
     QualifiedName, Statement, Statements, SubImplementation, TypeQualifier,
 };
-use rusty_parser::BuiltInFunction;
-use rusty_parser::BuiltInSub;
 use rusty_variant::Variant;
 
 /// Generates instructions for the given program.

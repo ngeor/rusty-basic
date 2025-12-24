@@ -1,7 +1,7 @@
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{AddressOrLabel, Instruction, PrinterType, RootPath};
 use rusty_common::AtPos;
-use rusty_parser::specific::{BuiltInStyle, ExpressionType, ParamType, Parameter, TypeQualifier};
+use rusty_parser::{BuiltInStyle, ExpressionType, ParamType, Parameter, TypeQualifier};
 use rusty_variant::Variant;
 
 #[test]

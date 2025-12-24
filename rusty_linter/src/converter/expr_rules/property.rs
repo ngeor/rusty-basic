@@ -1,5 +1,5 @@
 use rusty_common::{AtPos, HasPos, Positioned};
-use rusty_parser::specific::{
+use rusty_parser::{
     BareName, ElementType, Expression, ExpressionType, HasExpressionType, Name, UserDefinedType,
     VariableInfo,
 };

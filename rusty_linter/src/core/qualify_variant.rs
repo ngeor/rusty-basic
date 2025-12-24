@@ -1,4 +1,4 @@
-use rusty_parser::specific::TypeQualifier;
+use rusty_parser::TypeQualifier;
 use rusty_variant::Variant;
 
 use crate::core::LintError;

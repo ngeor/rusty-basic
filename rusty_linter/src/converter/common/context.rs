@@ -3,7 +3,7 @@ use crate::core::TypeResolverImpl;
 use crate::core::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, SubMap};
 use crate::names::Names;
 use crate::pre_linter::PreLinterResult;
-use rusty_parser::specific::*;
+use rusty_parser::*;
 
 pub struct Context {
     pre_linter_result: PreLinterResult,

@@ -6,7 +6,7 @@ use crate::converter::statement::{assignment, const_rules};
 use crate::core::{LintError, LintErrorPos};
 use crate::core::{LintPosResult, NameContext};
 use rusty_common::*;
-use rusty_parser::specific::{ExitObject, Statement, StatementPos, Statements};
+use rusty_parser::{ExitObject, Statement, StatementPos, Statements};
 
 impl Convertible<Context, Option<Self>> for StatementPos {
     fn convert(self, ctx: &mut Context) -> Result<Option<Self>, LintErrorPos> {

@@ -2,7 +2,7 @@ use rusty_basic::instruction_generator::generate_instructions;
 use rusty_basic::interpreter::{new_default_interpreter, InterpreterTrait};
 use rusty_linter::{lint, HasUserDefinedTypes};
 use rusty_parser::parse_main_file;
-use rusty_parser::specific::Program;
+use rusty_parser::Program;
 use std::env;
 use std::fs::File;
 

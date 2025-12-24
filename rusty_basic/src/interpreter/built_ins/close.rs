@@ -1,7 +1,7 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
 use crate::RuntimeError;
-use rusty_parser::specific::FileHandle;
+use rusty_parser::FileHandle;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let file_handles: Vec<FileHandle> = interpreter

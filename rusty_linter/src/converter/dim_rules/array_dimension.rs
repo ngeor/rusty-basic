@@ -1,7 +1,7 @@
 use crate::converter::common::Context;
 use crate::converter::common::Convertible;
 use crate::core::LintErrorPos;
-use rusty_parser::specific::ArrayDimension;
+use rusty_parser::ArrayDimension;
 
 impl Convertible for ArrayDimension {
     fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {

@@ -1,7 +1,7 @@
 use crate::core::{LintError, LintErrorPos};
 use crate::post_linter::post_conversion_linter::PostConversionLinter;
 use rusty_common::AtPos;
-use rusty_parser::specific::{
+use rusty_parser::{
     ConditionalBlock, DoLoop, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier,
 };
 

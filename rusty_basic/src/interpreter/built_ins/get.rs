@@ -3,7 +3,7 @@ use crate::interpreter::io::Field;
 use crate::interpreter::string_utils::to_ascii_string;
 use crate::interpreter::variant_casts::VariantCasts;
 use crate::RuntimeError;
-use rusty_parser::specific::{BareName, FileHandle, TypeQualifier};
+use rusty_parser::{BareName, FileHandle, TypeQualifier};
 use rusty_variant::Variant;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {

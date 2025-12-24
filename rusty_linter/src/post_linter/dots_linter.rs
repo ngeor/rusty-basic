@@ -1,6 +1,6 @@
 use super::post_conversion_linter::PostConversionLinter;
 use rusty_common::*;
-use rusty_parser::specific::*;
+use rusty_parser::*;
 
 use crate::core::LintPosResult;
 use crate::core::{LintError, LintErrorPos};

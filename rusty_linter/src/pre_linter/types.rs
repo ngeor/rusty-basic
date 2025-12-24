@@ -1,7 +1,7 @@
 use crate::core::ConstLookup;
 use crate::core::ResolvedParamType;
 use rusty_common::CaseInsensitiveString;
-use rusty_parser::specific::{BareName, TypeQualifier};
+use rusty_parser::{BareName, TypeQualifier};
 use rusty_variant::Variant;
 use std::collections::HashMap;
 

@@ -1,5 +1,5 @@
 use rusty_common::AtPos;
-use rusty_parser::specific::{
+use rusty_parser::{
     Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UnaryOperator,
 };
 

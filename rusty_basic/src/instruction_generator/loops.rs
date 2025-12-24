@@ -1,7 +1,7 @@
 use super::{Instruction, InstructionGenerator, Visitor};
 use crate::RuntimeError;
 use rusty_common::*;
-use rusty_parser::specific::{
+use rusty_parser::{
     ConditionalBlock, DoLoop, DoLoopConditionKind, DoLoopConditionPosition, Expression,
     ExpressionPos, ForLoop, HasExpressionType, Statements,
 };

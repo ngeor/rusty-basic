@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rusty_parser::specific::{BuiltInStyle, TypeQualifier, VariableInfo};
+use rusty_parser::{BuiltInStyle, TypeQualifier, VariableInfo};
 use rusty_variant::Variant;
 
 use crate::names::traits::SingleNameTrait;

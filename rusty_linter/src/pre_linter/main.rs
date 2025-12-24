@@ -6,7 +6,7 @@ use crate::pre_linter::const_rules::global_const;
 use crate::pre_linter::sub_program_context::{FunctionContext, SubContext, ToSignature};
 use crate::pre_linter::{ConstantMap, PreLinterResult, ResolvedParamTypes};
 use rusty_common::*;
-use rusty_parser::specific::*;
+use rusty_parser::*;
 
 struct MainContext {
     resolver: TypeResolverImpl,

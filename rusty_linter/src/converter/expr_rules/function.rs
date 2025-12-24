@@ -1,7 +1,5 @@
 use rusty_common::AtPos;
-use rusty_parser::specific::{
-    BareName, Expression, ExpressionType, Expressions, Name, VariableInfo,
-};
+use rusty_parser::{BareName, Expression, ExpressionType, Expressions, Name, VariableInfo};
 
 use crate::converter::common::{Context, Convertible, ExprContext};
 use crate::converter::expr_rules::qualify_name::*;

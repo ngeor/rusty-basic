@@ -7,7 +7,7 @@ use crate::converter::expr_rules::{
 use crate::core::LintErrorPos;
 use crate::core::LintPosResult;
 use rusty_common::*;
-use rusty_parser::specific::*;
+use rusty_parser::*;
 
 //
 // ExpressionPos Convertible

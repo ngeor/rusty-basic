@@ -2,9 +2,7 @@ use crate::assert_linter_err;
 use crate::assert_linter_ok_global_statements;
 use crate::core::LintError;
 use rusty_common::AtPos;
-use rusty_parser::specific::{
-    DimVar, Expression, ExpressionType, Operator, Statement, TypeQualifier,
-};
+use rusty_parser::{DimVar, Expression, ExpressionType, Operator, Statement, TypeQualifier};
 
 #[test]
 fn name_clashes_with_other_sub_name() {

@@ -1,7 +1,7 @@
 use crate::converter::common::Context;
 use crate::converter::common::Convertible;
 use crate::core::LintErrorPos;
-use rusty_parser::specific::DoLoop;
+use rusty_parser::DoLoop;
 
 impl Convertible for DoLoop {
     fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {

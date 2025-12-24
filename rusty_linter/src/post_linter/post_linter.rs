@@ -7,7 +7,7 @@ use crate::post_linter::{
     label_linter, print_linter, select_case_linter, undefined_function_reducer,
     user_defined_function_linter, user_defined_sub_linter,
 };
-use rusty_parser::specific::Program;
+use rusty_parser::Program;
 
 pub fn post_linter(
     result: Program,

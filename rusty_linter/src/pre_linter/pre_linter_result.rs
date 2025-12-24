@@ -1,5 +1,5 @@
 use crate::core::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, SubMap};
-use rusty_parser::specific::UserDefinedTypes;
+use rusty_parser::UserDefinedTypes;
 
 /// Stores the result of the pre-linter.
 pub struct PreLinterResult {

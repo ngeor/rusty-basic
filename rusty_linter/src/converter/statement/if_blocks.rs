@@ -1,7 +1,7 @@
 use crate::converter::common::Context;
 use crate::converter::common::Convertible;
 use crate::core::LintErrorPos;
-use rusty_parser::specific::{ConditionalBlock, IfBlock};
+use rusty_parser::{ConditionalBlock, IfBlock};
 
 impl Convertible for ConditionalBlock {
     fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {

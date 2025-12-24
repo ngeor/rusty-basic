@@ -1,5 +1,5 @@
-use rusty_parser::specific::{Expression, Expressions};
 use rusty_parser::BuiltInFunction;
+use rusty_parser::{Expression, Expressions};
 
 use crate::converter::common::Context;
 use crate::converter::expr_rules::function::{

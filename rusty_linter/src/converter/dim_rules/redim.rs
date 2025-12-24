@@ -6,7 +6,7 @@ use crate::core::IntoTypeQualifier;
 use crate::core::LintResult;
 use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
-use rusty_parser::specific::*;
+use rusty_parser::*;
 
 pub fn on_redim_type<'a, 'b>(
     var_type: DimType,

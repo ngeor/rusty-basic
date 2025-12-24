@@ -1,11 +1,11 @@
-pub mod error;
+mod error;
 mod parser;
-pub mod pc;
-pub mod specific;
+mod pc;
+mod specific;
 
 #[cfg(test)]
-pub mod test_utils;
+mod test_utils;
 
+pub use self::error::*;
 pub use self::parser::*;
-pub use self::specific::BuiltInFunction;
-pub use self::specific::BuiltInSub;
+pub use self::specific::*;

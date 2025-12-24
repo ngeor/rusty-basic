@@ -1,7 +1,7 @@
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{Instruction, RootPath};
 use rusty_common::AtPos;
-use rusty_parser::specific::TypeQualifier;
+use rusty_parser::TypeQualifier;
 
 #[test]
 fn test_declaration_built_in_bare() {

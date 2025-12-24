@@ -6,7 +6,7 @@ use crate::converter::dim_rules::validation;
 use crate::core::LintErrorPos;
 use crate::core::LintPosResult;
 use rusty_common::AtPos;
-use rusty_parser::specific::{Parameter, ParameterPos};
+use rusty_parser::{Parameter, ParameterPos};
 
 impl Convertible for ParameterPos {
     fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {

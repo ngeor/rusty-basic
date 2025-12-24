@@ -5,7 +5,7 @@ use crate::names::names_inner::NamesInner;
 use crate::names::traits::ManyNamesTrait;
 use crate::{core::ConstLookup, names::ImplicitVars};
 use rusty_common::CaseInsensitiveString;
-use rusty_parser::specific::{
+use rusty_parser::{
     BareName, BuiltInStyle, HasExpressionType, QualifiedName, RedimInfo, TypeQualifier,
     VarTypeIsExtended, VariableInfo,
 };

@@ -4,7 +4,7 @@ use crate::core::{HasFunctions, HasSubs, HasUserDefinedTypes, LintResult};
 use crate::core::{LintError, LintErrorPos};
 use crate::names::ManyNamesTrait;
 use rusty_common::{AtPos, Positioned};
-use rusty_parser::specific::{
+use rusty_parser::{
     DimVar, Parameter, TypedName, VarTypeIsExtended, VarTypeQualifier,
     VarTypeToUserDefinedRecursively,
 };

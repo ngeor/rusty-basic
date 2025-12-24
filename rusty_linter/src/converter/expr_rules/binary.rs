@@ -1,4 +1,4 @@
-use rusty_parser::specific::{Expression, ExpressionPos, Operator};
+use rusty_parser::{Expression, ExpressionPos, Operator};
 
 use crate::converter::common::Convertible;
 use crate::converter::expr_rules::state::PosExprState;

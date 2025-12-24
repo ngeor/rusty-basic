@@ -1,5 +1,5 @@
 use rusty_common::{AtPos, HasPos, Position, Positioned};
-use rusty_parser::error::ParseError;
+use rusty_parser::ParseError;
 use rusty_variant::VariantError;
 
 #[derive(Clone, Debug, PartialEq)]

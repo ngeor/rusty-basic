@@ -1,7 +1,7 @@
 use crate::built_ins::arg_validation::ArgValidation;
 use crate::core::{LintError, LintErrorPos};
 use rusty_common::AtPos;
-use rusty_parser::specific::Expressions;
+use rusty_parser::Expressions;
 
 pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     // 1 or 2 arguments (row, col) but they're duplicated because they're optional

@@ -2,7 +2,7 @@ use crate::instruction_generator::PrinterType;
 use crate::interpreter::io::Printer;
 use crate::interpreter::string_utils::fix_length;
 use crate::RuntimeError;
-use rusty_parser::specific::FileHandle;
+use rusty_parser::FileHandle;
 use rusty_variant::Variant;
 use std::fmt::Display;
 

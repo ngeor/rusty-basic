@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rusty_parser::specific::{BareName, TypeQualifier, VariableInfo};
+use rusty_parser::{BareName, TypeQualifier, VariableInfo};
 use rusty_variant::Variant;
 
 use crate::names::{
@@ -68,7 +68,7 @@ impl ManyNamesTrait for NamesInner {
         &self,
         bare_name: &BareName,
         only_shared: bool,
-    ) -> Vec<(rusty_parser::specific::BuiltInStyle, &VariableInfo)> {
+    ) -> Vec<(rusty_parser::BuiltInStyle, &VariableInfo)> {
         self.0
             .get(bare_name)
             .map(|name_info| name_info.collect_var_info(only_shared))

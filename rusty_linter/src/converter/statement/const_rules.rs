@@ -3,7 +3,7 @@ use crate::core::ConstValueResolver;
 use crate::core::{qualifier_of_const_variant, CastVariant, HasFunctions, HasSubs, LintResult};
 use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
-use rusty_parser::specific::*;
+use rusty_parser::*;
 
 pub fn on_const(
     ctx: &mut Context,

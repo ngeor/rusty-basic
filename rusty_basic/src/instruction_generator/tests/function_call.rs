@@ -1,8 +1,8 @@
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{Instruction, RootPath};
 use rusty_common::AtPos;
-use rusty_parser::specific::{QualifiedName, TypeQualifier};
 use rusty_parser::BuiltInFunction;
+use rusty_parser::{QualifiedName, TypeQualifier};
 use std::convert::TryFrom;
 
 #[test]

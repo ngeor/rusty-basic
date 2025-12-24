@@ -1,7 +1,7 @@
 use crate::core::LintPosResult;
 use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
-use rusty_parser::specific::{Expression, ExpressionPos, Operator, TypeQualifier, UnaryOperator};
+use rusty_parser::{Expression, ExpressionPos, Operator, TypeQualifier, UnaryOperator};
 use rusty_variant::Variant;
 use std::cmp::Ordering;
 

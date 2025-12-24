@@ -6,7 +6,7 @@ use crate::core::LintErrorPos;
 use crate::core::SubprogramName;
 use crate::names::ImplicitVars;
 use rusty_common::{AtPos, HasPos, Positioned};
-use rusty_parser::specific::{
+use rusty_parser::{
     DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement,
     Statements, SubImplementation,
 };

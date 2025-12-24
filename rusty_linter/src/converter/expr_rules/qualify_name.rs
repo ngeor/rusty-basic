@@ -1,6 +1,5 @@
 use rusty_parser::{
-    specific::{ExpressionType, Name, TypeQualifier},
-    BuiltInFunction,
+    BuiltInFunction, {ExpressionType, Name, TypeQualifier},
 };
 
 use crate::LintError;

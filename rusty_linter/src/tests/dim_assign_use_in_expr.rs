@@ -4,7 +4,7 @@ use crate::core::HasUserDefinedTypes;
 use crate::core::LintError;
 use crate::tests::test_utils::*;
 use rusty_common::*;
-use rusty_parser::specific::*;
+use rusty_parser::*;
 
 /// Three step tests:
 /// 1. DIM a new variable

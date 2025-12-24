@@ -1,4 +1,4 @@
-use rusty_parser::specific::{BareName, BuiltInStyle, TypeQualifier, VariableInfo};
+use rusty_parser::{BareName, BuiltInStyle, TypeQualifier, VariableInfo};
 use rusty_variant::Variant;
 
 pub trait SingleNameTrait {

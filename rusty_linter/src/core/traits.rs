@@ -1,5 +1,5 @@
 use crate::core::{FunctionMap, ResolvedParamType, SubMap};
-use rusty_parser::specific::{
+use rusty_parser::{
     Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UserDefinedTypes,
 };
 

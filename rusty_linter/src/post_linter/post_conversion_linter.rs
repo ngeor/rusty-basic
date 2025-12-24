@@ -1,8 +1,8 @@
 use crate::core::LintErrorPos;
 use crate::core::LintPosResult;
 use rusty_common::*;
-use rusty_parser::built_ins::built_in_sub::BuiltInSub;
 use rusty_parser::specific::*;
+use rusty_parser::BuiltInSub;
 
 /// Invoked after the conversion to fully typed program.
 /// The default implementation of the trait simply visits all program elements.

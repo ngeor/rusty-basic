@@ -5,10 +5,10 @@ use crate::core::{qualifier_of_const_variant, HasSubs, IntoQualified, IntoTypeQu
 use crate::core::{LintError, LintErrorPos};
 use crate::names::ManyNamesTrait;
 use rusty_common::{AtPos, HasPos};
-use rusty_parser::built_ins::built_in_function::BuiltInFunction;
 use rusty_parser::specific::{
     BuiltInStyle, DimType, Expression, ExpressionType, Name, TypeQualifier, VariableInfo,
 };
+use rusty_parser::BuiltInFunction;
 use rusty_variant::Variant;
 
 pub fn convert(

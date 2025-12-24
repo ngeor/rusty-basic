@@ -3,10 +3,10 @@ use crate::built_ins::{lint_function_call, lint_sub_call};
 use crate::core::LintErrorPos;
 use crate::core::{LintPosResult, NameContext};
 use rusty_common::*;
-use rusty_parser::built_ins::built_in_sub::BuiltInSub;
 use rusty_parser::specific::{
     Expression, ExpressionPos, Expressions, FunctionImplementation, SubImplementation,
 };
+use rusty_parser::BuiltInSub;
 
 /// Lints built-in functions and subs.
 pub struct BuiltInLinter {

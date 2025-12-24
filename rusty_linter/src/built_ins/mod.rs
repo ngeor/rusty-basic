@@ -48,9 +48,9 @@ mod width;
 
 use crate::core::LintErrorPos;
 use crate::core::NameContext;
-use rusty_parser::built_ins::built_in_function::BuiltInFunction;
-use rusty_parser::built_ins::built_in_sub::BuiltInSub;
 use rusty_parser::specific::Expressions;
+use rusty_parser::BuiltInFunction;
+use rusty_parser::BuiltInSub;
 
 pub fn lint_sub_call(
     built_in_sub: &BuiltInSub,

@@ -2,8 +2,8 @@ use crate::assert_linter_err;
 use crate::core::LintError;
 use crate::tests::test_utils::linter_ok;
 use rusty_common::*;
-use rusty_parser::built_ins::built_in_function::BuiltInFunction;
 use rusty_parser::specific::*;
+use rusty_parser::BuiltInFunction;
 
 #[test]
 fn test_passing_array_parameter_without_parenthesis() {

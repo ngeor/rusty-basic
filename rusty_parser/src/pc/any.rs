@@ -1,6 +1,8 @@
 use crate::error::ParseError;
 use crate::pc::{default_parse_error, ParseResult, Parser, RcStringView, Token};
-use crate::pc_specific::token_parser;
+
+// TODO: fix this
+use crate::specific::token_parser;
 
 /// Parses any token.
 pub fn any_token() -> impl Parser<RcStringView, Output = Token> {

@@ -1,3 +1,4 @@
+// TODO 1: Make pc errors generic, 2: Move this to `specific` module.
 use rusty_common::Positioned;
 
 /// Represents parser errors.

@@ -3,8 +3,8 @@ use crate::converter::common::Convertible;
 use crate::converter::common::ExprContext;
 use crate::core::LintErrorPos;
 use rusty_parser::{
-    built_ins::built_in_sub::BuiltInSub,
     specific::{BareName, Expressions, Statement},
+    BuiltInSub,
 };
 
 impl Context {

@@ -1,6 +1,6 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::RuntimeError;
-use rusty_parser::built_ins::built_in_function::BuiltInFunction;
+use rusty_parser::BuiltInFunction;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let path = interpreter

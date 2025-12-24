@@ -26,7 +26,11 @@ impl Visitor<StatementPos> for InstructionGenerator {
             Statement::Assignment(left_side, right_side) => {
                 self.generate_assignment_instructions(left_side, right_side, pos)
             }
-            Statement::Const(_, _) => panic!("Constants should have been reduced by const_reducer"),
+            Statement::Const(_, _) => {
+                // The CONST statement does not generate any instructions,
+                // because the linter has replaced expressions that reference constants
+                // with their actual value.
+            }
             Statement::SubCall(n, args) => self.generate_sub_call_instructions(n.at_pos(pos), args),
             Statement::BuiltInSubCall(n, args) => {
                 self.generate_built_in_sub_call_instructions(n, args, pos)

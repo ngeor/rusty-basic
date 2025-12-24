@@ -1,5 +1,7 @@
+use rusty_common::{AtPos, Position, Positioned};
+
 use crate::converter::common::Context;
-use crate::core::LintErrorPos;
+use crate::core::{LintErrorPos, LintPosResult};
 
 /// Convert from the current type into the target type O.
 /// By default, O is the same as the current type.
@@ -29,6 +31,24 @@ where
 {
     fn convert(self, ctx: &mut Context) -> Result<Vec<O>, LintErrorPos> {
         self.into_iter().map(|t| t.convert(ctx)).collect()
+    }
+}
+
+// Blanket implementation for Positioned in combination with the next trait
+
+impl<T, O> Convertible<Positioned<O>> for Positioned<T>
+where
+    T: ConvertibleIn<Position, O>,
+{
+    fn convert(self, ctx: &mut Context) -> Result<Positioned<O>, LintErrorPos> {
+        let Self {
+            element: statement,
+            pos,
+        } = self;
+        statement
+            .convert_in(ctx, pos)
+            .map(|converted| converted.at_pos(pos))
+            .patch_err_pos(&pos)
     }
 }
 

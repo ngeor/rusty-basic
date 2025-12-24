@@ -3,10 +3,7 @@ use crate::assert_linter_ok_global_statements;
 use crate::core::LintError;
 use crate::tests::test_utils::linter_ok;
 use rusty_common::*;
-use rusty_parser::{
-    BareName, BuiltInStyle, Expression, GlobalStatement, ParamType, Parameter, Print, Statement,
-    SubImplementation, TypeQualifier,
-};
+use rusty_parser::*;
 
 #[test]
 fn function_call_not_allowed() {
@@ -109,6 +106,10 @@ fn test_constant_definition_and_usage_in_print() {
     "#;
     assert_linter_ok_global_statements!(
         program,
+        Statement::Const(
+            Name::from("X").at_rc(2, 11),
+            Expression::StringLiteral("hello".to_owned()).at_rc(2, 15)
+        ),
         Statement::Print(Print::one(
             Expression::StringLiteral("hello".to_owned()).at_rc(3, 11)
         ))
@@ -127,6 +128,11 @@ fn test_constant_definition_and_usage_in_sub_call_arg() {
     assert_eq!(
         linter_ok(program),
         vec![
+            GlobalStatement::Statement(Statement::Const(
+                Name::from("X").at_rc(2, 11),
+                Expression::StringLiteral("hello".to_owned()).at_rc(2, 15)
+            ),)
+            .at_rc(2, 5),
             GlobalStatement::Statement(Statement::SubCall(
                 "MySub".into(),
                 vec![Expression::StringLiteral("hello".to_owned()).at_rc(3, 11)]

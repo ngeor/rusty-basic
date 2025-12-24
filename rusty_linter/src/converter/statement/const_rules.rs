@@ -9,7 +9,7 @@ pub fn on_const(
     ctx: &mut Context,
     left_side: NamePos,
     right_side: ExpressionPos,
-) -> Result<(), LintErrorPos> {
+) -> Result<Statement, LintErrorPos> {
     const_cannot_clash_with_existing_names(ctx, &left_side)?;
     new_const(ctx, left_side, right_side)
 }
@@ -38,10 +38,10 @@ fn new_const(
     ctx: &mut Context,
     left_side: NamePos,
     right_side: ExpressionPos,
-) -> Result<(), LintErrorPos> {
+) -> Result<Statement, LintErrorPos> {
     let Positioned {
         element: const_name,
-        ..
+        pos,
     } = left_side;
     let value_before_casting = ctx.names.resolve_const(&right_side)?;
     let value_qualifier = qualifier_of_const_variant(&value_before_casting);
@@ -54,6 +54,12 @@ fn new_const(
     };
     ctx.names
         .names_mut()
-        .insert_const(const_name.into(), final_value);
-    Ok(())
+        .insert_const(const_name.bare_name().clone(), final_value);
+
+    // here we could return the simplified resolved value of the constant
+    // instead of keeping `right_side`.
+    // However the `CONST` statement gets ignored anyway. It stored the resolved
+    // value in the context, so all expressions that reference it
+    // will use it.
+    Ok(Statement::Const(const_name.at_pos(pos), right_side))
 }

@@ -3,102 +3,71 @@ use crate::converter::common::Convertible;
 use crate::converter::common::ConvertibleIn;
 use crate::converter::common::{DimContext, ExprContext};
 use crate::converter::statement::{assignment, const_rules};
+use crate::core::NameContext;
 use crate::core::{LintError, LintErrorPos};
-use crate::core::{LintPosResult, NameContext};
 use rusty_common::*;
-use rusty_parser::{ExitObject, Statement, StatementPos, Statements};
+use rusty_parser::{ExitObject, Statement};
 
-impl Convertible<Option<Self>> for StatementPos {
-    fn convert(self, ctx: &mut Context) -> Result<Option<Self>, LintErrorPos> {
-        let Self {
-            element: statement,
-            pos,
-        } = self;
-        statement
-            .convert_in(ctx, pos)
-            .map(|opt_statement| opt_statement.map(|s| s.at_pos(pos)))
-            .patch_err_pos(&pos)
-    }
-}
-
-impl ConvertibleIn<Position, Option<Self>> for Statement {
-    fn convert_in(self, ctx: &mut Context, pos: Position) -> Result<Option<Self>, LintErrorPos> {
+impl ConvertibleIn<Position> for Statement {
+    fn convert_in(self, ctx: &mut Context, pos: Position) -> Result<Self, LintErrorPos> {
         match self {
-            Self::Assignment(n, e) => assignment::on_assignment(n, e, ctx, pos).map(Some),
+            Self::Assignment(n, e) => assignment::on_assignment(n, e, ctx, pos),
             // CONST is mapped to None and is filtered out
-            Self::Const(n, e) => const_rules::on_const(ctx, n, e).map(|_| None),
-            Self::SubCall(n, args) => ctx.sub_call(n, args).map(Some),
+            Self::Const(n, e) => const_rules::on_const(ctx, n, e),
+            Self::SubCall(n, args) => ctx.sub_call(n, args),
             Self::BuiltInSubCall(built_in_sub, args) => {
                 let converted_args = args.convert_in(ctx, ExprContext::Argument)?;
-                Ok(Self::BuiltInSubCall(built_in_sub, converted_args)).map(Some)
+                Ok(Self::BuiltInSubCall(built_in_sub, converted_args))
             }
-            Self::IfBlock(i) => i.convert(ctx).map(Statement::IfBlock).map(Some),
-            Self::SelectCase(s) => s.convert(ctx).map(Statement::SelectCase).map(Some),
-            Self::ForLoop(f) => f.convert(ctx).map(Statement::ForLoop).map(Some),
-            Self::While(c) => c.convert(ctx).map(Statement::While).map(Some),
-            Self::DoLoop(do_loop) => do_loop.convert(ctx).map(Statement::DoLoop).map(Some),
+            Self::IfBlock(i) => i.convert(ctx).map(Statement::IfBlock),
+            Self::SelectCase(s) => s.convert(ctx).map(Statement::SelectCase),
+            Self::ForLoop(f) => f.convert(ctx).map(Statement::ForLoop),
+            Self::While(c) => c.convert(ctx).map(Statement::While),
+            Self::DoLoop(do_loop) => do_loop.convert(ctx).map(Statement::DoLoop),
             Self::Return(opt_label) => {
                 if opt_label.is_some() && ctx.is_in_subprogram() {
                     // cannot have RETURN with explicit label inside subprogram
                     Err(LintError::IllegalInSubFunction.at_no_pos())
                 } else {
-                    Ok(Self::Return(opt_label)).map(Some)
+                    Ok(Self::Return(opt_label))
                 }
             }
             Self::Resume(resume_option) => {
                 if ctx.is_in_subprogram() {
                     Err(LintError::IllegalInSubFunction.at_no_pos())
                 } else {
-                    Ok(Self::Resume(resume_option)).map(Some)
+                    Ok(Self::Resume(resume_option))
                 }
             }
             Self::Exit(exit_object) => match ctx.names.get_name_context() {
                 NameContext::Global => Err(LintError::IllegalOutsideSubFunction.at_no_pos()),
                 NameContext::Sub => {
                     if exit_object == ExitObject::Sub {
-                        Ok(Self::Exit(exit_object)).map(Some)
+                        Ok(Self::Exit(exit_object))
                     } else {
                         Err(LintError::IllegalInSubFunction.at_no_pos())
                     }
                 }
                 NameContext::Function => {
                     if exit_object == ExitObject::Function {
-                        Ok(Self::Exit(exit_object)).map(Some)
+                        Ok(Self::Exit(exit_object))
                     } else {
                         Err(LintError::IllegalInSubFunction.at_no_pos())
                     }
                 }
             },
-            Self::Dim(dim_list) => dim_list
-                .convert_in_default(ctx)
-                .map(Statement::Dim)
-                .map(Some),
+            Self::Dim(dim_list) => dim_list.convert_in_default(ctx).map(Statement::Dim),
             Self::Redim(dim_list) => dim_list
                 .convert_in(ctx, DimContext::Redim)
-                .map(Statement::Redim)
-                .map(Some),
-            Self::Print(print) => print.convert(ctx).map(Statement::Print).map(Some),
+                .map(Statement::Redim),
+            Self::Print(print) => print.convert(ctx).map(Statement::Print),
             Self::OnError(_)
             | Self::Label(_)
             | Self::GoTo(_)
             | Self::GoSub(_)
             | Self::Comment(_)
             | Self::End
-            | Self::System => Ok(self).map(Some),
+            | Self::System => Ok(self),
         }
-    }
-}
-
-impl Convertible for Statements {
-    fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {
-        self.into_iter()
-            .map(|s| s.convert(ctx))
-            .map(|res| match res {
-                Ok(Some(s)) => Some(Ok(s)),
-                Err(e) => Some(Err(e)),
-                Ok(None) => None,
-            })
-            .flat_map(|opt| opt.into_iter())
-            .collect()
     }
 }

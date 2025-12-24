@@ -65,9 +65,6 @@ pub trait PostConversionLinter {
     fn visit_statement(&mut self, s: &Statement) -> Result<(), LintErrorPos> {
         match s {
             Statement::Assignment(left, right) => self.visit_assignment(left, right),
-            Statement::Const(left, _) => {
-                panic!("Linter should have removed Const statements {:?}", left)
-            }
             Statement::SubCall(b, e) => self.visit_sub_call(b, e),
             Statement::BuiltInSubCall(b, e) => self.visit_built_in_sub_call(b, e),
             Statement::IfBlock(i) => self.visit_if_block(i),
@@ -85,7 +82,7 @@ pub trait PostConversionLinter {
             Statement::Resume(resume_option) => self.visit_resume(resume_option),
             Statement::Return(opt_label) => self.visit_return(opt_label.as_ref()),
             Statement::Exit(exit_object) => self.visit_exit(*exit_object),
-            Statement::End | Statement::System => Ok(()),
+            Statement::Const(_, _) | Statement::End | Statement::System => Ok(()),
         }
     }
 

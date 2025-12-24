@@ -110,7 +110,12 @@ pub trait ExpressionReducer {
                         Statement::Assignment(reduced_left, reduced_right)
                     })
             }
-            Statement::Const(left, _) => panic!("Linter should have removed Const {:?}", left),
+            Statement::Const(left, right) => {
+                // The converter is smart enough to replace Expressions that reference
+                // constants with their actual value, so the `CONST` statement isn't used
+                // any further.
+                Ok(Statement::Const(left, right))
+            }
             Statement::SubCall(b, e) => self
                 .visit_sub_call(b, e)
                 .map(|(reduced_name, reduced_expr)| Statement::SubCall(reduced_name, reduced_expr)),

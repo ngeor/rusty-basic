@@ -1,6 +1,6 @@
 use crate::converter::common::Context;
 use crate::converter::common::Convertible;
-use crate::converter::dim_rules::dim_name_state::DimNameState;
+use crate::converter::common::DimNameState;
 use crate::core::validate_string_length;
 use crate::core::IntoTypeQualifier;
 use crate::core::LintResult;
@@ -8,17 +8,23 @@ use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::*;
 
-pub fn on_redim_type<'a, 'b>(
+pub fn on_redim_type(
     var_type: DimType,
     bare_name: &BareName,
-    ctx: &mut DimNameState<'a, 'b>,
+    ctx: &mut Context,
+    extra: DimNameState,
 ) -> Result<(DimType, Option<RedimInfo>), LintErrorPos> {
     if let DimType::Array(array_dimensions, element_type) = var_type {
         let dimension_count = array_dimensions.len();
         let converted_array_dimensions: ArrayDimensions = array_dimensions.convert(ctx)?;
         debug_assert_eq!(dimension_count, converted_array_dimensions.len());
-        let converted_element_type =
-            to_dim_type(ctx, bare_name, &converted_array_dimensions, *element_type)?;
+        let converted_element_type = to_dim_type(
+            ctx,
+            extra,
+            bare_name,
+            &converted_array_dimensions,
+            *element_type,
+        )?;
         let array_dim_type =
             DimType::Array(converted_array_dimensions, Box::new(converted_element_type));
         Ok((array_dim_type, Some(RedimInfo { dimension_count })))
@@ -27,14 +33,17 @@ pub fn on_redim_type<'a, 'b>(
     }
 }
 
-fn to_dim_type<'a, 'b>(
-    ctx: &mut DimNameState<'a, 'b>,
+fn to_dim_type(
+    ctx: &mut Context,
+    extra: DimNameState,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
     element_dim_type: DimType,
 ) -> Result<DimType, LintErrorPos> {
     match element_dim_type {
-        DimType::Bare => bare_to_dim_type(ctx, bare_name, array_dimensions).with_err_no_pos(),
+        DimType::Bare => {
+            bare_to_dim_type(ctx, extra, bare_name, array_dimensions).with_err_no_pos()
+        }
         DimType::BuiltIn(q, built_in_style) => {
             built_in_to_dim_type(ctx, bare_name, array_dimensions, q, built_in_style)
                 .with_err_no_pos()
@@ -44,7 +53,13 @@ fn to_dim_type<'a, 'b>(
                 resolved_length, 0,
                 "REDIM string length should not be known"
             );
-            fixed_length_string_to_dim_type(ctx, bare_name, array_dimensions, &length_expression)
+            fixed_length_string_to_dim_type(
+                ctx,
+                extra,
+                bare_name,
+                array_dimensions,
+                &length_expression,
+            )
         }
         DimType::UserDefined(u) => {
             user_defined_type_to_dim_type(ctx, bare_name, array_dimensions, u).with_err_no_pos()
@@ -55,8 +70,9 @@ fn to_dim_type<'a, 'b>(
     }
 }
 
-fn bare_to_dim_type<'a, 'b>(
-    ctx: &mut DimNameState<'a, 'b>,
+fn bare_to_dim_type(
+    ctx: &mut Context,
+    extra: DimNameState,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
 ) -> Result<DimType, LintError> {
@@ -96,10 +112,10 @@ fn bare_to_dim_type<'a, 'b>(
                 match element_type.as_ref() {
                     ExpressionType::BuiltIn(q) => Ok(DimType::BuiltIn(*q, built_in_style)),
                     ExpressionType::FixedLengthString(len) => {
-                        Ok(DimType::fixed_length_string(*len, ctx.pos()))
+                        Ok(DimType::fixed_length_string(*len, extra.pos))
                     }
                     ExpressionType::UserDefined(u) => {
-                        Ok(DimType::UserDefined(u.clone().at_pos(ctx.pos())))
+                        Ok(DimType::UserDefined(u.clone().at_pos(extra.pos)))
                     }
                     _ => {
                         panic!("REDIM with nested array or unresolved type");
@@ -159,8 +175,9 @@ fn require_built_in_array(variable_info: &VariableInfo, q: TypeQualifier) -> Res
     Err(LintError::DuplicateDefinition)
 }
 
-fn fixed_length_string_to_dim_type<'a, 'b>(
-    ctx: &mut DimNameState<'a, 'b>,
+fn fixed_length_string_to_dim_type(
+    ctx: &mut Context,
+    extra: DimNameState,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
     length_expression: &ExpressionPos,
@@ -177,7 +194,7 @@ fn fixed_length_string_to_dim_type<'a, 'b>(
                 require_dimension_count(variable_info, array_dimensions.len())
             }
         })?;
-    Ok(DimType::fixed_length_string(string_length, ctx.pos()))
+    Ok(DimType::fixed_length_string(string_length, extra.pos))
 }
 
 fn require_fixed_length_string_array(

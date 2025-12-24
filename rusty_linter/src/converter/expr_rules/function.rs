@@ -1,14 +1,14 @@
 use rusty_common::AtPos;
 use rusty_parser::{BareName, Expression, ExpressionType, Expressions, Name, VariableInfo};
 
-use crate::converter::common::{Context, Convertible, ExprContext};
+use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
-use crate::converter::expr_rules::state::PosExprState;
 use crate::core::{IntoQualified, IntoTypeQualifier};
 use crate::core::{LintError, LintErrorPos};
 
 pub fn convert(
-    ctx: &mut PosExprState,
+    ctx: &mut Context,
+    extra: ExprContextPos,
     name: Name,
     args: Expressions,
 ) -> Result<Expression, LintErrorPos> {
@@ -16,7 +16,7 @@ pub fn convert(
     let rules: Vec<Box<dyn FuncResolve>> = vec![Box::new(ExistingArrayWithParenthesis::default())];
     for mut rule in rules {
         if rule.can_handle(ctx, &name) {
-            return rule.resolve(ctx, name, args);
+            return rule.resolve(ctx, extra, name, args);
         }
     }
 
@@ -54,7 +54,8 @@ trait FuncResolve {
 
     fn resolve(
         &self,
-        ctx: &mut PosExprState,
+        ctx: &mut Context,
+        extra: ExprContextPos,
         name: Name,
         args: Expressions,
     ) -> Result<Expression, LintErrorPos>;
@@ -100,12 +101,13 @@ impl FuncResolve for ExistingArrayWithParenthesis {
 
     fn resolve(
         &self,
-        ctx: &mut PosExprState,
+        ctx: &mut Context,
+        extra: ExprContextPos,
         name: Name,
         args: Expressions,
     ) -> Result<Expression, LintErrorPos> {
         // convert args
-        let converted_args = args.convert(ctx)?;
+        let converted_args = args.convert_in(ctx, extra.element)?;
         // convert name
         let VariableInfo {
             expression_type,

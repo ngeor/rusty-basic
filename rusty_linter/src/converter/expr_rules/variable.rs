@@ -1,10 +1,9 @@
-use crate::converter::common::{Context, ExprContext};
+use crate::converter::common::{Context, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
-use crate::converter::expr_rules::state::{ExprState, PosExprState};
 use crate::core::{qualifier_of_const_variant, HasSubs, IntoQualified, IntoTypeQualifier};
 use crate::core::{LintError, LintErrorPos};
 use crate::names::ManyNamesTrait;
-use rusty_common::{AtPos, HasPos};
+use rusty_common::AtPos;
 use rusty_parser::BuiltInFunction;
 use rusty_parser::{
     BuiltInStyle, DimType, Expression, ExpressionType, Name, TypeQualifier, VariableInfo,
@@ -12,7 +11,8 @@ use rusty_parser::{
 use rusty_variant::Variant;
 
 pub fn convert(
-    ctx: &mut PosExprState,
+    ctx: &mut Context,
+    extra: ExprContextPos,
     name: Name,
     variable_info: VariableInfo,
 ) -> Result<Expression, LintErrorPos> {
@@ -23,7 +23,7 @@ pub fn convert(
     let mut rules: Vec<Box<dyn VarResolve>> = vec![];
     rules.push(Box::new(ExistingVar::default()));
     rules.push(Box::new(ExistingConst::new_local()));
-    if ctx.expr_context() != ExprContext::Default {
+    if extra.element != ExprContext::Default {
         rules.push(Box::new(AssignToFunction::default()));
     } else {
         rules.push(Box::new(VarAsBuiltInFunctionCall::default()));
@@ -33,13 +33,13 @@ pub fn convert(
 
     for mut rule in rules {
         if rule.can_handle(ctx, &name) {
-            return rule.resolve(ctx, name);
+            return rule.resolve(ctx, extra.clone(), name);
         }
     }
 
-    if ctx.expr_context() != ExprContext::ResolvingPropertyOwner {
+    if extra.element != ExprContext::ResolvingPropertyOwner {
         // add as new implicit
-        Ok(add_as_new_implicit_var(ctx, name))
+        Ok(add_as_new_implicit_var(ctx, extra, name))
     } else {
         // repack as unresolved
         Ok(Expression::Variable(name, variable_info))
@@ -54,13 +54,8 @@ fn validate(ctx: &Context, name: &Name) -> Result<(), LintErrorPos> {
     Ok(())
 }
 
-pub fn add_as_new_implicit_var(ctx: &mut PosExprState, name: Name) -> Expression {
-    // TODO fix me
-    let resolved_name = {
-        let temp: &ExprState = ctx;
-        let temp: &Context = temp;
-        name.to_qualified(temp)
-    };
+pub fn add_as_new_implicit_var(ctx: &mut Context, extra: ExprContextPos, name: Name) -> Expression {
+    let resolved_name = name.to_qualified(ctx);
 
     let bare_name = resolved_name.bare_name();
     let q = resolved_name.qualifier().expect("Should be resolved");
@@ -72,7 +67,7 @@ pub fn add_as_new_implicit_var(ctx: &mut PosExprState, name: Name) -> Expression
     );
 
     let var_info = VariableInfo::new_built_in(q, false);
-    let pos = ctx.pos();
+    let pos = extra.pos;
     ctx.names
         .get_implicit_vars_mut()
         .push(resolved_name.clone().demand_qualified().at_pos(pos));
@@ -82,7 +77,12 @@ pub fn add_as_new_implicit_var(ctx: &mut PosExprState, name: Name) -> Expression
 pub trait VarResolve {
     fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool;
 
-    fn resolve(&self, ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos>;
+    fn resolve(
+        &self,
+        ctx: &mut Context,
+        extra: ExprContextPos,
+        name: Name,
+    ) -> Result<Expression, LintErrorPos>;
 }
 
 #[derive(Default)]
@@ -103,7 +103,12 @@ impl VarResolve for ExistingVar {
         }
     }
 
-    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
+    fn resolve(
+        &self,
+        _ctx: &mut Context,
+        _extra: ExprContextPos,
+        name: Name,
+    ) -> Result<Expression, LintErrorPos> {
         let variable_info = self.var_info.clone().unwrap();
         let expression_type = &variable_info.expression_type;
         let converted_name = qualify_name(expression_type, name)?;
@@ -144,7 +149,12 @@ impl VarResolve for ExistingConst {
         self.opt_v.is_some()
     }
 
-    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
+    fn resolve(
+        &self,
+        _ctx: &mut Context,
+        _extra: ExprContextPos,
+        name: Name,
+    ) -> Result<Expression, LintErrorPos> {
         let v = self.opt_v.clone().unwrap();
         let q = qualifier_of_const_variant(&v);
         if name.is_bare_or_of_type(q) {
@@ -184,7 +194,12 @@ impl VarResolve for AssignToFunction {
         }
     }
 
-    fn resolve(&self, ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
+    fn resolve(
+        &self,
+        ctx: &mut Context,
+        _extra: ExprContextPos,
+        name: Name,
+    ) -> Result<Expression, LintErrorPos> {
         let function_qualifier = self.function_qualifier.unwrap();
         if ctx.names.is_in_function(name.bare_name()) {
             let converted_name = try_qualify(name, function_qualifier)?;
@@ -208,7 +223,12 @@ impl VarResolve for VarAsBuiltInFunctionCall {
         self.built_in_function.is_some()
     }
 
-    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
+    fn resolve(
+        &self,
+        _ctx: &mut Context,
+        _extra: ExprContextPos,
+        name: Name,
+    ) -> Result<Expression, LintErrorPos> {
         match try_built_in_function(&name)? {
             Some(built_in_function) => {
                 Ok(Expression::BuiltInFunctionCall(built_in_function, vec![]))
@@ -229,7 +249,12 @@ impl VarResolve for VarAsUserDefinedFunctionCall {
         self.function_qualifier.is_some()
     }
 
-    fn resolve(&self, _ctx: &PosExprState, name: Name) -> Result<Expression, LintErrorPos> {
+    fn resolve(
+        &self,
+        _ctx: &mut Context,
+        _extra: ExprContextPos,
+        name: Name,
+    ) -> Result<Expression, LintErrorPos> {
         let q = self.function_qualifier.unwrap();
         let converted_name = try_qualify(name, q)?;
         Ok(Expression::FunctionCall(converted_name, vec![]))

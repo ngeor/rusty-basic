@@ -1,13 +1,15 @@
-use crate::converter::common::PosContext;
+use crate::converter::common::Context;
 use crate::converter::dim_rules::dim_type_rules;
 use crate::core::LintErrorPos;
 use crate::core::LintResult;
+use rusty_common::Position;
 use rusty_parser::{BareName, ParamType};
 
-pub fn on_param_type<'a>(
+pub fn on_param_type(
     dim_type: ParamType,
     bare_name: &BareName,
-    ctx: &mut PosContext<'a>,
+    ctx: &mut Context,
+    pos: Position,
 ) -> Result<ParamType, LintErrorPos> {
     match dim_type {
         ParamType::Bare => dim_type_rules::bare_to_dim_type(ctx, bare_name).with_err_no_pos(),
@@ -18,15 +20,18 @@ pub fn on_param_type<'a>(
         ParamType::UserDefined(u) => {
             dim_type_rules::user_defined_to_dim_type(ctx, bare_name, u).with_err_no_pos()
         }
-        ParamType::Array(element_type) => param_array_to_param_type(ctx, bare_name, *element_type),
+        ParamType::Array(element_type) => {
+            param_array_to_param_type(ctx, pos, bare_name, *element_type)
+        }
     }
 }
 
-fn param_array_to_param_type<'a>(
-    ctx: &mut PosContext<'a>,
+fn param_array_to_param_type(
+    ctx: &mut Context,
+    pos: Position,
     bare_name: &BareName,
     element_type: ParamType,
 ) -> Result<ParamType, LintErrorPos> {
-    let resolved_element_dim_type = on_param_type(element_type, bare_name, ctx)?;
+    let resolved_element_dim_type = on_param_type(element_type, bare_name, ctx, pos)?;
     Ok(ParamType::Array(Box::new(resolved_element_dim_type)))
 }

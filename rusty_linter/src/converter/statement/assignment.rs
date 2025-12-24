@@ -1,19 +1,19 @@
 use crate::converter::common::Context;
-use crate::converter::common::Convertible;
+use crate::converter::common::ConvertibleIn;
 use crate::converter::common::ExprContext;
-use crate::converter::common::PosContext;
 use crate::core::LintErrorPos;
-use rusty_common::{AtPos, HasPos, Positioned};
+use rusty_common::Position;
+use rusty_common::{AtPos, Positioned};
 use rusty_parser::{Expression, ExpressionPos, Statement};
 
 pub fn on_assignment(
     left: Expression,
     right: ExpressionPos,
-    ctx: &mut PosContext,
+    ctx: &mut Context,
+    pos: Position,
 ) -> Result<Statement, LintErrorPos> {
     assignment_pre_conversion_validation_rules::validate(ctx, &left)?;
     let converted_right: ExpressionPos = right.convert_in_default(ctx)?;
-    let pos = ctx.pos();
     let Positioned {
         element: converted_left,
         ..

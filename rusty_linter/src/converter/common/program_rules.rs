@@ -1,11 +1,12 @@
 use crate::converter::common::Context;
 use crate::converter::common::Convertible;
-use crate::converter::common::PosContext;
+use crate::converter::common::ConvertibleIn;
 use crate::core::IntoQualified;
 use crate::core::LintErrorPos;
 use crate::core::SubprogramName;
 use crate::names::ImplicitVars;
-use rusty_common::{AtPos, HasPos, Positioned};
+use rusty_common::Position;
+use rusty_common::{AtPos, Positioned};
 use rusty_parser::{
     DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement,
     Statements, SubImplementation,
@@ -37,8 +38,12 @@ impl Convertible for Program {
     }
 }
 
-impl<'a> Convertible<PosContext<'a>, Vec<GlobalStatementPos>> for GlobalStatement {
-    fn convert(self, ctx: &mut PosContext<'a>) -> Result<Vec<GlobalStatementPos>, LintErrorPos> {
+impl ConvertibleIn<Position, Vec<GlobalStatementPos>> for GlobalStatement {
+    fn convert_in(
+        self,
+        ctx: &mut Context,
+        pos: Position,
+    ) -> Result<Vec<GlobalStatementPos>, LintErrorPos> {
         match self {
             Self::DefType(def_type) => {
                 ctx.resolver.set(&def_type);
@@ -48,17 +53,17 @@ impl<'a> Convertible<PosContext<'a>, Vec<GlobalStatementPos>> for GlobalStatemen
             | Self::SubDeclaration(_, _)
             | Self::UserDefinedType(_) => Ok(vec![]),
             Self::FunctionImplementation(f) => on_function_implementation(f, ctx)
-                .map(|f| vec![Self::FunctionImplementation(f).at_pos(ctx.pos())]),
+                .map(|f| vec![Self::FunctionImplementation(f).at_pos(pos.clone())]),
             Self::SubImplementation(s) => on_sub_implementation(s, ctx)
-                .map(|s| vec![Self::SubImplementation(s).at_pos(ctx.pos())]),
-            Self::Statement(s) => on_statement(s, ctx),
+                .map(|s| vec![Self::SubImplementation(s).at_pos(pos.clone())]),
+            Self::Statement(s) => on_statement(s, ctx, pos.clone()),
         }
     }
 }
 
 fn on_function_implementation(
     function_implementation: FunctionImplementation,
-    ctx: &mut PosContext,
+    ctx: &mut Context,
 ) -> Result<FunctionImplementation, LintErrorPos> {
     let FunctionImplementation {
         name: Positioned {
@@ -92,7 +97,7 @@ fn on_function_implementation(
 
 fn on_sub_implementation(
     sub_implementation: SubImplementation,
-    ctx: &mut PosContext,
+    ctx: &mut Context,
 ) -> Result<SubImplementation, LintErrorPos> {
     let SubImplementation {
         name,
@@ -146,11 +151,12 @@ fn convert_block_hoisting_implicit_vars_and_pop_name_scope(
 
 fn on_statement(
     statement: Statement,
-    ctx: &mut PosContext,
+    ctx: &mut Context,
+    pos: Position,
 ) -> Result<Vec<GlobalStatementPos>, LintErrorPos> {
     // a statement might be converted into multiple statements due to implicit vars
-    let statements = vec![statement.at_pos(ctx.pos())];
-    let statements = statements.convert(ctx)?;
+    let statements = vec![statement.at_pos(pos)];
+    let statements: Statements = statements.convert(ctx)?;
     Ok(statements
         .into_iter()
         .map(|statement_pos| statement_pos.map(GlobalStatement::Statement))

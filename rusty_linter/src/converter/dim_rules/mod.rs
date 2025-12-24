@@ -1,6 +1,4 @@
 mod array_dimension;
-mod dim_list_state;
-mod dim_name_state;
 mod dim_rules;
 mod dim_type_rules;
 mod param_rules;

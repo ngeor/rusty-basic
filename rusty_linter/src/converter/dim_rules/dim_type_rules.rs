@@ -1,5 +1,5 @@
+use crate::converter::common::DimNameState;
 use crate::converter::common::*;
-use crate::converter::dim_rules::dim_name_state::DimNameState;
 use crate::core::validate_string_length;
 use crate::core::IntoTypeQualifier;
 use crate::core::LintResult;
@@ -7,10 +7,11 @@ use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::*;
 
-pub fn on_dim_type<'a, 'b>(
+pub fn on_dim_type(
     dim_type: DimType,
     bare_name: &BareName,
-    ctx: &mut DimNameState<'a, 'b>,
+    ctx: &mut Context,
+    extra: DimNameState,
 ) -> Result<DimType, LintErrorPos> {
     match dim_type {
         DimType::Bare => bare_to_dim_type(ctx, bare_name).with_err_no_pos(),
@@ -23,7 +24,7 @@ pub fn on_dim_type<'a, 'b>(
         }
         DimType::UserDefined(u) => user_defined_to_dim_type(ctx, bare_name, u).with_err_no_pos(),
         DimType::Array(array_dimensions, element_type) => {
-            array_to_dim_type(ctx, bare_name, array_dimensions, *element_type)
+            array_to_dim_type(ctx, extra, bare_name, array_dimensions, *element_type)
         }
     }
 }
@@ -106,20 +107,21 @@ pub fn user_defined_to_dim_type<T: VarTypeNewUserDefined>(
     Ok(T::new_user_defined(user_defined_type))
 }
 
-fn array_to_dim_type<'a, 'b>(
-    ctx: &mut DimNameState<'a, 'b>,
+fn array_to_dim_type(
+    ctx: &mut Context,
+    extra: DimNameState,
     bare_name: &BareName,
     array_dimensions: ArrayDimensions,
     element_type: DimType,
 ) -> Result<DimType, LintErrorPos> {
-    debug_assert!(match ctx.dim_context() {
+    debug_assert!(match extra.dim_context {
         DimContext::Default => {
             !array_dimensions.is_empty()
         }
         _ => true,
     });
     let converted_array_dimensions: ArrayDimensions = array_dimensions.convert(ctx)?;
-    let resolved_element_dim_type = on_dim_type(element_type, bare_name, ctx)?;
+    let resolved_element_dim_type = on_dim_type(element_type, bare_name, ctx, extra)?;
     Ok(DimType::Array(
         converted_array_dimensions,
         Box::new(resolved_element_dim_type),

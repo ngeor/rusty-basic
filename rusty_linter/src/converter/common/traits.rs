@@ -1,38 +1,19 @@
 use crate::converter::common::Context;
 use crate::core::LintErrorPos;
 
-pub trait Convertible<C = Context, O = Self>: Sized {
-    fn convert(self, ctx: &mut C) -> Result<O, LintErrorPos>;
-
-    fn convert_in<'a, ParentContext, U>(
-        self,
-        parent_ctx: &'a mut ParentContext,
-        value: U,
-    ) -> Result<O, LintErrorPos>
-    where
-        C: FromParentContext<'a, ParentContext, U>,
-    {
-        let mut child_state = C::create_from_parent_context(parent_ctx, value);
-        self.convert(&mut child_state)
-    }
-
-    fn convert_in_default<'a, ParentContext, U>(
-        self,
-        parent_ctx: &'a mut ParentContext,
-    ) -> Result<O, LintErrorPos>
-    where
-        C: FromParentContext<'a, ParentContext, U>,
-        U: Default,
-    {
-        self.convert_in(parent_ctx, U::default())
-    }
+/// Convert from the current type into the target type O.
+/// By default, O is the same as the current type.
+pub trait Convertible<O = Self>: Sized {
+    fn convert(self, ctx: &mut Context) -> Result<O, LintErrorPos>;
 }
 
-impl<C, T> Convertible<C> for Option<T>
+// Blanket implementation for Option
+
+impl<T, O> Convertible<Option<O>> for Option<T>
 where
-    T: Convertible<C, T>,
+    T: Convertible<O>,
 {
-    fn convert(self, ctx: &mut C) -> Result<Self, LintErrorPos> {
+    fn convert(self, ctx: &mut Context) -> Result<Option<O>, LintErrorPos> {
         match self {
             Some(t) => t.convert(ctx).map(Some),
             None => Ok(None),
@@ -40,15 +21,55 @@ where
     }
 }
 
-impl<C, T> Convertible<C> for Vec<T>
+// Blanket implementation for Vec
+
+impl<T, O> Convertible<Vec<O>> for Vec<T>
 where
-    T: Convertible<C, T>,
+    T: Convertible<O>,
 {
-    fn convert(self, ctx: &mut C) -> Result<Self, LintErrorPos> {
+    fn convert(self, ctx: &mut Context) -> Result<Vec<O>, LintErrorPos> {
         self.into_iter().map(|t| t.convert(ctx)).collect()
     }
 }
 
-pub trait FromParentContext<'a, T, U> {
-    fn create_from_parent_context(parent: &'a mut T, value: U) -> Self;
+/// Convert from the current type into the target type O,
+/// using additional information in the value U.
+/// By default, O is the same as the current type.
+pub trait ConvertibleIn<U, O = Self>: Sized {
+    fn convert_in(self, ctx: &mut Context, value: U) -> Result<O, LintErrorPos>;
+
+    fn convert_in_default(self, ctx: &mut Context) -> Result<O, LintErrorPos>
+    where
+        U: Default,
+    {
+        self.convert_in(ctx, U::default())
+    }
+}
+
+// Blanket implementation for Option
+
+impl<U, T, O> ConvertibleIn<U, Option<O>> for Option<T>
+where
+    T: ConvertibleIn<U, O>,
+{
+    fn convert_in(self, ctx: &mut Context, extra: U) -> Result<Option<O>, LintErrorPos> {
+        match self {
+            Some(t) => t.convert_in(ctx, extra).map(Some),
+            None => Ok(None),
+        }
+    }
+}
+
+// Blanket implementation for Vec
+
+impl<U, T, O> ConvertibleIn<U, Vec<O>> for Vec<T>
+where
+    T: ConvertibleIn<U, O>,
+    U: Clone,
+{
+    fn convert_in(self, ctx: &mut Context, extra: U) -> Result<Vec<O>, LintErrorPos> {
+        self.into_iter()
+            .map(|t| t.convert_in(ctx, extra.clone()))
+            .collect()
+    }
 }

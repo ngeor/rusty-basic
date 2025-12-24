@@ -1,6 +1,7 @@
-use crate::converter::common::Convertible;
-use crate::converter::expr_rules::state::ExprState;
-use crate::converter::expr_rules::state::PosExprState;
+use crate::converter::common::Context;
+use crate::converter::common::ConvertibleIn;
+use crate::converter::common::ExprContext;
+use crate::converter::common::ExprContextPos;
 use crate::converter::expr_rules::{
     binary, built_in_function, function, property, unary, variable,
 };
@@ -10,31 +11,39 @@ use rusty_common::*;
 use rusty_parser::*;
 
 //
-// ExpressionPos Convertible
+// ExpressionPos ConvertibleIn
 //
 
-impl<'a> Convertible<ExprState<'a>> for ExpressionPos {
-    fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, LintErrorPos> {
+impl ConvertibleIn<ExprContext> for ExpressionPos {
+    fn convert_in(
+        self,
+        ctx: &mut Context,
+        expr_context: ExprContext,
+    ) -> Result<Self, LintErrorPos> {
         let Self { element: expr, pos } = self;
-        expr.convert_in(ctx, pos)
+        expr.convert_in(ctx, expr_context.at_pos(pos))
             .map(|expr| expr.at_pos(pos))
             .patch_err_pos(&pos)
     }
 }
 
-impl<'a> Convertible<ExprState<'a>> for Box<ExpressionPos> {
-    fn convert(self, ctx: &mut ExprState<'a>) -> Result<Self, LintErrorPos> {
+impl ConvertibleIn<ExprContext> for Box<ExpressionPos> {
+    fn convert_in(
+        self,
+        ctx: &mut Context,
+        expr_context: ExprContext,
+    ) -> Result<Self, LintErrorPos> {
         let unboxed = *self;
-        unboxed.convert(ctx).map(Self::new)
+        unboxed.convert_in(ctx, expr_context).map(Self::new)
     }
 }
 
 //
-// Expression Convertible
+// Expression ConvertibleIn
 //
 
-impl<'a, 'b> Convertible<PosExprState<'a, 'b>> for Expression {
-    fn convert(self, ctx: &mut PosExprState<'a, 'b>) -> Result<Self, LintErrorPos> {
+impl ConvertibleIn<ExprContextPos> for Expression {
+    fn convert_in(self, ctx: &mut Context, extra: ExprContextPos) -> Result<Self, LintErrorPos> {
         match self {
             // literals
             Self::SingleLiteral(_)
@@ -43,27 +52,31 @@ impl<'a, 'b> Convertible<PosExprState<'a, 'b>> for Expression {
             | Self::IntegerLiteral(_)
             | Self::LongLiteral(_) => Ok(self),
             // parenthesis
-            Self::Parenthesis(box_child) => box_child.convert(ctx).map(Expression::Parenthesis),
+            Self::Parenthesis(box_child) => box_child
+                .convert_in(ctx, extra.element)
+                .map(Expression::Parenthesis),
             // unary
             Self::UnaryExpression(unary_operator, box_child) => {
-                unary::convert(ctx, unary_operator, *box_child)
+                unary::convert(ctx, extra, unary_operator, *box_child)
             }
             // binary
             Self::BinaryExpression(binary_operator, left, right, _expr_type) => {
-                binary::convert(ctx, binary_operator, *left, *right)
+                binary::convert(ctx, extra, binary_operator, *left, *right)
             }
             // variables
-            Self::Variable(name, variable_info) => variable::convert(ctx, name, variable_info),
+            Self::Variable(name, variable_info) => {
+                variable::convert(ctx, extra, name, variable_info)
+            }
             Self::ArrayElement(_name, _indices, _variable_info) => {
                 panic!(
                     "Parser is not supposed to produce any ArrayElement expressions, only FunctionCall"
                 )
             }
             Self::Property(box_left_side, property_name, _expr_type) => {
-                property::convert(ctx, box_left_side, property_name)
+                property::convert(ctx, extra, box_left_side, property_name)
             }
             // function call
-            Self::FunctionCall(name, args) => function::convert(ctx, name, args),
+            Self::FunctionCall(name, args) => function::convert(ctx, extra, name, args),
             Self::BuiltInFunctionCall(built_in_function, args) => {
                 built_in_function::convert(ctx, built_in_function, args)
             }

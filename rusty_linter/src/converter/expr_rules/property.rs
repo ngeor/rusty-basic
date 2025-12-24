@@ -1,11 +1,10 @@
-use rusty_common::{AtPos, HasPos, Positioned};
+use rusty_common::{AtPos, Positioned};
 use rusty_parser::{
     BareName, ElementType, Expression, ExpressionType, HasExpressionType, Name, UserDefinedType,
     VariableInfo,
 };
 
-use crate::converter::common::{Context, Convertible, ExprContext};
-use crate::converter::expr_rules::state::PosExprState;
+use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::variable::{
     add_as_new_implicit_var, AssignToFunction, ExistingConst, ExistingVar,
     VarAsUserDefinedFunctionCall, VarResolve,
@@ -13,7 +12,8 @@ use crate::converter::expr_rules::variable::{
 use crate::core::{HasUserDefinedTypes, LintError, LintErrorPos};
 
 pub fn convert(
-    ctx: &mut PosExprState,
+    ctx: &mut Context,
+    extra: ExprContextPos,
     left_side: Box<Expression>,
     property_name: Name,
 ) -> Result<Expression, LintErrorPos> {
@@ -23,7 +23,7 @@ pub fn convert(
         // checking out if we have an existing variable / const etc that contains a dot
         let mut rules: Vec<Box<dyn VarResolve>> = vec![];
         rules.push(Box::new(ExistingVar::default()));
-        if ctx.expr_context() != ExprContext::Default {
+        if extra.element != ExprContext::Default {
             rules.push(Box::new(AssignToFunction::default()));
         } else {
             // no need to check for built-in, they don't have dots
@@ -33,7 +33,7 @@ pub fn convert(
         rules.push(Box::new(ExistingConst::new_recursive()));
         for mut rule in rules {
             if rule.can_handle(ctx, &folded_name) {
-                return rule.resolve(ctx, folded_name);
+                return rule.resolve(ctx, extra, folded_name);
             }
         }
     }
@@ -45,7 +45,7 @@ pub fn convert(
         element: resolved_left_side,
         ..
     } = unboxed_left_side
-        .at_pos(ctx.pos())
+        .at_pos(extra.pos)
         .convert_in(ctx, ExprContext::ResolvingPropertyOwner)?;
 
     // functions cannot return udf so no need to check them
@@ -59,6 +59,7 @@ pub fn convert(
             let temp_expression_type = expression_type.clone();
             existing_property_expression_type(
                 ctx,
+                extra,
                 resolved_left_side,
                 &temp_expression_type,
                 property_name,
@@ -75,6 +76,7 @@ pub fn convert(
             let temp_expression_type = expression_type.clone();
             existing_property_expression_type(
                 ctx,
+                extra,
                 resolved_left_side,
                 &temp_expression_type,
                 property_name,
@@ -85,6 +87,7 @@ pub fn convert(
             let temp_expression_type = expr_type.clone();
             existing_property_expression_type(
                 ctx,
+                extra,
                 resolved_left_side,
                 &temp_expression_type,
                 property_name,
@@ -106,7 +109,8 @@ fn try_fold(left_side: &Expression, property_name: Name) -> Option<Name> {
 }
 
 fn existing_property_expression_type(
-    ctx: &mut PosExprState,
+    ctx: &mut Context,
+    extra: ExprContextPos,
     resolved_left_side: Expression,
     expression_type: &ExpressionType,
     property_name: Name,
@@ -124,7 +128,7 @@ fn existing_property_expression_type(
         ExpressionType::Unresolved => {
             if allow_unresolved {
                 match try_fold(&resolved_left_side, property_name) {
-                    Some(folded_name) => Ok(add_as_new_implicit_var(ctx, folded_name)),
+                    Some(folded_name) => Ok(add_as_new_implicit_var(ctx, extra, folded_name)),
                     _ => Err(LintError::TypeMismatch.at_no_pos()),
                 }
             } else {

@@ -1,4 +1,5 @@
 //! Contains simple types and type aliases.
+use rusty_common::{Position, Positioned};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum DimContext {
@@ -8,6 +9,12 @@ pub enum DimContext {
 
     /// REDIM statement
     Redim,
+}
+
+pub struct DimNameState {
+    pub dim_context: DimContext,
+    pub shared: bool,
+    pub pos: Position,
 }
 
 /// Indicates the context in which an expression is being resolved.
@@ -26,3 +33,5 @@ pub enum ExprContext {
     /// Used in resolving left-side of property expressions
     ResolvingPropertyOwner,
 }
+
+pub type ExprContextPos = Positioned<ExprContext>;

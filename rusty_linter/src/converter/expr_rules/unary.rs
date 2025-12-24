@@ -4,17 +4,18 @@ use rusty_parser::{
 };
 
 use crate::{
-    converter::{common::Convertible, expr_rules::state::PosExprState},
+    converter::common::{Context, ConvertibleIn, ExprContextPos},
     core::{LintError, LintErrorPos},
 };
 
 pub fn convert(
-    ctx: &mut PosExprState,
+    ctx: &mut Context,
+    extra: ExprContextPos,
     unary_operator: UnaryOperator,
     child: ExpressionPos,
 ) -> Result<Expression, LintErrorPos> {
     // convert child (recursion)
-    let converted_child = child.convert(ctx)?;
+    let converted_child = child.convert_in(ctx, extra.element)?;
     // ensure operator applies to converted expr
     let converted_expr_type = converted_child.expression_type();
     if is_applicable_to_expr_type(&converted_expr_type) {

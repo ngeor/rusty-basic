@@ -1,6 +1,6 @@
 use crate::converter::common::Context;
 use crate::converter::common::Convertible;
-use crate::converter::common::PosContext;
+use crate::converter::common::ConvertibleIn;
 use crate::converter::common::{DimContext, ExprContext};
 use crate::converter::statement::{assignment, const_rules};
 use crate::core::{LintError, LintErrorPos};
@@ -8,7 +8,7 @@ use crate::core::{LintPosResult, NameContext};
 use rusty_common::*;
 use rusty_parser::{ExitObject, Statement, StatementPos, Statements};
 
-impl Convertible<Context, Option<Self>> for StatementPos {
+impl Convertible<Option<Self>> for StatementPos {
     fn convert(self, ctx: &mut Context) -> Result<Option<Self>, LintErrorPos> {
         let Self {
             element: statement,
@@ -21,10 +21,10 @@ impl Convertible<Context, Option<Self>> for StatementPos {
     }
 }
 
-impl<'a> Convertible<PosContext<'a>, Option<Self>> for Statement {
-    fn convert(self, ctx: &mut PosContext) -> Result<Option<Self>, LintErrorPos> {
+impl ConvertibleIn<Position, Option<Self>> for Statement {
+    fn convert_in(self, ctx: &mut Context, pos: Position) -> Result<Option<Self>, LintErrorPos> {
         match self {
-            Self::Assignment(n, e) => assignment::on_assignment(n, e, ctx).map(Some),
+            Self::Assignment(n, e) => assignment::on_assignment(n, e, ctx, pos).map(Some),
             // CONST is mapped to None and is filtered out
             Self::Const(n, e) => const_rules::on_const(ctx, n, e).map(|_| None),
             Self::SubCall(n, args) => ctx.sub_call(n, args).map(Some),

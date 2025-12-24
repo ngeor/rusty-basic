@@ -1,4 +1,4 @@
-use crate::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, SubMap};
+use crate::core::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, SubMap};
 use rusty_parser::specific::UserDefinedTypes;
 
 /// Stores the result of the pre-linter.

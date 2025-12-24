@@ -1,6 +1,6 @@
 use crate::assert_linter_err;
 use crate::assert_linter_ok_global_statements;
-use crate::LintError;
+use crate::core::LintError;
 use rusty_common::AtPos;
 use rusty_parser::specific::{
     DimVar, Expression, ExpressionType, Operator, Statement, TypeQualifier,

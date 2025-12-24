@@ -1,5 +1,5 @@
 use crate::assert_linter_err;
-use crate::LintError;
+use crate::core::LintError;
 
 macro_rules! assert_condition_err {
     ($condition:expr) => {
@@ -11,7 +11,7 @@ macro_rules! assert_condition_err {
             "#,
             $condition
         );
-        assert_linter_err!(&program, $crate::LintError::TypeMismatch);
+        assert_linter_err!(&program, $crate::core::LintError::TypeMismatch);
     };
 }
 

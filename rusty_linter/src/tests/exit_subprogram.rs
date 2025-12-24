@@ -1,5 +1,5 @@
 use crate::assert_linter_err;
-use crate::LintError;
+use crate::core::LintError;
 
 #[test]
 fn exit_function_not_allowed_in_global_module() {

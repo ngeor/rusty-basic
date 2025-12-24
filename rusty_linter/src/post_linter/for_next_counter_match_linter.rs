@@ -1,4 +1,4 @@
-use crate::error::{LintError, LintErrorPos};
+use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::specific::{Expression, ExpressionType, ForLoop, TypeQualifier, VariableInfo};
 

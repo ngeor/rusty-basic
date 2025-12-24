@@ -1,10 +1,10 @@
-use crate::converter::context::Context;
+use crate::converter::common::Context;
+use crate::converter::common::Convertible;
 use crate::converter::dim_rules::dim_name_state::DimNameState;
-use crate::converter::traits::Convertible;
-use crate::error::{LintError, LintErrorPos};
-use crate::string_length::validate_string_length;
-use crate::type_resolver::IntoTypeQualifier;
-use crate::LintResult;
+use crate::core::validate_string_length;
+use crate::core::IntoTypeQualifier;
+use crate::core::LintResult;
+use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::specific::*;
 

@@ -1,7 +1,7 @@
-use crate::const_value_resolver::ConstValueResolver;
-use crate::error::{LintError, LintErrorPos};
+use crate::core::CastVariant;
+use crate::core::ConstValueResolver;
+use crate::core::{LintError, LintErrorPos};
 use crate::pre_linter::ConstantMap;
-use crate::CastVariant;
 use rusty_common::{AtPos, Positioned};
 use rusty_parser::specific::{BareName, ExpressionPos, Name, NamePos};
 

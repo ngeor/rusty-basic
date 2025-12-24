@@ -1,10 +1,13 @@
-use crate::converter::expr_rules::*;
-use crate::converter::types::ExprContext;
-use crate::error::{LintError, LintErrorPos};
+use crate::converter::common::{Context, ExprContext};
+use crate::converter::expr_rules::qualify_name::*;
+use crate::converter::expr_rules::state::{ExprState, PosExprState};
+use crate::core::{qualifier_of_const_variant, HasSubs, IntoQualified, IntoTypeQualifier};
+use crate::core::{LintError, LintErrorPos};
 use crate::names::ManyNamesTrait;
-use crate::type_resolver::{IntoQualified, IntoTypeQualifier};
-use crate::{
-    qualifier_of_const_variant, qualify_name, try_built_in_function, try_qualify, HasSubs,
+use rusty_common::{AtPos, HasPos};
+use rusty_parser::built_ins::built_in_function::BuiltInFunction;
+use rusty_parser::specific::{
+    BuiltInStyle, DimType, Expression, ExpressionType, Name, TypeQualifier, VariableInfo,
 };
 use rusty_variant::Variant;
 

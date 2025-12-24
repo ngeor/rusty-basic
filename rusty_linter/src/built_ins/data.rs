@@ -1,5 +1,5 @@
-use crate::error::{LintError, LintErrorPos};
-use crate::NameContext;
+use crate::core::NameContext;
+use crate::core::{LintError, LintErrorPos};
 use rusty_common::AtPos;
 use rusty_parser::specific::{Expression, ExpressionPos, Expressions};
 

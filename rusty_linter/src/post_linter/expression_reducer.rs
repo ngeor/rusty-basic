@@ -1,5 +1,5 @@
-use crate::error::LintErrorPos;
-use crate::LintPosResult;
+use crate::core::LintErrorPos;
+use crate::core::LintPosResult;
 use rusty_common::*;
 use rusty_parser::built_ins::built_in_sub::BuiltInSub;
 use rusty_parser::specific::*;

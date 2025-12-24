@@ -1,5 +1,5 @@
-use crate::const_value_resolver::ConstLookup;
-use crate::ResolvedParamType;
+use crate::core::ConstLookup;
+use crate::core::ResolvedParamType;
 use rusty_common::CaseInsensitiveString;
 use rusty_parser::specific::{BareName, TypeQualifier};
 use rusty_variant::Variant;

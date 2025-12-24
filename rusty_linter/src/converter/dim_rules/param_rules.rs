@@ -1,10 +1,10 @@
-use crate::converter::context::Context;
+use crate::converter::common::Context;
+use crate::converter::common::Convertible;
+use crate::converter::common::PosContext;
 use crate::converter::dim_rules::param_type_rules::on_param_type;
 use crate::converter::dim_rules::validation;
-use crate::converter::pos_context::PosContext;
-use crate::converter::traits::Convertible;
-use crate::error::LintErrorPos;
-use crate::LintPosResult;
+use crate::core::LintErrorPos;
+use crate::core::LintPosResult;
 use rusty_common::AtPos;
 use rusty_parser::specific::{Parameter, ParameterPos};
 

@@ -1,5 +1,5 @@
 use crate::assert_linter_err;
-use crate::LintError;
+use crate::core::LintError;
 
 #[test]
 fn duplicate_type_throws_duplicate_definition() {

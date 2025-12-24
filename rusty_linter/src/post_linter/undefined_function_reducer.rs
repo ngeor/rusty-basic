@@ -1,7 +1,7 @@
 use super::expression_reducer::*;
-use crate::casting::binary_cast;
-use crate::error::LintErrorPos;
-use crate::HasFunctions;
+use crate::core::binary_cast;
+use crate::core::HasFunctions;
+use crate::core::LintErrorPos;
 use rusty_parser::specific::Expression;
 
 /// Finds undefined functions and converts them to zeroes.

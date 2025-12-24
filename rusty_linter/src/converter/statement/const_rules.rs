@@ -1,7 +1,7 @@
-use crate::const_value_resolver::ConstValueResolver;
-use crate::converter::context::Context;
-use crate::error::{LintError, LintErrorPos};
-use crate::{qualifier_of_const_variant, CastVariant, HasFunctions, HasSubs, LintResult};
+use crate::converter::common::Context;
+use crate::core::ConstValueResolver;
+use crate::core::{qualifier_of_const_variant, CastVariant, HasFunctions, HasSubs, LintResult};
+use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::specific::*;
 

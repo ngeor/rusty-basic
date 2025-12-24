@@ -1,6 +1,6 @@
-use crate::error::{LintError, LintErrorPos};
+use crate::core::{CanCastTo, HasFunctions, LintPosResult, ResolvedParamType};
+use crate::core::{LintError, LintErrorPos};
 use crate::pre_linter::ResolvedParamTypes;
-use crate::{CanCastTo, HasFunctions, LintPosResult, ResolvedParamType};
 use rusty_common::*;
 use rusty_parser::specific::*;
 

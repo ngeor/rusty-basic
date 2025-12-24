@@ -1,18 +1,14 @@
 //! Converter is the main logic of the linter, where most validation takes place,
 //! as well as resolving variable types.
-mod context;
+mod common;
 mod dim_rules;
 mod expr_rules;
-mod pos_context;
-mod program_rules;
 mod statement;
-mod traits;
-mod types;
 
-use crate::converter::context::Context;
-use crate::converter::traits::Convertible;
+use crate::converter::common::Context;
+use crate::converter::common::Convertible;
+use crate::core::LintErrorPos;
 use crate::pre_linter::PreLinterResult;
-use crate::LintErrorPos;
 use rusty_parser::specific::Program;
 
 pub fn convert(

@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use super::user_defined_function_linter::lint_call_args;
-use crate::error::{LintError, LintErrorPos};
-use crate::HasSubs;
+use crate::core::HasSubs;
+use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::specific::Expressions;
 

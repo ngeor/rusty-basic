@@ -2,8 +2,8 @@ use super::post_conversion_linter::PostConversionLinter;
 use rusty_common::*;
 use rusty_parser::specific::*;
 
-use crate::error::{LintError, LintErrorPos};
-use crate::LintPosResult;
+use crate::core::LintPosResult;
+use crate::core::{LintError, LintErrorPos};
 use std::collections::HashSet;
 
 #[derive(Default)]

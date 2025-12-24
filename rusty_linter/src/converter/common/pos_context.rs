@@ -1,5 +1,5 @@
-use crate::converter::context::Context;
-use crate::converter::traits::FromParentContext;
+use crate::converter::common::Context;
+use crate::converter::common::FromParentContext;
 use rusty_common::{HasPos, Position};
 use std::ops::{Deref, DerefMut};
 

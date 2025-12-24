@@ -1,8 +1,8 @@
 use crate::assert_linter_err;
 use crate::assert_linter_ok_global_statements;
-use crate::test_utils::*;
-use crate::HasUserDefinedTypes;
-use crate::LintError;
+use crate::core::HasUserDefinedTypes;
+use crate::core::LintError;
+use crate::tests::test_utils::*;
 use rusty_common::*;
 use rusty_parser::specific::*;
 

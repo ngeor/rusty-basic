@@ -1,5 +1,5 @@
 use crate::assert_linter_err;
-use crate::LintError;
+use crate::core::LintError;
 
 #[test]
 fn test_select_wrong_type_in_simple_case() {

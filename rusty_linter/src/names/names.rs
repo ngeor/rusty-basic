@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
+use crate::core::{NameContext, SubprogramName};
 use crate::names::names_inner::NamesInner;
 use crate::names::traits::ManyNamesTrait;
-use crate::{const_value_resolver::ConstLookup, names::ImplicitVars};
-use crate::{NameContext, SubprogramName};
+use crate::{core::ConstLookup, names::ImplicitVars};
 use rusty_common::CaseInsensitiveString;
 use rusty_parser::specific::{
     BareName, BuiltInStyle, HasExpressionType, QualifiedName, RedimInfo, TypeQualifier,

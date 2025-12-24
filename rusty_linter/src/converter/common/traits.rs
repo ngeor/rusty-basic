@@ -1,5 +1,5 @@
-use crate::converter::context::Context;
-use crate::error::LintErrorPos;
+use crate::converter::common::Context;
+use crate::core::LintErrorPos;
 
 pub trait Convertible<C = Context, O = Self>: Sized {
     fn convert(self, ctx: &mut C) -> Result<O, LintErrorPos>;

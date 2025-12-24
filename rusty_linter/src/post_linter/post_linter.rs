@@ -1,4 +1,5 @@
-use crate::error::LintErrorPos;
+use crate::core::LintErrorPos;
+use crate::core::{HasFunctions, HasSubs};
 use crate::post_linter::expression_reducer::ExpressionReducer;
 use crate::post_linter::post_conversion_linter::PostConversionLinter;
 use crate::post_linter::{
@@ -6,7 +7,6 @@ use crate::post_linter::{
     label_linter, print_linter, select_case_linter, undefined_function_reducer,
     user_defined_function_linter, user_defined_sub_linter,
 };
-use crate::{HasFunctions, HasSubs};
 use rusty_parser::specific::Program;
 
 pub fn post_linter(

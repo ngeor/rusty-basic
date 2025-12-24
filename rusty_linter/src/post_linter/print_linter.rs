@@ -1,5 +1,5 @@
 use super::post_conversion_linter::PostConversionLinter;
-use crate::error::{LintError, LintErrorPos};
+use crate::core::{LintError, LintErrorPos};
 use rusty_common::AtPos;
 use rusty_parser::specific::{ExpressionType, HasExpressionType, Print, PrintArg, TypeQualifier};
 

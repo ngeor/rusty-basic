@@ -1,5 +1,5 @@
-use crate::const_value_resolver::ConstLookup;
-use crate::{LintError, LintErrorPos};
+use crate::core::ConstLookup;
+use crate::core::{LintError, LintErrorPos};
 use rusty_parser::specific::{Expression, ExpressionPos, TypeQualifier};
 use rusty_variant::{Variant, MAX_INTEGER};
 

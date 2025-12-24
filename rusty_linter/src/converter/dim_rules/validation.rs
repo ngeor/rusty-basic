@@ -1,8 +1,8 @@
-use crate::converter::context::Context;
-use crate::error::{LintError, LintErrorPos};
+use crate::converter::common::Context;
+use crate::core::IntoTypeQualifier;
+use crate::core::{HasFunctions, HasSubs, HasUserDefinedTypes, LintResult};
+use crate::core::{LintError, LintErrorPos};
 use crate::names::ManyNamesTrait;
-use crate::type_resolver::IntoTypeQualifier;
-use crate::{HasFunctions, HasSubs, HasUserDefinedTypes, LintResult};
 use rusty_common::{AtPos, Positioned};
 use rusty_parser::specific::{
     DimVar, Parameter, TypedName, VarTypeIsExtended, VarTypeQualifier,

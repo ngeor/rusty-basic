@@ -1,5 +1,5 @@
 use crate::assert_linter_err;
-use crate::LintError;
+use crate::core::LintError;
 
 #[test]
 fn on_error_go_to_missing_label() {

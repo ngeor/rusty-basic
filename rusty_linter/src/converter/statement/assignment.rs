@@ -1,8 +1,8 @@
-use crate::converter::context::Context;
-use crate::converter::pos_context::PosContext;
-use crate::converter::traits::Convertible;
-use crate::converter::types::ExprContext;
-use crate::error::LintErrorPos;
+use crate::converter::common::Context;
+use crate::converter::common::Convertible;
+use crate::converter::common::ExprContext;
+use crate::converter::common::PosContext;
+use crate::core::LintErrorPos;
 use rusty_common::{AtPos, HasPos, Positioned};
 use rusty_parser::specific::{Expression, ExpressionPos, Statement};
 
@@ -24,7 +24,7 @@ pub fn on_assignment(
 
 mod assignment_pre_conversion_validation_rules {
     use super::*;
-    use crate::LintError;
+    use crate::core::LintError;
 
     pub fn validate(ctx: &mut Context, left_side: &Expression) -> Result<(), LintErrorPos> {
         cannot_assign_to_const(ctx, left_side)
@@ -45,8 +45,8 @@ mod assignment_pre_conversion_validation_rules {
 
 mod assignment_post_conversion_validation_rules {
     use super::*;
-    use crate::CanCastTo;
-    use crate::LintError;
+    use crate::core::CanCastTo;
+    use crate::core::LintError;
 
     pub fn validate(
         left_side: &Expression,

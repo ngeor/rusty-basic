@@ -1,12 +1,12 @@
+use crate::converter::common::Convertible;
+use crate::converter::common::DimContext;
 use crate::converter::dim_rules::dim_list_state::DimListState;
 use crate::converter::dim_rules::dim_name_state::DimNameState;
 use crate::converter::dim_rules::dim_type_rules::on_dim_type;
 use crate::converter::dim_rules::redim::on_redim_type;
 use crate::converter::dim_rules::validation;
-use crate::converter::traits::Convertible;
-use crate::converter::types::DimContext;
-use crate::error::LintErrorPos;
-use crate::{LintError, LintPosResult};
+use crate::core::LintErrorPos;
+use crate::core::{LintError, LintPosResult};
 use rusty_common::*;
 use rusty_parser::specific::*;
 

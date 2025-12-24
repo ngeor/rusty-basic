@@ -1,4 +1,5 @@
-use crate::{lint, HasUserDefinedTypes, LintErrorPos};
+use crate::core::{HasUserDefinedTypes, LintErrorPos};
+use crate::lint;
 use rusty_parser::parse;
 use rusty_parser::specific::Program;
 
@@ -38,14 +39,14 @@ pub fn linter_err(input: &str, msg: &str) -> LintErrorPos {
 macro_rules! assert_linter_err {
     ($program:expr, $expected_err:expr) => {
         let rusty_common::Positioned { element, pos } =
-            $crate::test_utils::linter_err($program, "");
+            $crate::tests::test_utils::linter_err($program, "");
         assert_eq!(element, $expected_err);
         assert_ne!(pos, rusty_common::Position::zero());
     };
 
     ($program:expr, $expected_err:expr, $msg:expr) => {
         let rusty_common::Positioned { element, pos } =
-            $crate::test_utils::linter_err($program, format!("{}", $msg).as_ref());
+            $crate::tests::test_utils::linter_err($program, format!("{}", $msg).as_ref());
         assert_eq!(
             element, $expected_err,
             "'{}' failed, expected {:?} but was {:?}",
@@ -56,7 +57,7 @@ macro_rules! assert_linter_err {
 
     ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {
         let rusty_common::Positioned { element, pos } =
-            $crate::test_utils::linter_err($program, "");
+            $crate::tests::test_utils::linter_err($program, "");
         assert_eq!(element, $expected_err);
         assert_eq!(
             pos,
@@ -68,7 +69,7 @@ macro_rules! assert_linter_err {
 #[macro_export]
 macro_rules! assert_linter_ok_global_statements {
     ($program:expr, $($statement: expr),+) => {
-        let program: rusty_parser::specific::Program = $crate::test_utils::linter_ok($program);
+        let program: rusty_parser::specific::Program = $crate::tests::test_utils::linter_ok($program);
         let global_statements: Vec<rusty_parser::specific::Statement> = program.into_iter()
             .map(|rusty_common::Positioned { element, .. }| match element {
                 rusty_parser::specific::GlobalStatement::Statement(s) => s,

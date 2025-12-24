@@ -1,5 +1,12 @@
-use crate::converter::expr_rules::*;
-use crate::error::{LintError, LintErrorPos};
+use rusty_common::AtPos;
+use rusty_parser::specific::{
+    Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UnaryOperator,
+};
+
+use crate::{
+    converter::{common::Convertible, expr_rules::state::PosExprState},
+    core::{LintError, LintErrorPos},
+};
 
 pub fn convert(
     ctx: &mut PosExprState,

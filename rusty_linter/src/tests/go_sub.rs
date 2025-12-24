@@ -1,5 +1,5 @@
 use crate::assert_linter_err;
-use crate::LintError;
+use crate::core::LintError;
 
 #[test]
 fn return_with_explicit_label_is_illegal_in_sub() {

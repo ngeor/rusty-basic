@@ -1,5 +1,5 @@
-use crate::error::{LintError, LintErrorPos};
-use crate::CanCastTo;
+use crate::core::CanCastTo;
+use crate::core::{LintError, LintErrorPos};
 use rusty_common::{AtPos, Positioned};
 use rusty_parser::specific::{
     Expression, ExpressionType, Expressions, TypeQualifier, VariableInfo,

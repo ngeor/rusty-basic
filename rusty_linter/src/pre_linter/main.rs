@@ -1,10 +1,10 @@
-use crate::error::{LintError, LintErrorPos};
+use crate::core::IntoTypeQualifier;
+use crate::core::TypeResolverImpl;
+use crate::core::{LintError, LintErrorPos};
+use crate::core::{LintPosResult, LintResult, ResolvedParamType};
 use crate::pre_linter::const_rules::global_const;
 use crate::pre_linter::sub_program_context::{FunctionContext, SubContext, ToSignature};
 use crate::pre_linter::{ConstantMap, PreLinterResult, ResolvedParamTypes};
-use crate::type_resolver::IntoTypeQualifier;
-use crate::type_resolver_impl::TypeResolverImpl;
-use crate::{LintPosResult, LintResult, ResolvedParamType};
 use rusty_common::*;
 use rusty_parser::specific::*;
 

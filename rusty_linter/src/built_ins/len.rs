@@ -1,5 +1,5 @@
-use crate::error::{LintError, LintErrorPos};
-use crate::CanCastTo;
+use crate::core::CanCastTo;
+use crate::core::{LintError, LintErrorPos};
 use rusty_common::AtPos;
 use rusty_parser::specific::{
     ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType, TypeQualifier,
@@ -30,7 +30,7 @@ pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
-    use crate::LintError;
+    use crate::core::LintError;
 
     #[test]
     fn test_len_integer_expression_error() {

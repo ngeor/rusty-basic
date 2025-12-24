@@ -1,6 +1,6 @@
 use super::post_conversion_linter::*;
-use crate::error::{LintError, LintErrorPos};
-use crate::LintResult;
+use crate::core::LintResult;
+use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::specific::*;
 use std::collections::{HashMap, HashSet};

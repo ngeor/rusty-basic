@@ -1,6 +1,9 @@
-use crate::casting::binary_cast;
-use crate::converter::expr_rules::*;
-use crate::error::LintErrorPos;
+use rusty_parser::specific::{Expression, ExpressionPos, Operator};
+
+use crate::converter::common::Convertible;
+use crate::converter::expr_rules::state::PosExprState;
+use crate::core::binary_cast;
+use crate::core::LintErrorPos;
 
 pub fn convert(
     ctx: &mut PosExprState,

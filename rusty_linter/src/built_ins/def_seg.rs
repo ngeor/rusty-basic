@@ -1,5 +1,5 @@
-use crate::arg_validation::ArgValidation;
-use crate::error::LintErrorPos;
+use crate::built_ins::arg_validation::ArgValidation;
+use crate::core::LintErrorPos;
 use rusty_parser::specific::Expressions;
 
 pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
@@ -13,7 +13,7 @@ pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
-    use crate::LintError;
+    use crate::core::LintError;
 
     #[test]
     fn address_cannot_be_string() {

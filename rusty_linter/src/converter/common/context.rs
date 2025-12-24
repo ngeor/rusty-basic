@@ -1,8 +1,8 @@
+use crate::core::TypeResolver;
+use crate::core::TypeResolverImpl;
+use crate::core::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, SubMap};
 use crate::names::Names;
 use crate::pre_linter::PreLinterResult;
-use crate::type_resolver::TypeResolver;
-use crate::type_resolver_impl::TypeResolverImpl;
-use crate::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, SubMap};
 use rusty_parser::specific::*;
 
 pub struct Context {

@@ -1,7 +1,7 @@
-use crate::converter::context::Context;
-use crate::converter::traits::Convertible;
-use crate::converter::types::ExprContext;
-use crate::error::LintErrorPos;
+use crate::converter::common::Context;
+use crate::converter::common::Convertible;
+use crate::converter::common::ExprContext;
+use crate::core::LintErrorPos;
 use rusty_parser::specific::ForLoop;
 
 impl Convertible for ForLoop {

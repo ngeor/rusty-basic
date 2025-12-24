@@ -1,4 +1,4 @@
-use crate::{FunctionMap, ResolvedParamType, SubMap};
+use crate::core::{FunctionMap, ResolvedParamType, SubMap};
 use rusty_parser::specific::{
     Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UserDefinedTypes,
 };
@@ -22,19 +22,6 @@ pub trait CanCastTo<T> {
 }
 
 impl CanCastTo<Self> for TypeQualifier {
-    /// Checks if this `TypeQualifier` can be cast into the given one.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use rusty_linter::CanCastTo;
-    /// use rusty_parser::specific::TypeQualifier;
-    ///
-    /// assert!(TypeQualifier::BangSingle.can_cast_to(&TypeQualifier::PercentInteger));
-    /// assert!(TypeQualifier::DollarString.can_cast_to(&TypeQualifier::DollarString));
-    /// assert!(!TypeQualifier::HashDouble.can_cast_to(&TypeQualifier::DollarString));
-    /// assert!(!TypeQualifier::DollarString.can_cast_to(&TypeQualifier::AmpersandLong));
-    /// ```
     fn can_cast_to(&self, other: &Self) -> bool {
         match self {
             Self::DollarString => matches!(other, Self::DollarString),
@@ -131,5 +118,18 @@ impl CanCastTo<ResolvedParamType> for ExpressionType {
 impl CanCastTo<Box<ResolvedParamType>> for Box<ExpressionType> {
     fn can_cast_to(&self, target: &Box<ResolvedParamType>) -> bool {
         self.as_ref().can_cast_to(target.as_ref())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_type_qualifier_can_cast_to() {
+        assert!(TypeQualifier::BangSingle.can_cast_to(&TypeQualifier::PercentInteger));
+        assert!(TypeQualifier::DollarString.can_cast_to(&TypeQualifier::DollarString));
+        assert!(!TypeQualifier::HashDouble.can_cast_to(&TypeQualifier::DollarString));
+        assert!(!TypeQualifier::DollarString.can_cast_to(&TypeQualifier::AmpersandLong));
     }
 }

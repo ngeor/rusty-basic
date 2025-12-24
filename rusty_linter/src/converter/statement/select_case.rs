@@ -1,6 +1,6 @@
-use crate::converter::context::Context;
-use crate::converter::traits::Convertible;
-use crate::error::LintErrorPos;
+use crate::converter::common::Context;
+use crate::converter::common::Convertible;
+use crate::core::LintErrorPos;
 use rusty_parser::specific::{CaseBlock, CaseExpression, SelectCase};
 
 impl Convertible for SelectCase {

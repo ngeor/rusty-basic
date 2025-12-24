@@ -1,9 +1,10 @@
-use crate::converter::pos_context::PosContext;
-use crate::converter::traits::Convertible;
-use crate::error::LintErrorPos;
+use crate::converter::common::Context;
+use crate::converter::common::Convertible;
+use crate::converter::common::PosContext;
+use crate::core::IntoQualified;
+use crate::core::LintErrorPos;
+use crate::core::SubprogramName;
 use crate::names::ImplicitVars;
-use crate::type_resolver::IntoQualified;
-use crate::{converter::context::Context, SubprogramName};
 use rusty_common::{AtPos, HasPos, Positioned};
 use rusty_parser::specific::{
     DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement,

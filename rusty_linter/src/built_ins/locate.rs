@@ -1,5 +1,5 @@
-use crate::arg_validation::ArgValidation;
-use crate::error::{LintError, LintErrorPos};
+use crate::built_ins::arg_validation::ArgValidation;
+use crate::core::{LintError, LintErrorPos};
 use rusty_common::AtPos;
 use rusty_parser::specific::Expressions;
 
@@ -17,7 +17,7 @@ pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
 #[cfg(test)]
 mod tests {
     use crate::assert_linter_err;
-    use crate::LintError;
+    use crate::core::LintError;
 
     #[test]
     fn lint_too_many_args() {

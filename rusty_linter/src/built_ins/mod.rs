@@ -1,3 +1,4 @@
+mod arg_validation;
 mod beep;
 mod chr;
 mod close;
@@ -45,8 +46,8 @@ mod varseg;
 mod view_print;
 mod width;
 
-use crate::error::LintErrorPos;
-use crate::NameContext;
+use crate::core::LintErrorPos;
+use crate::core::NameContext;
 use rusty_parser::built_ins::built_in_function::BuiltInFunction;
 use rusty_parser::built_ins::built_in_sub::BuiltInSub;
 use rusty_parser::specific::Expressions;

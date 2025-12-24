@@ -1,8 +1,13 @@
-use crate::converter::expr_rules::*;
-use crate::converter::types::ExprContext;
-use crate::error::{LintError, LintErrorPos};
-use crate::type_resolver::{IntoQualified, IntoTypeQualifier};
-use crate::{qualify_name, try_built_in_function, try_qualify};
+use rusty_common::AtPos;
+use rusty_parser::specific::{
+    BareName, Expression, ExpressionType, Expressions, Name, VariableInfo,
+};
+
+use crate::converter::common::{Context, Convertible, ExprContext};
+use crate::converter::expr_rules::qualify_name::*;
+use crate::converter::expr_rules::state::PosExprState;
+use crate::core::{IntoQualified, IntoTypeQualifier};
+use crate::core::{LintError, LintErrorPos};
 
 pub fn convert(
     ctx: &mut PosExprState,

@@ -14,4 +14,5 @@ mod on_error;
 mod resume;
 mod select_case;
 mod sub_implementation;
+pub mod test_utils;
 mod user_defined_type;

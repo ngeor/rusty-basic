@@ -1,11 +1,16 @@
+use rusty_common::{AtPos, HasPos, Positioned};
+use rusty_parser::specific::{
+    BareName, ElementType, Expression, ExpressionType, HasExpressionType, Name, UserDefinedType,
+    VariableInfo,
+};
+
+use crate::converter::common::{Context, Convertible, ExprContext};
+use crate::converter::expr_rules::state::PosExprState;
 use crate::converter::expr_rules::variable::{
     add_as_new_implicit_var, AssignToFunction, ExistingConst, ExistingVar,
     VarAsUserDefinedFunctionCall, VarResolve,
 };
-use crate::converter::expr_rules::*;
-use crate::converter::types::ExprContext;
-use crate::error::{LintError, LintErrorPos};
-use crate::HasUserDefinedTypes;
+use crate::core::{HasUserDefinedTypes, LintError, LintErrorPos};
 
 pub fn convert(
     ctx: &mut PosExprState,

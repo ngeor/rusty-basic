@@ -17,9 +17,8 @@ impl StringView {
         if self.row_col.is_empty() {
             Position::start()
         } else {
-            let mut pos = self.row_col[self.row_col.len() - 1];
-            pos.inc_col();
-            pos
+            let final_pos = self.row_col[self.row_col.len() - 1];
+            final_pos.inc_col()
         }
     }
 }

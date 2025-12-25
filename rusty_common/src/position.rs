@@ -12,13 +12,12 @@ impl Position {
         Self { row, col }
     }
 
-    pub fn inc_col(&mut self) {
-        self.col += 1
+    pub fn inc_col(self) -> Self {
+        Self::new(self.row, self.col + 1)
     }
 
-    pub fn inc_row(&mut self) {
-        self.row += 1;
-        self.col = 1;
+    pub fn inc_row(self) -> Self {
+        Self::new(self.row + 1, 1)
     }
 
     pub fn start() -> Self {

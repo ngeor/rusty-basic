@@ -206,7 +206,16 @@ impl VarResolve for AssignToFunction {
         if ctx.names.is_in_function(name.bare_name()) {
             let converted_name = try_qualify(name, function_qualifier).with_err_at(&extra.pos)?;
             let expr_type = ExpressionType::BuiltIn(function_qualifier);
-            let expr = Expression::Variable(converted_name, VariableInfo::new_local(expr_type));
+            let variable_info = VariableInfo::new_local(expr_type);
+
+            // store this in the name context too to make it easier for instruction generator
+            // TODO add unit test
+            // TODO what if the name already exists?
+            ctx.names
+                .insert_compact(converted_name.bare_name().clone(), variable_info.clone());
+
+            let expr = Expression::Variable(converted_name, variable_info);
+
             Ok(expr)
         } else {
             Err(LintError::DuplicateDefinition.at_pos(extra.pos))

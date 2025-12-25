@@ -4,25 +4,31 @@ use crate::instruction_generator::subprogram_info::{
 };
 use crate::RuntimeError;
 use rusty_common::{AtPos, CaseInsensitiveString, Position, Positioned};
-use rusty_linter::SubprogramName;
-use rusty_parser::BuiltInFunction;
+use rusty_linter::{Context, Names, SubprogramName};
 use rusty_parser::BuiltInSub;
 use rusty_parser::{
     BareName, DimVar, Expression, ExpressionPos, ExpressionType, FileHandle,
     FunctionImplementation, GlobalStatement, HasExpressionType, Name, Parameter, Program,
     QualifiedName, Statement, Statements, SubImplementation, TypeQualifier,
 };
+use rusty_parser::{BuiltInFunction, UserDefinedTypes};
 use rusty_variant::Variant;
 
+pub fn unwrap_linter_context(linter_context: Context) -> (Names, UserDefinedTypes) {
+    let (pre_linter_result, _, linter_names) = linter_context.unwrap();
+    let (_, _, user_defined_types) = pre_linter_result.unwrap();
+    (linter_names, user_defined_types)
+}
+
 /// Generates instructions for the given program.
-pub fn generate_instructions(program: Program) -> InstructionGeneratorResult {
+pub fn generate_instructions(program: Program, linter_names: Names) -> InstructionGeneratorResult {
     // pass 1: collect function/sub names -> parameter names, in order to use them in function/sub calls
     // the parameter names and types are needed
     let mut subprogram_info_collector = SubprogramInfoCollector::default();
     subprogram_info_collector.visit(&program);
     let subprogram_parameters: SubprogramInfoRepository = subprogram_info_collector.into();
     // pass 2 generate with labels still unresolved
-    let mut generator = InstructionGenerator::new(subprogram_parameters);
+    let mut generator = InstructionGenerator::new(subprogram_parameters, linter_names);
     generator.generate_unresolved(program);
     let InstructionGenerator {
         instructions,
@@ -260,15 +266,17 @@ pub struct InstructionGenerator {
     pub statement_addresses: Vec<usize>,
     pub subprogram_info_repository: SubprogramInfoRepository,
     pub current_subprogram: Option<SubprogramName>,
+    pub linter_names: Names,
 }
 
 impl InstructionGenerator {
-    fn new(subprogram_info_repository: SubprogramInfoRepository) -> Self {
+    fn new(subprogram_info_repository: SubprogramInfoRepository, linter_names: Names) -> Self {
         Self {
             instructions: vec![],
             statement_addresses: vec![],
             subprogram_info_repository,
             current_subprogram: None,
+            linter_names,
         }
     }
 

@@ -24,13 +24,7 @@ use rusty_parser::UserDefinedTypes;
 use rusty_variant::Variant;
 use std::collections::VecDeque;
 
-pub struct Interpreter<
-    TStdlib: Stdlib,
-    TStdIn: Input,
-    TStdOut: Printer,
-    TLpt1: Printer,
-    U: HasUserDefinedTypes,
-> {
+pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> {
     /// Offers system calls
     stdlib: TStdlib,
 
@@ -49,7 +43,7 @@ pub struct Interpreter<
     screen: Box<dyn Screen>,
 
     /// Holds the definition of user defined types
-    linter_context: U,
+    user_defined_types: UserDefinedTypes,
 
     /// Contains variables and constants, collects function/sub arguments.
     context: Context,
@@ -87,16 +81,16 @@ pub struct Interpreter<
     def_seg: Option<usize>,
 }
 
-impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUserDefinedTypes>
-    HasUserDefinedTypes for Interpreter<TStdlib, TStdIn, TStdOut, TLpt1, U>
+impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> HasUserDefinedTypes
+    for Interpreter<TStdlib, TStdIn, TStdOut, TLpt1>
 {
     fn user_defined_types(&self) -> &UserDefinedTypes {
-        self.linter_context.user_defined_types()
+        &self.user_defined_types
     }
 }
 
-impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUserDefinedTypes>
-    InterpreterTrait for Interpreter<TStdlib, TStdIn, TStdOut, TLpt1, U>
+impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
+    for Interpreter<TStdlib, TStdIn, TStdOut, TLpt1>
 {
     type TStdlib = TStdlib;
     type TStdIn = TStdIn;
@@ -237,25 +231,24 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
     }
 }
 
-pub type DefaultInterpreter<U> = Interpreter<
+pub type DefaultInterpreter = Interpreter<
     DefaultStdlib,
     ReadInputSource<std::io::Stdin>,
     WritePrinter<std::io::Stdout>,
     WritePrinter<Lpt1Write>,
-    U,
 >;
 
-pub fn new_default_interpreter<U: HasUserDefinedTypes>(linter_context: U) -> DefaultInterpreter<U> {
+pub fn new_default_interpreter(user_defined_types: UserDefinedTypes) -> DefaultInterpreter {
     let stdlib = DefaultStdlib;
     let stdin = ReadInputSource::new(std::io::stdin());
     let stdout = WritePrinter::new(std::io::stdout());
     let lpt1 = WritePrinter::new(Lpt1Write {});
     let screen = CrossTermScreen::default();
-    Interpreter::new(stdlib, stdin, stdout, lpt1, screen, linter_context)
+    Interpreter::new(stdlib, stdin, stdout, lpt1, screen, user_defined_types)
 }
 
-impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUserDefinedTypes>
-    Interpreter<TStdlib, TStdIn, TStdOut, TLpt1, U>
+impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
+    Interpreter<TStdlib, TStdIn, TStdOut, TLpt1>
 {
     pub fn new<TScreen: Screen + 'static>(
         stdlib: TStdlib,
@@ -263,7 +256,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
         stdout: TStdOut,
         lpt1: TLpt1,
         screen: TScreen,
-        linter_context: U,
+        user_defined_types: UserDefinedTypes,
     ) -> Self {
         Self {
             stdlib,
@@ -277,7 +270,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
             register_stack: vec![Registers::new()],
             stacktrace: vec![],
             file_manager: FileManager::new(),
-            linter_context,
+            user_defined_types,
             var_path_stack: VecDeque::new(),
             by_ref_stack: VecDeque::new(),
             function_result: None,

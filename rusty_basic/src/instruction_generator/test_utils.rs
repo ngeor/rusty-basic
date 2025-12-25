@@ -1,18 +1,20 @@
 use crate::instruction_generator::{
-    generate_instructions, Instruction, InstructionGeneratorResult, InstructionPos,
+    generate_instructions, unwrap_linter_context, Instruction, InstructionGeneratorResult,
+    InstructionPos,
 };
 use rusty_common::NoPosContainer;
-use rusty_linter::{lint, HasUserDefinedTypes};
-use rusty_parser::parse;
+use rusty_linter::lint;
+use rusty_parser::{parse, UserDefinedTypes};
 
 pub fn generate_instructions_str_with_types(
     input: &str,
-) -> (InstructionGeneratorResult, impl HasUserDefinedTypes) {
+) -> (InstructionGeneratorResult, UserDefinedTypes) {
     let program = parse(input);
-    let (linted_program, user_defined_types_holder) = lint(program).expect("Linter should succeed");
+    let (linted_program, linter_context) = lint(program).expect("Linter should succeed");
+    let (linter_names, user_defined_types) = unwrap_linter_context(linter_context);
     (
-        generate_instructions(linted_program),
-        user_defined_types_holder,
+        generate_instructions(linted_program, linter_names),
+        user_defined_types,
     )
 }
 

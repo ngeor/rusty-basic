@@ -1,6 +1,6 @@
-use rusty_basic::instruction_generator::generate_instructions;
+use rusty_basic::instruction_generator::{generate_instructions, unwrap_linter_context};
 use rusty_basic::interpreter::{new_default_interpreter, InterpreterTrait};
-use rusty_linter::{lint, HasUserDefinedTypes};
+use rusty_linter::{lint, Context};
 use rusty_parser::parse_main_file;
 use rusty_parser::Program;
 use std::env;
@@ -33,10 +33,10 @@ fn on_parsed(program: Program, run_options: RunOptions) {
     }
 }
 
-fn on_linted(program: Program, linter_context: impl HasUserDefinedTypes, run_options: RunOptions) {
-    // TODO propagate linter_context to instruction_generator, so that it won't read VariableInfo from Expression
-    let instruction_generator_result = generate_instructions(program);
-    let mut interpreter = new_default_interpreter(linter_context);
+fn on_linted(program: Program, linter_context: Context, run_options: RunOptions) {
+    let (linter_names, user_defined_types) = unwrap_linter_context(linter_context);
+    let instruction_generator_result = generate_instructions(program, linter_names);
+    let mut interpreter = new_default_interpreter(user_defined_types);
     run_options.set_current_dir_if_apache();
     match interpreter.interpret(instruction_generator_result) {
         Ok(_) => (),

@@ -109,20 +109,28 @@ impl InstructionGenerator {
         let Positioned { element: expr, pos } = expr_pos;
 
         match expr {
-            Expression::Variable(var_name, VariableInfo { shared, .. }) => {
+            Expression::Variable(var_name, ..) => {
+                let linter_var_info: &VariableInfo = self
+                    .linter_names
+                    .get_resolved_variable_info(&self.current_subprogram, &var_name);
+
                 self.push(
                     Instruction::VarPathName(RootPath {
                         name: var_name,
-                        shared,
+                        shared: linter_var_info.shared,
                     }),
                     pos,
                 );
             }
-            Expression::ArrayElement(array_name, indices, VariableInfo { shared, .. }) => {
+            Expression::ArrayElement(array_name, indices, ..) => {
+                let linter_var_info: &VariableInfo = self
+                    .linter_names
+                    .get_resolved_variable_info(&self.current_subprogram, &array_name);
+
                 self.push(
                     Instruction::VarPathName(RootPath {
                         name: array_name,
-                        shared,
+                        shared: linter_var_info.shared,
                     }),
                     pos,
                 );

@@ -1,5 +1,7 @@
 use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
-use crate::instruction_generator::{generate_instructions, InstructionGeneratorResult};
+use crate::instruction_generator::{
+    generate_instructions, unwrap_linter_context, InstructionGeneratorResult,
+};
 use crate::interpreter::interpreter::Interpreter;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::read_input::ReadInputSource;
@@ -7,9 +9,8 @@ use crate::interpreter::screen::{CrossTermScreen, HeadlessScreen};
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
 use crate::RuntimeErrorPos;
-use rusty_linter;
-use rusty_linter::{lint, HasUserDefinedTypes};
-use rusty_parser::parse_main_file;
+use rusty_linter::lint;
+use rusty_parser::{parse_main_file, UserDefinedTypes};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -30,15 +31,15 @@ impl<S> MockInterpreterTrait for S where
 {
 }
 
-fn mock_interpreter_for_user_defined_types<U: HasUserDefinedTypes>(
-    user_defined_types_holder: U,
+fn mock_interpreter_for_user_defined_types(
+    user_defined_types: UserDefinedTypes,
 ) -> impl MockInterpreterTrait {
     let stdlib = MockStdlib::default();
-    mock_interpreter_for_user_defined_types_stdlib(user_defined_types_holder, stdlib)
+    mock_interpreter_for_user_defined_types_stdlib(user_defined_types, stdlib)
 }
 
-fn mock_interpreter_for_user_defined_types_stdlib<U: HasUserDefinedTypes>(
-    user_defined_types_holder: U,
+fn mock_interpreter_for_user_defined_types_stdlib(
+    user_defined_types: UserDefinedTypes,
     stdlib: MockStdlib,
 ) -> impl MockInterpreterTrait {
     let stdin = ReadInputSource::new(MockStdin { stdin: vec![] });
@@ -54,7 +55,7 @@ fn mock_interpreter_for_user_defined_types_stdlib<U: HasUserDefinedTypes>(
             stdout,
             lpt1,
             HeadlessScreen {},
-            user_defined_types_holder,
+            user_defined_types,
         )
     } else {
         Interpreter::new(
@@ -63,7 +64,7 @@ fn mock_interpreter_for_user_defined_types_stdlib<U: HasUserDefinedTypes>(
             stdout,
             lpt1,
             CrossTermScreen::default(),
-            user_defined_types_holder,
+            user_defined_types,
         )
     }
 }
@@ -71,12 +72,12 @@ fn mock_interpreter_for_user_defined_types_stdlib<U: HasUserDefinedTypes>(
 pub fn mock_interpreter_for_input(
     input: &str,
 ) -> (InstructionGeneratorResult, impl MockInterpreterTrait) {
-    let (instruction_generator_result, user_defined_types_holder) =
+    let (instruction_generator_result, user_defined_types) =
         generate_instructions_str_with_types(input);
     // println!("{:#?}", instruction_generator_result.instructions);
     (
         instruction_generator_result,
-        mock_interpreter_for_user_defined_types(user_defined_types_holder),
+        mock_interpreter_for_user_defined_types(user_defined_types),
     )
 }
 
@@ -96,12 +97,12 @@ pub fn interpret_err(input: &str) -> RuntimeErrorPos {
 }
 
 pub fn interpret_with_raw_input(input: &str, raw_input: &str) -> impl MockInterpreterTrait {
-    let (instruction_generator_result, user_defined_types_holder) =
+    let (instruction_generator_result, user_defined_types) =
         generate_instructions_str_with_types(input);
     // for i in instructions.iter() {
     //     println!("{:?}", i.as_ref());
     // }
-    let mut interpreter = mock_interpreter_for_user_defined_types(user_defined_types_holder);
+    let mut interpreter = mock_interpreter_for_user_defined_types(user_defined_types);
     if !raw_input.is_empty() {
         interpreter.stdin().add_next_input(raw_input);
     }
@@ -112,11 +113,11 @@ pub fn interpret_with_raw_input(input: &str, raw_input: &str) -> impl MockInterp
 }
 
 pub fn interpret_with_env(input: &str, stdlib: MockStdlib) -> impl MockInterpreterTrait {
-    let (instruction_generator_result, user_defined_types_holder) =
+    let (instruction_generator_result, user_defined_types) =
         generate_instructions_str_with_types(input);
     // println!("{:#?}", instructions);
     let mut interpreter =
-        mock_interpreter_for_user_defined_types_stdlib(user_defined_types_holder, stdlib);
+        mock_interpreter_for_user_defined_types_stdlib(user_defined_types, stdlib);
     interpreter
         .interpret(instruction_generator_result)
         .map(|_| interpreter)
@@ -127,8 +128,9 @@ pub fn interpret_file(filename: &str) -> Result<impl MockInterpreterTrait, Runti
     let file_path = format!("../fixtures/{}", filename);
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
-    let (linted_program, user_defined_types) = lint(program).unwrap();
-    let instruction_generator_result = generate_instructions(linted_program);
+    let (linted_program, linter_context) = lint(program).unwrap();
+    let (linter_names, user_defined_types) = unwrap_linter_context(linter_context);
+    let instruction_generator_result = generate_instructions(linted_program, linter_names);
     let mut interpreter = mock_interpreter_for_user_defined_types(user_defined_types);
     interpreter
         .interpret(instruction_generator_result)
@@ -142,8 +144,9 @@ pub fn interpret_file_with_raw_input(
     let file_path = format!("../fixtures/{}", filename);
     let f = File::open(file_path).expect("Could not read bas file");
     let program = parse_main_file(f).unwrap();
-    let (linted_program, user_defined_types) = lint(program).unwrap();
-    let instruction_generator_result = generate_instructions(linted_program);
+    let (linted_program, linter_context) = lint(program).unwrap();
+    let (linter_names, user_defined_types) = unwrap_linter_context(linter_context);
+    let instruction_generator_result = generate_instructions(linted_program, linter_names);
     let mut interpreter = mock_interpreter_for_user_defined_types(user_defined_types);
     if !raw_input.is_empty() {
         interpreter.stdin().add_next_input(raw_input);

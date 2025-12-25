@@ -16,6 +16,10 @@ impl PreLinterResult {
             user_defined_types,
         }
     }
+
+    pub fn unwrap(self) -> (FunctionMap, SubMap, UserDefinedTypes) {
+        (self.functions, self.subs, self.user_defined_types)
+    }
 }
 
 impl HasFunctions for PreLinterResult {

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rusty_parser::{BareName, TypeQualifier, VariableInfo};
+use rusty_parser::{BareName, Name, TypeQualifier, VariableInfo};
 use rusty_variant::Variant;
 
 use crate::names::{
@@ -42,6 +42,17 @@ impl NamesInner {
         });
         self.0
             .insert(bare_name, NameInfo::extended(variable_context));
+    }
+
+    pub fn get_variable_info_by_name(&self, name: &Name) -> Option<&VariableInfo> {
+        match name {
+            // if it's bare, then it has to be extended
+            Name::Bare(bare_name) => self.get_extended(bare_name),
+            // if it's qualified, it can be either one (e.g. A$ or A AS STRING)
+            Name::Qualified(bare_name, qualifier) => self
+                .get_compact(bare_name, *qualifier)
+                .or_else(|| self.get_extended(bare_name)),
+        }
     }
 }
 

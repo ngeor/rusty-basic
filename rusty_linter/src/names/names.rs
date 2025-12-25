@@ -6,7 +6,7 @@ use crate::names::traits::ManyNamesTrait;
 use crate::{core::ConstLookup, names::ImplicitVars};
 use rusty_common::CaseInsensitiveString;
 use rusty_parser::{
-    BareName, BuiltInStyle, HasExpressionType, QualifiedName, RedimInfo, TypeQualifier,
+    BareName, BuiltInStyle, HasExpressionType, Name, QualifiedName, RedimInfo, TypeQualifier,
     VarTypeIsExtended, VariableInfo,
 };
 use rusty_variant::Variant;
@@ -149,8 +149,12 @@ impl Names {
         if dim_type.is_extended() {
             self.names_mut().insert_extended(bare_name, variable_info)
         } else {
-            self.names_mut().insert_compact(bare_name, variable_info)
+            self.insert_compact(bare_name, variable_info)
         }
+    }
+
+    pub fn insert_compact(&mut self, bare_name: BareName, variable_info: VariableInfo) {
+        self.names_mut().insert_compact(bare_name, variable_info)
     }
 
     pub fn is_in_function(&self, function_name: &BareName) -> bool {
@@ -201,6 +205,42 @@ impl Names {
             result.extend(global_names.collect_var_info(bare_name, true).into_iter());
         }
         result
+    }
+
+    pub fn get_resolved_variable_info(
+        &self,
+        subprogram_name: &Option<SubprogramName>,
+        name: &Name,
+    ) -> &VariableInfo {
+        let one_level = self.data.get(subprogram_name).expect(&format!(
+            "Subprogram {:?} should be resolved",
+            subprogram_name
+        ));
+        match one_level.0.get_variable_info_by_name(&name) {
+            Some(i) => i,
+            None => {
+                if subprogram_name.is_some() {
+                    // try then parent level but only for SHARED
+                    let result = self
+                        .data
+                        .get(&None)
+                        .expect("Global name scope missing!")
+                        .0
+                        .get_variable_info_by_name(name)
+                        .expect(&format!(
+                            "Could not resolve {} even in global namespace",
+                            name
+                        ));
+                    if result.shared {
+                        result
+                    } else {
+                        panic!("{} should be resolved", name)
+                    }
+                } else {
+                    panic!("{} should be resolved", name)
+                }
+            }
+        }
     }
 }
 

@@ -45,6 +45,10 @@ impl Context {
         }
     }
 
+    pub fn unwrap(self) -> (PreLinterResult, TypeResolverImpl, Names) {
+        (self.pre_linter_result, self.resolver, self.names)
+    }
+
     pub fn is_in_subprogram(&self) -> bool {
         self.names.is_in_subprogram()
     }

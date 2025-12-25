@@ -5,7 +5,7 @@ mod dim_rules;
 mod expr_rules;
 mod statement;
 
-use crate::converter::common::Context;
+pub use self::common::Context;
 use crate::converter::common::Convertible;
 use crate::core::LintErrorPos;
 use crate::pre_linter::PreLinterResult;

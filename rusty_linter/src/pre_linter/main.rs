@@ -1,5 +1,8 @@
 use crate::core::IntoTypeQualifier;
+use crate::core::PosVisitor;
 use crate::core::TypeResolverImpl;
+use crate::core::VisitResult;
+use crate::core::Visitor;
 use crate::core::{LintError, LintErrorPos};
 use crate::core::{LintResult, ResolvedParamType};
 use crate::pre_linter::const_rules::global_const;
@@ -26,7 +29,7 @@ pub fn pre_lint_program(program: &Program) -> Result<PreLinterResult, LintErrorP
         global_constants: Default::default(),
         declaration_pos: Position::start(),
     };
-    ctx.on_program(program)?;
+    <MainContext as Visitor<Program>>::visit(&mut ctx, program)?;
     ctx.functions.post_visit()?;
     ctx.subs.post_visit()?;
     Ok(PreLinterResult::new(
@@ -42,113 +45,6 @@ pub fn pre_lint_program(program: &Program) -> Result<PreLinterResult, LintErrorP
 // FUNCTION/SUB -> depends on resolver for resolving bare names and on user_defined_types to ensure types exist
 
 impl MainContext {
-    fn on_program(&mut self, program: &Program) -> Result<(), LintErrorPos> {
-        for Positioned { element, pos } in program {
-            self.declaration_pos = *pos;
-            match element {
-                GlobalStatement::DefType(def_type) => {
-                    self.on_def_type(def_type);
-                }
-                GlobalStatement::FunctionDeclaration(f) => {
-                    self.on_function_declaration(f)?;
-                }
-                GlobalStatement::FunctionImplementation(f) => {
-                    self.on_function_implementation(f)?;
-                }
-                GlobalStatement::Statement(s) => {
-                    self.on_statement(s)?;
-                }
-                GlobalStatement::SubDeclaration(s) => {
-                    self.on_sub_declaration(s)?;
-                }
-                GlobalStatement::SubImplementation(s) => {
-                    self.on_sub_implementation(s)?;
-                }
-                GlobalStatement::UserDefinedType(user_defined_type) => {
-                    self.on_user_defined_type(user_defined_type, *pos)?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn on_def_type(&mut self, def_type: &DefType) {
-        self.resolver.set(def_type);
-    }
-
-    fn on_function_declaration(&mut self, f: &FunctionDeclaration) -> Result<(), LintErrorPos> {
-        let FunctionDeclaration {
-            name,
-            parameters: params,
-        } = f;
-        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
-        let bare_name = name.element.bare_name();
-        let signature = name.element.to_signature(&self.resolver, param_types);
-        self.functions
-            .add_declaration(bare_name, signature, self.declaration_pos)
-            .with_err_at(name)
-    }
-
-    fn on_function_implementation(
-        &mut self,
-        f: &FunctionImplementation,
-    ) -> Result<(), LintErrorPos> {
-        let FunctionImplementation { name, params, .. } = f;
-        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
-        let bare_name = name.element.bare_name();
-        let signature = name.element.to_signature(&self.resolver, param_types);
-        self.functions
-            .add_implementation(bare_name, signature, self.declaration_pos)
-            .with_err_at(name)
-    }
-
-    fn on_statement(&mut self, s: &Statement) -> Result<(), LintErrorPos> {
-        match s {
-            Statement::Const(name, expr) => self.on_const(name, expr),
-            _ => Ok(()),
-        }
-    }
-
-    fn on_sub_declaration(&mut self, s: &SubDeclaration) -> Result<(), LintErrorPos> {
-        let SubDeclaration {
-            name,
-            parameters: params,
-        } = s;
-        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
-        let bare_name = &name.element;
-        let signature = bare_name.to_signature(&self.resolver, param_types);
-        self.subs
-            .add_declaration(bare_name, signature, self.declaration_pos)
-            .with_err_at(name)
-    }
-
-    fn on_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), LintErrorPos> {
-        let SubImplementation { name, params, .. } = s;
-        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
-        let bare_name = &name.element;
-        let signature = bare_name.to_signature(&self.resolver, param_types);
-        self.subs
-            .add_implementation(bare_name, signature, self.declaration_pos)
-            .with_err_at(name)
-    }
-
-    fn on_user_defined_type(
-        &mut self,
-        user_defined_type: &UserDefinedType,
-        pos: Position,
-    ) -> Result<(), LintErrorPos> {
-        super::user_defined_type_rules::user_defined_type(
-            &mut self.user_defined_types,
-            &self.global_constants,
-            user_defined_type,
-            pos,
-        )
-    }
-
-    fn on_const(&mut self, name: &NamePos, expr: &ExpressionPos) -> Result<(), LintErrorPos> {
-        global_const(&mut self.global_constants, name, expr)
-    }
-
     fn on_parameters(&self, parameters: &Parameters) -> Result<ResolvedParamTypes, LintErrorPos> {
         parameters
             .iter()
@@ -195,5 +91,92 @@ impl MainContext {
                 Ok(ResolvedParamType::Array(Box::new(element_param_type)))
             }
         }
+    }
+}
+
+impl PosVisitor for MainContext {
+    fn set_pos(&mut self, pos: Position) {
+        self.declaration_pos = pos;
+    }
+}
+
+impl Visitor<DefType> for MainContext {
+    fn visit(&mut self, def_type: &DefType) -> VisitResult {
+        self.resolver.set(def_type);
+        Ok(())
+    }
+}
+
+impl Visitor<FunctionDeclaration> for MainContext {
+    fn visit(&mut self, f: &FunctionDeclaration) -> VisitResult {
+        let FunctionDeclaration {
+            name,
+            parameters: params,
+        } = f;
+        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
+        let bare_name = name.element.bare_name();
+        let signature = name.element.to_signature(&self.resolver, param_types);
+        self.functions
+            .add_declaration(bare_name, signature, self.declaration_pos)
+            .with_err_at(name)
+    }
+}
+
+impl Visitor<FunctionImplementation> for MainContext {
+    fn visit(&mut self, f: &FunctionImplementation) -> VisitResult {
+        let FunctionImplementation { name, params, .. } = f;
+        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
+        let bare_name = name.element.bare_name();
+        let signature = name.element.to_signature(&self.resolver, param_types);
+        self.functions
+            .add_implementation(bare_name, signature, self.declaration_pos)
+            .with_err_at(name)
+    }
+}
+
+impl Visitor<SubDeclaration> for MainContext {
+    fn visit(&mut self, s: &SubDeclaration) -> VisitResult {
+        let SubDeclaration {
+            name,
+            parameters: params,
+        } = s;
+        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
+        let bare_name = &name.element;
+        let signature = bare_name.to_signature(&self.resolver, param_types);
+        self.subs
+            .add_declaration(bare_name, signature, self.declaration_pos)
+            .with_err_at(name)
+    }
+}
+
+impl Visitor<SubImplementation> for MainContext {
+    fn visit(&mut self, s: &SubImplementation) -> VisitResult {
+        let SubImplementation { name, params, .. } = s;
+        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
+        let bare_name = &name.element;
+        let signature = bare_name.to_signature(&self.resolver, param_types);
+        self.subs
+            .add_implementation(bare_name, signature, self.declaration_pos)
+            .with_err_at(name)
+    }
+}
+
+impl Visitor<Statement> for MainContext {
+    fn visit(&mut self, s: &Statement) -> VisitResult {
+        match s {
+            Statement::Const(name, expr) => global_const(&mut self.global_constants, name, expr),
+            _ => Ok(()),
+        }
+    }
+}
+
+impl Visitor<UserDefinedType> for MainContext {
+    fn visit(&mut self, user_defined_type: &UserDefinedType) -> VisitResult {
+        super::user_defined_type_rules::user_defined_type(
+            &mut self.user_defined_types,
+            &self.global_constants,
+            user_defined_type,
+            self.declaration_pos,
+        )
     }
 }

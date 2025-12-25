@@ -8,6 +8,7 @@ mod traits;
 mod type_resolver;
 mod type_resolver_impl;
 mod types;
+mod visitor;
 
 pub use self::casting::*;
 pub use self::const_value_resolver::*;
@@ -19,3 +20,4 @@ pub use self::traits::*;
 pub use self::type_resolver::*;
 pub use self::type_resolver_impl::*;
 pub use self::types::*;
+pub use self::visitor::*;

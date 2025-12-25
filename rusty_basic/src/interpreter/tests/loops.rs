@@ -75,7 +75,7 @@ fn test_for_loop_with_zero_step() {
     ";
     assert_eq!(
         interpret_err(input),
-        ErrorEnvelope::Pos(RuntimeError::ForLoopZeroStep, Position::new(2, 27))
+        ErrorEnvelope::new(RuntimeError::ForLoopZeroStep, Position::new(2, 27))
     );
 }
 

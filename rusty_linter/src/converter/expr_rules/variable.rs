@@ -1,9 +1,11 @@
 use crate::converter::common::{Context, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
-use crate::core::{qualifier_of_const_variant, HasSubs, IntoQualified, IntoTypeQualifier};
+use crate::core::{
+    qualifier_of_const_variant, HasSubs, IntoQualified, IntoTypeQualifier, LintResult,
+};
 use crate::core::{LintError, LintErrorPos};
 use crate::names::ManyNamesTrait;
-use rusty_common::AtPos;
+use rusty_common::{AtPos, Position};
 use rusty_parser::BuiltInFunction;
 use rusty_parser::{
     BuiltInStyle, DimType, Expression, ExpressionType, Name, TypeQualifier, VariableInfo,
@@ -17,7 +19,7 @@ pub fn convert(
     variable_info: VariableInfo,
 ) -> Result<Expression, LintErrorPos> {
     // validation rules
-    validate(ctx, &name)?;
+    validate(ctx, &name, extra.pos)?;
 
     // match existing
     let mut rules: Vec<Box<dyn VarResolve>> = vec![];
@@ -46,9 +48,9 @@ pub fn convert(
     }
 }
 
-fn validate(ctx: &Context, name: &Name) -> Result<(), LintErrorPos> {
+fn validate(ctx: &Context, name: &Name, pos: Position) -> Result<(), LintErrorPos> {
     if ctx.subs().contains_key(name.bare_name()) {
-        return Err(LintError::DuplicateDefinition.at_no_pos());
+        return Err(LintError::DuplicateDefinition.at_pos(pos));
     }
 
     Ok(())
@@ -106,12 +108,12 @@ impl VarResolve for ExistingVar {
     fn resolve(
         &self,
         _ctx: &mut Context,
-        _extra: ExprContextPos,
+        extra: ExprContextPos,
         name: Name,
     ) -> Result<Expression, LintErrorPos> {
         let variable_info = self.var_info.clone().unwrap();
         let expression_type = &variable_info.expression_type;
-        let converted_name = qualify_name(expression_type, name)?;
+        let converted_name = qualify_name(expression_type, name).with_err_at(&extra.pos)?;
         Ok(Expression::Variable(converted_name, variable_info))
     }
 }
@@ -152,7 +154,7 @@ impl VarResolve for ExistingConst {
     fn resolve(
         &self,
         _ctx: &mut Context,
-        _extra: ExprContextPos,
+        extra: ExprContextPos,
         name: Name,
     ) -> Result<Expression, LintErrorPos> {
         let v = self.opt_v.clone().unwrap();
@@ -161,7 +163,7 @@ impl VarResolve for ExistingConst {
             // resolve to literal expression
             Ok(const_variant_to_expression(v))
         } else {
-            Err(LintError::DuplicateDefinition.at_no_pos())
+            Err(LintError::DuplicateDefinition.at_pos(extra.pos))
         }
     }
 }
@@ -197,17 +199,17 @@ impl VarResolve for AssignToFunction {
     fn resolve(
         &self,
         ctx: &mut Context,
-        _extra: ExprContextPos,
+        extra: ExprContextPos,
         name: Name,
     ) -> Result<Expression, LintErrorPos> {
         let function_qualifier = self.function_qualifier.unwrap();
         if ctx.names.is_in_function(name.bare_name()) {
-            let converted_name = try_qualify(name, function_qualifier)?;
+            let converted_name = try_qualify(name, function_qualifier).with_err_at(&extra.pos)?;
             let expr_type = ExpressionType::BuiltIn(function_qualifier);
             let expr = Expression::Variable(converted_name, VariableInfo::new_local(expr_type));
             Ok(expr)
         } else {
-            Err(LintError::DuplicateDefinition.at_no_pos())
+            Err(LintError::DuplicateDefinition.at_pos(extra.pos))
         }
     }
 }
@@ -226,10 +228,10 @@ impl VarResolve for VarAsBuiltInFunctionCall {
     fn resolve(
         &self,
         _ctx: &mut Context,
-        _extra: ExprContextPos,
+        extra: ExprContextPos,
         name: Name,
     ) -> Result<Expression, LintErrorPos> {
-        match try_built_in_function(&name)? {
+        match try_built_in_function(&name).with_err_at(&extra.pos)? {
             Some(built_in_function) => {
                 Ok(Expression::BuiltInFunctionCall(built_in_function, vec![]))
             }
@@ -252,11 +254,11 @@ impl VarResolve for VarAsUserDefinedFunctionCall {
     fn resolve(
         &self,
         _ctx: &mut Context,
-        _extra: ExprContextPos,
+        extra: ExprContextPos,
         name: Name,
     ) -> Result<Expression, LintErrorPos> {
         let q = self.function_qualifier.unwrap();
-        let converted_name = try_qualify(name, q)?;
+        let converted_name = try_qualify(name, q).with_err_at(&extra.pos)?;
         Ok(Expression::FunctionCall(converted_name, vec![]))
     }
 }

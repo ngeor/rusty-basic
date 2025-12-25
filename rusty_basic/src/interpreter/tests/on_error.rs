@@ -46,7 +46,7 @@ fn reset_error_handler() {
     let err = result.unwrap_err();
     assert_eq!(
         err,
-        RuntimeErrorPos::Pos(RuntimeError::DivisionByZero, Position::new(5, 13))
+        RuntimeErrorPos::new(RuntimeError::DivisionByZero, Position::new(5, 13))
     );
     assert_eq!(interpreter.stdout().output(), "oops");
 }

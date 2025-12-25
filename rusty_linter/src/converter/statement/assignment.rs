@@ -12,7 +12,7 @@ pub fn on_assignment(
     ctx: &mut Context,
     pos: Position,
 ) -> Result<Statement, LintErrorPos> {
-    assignment_pre_conversion_validation_rules::validate(ctx, &left)?;
+    assignment_pre_conversion_validation_rules::validate(ctx, &left, pos)?;
     let converted_right: ExpressionPos = right.convert_in_default(ctx)?;
     let Positioned {
         element: converted_left,
@@ -26,14 +26,22 @@ mod assignment_pre_conversion_validation_rules {
     use super::*;
     use crate::core::LintError;
 
-    pub fn validate(ctx: &mut Context, left_side: &Expression) -> Result<(), LintErrorPos> {
-        cannot_assign_to_const(ctx, left_side)
+    pub fn validate(
+        ctx: &mut Context,
+        left_side: &Expression,
+        pos: Position,
+    ) -> Result<(), LintErrorPos> {
+        cannot_assign_to_const(ctx, left_side, pos)
     }
 
-    fn cannot_assign_to_const(ctx: &mut Context, input: &Expression) -> Result<(), LintErrorPos> {
+    fn cannot_assign_to_const(
+        ctx: &mut Context,
+        input: &Expression,
+        pos: Position,
+    ) -> Result<(), LintErrorPos> {
         if let Expression::Variable(var_name, _) = input {
             if ctx.names.contains_const_recursively(var_name.bare_name()) {
-                Err(LintError::DuplicateDefinition.at_no_pos())
+                Err(LintError::DuplicateDefinition.at_pos(pos))
             } else {
                 Ok(())
             }

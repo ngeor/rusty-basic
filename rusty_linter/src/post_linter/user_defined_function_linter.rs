@@ -1,4 +1,4 @@
-use crate::core::{CanCastTo, HasFunctions, LintPosResult, ResolvedParamType};
+use crate::core::{CanCastTo, HasFunctions, ResolvedParamType};
 use crate::core::{LintError, LintErrorPos};
 use crate::pre_linter::ResolvedParamTypes;
 use rusty_common::*;
@@ -13,9 +13,10 @@ pub struct UserDefinedFunctionLinter<'a, R> {
 pub fn lint_call_args(
     args: &Expressions,
     param_types: &ResolvedParamTypes,
+    pos: Position,
 ) -> Result<(), LintErrorPos> {
     if args.len() != param_types.len() {
-        return Err(LintError::ArgumentCountMismatch.at_no_pos());
+        return Err(LintError::ArgumentCountMismatch.at_pos(pos));
     }
 
     args.iter()
@@ -155,14 +156,19 @@ impl<'a, R> UserDefinedFunctionLinter<'a, R>
 where
     R: HasFunctions,
 {
-    fn visit_function(&self, name: &Name, args: &Expressions) -> Result<(), LintErrorPos> {
+    fn visit_function(
+        &self,
+        name: &Name,
+        pos: Position,
+        args: &Expressions,
+    ) -> Result<(), LintErrorPos> {
         if let Name::Qualified(bare_name, qualifier) = name {
             match self.linter_context.functions().get(bare_name) {
                 Some(function_signature_pos) => {
                     if function_signature_pos.element.qualifier() != *qualifier {
                         Err(LintError::TypeMismatch.at(function_signature_pos))
                     } else {
-                        lint_call_args(args, function_signature_pos.element.param_types())
+                        lint_call_args(args, function_signature_pos.element.param_types(), pos)
                     }
                 }
                 None => self.handle_undefined_function(args),
@@ -203,7 +209,7 @@ where
                 for x in args {
                     self.visit_expression(x)?;
                 }
-                self.visit_function(n, args).patch_err_pos(pos)
+                self.visit_function(n, *pos, args)
             }
             Expression::BinaryExpression(_, left, right, _) => {
                 self.visit_expression(left)?;

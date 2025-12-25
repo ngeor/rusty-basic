@@ -1,31 +1,36 @@
 use crate::converter::common::Context;
 use crate::core::IntoTypeQualifier;
-use crate::core::{HasFunctions, HasSubs, HasUserDefinedTypes, LintResult};
+use crate::core::{HasFunctions, HasSubs, HasUserDefinedTypes};
 use crate::core::{LintError, LintErrorPos};
 use crate::names::ManyNamesTrait;
-use rusty_common::{AtPos, Positioned};
+use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{
     DimVar, Parameter, TypedName, VarTypeIsExtended, VarTypeQualifier,
     VarTypeToUserDefinedRecursively,
 };
 
-pub fn validate<T>(var_name: &TypedName<T>, ctx: &Context) -> Result<(), LintErrorPos>
+pub fn validate<T>(
+    var_name: &TypedName<T>,
+    ctx: &Context,
+    pos: Position,
+) -> Result<(), LintErrorPos>
 where
     T: VarTypeIsExtended + VarTypeQualifier + VarTypeToUserDefinedRecursively,
     TypedName<T>: CannotClashWithFunctions,
 {
-    cannot_clash_with_subs(var_name, ctx)?;
-    var_name.cannot_clash_with_functions(ctx)?;
+    cannot_clash_with_subs(var_name, ctx, pos)?;
+    var_name.cannot_clash_with_functions(ctx, pos)?;
     user_defined_type_must_exist(var_name, ctx)?;
-    cannot_clash_with_local_constants(var_name, ctx).with_err_no_pos()
+    cannot_clash_with_local_constants(var_name, ctx, pos)
 }
 
 fn cannot_clash_with_subs<T, C: HasSubs>(
     var_name: &TypedName<T>,
     ctx: &C,
-) -> Result<(), LintError> {
+    pos: Position,
+) -> Result<(), LintErrorPos> {
     if ctx.subs().contains_key(&var_name.bare_name) {
-        Err(LintError::DuplicateDefinition)
+        Err(LintError::DuplicateDefinition.at_pos(pos))
     } else {
         Ok(())
     }
@@ -34,21 +39,27 @@ fn cannot_clash_with_subs<T, C: HasSubs>(
 fn cannot_clash_with_local_constants<T>(
     var_name: &TypedName<T>,
     ctx: &Context,
-) -> Result<(), LintError> {
+    pos: Position,
+) -> Result<(), LintErrorPos> {
     match ctx.names.names().get_const_value(&var_name.bare_name) {
-        Some(_) => Err(LintError::DuplicateDefinition),
+        Some(_) => Err(LintError::DuplicateDefinition.at_pos(pos)),
         _ => Ok(()),
     }
 }
 
 pub trait CannotClashWithFunctions {
-    fn cannot_clash_with_functions(&self, ctx: &Context) -> Result<(), LintError>;
+    fn cannot_clash_with_functions(&self, ctx: &Context, pos: Position)
+        -> Result<(), LintErrorPos>;
 }
 
 impl CannotClashWithFunctions for DimVar {
-    fn cannot_clash_with_functions(&self, ctx: &Context) -> Result<(), LintError> {
+    fn cannot_clash_with_functions(
+        &self,
+        ctx: &Context,
+        pos: Position,
+    ) -> Result<(), LintErrorPos> {
         if ctx.functions().contains_key(&self.bare_name) {
-            Err(LintError::DuplicateDefinition)
+            Err(LintError::DuplicateDefinition.at_pos(pos))
         } else {
             Ok(())
         }
@@ -56,10 +67,14 @@ impl CannotClashWithFunctions for DimVar {
 }
 
 impl CannotClashWithFunctions for Parameter {
-    fn cannot_clash_with_functions(&self, ctx: &Context) -> Result<(), LintError> {
+    fn cannot_clash_with_functions(
+        &self,
+        ctx: &Context,
+        pos: Position,
+    ) -> Result<(), LintErrorPos> {
         if let Some(func_qualifier) = ctx.function_qualifier(&self.bare_name) {
             if self.var_type.is_extended() {
-                Err(LintError::DuplicateDefinition)
+                Err(LintError::DuplicateDefinition.at_pos(pos))
             } else {
                 // for some reason you can have a FUNCTION Add(Add)
                 let q = self
@@ -69,7 +84,7 @@ impl CannotClashWithFunctions for Parameter {
                 if q == func_qualifier {
                     Ok(())
                 } else {
-                    Err(LintError::DuplicateDefinition)
+                    Err(LintError::DuplicateDefinition.at_pos(pos))
                 }
             }
         } else {

@@ -4,7 +4,6 @@ use crate::Position;
 /// within the file it was read from.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Positioned<T> {
-    // TODO make fields private
     pub element: T,
     pub pos: Position,
 }
@@ -29,16 +28,6 @@ impl<T> Positioned<T> {
             pos,
         }
     }
-
-    /// Converts this instance to a result, given the specified function.
-    /// The function acts on the element of this instance and returns
-    /// the result. The error of the result is converted to a [Positioned] error.
-    pub fn try_map<F, U, E>(&self, op: F) -> Result<U, Positioned<E>>
-    where
-        F: FnOnce(&T) -> Result<U, E>,
-    {
-        (op)(&self.element).map_err(|e| e.at_pos(self.pos))
-    }
 }
 
 // AtPos
@@ -58,10 +47,6 @@ pub trait AtPos: Sized {
 
     fn at_start(self) -> Positioned<Self> {
         self.at_pos(Position::start())
-    }
-
-    fn at_no_pos(self) -> Positioned<Self> {
-        self.at_pos(Position::zero())
     }
 }
 
@@ -94,7 +79,7 @@ impl<T> HasPos for Box<Positioned<T>> {
 }
 
 //
-// NoPosIter
+// NoPosIter TODO: the following are used only in tests
 //
 
 pub struct NoPosIter<'a, T: 'a, I>

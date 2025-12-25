@@ -38,21 +38,19 @@ pub fn linter_err(input: &str, msg: &str) -> LintErrorPos {
 #[macro_export]
 macro_rules! assert_linter_err {
     ($program:expr, $expected_err:expr) => {
-        let rusty_common::Positioned { element, pos } =
+        let rusty_common::Positioned { element, .. } =
             $crate::tests::test_utils::linter_err($program, "");
         assert_eq!(element, $expected_err);
-        assert_ne!(pos, rusty_common::Position::zero());
     };
 
     ($program:expr, $expected_err:expr, $msg:expr) => {
-        let rusty_common::Positioned { element, pos } =
+        let rusty_common::Positioned { element, .. } =
             $crate::tests::test_utils::linter_err($program, format!("{}", $msg).as_ref());
         assert_eq!(
             element, $expected_err,
             "'{}' failed, expected {:?} but was {:?}",
             $msg, $expected_err, element
         );
-        assert_ne!(pos, rusty_common::Position::zero());
     };
 
     ($program:expr, $expected_err:expr, $expected_row:expr, $expected_col:expr) => {

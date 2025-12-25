@@ -9,7 +9,8 @@ pub struct ForNextCounterMatch;
 impl ForNextCounterMatch {
     fn ensure_numeric_variable(&self, f: &ForLoop) -> Result<(), LintErrorPos> {
         let Positioned {
-            element: var_expr, ..
+            element: var_expr,
+            pos,
         } = &f.variable_name;
         match var_expr {
             Expression::Variable(
@@ -20,10 +21,10 @@ impl ForNextCounterMatch {
                 },
             ) => match var_type {
                 ExpressionType::BuiltIn(TypeQualifier::DollarString) => {
-                    Err(LintError::TypeMismatch.at_no_pos())
+                    Err(LintError::TypeMismatch.at_pos(*pos))
                 }
                 ExpressionType::BuiltIn(_) => Ok(()),
-                _ => Err(LintError::TypeMismatch.at_no_pos()),
+                _ => Err(LintError::TypeMismatch.at_pos(*pos)),
             },
             _ => unimplemented!(),
         }

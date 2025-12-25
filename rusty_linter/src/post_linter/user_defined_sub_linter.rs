@@ -16,13 +16,14 @@ where
     fn visit_sub_call(
         &mut self,
         name: &CaseInsensitiveString,
+        pos: Position,
         args: &Expressions,
     ) -> Result<(), LintErrorPos> {
         match self.linter_context.subs().get(name) {
             Some(sub_signature_pos) => {
-                lint_call_args(args, sub_signature_pos.element.param_types())
+                lint_call_args(args, sub_signature_pos.element.param_types(), pos)
             }
-            None => Err(LintError::SubprogramNotDefined.at_no_pos()),
+            None => Err(LintError::SubprogramNotDefined.at_pos(pos)),
         }
     }
 }

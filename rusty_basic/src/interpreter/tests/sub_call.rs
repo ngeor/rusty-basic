@@ -106,7 +106,7 @@ fn test_stacktrace() {
     "#;
     assert_eq!(
         interpret_err(program),
-        ErrorEnvelope::Stacktrace(
+        ErrorEnvelope::new_with_stacktrace(
             RuntimeError::Other("Invalid expression. Must be name=value.".to_string()),
             vec![
                 Position::new(10, 13), // "inside" Environ

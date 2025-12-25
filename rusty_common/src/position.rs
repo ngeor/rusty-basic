@@ -7,6 +7,8 @@ pub struct Position {
 
 impl Position {
     pub fn new(row: u32, col: u32) -> Self {
+        debug_assert!(row > 0);
+        debug_assert!(col > 0);
         Self { row, col }
     }
 
@@ -21,10 +23,6 @@ impl Position {
 
     pub fn start() -> Self {
         Self::new(1, 1)
-    }
-
-    pub fn zero() -> Self {
-        Self::new(0, 0)
     }
 
     pub fn row(&self) -> u32 {

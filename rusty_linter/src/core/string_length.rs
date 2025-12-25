@@ -1,5 +1,6 @@
-use crate::core::ConstLookup;
+use crate::core::{ConstLookup, LintResult};
 use crate::core::{LintError, LintErrorPos};
+use rusty_common::Positioned;
 use rusty_parser::{Expression, ExpressionPos, TypeQualifier};
 use rusty_variant::{Variant, MAX_INTEGER};
 
@@ -7,7 +8,15 @@ pub fn validate_string_length(
     expr_pos: &ExpressionPos,
     lookup: &impl ConstLookup,
 ) -> Result<u16, LintErrorPos> {
-    expr_pos.try_map(|expr| match expr {
+    let Positioned { element: expr, pos } = expr_pos;
+    do_validate_string_length(expr, lookup).with_err_at(pos)
+}
+
+fn do_validate_string_length(
+    expr: &Expression,
+    lookup: &impl ConstLookup,
+) -> Result<u16, LintError> {
+    match expr {
         Expression::IntegerLiteral(i) => {
             if (1..=MAX_INTEGER).contains(i) {
                 Ok(*i as u16)
@@ -31,5 +40,5 @@ pub fn validate_string_length(
             Err(LintError::InvalidConstant)
         }
         _ => Err(LintError::InvalidConstant),
-    })
+    }
 }

@@ -1,9 +1,9 @@
 use crate::built_ins::arg_validation::ArgValidation;
 use crate::core::{LintError, LintErrorPos};
-use rusty_common::AtPos;
+use rusty_common::{AtPos, Position};
 use rusty_parser::Expressions;
 
-pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
+pub fn lint(args: &Expressions, pos: Position) -> Result<(), LintErrorPos> {
     // must have 5 arguments:
     // filename
     // file mode
@@ -11,7 +11,7 @@ pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
     // file number
     // rec len
     if args.len() != 5 {
-        return Err(LintError::ArgumentCountMismatch.at_no_pos());
+        return Err(LintError::ArgumentCountMismatch.at_pos(pos));
     }
     args.require_string_argument(0)?;
     for i in 1..args.len() {

@@ -24,7 +24,7 @@ mod tests {
     fn test_kill_edge_cases() {
         assert_eq!(
             interpret_err(r#"KILL "KILL2.TXT""#),
-            ErrorEnvelope::Pos(RuntimeError::FileNotFound, Position::new(1, 1))
+            ErrorEnvelope::new(RuntimeError::FileNotFound, Position::new(1, 1))
         );
     }
 }

@@ -27,32 +27,32 @@ impl ConvertibleIn<Position> for Statement {
             Self::Return(opt_label) => {
                 if opt_label.is_some() && ctx.is_in_subprogram() {
                     // cannot have RETURN with explicit label inside subprogram
-                    Err(LintError::IllegalInSubFunction.at_no_pos())
+                    Err(LintError::IllegalInSubFunction.at_pos(pos))
                 } else {
                     Ok(Self::Return(opt_label))
                 }
             }
             Self::Resume(resume_option) => {
                 if ctx.is_in_subprogram() {
-                    Err(LintError::IllegalInSubFunction.at_no_pos())
+                    Err(LintError::IllegalInSubFunction.at_pos(pos))
                 } else {
                     Ok(Self::Resume(resume_option))
                 }
             }
             Self::Exit(exit_object) => match ctx.names.get_name_context() {
-                NameContext::Global => Err(LintError::IllegalOutsideSubFunction.at_no_pos()),
+                NameContext::Global => Err(LintError::IllegalOutsideSubFunction.at_pos(pos)),
                 NameContext::Sub => {
                     if exit_object == ExitObject::Sub {
                         Ok(Self::Exit(exit_object))
                     } else {
-                        Err(LintError::IllegalInSubFunction.at_no_pos())
+                        Err(LintError::IllegalInSubFunction.at_pos(pos))
                     }
                 }
                 NameContext::Function => {
                     if exit_object == ExitObject::Function {
                         Ok(Self::Exit(exit_object))
                     } else {
-                        Err(LintError::IllegalInSubFunction.at_no_pos())
+                        Err(LintError::IllegalInSubFunction.at_pos(pos))
                     }
                 }
             },

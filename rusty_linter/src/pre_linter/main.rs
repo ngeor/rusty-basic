@@ -1,7 +1,7 @@
 use crate::core::IntoTypeQualifier;
 use crate::core::TypeResolverImpl;
 use crate::core::{LintError, LintErrorPos};
-use crate::core::{LintPosResult, LintResult, ResolvedParamType};
+use crate::core::{LintResult, ResolvedParamType};
 use crate::pre_linter::const_rules::global_const;
 use crate::pre_linter::sub_program_context::{FunctionContext, SubContext, ToSignature};
 use crate::pre_linter::{ConstantMap, PreLinterResult, ResolvedParamTypes};
@@ -65,8 +65,7 @@ impl MainContext {
                     self.on_sub_implementation(s)?;
                 }
                 GlobalStatement::UserDefinedType(user_defined_type) => {
-                    self.on_user_defined_type(user_defined_type)
-                        .patch_err_pos(pos)?;
+                    self.on_user_defined_type(user_defined_type, *pos)?;
                 }
             }
         }
@@ -136,11 +135,13 @@ impl MainContext {
     fn on_user_defined_type(
         &mut self,
         user_defined_type: &UserDefinedType,
+        pos: Position,
     ) -> Result<(), LintErrorPos> {
         super::user_defined_type_rules::user_defined_type(
             &mut self.user_defined_types,
             &self.global_constants,
             user_defined_type,
+            pos,
         )
     }
 

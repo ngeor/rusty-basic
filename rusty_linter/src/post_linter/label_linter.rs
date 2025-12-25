@@ -36,21 +36,30 @@ impl LabelLinter {
         &self,
         label: &CaseInsensitiveString,
         label_owner: &LabelOwner,
+        pos: Position,
     ) -> Result<(), LintErrorPos> {
         self.labels
             .get(label_owner)
             .and_then(|set| set.get(label))
             .map(|_| ())
             .ok_or(LintError::LabelNotDefined)
-            .with_err_no_pos()
+            .with_err_at(&pos)
     }
 
-    fn ensure_is_global_label(&self, label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
-        self.ensure_label_is_defined(label, &LabelOwner::Global)
+    fn ensure_is_global_label(
+        &self,
+        label: &CaseInsensitiveString,
+        pos: Position,
+    ) -> Result<(), LintErrorPos> {
+        self.ensure_label_is_defined(label, &LabelOwner::Global, pos)
     }
 
-    fn ensure_is_current_label(&self, label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
-        self.ensure_label_is_defined(label, &self.current_label_owner)
+    fn ensure_is_current_label(
+        &self,
+        label: &CaseInsensitiveString,
+        pos: Position,
+    ) -> Result<(), LintErrorPos> {
+        self.ensure_label_is_defined(label, &self.current_label_owner, pos)
     }
 }
 
@@ -73,24 +82,40 @@ impl PostConversionLinter for LabelLinter {
         self.on_sub(s)
     }
 
-    fn visit_on_error(&mut self, on_error_option: &OnErrorOption) -> Result<(), LintErrorPos> {
+    fn visit_on_error(
+        &mut self,
+        on_error_option: &OnErrorOption,
+        pos: Position,
+    ) -> Result<(), LintErrorPos> {
         match on_error_option {
-            OnErrorOption::Label(label) => self.ensure_is_global_label(label),
+            OnErrorOption::Label(label) => self.ensure_is_global_label(label, pos),
             _ => Ok(()),
         }
     }
 
-    fn visit_go_to(&mut self, label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
-        self.ensure_is_current_label(label)
+    fn visit_go_to(
+        &mut self,
+        label: &CaseInsensitiveString,
+        pos: Position,
+    ) -> Result<(), LintErrorPos> {
+        self.ensure_is_current_label(label, pos)
     }
 
-    fn visit_go_sub(&mut self, label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
-        self.ensure_is_current_label(label)
+    fn visit_go_sub(
+        &mut self,
+        label: &CaseInsensitiveString,
+        pos: Position,
+    ) -> Result<(), LintErrorPos> {
+        self.ensure_is_current_label(label, pos)
     }
 
-    fn visit_resume(&mut self, resume_option: &ResumeOption) -> Result<(), LintErrorPos> {
+    fn visit_resume(
+        &mut self,
+        resume_option: &ResumeOption,
+        pos: Position,
+    ) -> Result<(), LintErrorPos> {
         if let ResumeOption::Label(label) = resume_option {
-            self.ensure_is_current_label(label)
+            self.ensure_is_current_label(label, pos)
         } else {
             Ok(())
         }
@@ -99,9 +124,10 @@ impl PostConversionLinter for LabelLinter {
     fn visit_return(
         &mut self,
         opt_label: Option<&CaseInsensitiveString>,
+        pos: Position,
     ) -> Result<(), LintErrorPos> {
         match opt_label {
-            Some(label) => self.ensure_is_current_label(label),
+            Some(label) => self.ensure_is_current_label(label, pos),
             _ => Ok(()),
         }
     }
@@ -119,10 +145,14 @@ impl PostConversionLinter for LabelCollector {
         self.on_sub(s)
     }
 
-    fn visit_label(&mut self, label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
+    fn visit_label(
+        &mut self,
+        label: &CaseInsensitiveString,
+        pos: Position,
+    ) -> Result<(), LintErrorPos> {
         if self.labels.values().any(|s| s.contains(label)) {
             // labels need to be unique across all scopes
-            Err(LintError::DuplicateLabel.at_no_pos())
+            Err(LintError::DuplicateLabel.at_pos(pos))
         } else {
             // TODO prevent clone for key and value?
             self.labels

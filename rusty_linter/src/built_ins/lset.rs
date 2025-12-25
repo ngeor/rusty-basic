@@ -1,15 +1,15 @@
 use crate::built_ins::arg_validation::ArgValidation;
 use crate::core::{LintError, LintErrorPos};
-use rusty_common::AtPos;
+use rusty_common::{AtPos, Position};
 use rusty_parser::Expressions;
 
-pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
+pub fn lint(args: &Expressions, pos: Position) -> Result<(), LintErrorPos> {
     // the parser should produce 3 arguments:
     // the variable name, as a string literal
     // the variable itself, a ByRef string variable
     // a string expression to assign to
     if args.len() != 3 {
-        return Err(LintError::ArgumentCountMismatch.at_no_pos());
+        return Err(LintError::ArgumentCountMismatch.at_pos(pos));
     }
     args.require_string_argument(0)?;
     // TODO ensure LSET is operating on variables previously used by FIELD in this scope

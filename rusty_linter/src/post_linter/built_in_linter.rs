@@ -1,7 +1,7 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::built_ins::{lint_function_call, lint_sub_call};
 use crate::core::LintErrorPos;
-use crate::core::{LintPosResult, NameContext};
+use crate::core::NameContext;
 use rusty_common::*;
 use rusty_parser::BuiltInSub;
 use rusty_parser::{
@@ -42,10 +42,11 @@ impl PostConversionLinter for BuiltInLinter {
     fn visit_built_in_sub_call(
         &mut self,
         built_in_sub: &BuiltInSub,
+        pos: Position,
         args: &Expressions,
     ) -> Result<(), LintErrorPos> {
         self.visit_expressions(args)?;
-        lint_sub_call(built_in_sub, args, self.name_context)
+        lint_sub_call(built_in_sub, pos, args, self.name_context)
     }
 
     fn visit_expression(&mut self, expr_pos: &ExpressionPos) -> Result<(), LintErrorPos> {
@@ -55,7 +56,7 @@ impl PostConversionLinter for BuiltInLinter {
                 for x in args {
                     self.visit_expression(x)?;
                 }
-                lint_function_call(built_in_function, args).patch_err_pos(&pos)
+                lint_function_call(built_in_function, pos, args)
             }
             Expression::BinaryExpression(_, left, right, _) => {
                 self.visit_expression(left)?;

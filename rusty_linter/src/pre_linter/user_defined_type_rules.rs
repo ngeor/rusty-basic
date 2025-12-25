@@ -1,7 +1,7 @@
 use crate::core::validate_string_length;
 use crate::core::{LintError, LintErrorPos};
 use crate::pre_linter::ConstantMap;
-use rusty_common::{AtPos, Positioned};
+use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{
     BareName, Element, ElementPos, ElementType, Expression, UserDefinedType, UserDefinedTypes,
 };
@@ -11,11 +11,12 @@ pub fn user_defined_type(
     user_defined_types: &mut UserDefinedTypes,
     global_constants: &ConstantMap,
     user_defined_type: &UserDefinedType,
+    pos: Position,
 ) -> Result<(), LintErrorPos> {
     let type_name: &BareName = user_defined_type.bare_name();
     if user_defined_types.contains_key(type_name) {
         // duplicate type definition
-        Err(LintError::DuplicateDefinition.at_no_pos())
+        Err(LintError::DuplicateDefinition.at_pos(pos))
     } else {
         let mut resolved_elements: HashMap<BareName, ElementType> = HashMap::new();
         for Positioned {

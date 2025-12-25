@@ -1,5 +1,4 @@
 use crate::core::LintErrorPos;
-use crate::core::LintPosResult;
 use rusty_common::*;
 use rusty_parser::BuiltInSub;
 use rusty_parser::*;
@@ -29,7 +28,6 @@ pub trait ExpressionReducer {
         } = global_statement_pos;
         self.visit_global_statement(global_statement)
             .map(|opt_global_statement| opt_global_statement.map(|t| t.at_pos(pos)))
-            .patch_err_pos(&pos)
     }
 
     fn visit_global_statement(
@@ -95,7 +93,6 @@ pub trait ExpressionReducer {
         } = statement_pos;
         self.visit_filter_statement(statement)
             .map(|opt_statement| opt_statement.map(|x| x.at_pos(pos)))
-            .patch_err_pos(&pos)
     }
 
     fn visit_filter_statement(&mut self, s: Statement) -> Result<Option<Statement>, LintErrorPos> {
@@ -276,9 +273,7 @@ pub trait ExpressionReducer {
         expr_pos: ExpressionPos,
     ) -> Result<ExpressionPos, LintErrorPos> {
         let Positioned { element: expr, pos } = expr_pos;
-        self.visit_expression(expr)
-            .map(|x| x.at_pos(pos))
-            .patch_err_pos(&pos)
+        self.visit_expression(expr).map(|x| x.at_pos(pos))
     }
 
     fn visit_expression(&mut self, expression: Expression) -> Result<Expression, LintErrorPos> {

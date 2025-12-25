@@ -1,4 +1,4 @@
-use rusty_common::{AtPos, HasPos, Position, Positioned};
+use rusty_common::{AtPos, HasPos, Positioned};
 use rusty_parser::ParseError;
 use rusty_variant::VariantError;
 
@@ -34,12 +34,6 @@ pub enum LintError {
 
 pub type LintErrorPos = Positioned<LintError>;
 
-impl From<LintError> for LintErrorPos {
-    fn from(e: LintError) -> Self {
-        e.at_no_pos()
-    }
-}
-
 impl From<VariantError> for LintError {
     fn from(e: VariantError) -> Self {
         match e {
@@ -63,32 +57,10 @@ impl From<ParseError> for LintError {
 
 pub trait LintResult<T> {
     fn with_err_at(self, pos: &impl HasPos) -> Result<T, LintErrorPos>;
-
-    fn with_err_no_pos(self) -> Result<T, LintErrorPos>;
 }
 
 impl<T> LintResult<T> for Result<T, LintError> {
     fn with_err_at(self, pos: &impl HasPos) -> Result<T, LintErrorPos> {
         self.map_err(|e| e.at(pos))
-    }
-
-    fn with_err_no_pos(self) -> Result<T, LintErrorPos> {
-        self.map_err(|e| e.at_no_pos())
-    }
-}
-
-pub trait LintPosResult<T> {
-    fn patch_err_pos(self, pos: &impl HasPos) -> Result<T, LintErrorPos>;
-}
-
-impl<T> LintPosResult<T> for Result<T, LintErrorPos> {
-    fn patch_err_pos(self, pos: &impl HasPos) -> Self {
-        self.map_err(|e| {
-            if e.pos() == Position::zero() {
-                Positioned::new(e.element(), pos.pos())
-            } else {
-                e
-            }
-        })
     }
 }

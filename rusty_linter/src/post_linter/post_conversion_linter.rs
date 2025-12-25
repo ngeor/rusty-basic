@@ -1,5 +1,4 @@
 use crate::core::LintErrorPos;
-use crate::core::LintPosResult;
 use rusty_common::*;
 use rusty_parser::BuiltInSub;
 use rusty_parser::*;
@@ -27,18 +26,14 @@ pub trait PostConversionLinter {
         &mut self,
         global_statement_pos: &GlobalStatementPos,
     ) -> Result<(), LintErrorPos> {
-        self.visit_global_statement(&global_statement_pos.element)
-            .patch_err_pos(global_statement_pos)
-    }
-
-    fn visit_global_statement(
-        &mut self,
-        global_statement: &GlobalStatement,
-    ) -> Result<(), LintErrorPos> {
+        let Positioned {
+            element: global_statement,
+            pos,
+        } = global_statement_pos;
         match global_statement {
             GlobalStatement::FunctionImplementation(f) => self.visit_function_implementation(f),
             GlobalStatement::SubImplementation(s) => self.visit_sub_implementation(s),
-            GlobalStatement::Statement(s) => self.visit_statement(s),
+            GlobalStatement::Statement(s) => self.visit_statement_pos(s, *pos),
             _ => Ok(()),
         }
     }
@@ -55,32 +50,29 @@ pub trait PostConversionLinter {
     }
 
     fn visit_statements(&mut self, s: &Statements) -> Result<(), LintErrorPos> {
-        s.iter().try_for_each(|x| self.visit_statement_pos(x))
+        s.iter()
+            .try_for_each(|Positioned { element, pos }| self.visit_statement_pos(element, *pos))
     }
 
-    fn visit_statement_pos(&mut self, t: &StatementPos) -> Result<(), LintErrorPos> {
-        self.visit_statement(&t.element).patch_err_pos(t)
-    }
-
-    fn visit_statement(&mut self, s: &Statement) -> Result<(), LintErrorPos> {
+    fn visit_statement_pos(&mut self, s: &Statement, pos: Position) -> Result<(), LintErrorPos> {
         match s {
-            Statement::Assignment(left, right) => self.visit_assignment(left, right),
-            Statement::SubCall(b, e) => self.visit_sub_call(b, e),
-            Statement::BuiltInSubCall(b, e) => self.visit_built_in_sub_call(b, e),
+            Statement::Assignment(left, right) => self.visit_assignment(left, pos, right),
+            Statement::SubCall(b, e) => self.visit_sub_call(b, pos, e),
+            Statement::BuiltInSubCall(b, e) => self.visit_built_in_sub_call(b, pos, e),
             Statement::IfBlock(i) => self.visit_if_block(i),
             Statement::SelectCase(s) => self.visit_select_case(s),
             Statement::ForLoop(f) => self.visit_for_loop(f),
             Statement::While(w) => self.visit_conditional_block(w),
             Statement::DoLoop(do_loop) => self.visit_do_loop(do_loop),
-            Statement::OnError(on_error_option) => self.visit_on_error(on_error_option),
-            Statement::Label(label) => self.visit_label(label),
-            Statement::GoTo(label) => self.visit_go_to(label),
+            Statement::OnError(on_error_option) => self.visit_on_error(on_error_option, pos),
+            Statement::Label(label) => self.visit_label(label, pos),
+            Statement::GoTo(label) => self.visit_go_to(label, pos),
             Statement::Comment(c) => self.visit_comment(c),
             Statement::Dim(dim_list) | Statement::Redim(dim_list) => self.visit_dim(dim_list),
             Statement::Print(print) => self.visit_print(print),
-            Statement::GoSub(label) => self.visit_go_sub(label),
-            Statement::Resume(resume_option) => self.visit_resume(resume_option),
-            Statement::Return(opt_label) => self.visit_return(opt_label.as_ref()),
+            Statement::GoSub(label) => self.visit_go_sub(label, pos),
+            Statement::Resume(resume_option) => self.visit_resume(resume_option, pos),
+            Statement::Return(opt_label) => self.visit_return(opt_label.as_ref(), pos),
             Statement::Exit(exit_object) => self.visit_exit(*exit_object),
             Statement::Const(_, _) | Statement::End | Statement::System => Ok(()),
         }
@@ -94,27 +86,51 @@ pub trait PostConversionLinter {
         Ok(())
     }
 
-    fn visit_on_error(&mut self, _on_error_option: &OnErrorOption) -> Result<(), LintErrorPos> {
+    fn visit_on_error(
+        &mut self,
+        _on_error_option: &OnErrorOption,
+        _pos: Position,
+    ) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_label(&mut self, _label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
+    fn visit_label(
+        &mut self,
+        _label: &CaseInsensitiveString,
+        _pos: Position,
+    ) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_go_to(&mut self, _label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
+    fn visit_go_to(
+        &mut self,
+        _label: &CaseInsensitiveString,
+        _pos: Position,
+    ) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_go_sub(&mut self, _label: &CaseInsensitiveString) -> Result<(), LintErrorPos> {
+    fn visit_go_sub(
+        &mut self,
+        _label: &CaseInsensitiveString,
+        _pos: Position,
+    ) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_resume(&mut self, _resume_option: &ResumeOption) -> Result<(), LintErrorPos> {
+    fn visit_resume(
+        &mut self,
+        _resume_option: &ResumeOption,
+        _pos: Position,
+    ) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
-    fn visit_return(&mut self, _label: Option<&CaseInsensitiveString>) -> Result<(), LintErrorPos> {
+    fn visit_return(
+        &mut self,
+        _label: Option<&CaseInsensitiveString>,
+        _pos: Position,
+    ) -> Result<(), LintErrorPos> {
         Ok(())
     }
 
@@ -125,6 +141,7 @@ pub trait PostConversionLinter {
     fn visit_sub_call(
         &mut self,
         _name: &CaseInsensitiveString,
+        _pos: Position,
         args: &Expressions,
     ) -> Result<(), LintErrorPos> {
         self.visit_expressions(args)
@@ -133,6 +150,7 @@ pub trait PostConversionLinter {
     fn visit_built_in_sub_call(
         &mut self,
         _name: &BuiltInSub,
+        _pos: Position,
         args: &Expressions,
     ) -> Result<(), LintErrorPos> {
         self.visit_expressions(args)
@@ -141,6 +159,7 @@ pub trait PostConversionLinter {
     fn visit_assignment(
         &mut self,
         _name: &Expression,
+        _name_pos: Position,
         v: &ExpressionPos,
     ) -> Result<(), LintErrorPos> {
         self.visit_expression(v)

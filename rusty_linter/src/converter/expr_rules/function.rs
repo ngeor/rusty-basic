@@ -1,9 +1,9 @@
-use rusty_common::AtPos;
+use rusty_common::{AtPos, Position};
 use rusty_parser::{BareName, Expression, ExpressionType, Expressions, Name, VariableInfo};
 
 use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
-use crate::core::{IntoQualified, IntoTypeQualifier};
+use crate::core::{IntoQualified, IntoTypeQualifier, LintResult};
 use crate::core::{LintError, LintErrorPos};
 
 pub fn convert(
@@ -21,26 +21,29 @@ pub fn convert(
     }
 
     // now validate we have arguments
-    functions_must_have_arguments(&args)?;
+    functions_must_have_arguments(&args, extra.pos)?;
     // continue with built-in/user defined functions
-    resolve_function(ctx, name, args)
+    resolve_function(ctx, name, args, extra.pos)
 }
 
 fn resolve_function(
     ctx: &mut Context,
     name: Name,
     args: Expressions,
+    pos: Position,
 ) -> Result<Expression, LintErrorPos> {
     // convert args
     let converted_args = convert_function_args(ctx, args)?;
     // is it built-in function?
-    let converted_expr = match try_built_in_function(&name)? {
+    let converted_expr = match try_built_in_function(&name).with_err_at(&pos)? {
         Some(built_in_function) => {
             Expression::BuiltInFunctionCall(built_in_function, converted_args)
         }
         _ => {
             let converted_name: Name = match ctx.function_qualifier(name.bare_name()) {
-                Some(function_qualifier) => try_qualify(name, function_qualifier)?,
+                Some(function_qualifier) => {
+                    try_qualify(name, function_qualifier).with_err_at(&pos)?
+                }
                 _ => name.to_qualified(ctx),
             };
             Expression::FunctionCall(converted_name, converted_args)
@@ -116,7 +119,8 @@ impl FuncResolve for ExistingArrayWithParenthesis {
         } = self.var_info.clone().unwrap();
         match expression_type {
             ExpressionType::Array(element_type) => {
-                let converted_name = qualify_name(element_type.as_ref(), name)?;
+                let converted_name =
+                    qualify_name(element_type.as_ref(), name).with_err_at(&extra.pos)?;
                 // create result
                 let result_expr = Expression::ArrayElement(
                     converted_name,
@@ -129,14 +133,17 @@ impl FuncResolve for ExistingArrayWithParenthesis {
                 );
                 Ok(result_expr)
             }
-            _ => Err(LintError::ArrayNotDefined.at_no_pos()),
+            _ => Err(LintError::ArrayNotDefined.at_pos(extra.pos)),
         }
     }
 }
 
-pub fn functions_must_have_arguments(args: &Expressions) -> Result<(), LintErrorPos> {
+pub fn functions_must_have_arguments(
+    args: &Expressions,
+    pos: Position,
+) -> Result<(), LintErrorPos> {
     if args.is_empty() {
-        Err(LintError::FunctionNeedsArguments.at_no_pos())
+        Err(LintError::FunctionNeedsArguments.at_pos(pos))
     } else {
         Ok(())
     }

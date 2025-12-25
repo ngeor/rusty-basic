@@ -1,6 +1,6 @@
 use crate::core::CanCastTo;
 use crate::core::{LintError, LintErrorPos};
-use rusty_common::AtPos;
+use rusty_common::{AtPos, Position};
 use rusty_parser::{
     Expression, ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType,
     TypeQualifier, VariableInfo,
@@ -31,27 +31,27 @@ pub trait ArgValidation {
 
     fn require_variable(&self, index: usize) -> Result<(), LintErrorPos>;
 
-    fn require_one_argument(&self) -> Result<(), LintErrorPos>;
+    fn require_one_argument(&self, pos: Position) -> Result<(), LintErrorPos>;
 
-    fn require_zero_arguments(&self) -> Result<(), LintErrorPos>;
+    fn require_zero_arguments(&self, pos: Position) -> Result<(), LintErrorPos>;
 
-    fn require_one_double_argument(&self) -> Result<(), LintErrorPos> {
-        self.require_one_argument()
+    fn require_one_double_argument(&self, pos: Position) -> Result<(), LintErrorPos> {
+        self.require_one_argument(pos)
             .and_then(|_| self.require_double_argument(0))
     }
 
-    fn require_one_numeric_argument(&self) -> Result<(), LintErrorPos> {
-        self.require_one_argument()
+    fn require_one_numeric_argument(&self, pos: Position) -> Result<(), LintErrorPos> {
+        self.require_one_argument(pos)
             .and_then(|_| self.require_numeric_argument(0))
     }
 
-    fn require_one_string_argument(&self) -> Result<(), LintErrorPos> {
-        self.require_one_argument()
+    fn require_one_string_argument(&self, pos: Position) -> Result<(), LintErrorPos> {
+        self.require_one_argument(pos)
             .and_then(|_| self.require_string_argument(0))
     }
 
-    fn require_one_variable(&self) -> Result<(), LintErrorPos> {
-        self.require_one_argument()
+    fn require_one_variable(&self, pos: Position) -> Result<(), LintErrorPos> {
+        self.require_one_argument(pos)
             .and_then(|_| self.require_variable(0))
     }
 
@@ -175,19 +175,19 @@ impl ArgValidation for Expressions {
         }
     }
 
-    fn require_one_argument(&self) -> Result<(), LintErrorPos> {
+    fn require_one_argument(&self, pos: Position) -> Result<(), LintErrorPos> {
         if self.len() != 1 {
-            Err(LintError::ArgumentCountMismatch.at_no_pos())
+            Err(LintError::ArgumentCountMismatch.at_pos(pos))
         } else {
             Ok(())
         }
     }
 
-    fn require_zero_arguments(&self) -> Result<(), LintErrorPos> {
+    fn require_zero_arguments(&self, pos: Position) -> Result<(), LintErrorPos> {
         if self.is_empty() {
             Ok(())
         } else {
-            Err(LintError::ArgumentCountMismatch.at_no_pos())
+            Err(LintError::ArgumentCountMismatch.at_pos(pos))
         }
     }
 

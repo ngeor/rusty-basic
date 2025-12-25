@@ -66,7 +66,7 @@ mod tests {
         assert_prints!(r#"PRINT INSTR("", "")"#, "0");
         assert_eq!(
             interpret_err(r#"PRINT INSTR(0, "oops", "zero")"#),
-            ErrorEnvelope::Pos(RuntimeError::IllegalFunctionCall, Position::new(1, 7))
+            ErrorEnvelope::new(RuntimeError::IllegalFunctionCall, Position::new(1, 7))
         );
     }
 }

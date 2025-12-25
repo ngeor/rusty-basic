@@ -1,11 +1,11 @@
 use crate::core::CanCastTo;
 use crate::core::{LintError, LintErrorPos};
-use rusty_common::{AtPos, Positioned};
+use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{Expression, ExpressionType, Expressions, TypeQualifier, VariableInfo};
 
-pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
+pub fn lint(args: &Expressions, pos: Position) -> Result<(), LintErrorPos> {
     if args.is_empty() || args.len() > 2 {
-        return Err(LintError::ArgumentCountMismatch.at_no_pos());
+        return Err(LintError::ArgumentCountMismatch.at_pos(pos));
     }
 
     // Can have at one or two arguments. First must be the array name, without parenthesis.

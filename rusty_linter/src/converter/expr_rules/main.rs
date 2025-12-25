@@ -6,7 +6,6 @@ use crate::converter::expr_rules::{
     binary, built_in_function, function, property, unary, variable,
 };
 use crate::core::LintErrorPos;
-use crate::core::LintPosResult;
 use rusty_common::*;
 use rusty_parser::*;
 
@@ -23,7 +22,6 @@ impl ConvertibleIn<ExprContext> for ExpressionPos {
         let Self { element: expr, pos } = self;
         expr.convert_in(ctx, expr_context.at_pos(pos))
             .map(|expr| expr.at_pos(pos))
-            .patch_err_pos(&pos)
     }
 }
 
@@ -78,7 +76,7 @@ impl ConvertibleIn<ExprContextPos> for Expression {
             // function call
             Self::FunctionCall(name, args) => function::convert(ctx, extra, name, args),
             Self::BuiltInFunctionCall(built_in_function, args) => {
-                built_in_function::convert(ctx, built_in_function, args)
+                built_in_function::convert(ctx, built_in_function, extra.pos, args)
             }
         }
     }

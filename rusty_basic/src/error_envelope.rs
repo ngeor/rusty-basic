@@ -1,70 +1,36 @@
 use rusty_common::{HasPos, Position};
 
-//
-// ErrorEnvelope
-//
-
+/// ErrorEnvelope wraps an error with stacktrace information.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ErrorEnvelope<T> {
-    NoPos(T),
-    Pos(T, Position),
-    Stacktrace(T, Vec<Position>),
-}
-
-impl<T> AsRef<T> for ErrorEnvelope<T> {
-    fn as_ref(&self) -> &T {
-        match self {
-            Self::NoPos(t) | Self::Pos(t, _) | Self::Stacktrace(t, _) => t,
-        }
-    }
-}
+pub struct ErrorEnvelope<T>(T, Vec<Position>);
 
 impl<T> ErrorEnvelope<T> {
-    pub fn into_err(self) -> T {
-        match self {
-            Self::NoPos(t) | Self::Pos(t, _) | Self::Stacktrace(t, _) => t,
-        }
+    pub fn new(err: T, pos: Position) -> Self {
+        Self(err, vec![pos])
     }
 
-    /// Patches the envelope with the given position.
-    /// If the object already has a position or a stacktrace,
-    /// it is returned as-is.
-    pub fn patch_pos(self, pos: Position) -> Self {
-        match self {
-            Self::NoPos(t) => Self::Pos(t, pos),
-            _ => self,
-        }
+    pub fn new_with_stacktrace(err: T, stacktrace: Vec<Position>) -> Self {
+        Self(err, stacktrace)
     }
 
-    pub fn patch_stacktrace(self, v_new: &mut Vec<Position>) -> Self {
-        let mut v_old: Vec<Position> = match &self {
-            Self::NoPos(_) => vec![],
-            Self::Pos(_, p) => vec![*p],
-            Self::Stacktrace(_, v) => v.clone(),
-        };
-        v_old.append(v_new);
-        let body = self.into_err();
-        if v_old.is_empty() {
-            Self::NoPos(body)
-        } else if v_old.len() == 1 {
-            Self::Pos(body, v_old.pop().unwrap())
+    pub fn new_draining_stacktrace(err: T, stacktrace: &mut Vec<Position>) -> Self {
+        debug_assert!(!stacktrace.is_empty());
+        if stacktrace.len() == 1 {
+            Self::new(err, stacktrace.pop().unwrap())
         } else {
-            Self::Stacktrace(body, v_old)
+            let new_stacktrace = stacktrace.drain(0..stacktrace.len()).collect();
+            Self(err, new_stacktrace)
         }
     }
-}
 
-//
-// result.with_err_no_pos()
-//
+    pub fn err(&self) -> &T {
+        &self.0
+    }
 
-pub trait WithErrNoPos<TResult> {
-    fn with_err_no_pos(self) -> TResult;
-}
-
-impl<T, E> WithErrNoPos<Result<T, ErrorEnvelope<E>>> for Result<T, E> {
-    fn with_err_no_pos(self) -> Result<T, ErrorEnvelope<E>> {
-        self.map_err(|e| ErrorEnvelope::NoPos(e))
+    pub fn appen_draining_stacktrace(self, stacktrace: &mut Vec<Position>) -> Self {
+        let Self(err, mut old_stacktrace) = self;
+        old_stacktrace.append(stacktrace);
+        Self(err, old_stacktrace)
     }
 }
 
@@ -78,20 +44,24 @@ pub trait WithErrAt<Pos, TResult> {
 
 impl<Pos: HasPos, T, E> WithErrAt<&Pos, Result<T, ErrorEnvelope<E>>> for Result<T, E> {
     fn with_err_at(self, p: &Pos) -> Result<T, ErrorEnvelope<E>> {
-        self.map_err(|e| ErrorEnvelope::Pos(e, p.pos()))
+        self.map_err(|e| ErrorEnvelope::new(e, p.pos()))
     }
 }
 
-//
-// result.patch_err_pos()
-//
-
-pub trait PatchErrPos<Pos, TResult> {
-    fn patch_err_pos(self, p: Pos) -> TResult;
+pub trait WithStacktrace<O = Self> {
+    /// Adds the given stacktrace to the error.
+    /// The given stacktrace is emptied, to avoid adding the same items twice.
+    fn with_stacktrace(self, stacktrace: &mut Vec<Position>) -> O;
 }
 
-impl<Pos: HasPos, T, E> PatchErrPos<&Pos, Self> for Result<T, ErrorEnvelope<E>> {
-    fn patch_err_pos(self, p: &Pos) -> Self {
-        self.map_err(|e| e.patch_pos(p.pos()))
+impl<T> WithStacktrace for ErrorEnvelope<T> {
+    fn with_stacktrace(self, stacktrace: &mut Vec<Position>) -> Self {
+        self.appen_draining_stacktrace(stacktrace)
+    }
+}
+
+impl<T, E> WithStacktrace<Result<T, ErrorEnvelope<E>>> for Result<T, E> {
+    fn with_stacktrace(self, stacktrace: &mut Vec<Position>) -> Result<T, ErrorEnvelope<E>> {
+        self.map_err(|err| ErrorEnvelope::new_draining_stacktrace(err, stacktrace))
     }
 }

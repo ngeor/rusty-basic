@@ -1,7 +1,7 @@
 use rusty_common::{AtPos, Position, Positioned};
 
 use crate::converter::common::Context;
-use crate::core::{LintErrorPos, LintPosResult};
+use crate::core::LintErrorPos;
 
 /// Convert from the current type into the target type O.
 /// By default, O is the same as the current type.
@@ -48,7 +48,6 @@ where
         statement
             .convert_in(ctx, pos)
             .map(|converted| converted.at_pos(pos))
-            .patch_err_pos(&pos)
     }
 }
 

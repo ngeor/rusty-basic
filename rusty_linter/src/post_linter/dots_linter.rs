@@ -2,7 +2,7 @@ use super::post_conversion_linter::PostConversionLinter;
 use rusty_common::*;
 use rusty_parser::*;
 
-use crate::core::LintPosResult;
+use crate::core::LintResult;
 use crate::core::{LintError, LintErrorPos};
 use std::collections::HashSet;
 
@@ -102,25 +102,31 @@ impl NoDotNamesCheck<Expressions, LintErrorPos> for DotsLinter {
     }
 }
 
-impl NoDotNamesCheck<ExpressionPos, LintErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &ExpressionPos) -> Result<(), LintErrorPos> {
+impl NoDotNamesCheck<Positioned<&Expression>, LintErrorPos> for DotsLinter {
+    fn ensure_no_dots(&self, x: &Positioned<&Expression>) -> Result<(), LintErrorPos> {
         let Positioned { element, pos } = x;
-        self.ensure_no_dots(element).patch_err_pos(pos)
+        self.ensure_no_dots(&(*element, *pos))
     }
 }
 
-impl NoDotNamesCheck<Expression, LintErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &Expression) -> Result<(), LintErrorPos> {
-        match x {
-            Expression::Variable(var_name, _) => {
-                self.ensure_no_dots(var_name).map_err(|e| e.at_no_pos())
-            }
+impl NoDotNamesCheck<ExpressionPos, LintErrorPos> for DotsLinter {
+    fn ensure_no_dots(&self, x: &ExpressionPos) -> Result<(), LintErrorPos> {
+        let Positioned { element, pos } = x;
+        self.ensure_no_dots(&(element, *pos))
+    }
+}
+
+impl NoDotNamesCheck<(&Expression, Position), LintErrorPos> for DotsLinter {
+    fn ensure_no_dots(&self, x: &(&Expression, Position)) -> Result<(), LintErrorPos> {
+        let (element, pos) = x;
+        match element {
+            Expression::Variable(var_name, _) => self.ensure_no_dots(var_name).with_err_at(pos),
             Expression::ArrayElement(var_name, indices, _) => {
-                self.ensure_no_dots(var_name)?;
+                self.ensure_no_dots(var_name).with_err_at(pos)?;
                 self.ensure_no_dots(indices)
             }
             Expression::FunctionCall(name, args) => {
-                self.ensure_no_dots(name)?;
+                self.ensure_no_dots(name).with_err_at(pos)?;
                 self.ensure_no_dots(args)
             }
             Expression::BuiltInFunctionCall(_, args) => self.ensure_no_dots(args),
@@ -167,9 +173,10 @@ impl PostConversionLinter for DotsLinter {
     fn visit_assignment(
         &mut self,
         name: &Expression,
+        name_pos: Position,
         v: &ExpressionPos,
     ) -> Result<(), LintErrorPos> {
-        self.ensure_no_dots(name)?;
+        self.ensure_no_dots(&Positioned::new(name, name_pos))?;
         self.visit_expression(v)
     }
 

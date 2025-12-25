@@ -1,4 +1,4 @@
-use rusty_common::{AtPos, Positioned};
+use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{
     BareName, ElementType, Expression, ExpressionType, HasExpressionType, Name, UserDefinedType,
     VariableInfo,
@@ -96,7 +96,7 @@ pub fn convert(
         }
         _ => {
             // this cannot possibly have a dot property
-            Err(LintError::TypeMismatch.at_no_pos())
+            Err(LintError::TypeMismatch.at_pos(extra.pos))
         }
     }
 }
@@ -123,19 +123,20 @@ fn existing_property_expression_type(
                 resolved_left_side,
                 user_defined_type_name,
                 property_name,
+                extra.pos,
             )
         }
         ExpressionType::Unresolved => {
             if allow_unresolved {
                 match try_fold(&resolved_left_side, property_name) {
                     Some(folded_name) => Ok(add_as_new_implicit_var(ctx, extra, folded_name)),
-                    _ => Err(LintError::TypeMismatch.at_no_pos()),
+                    _ => Err(LintError::TypeMismatch.at_pos(extra.pos)),
                 }
             } else {
-                Err(LintError::TypeMismatch.at_no_pos())
+                Err(LintError::TypeMismatch.at_pos(extra.pos))
             }
         }
-        _ => Err(LintError::TypeMismatch.at_no_pos()),
+        _ => Err(LintError::TypeMismatch.at_pos(extra.pos)),
     }
 }
 
@@ -144,14 +145,16 @@ fn existing_property_user_defined_type_name(
     resolved_left_side: Expression,
     user_defined_type_name: &BareName,
     property_name: Name,
+    pos: Position,
 ) -> Result<Expression, LintErrorPos> {
     match ctx.user_defined_types().get(user_defined_type_name) {
         Some(user_defined_type) => existing_property_user_defined_type(
             resolved_left_side,
             user_defined_type,
             property_name,
+            pos,
         ),
-        _ => Err(LintError::TypeNotDefined.at_no_pos()),
+        _ => Err(LintError::TypeNotDefined.at_pos(pos)),
     }
 }
 
@@ -159,12 +162,13 @@ fn existing_property_user_defined_type(
     resolved_left_side: Expression,
     user_defined_type: &UserDefinedType,
     property_name: Name,
+    pos: Position,
 ) -> Result<Expression, LintErrorPos> {
     match demand_element_by_name(user_defined_type, &property_name) {
         Ok(element_type) => {
             existing_property_element_type(resolved_left_side, element_type, property_name)
         }
-        Err(e) => Err(e.at_no_pos()),
+        Err(e) => Err(e.at_pos(pos)),
     }
 }
 

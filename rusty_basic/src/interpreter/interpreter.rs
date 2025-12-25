@@ -1,5 +1,5 @@
 use super::handlers::{cast, comparison, logical, math, registers, subprogram, var_path};
-use crate::error_envelope::{WithErrAt, WithErrNoPos};
+use crate::error_envelope::WithErrAt;
 use crate::instruction_generator::{Instruction, InstructionGeneratorResult, Path, PrinterType};
 use crate::interpreter::arguments::ArgumentInfo;
 use crate::interpreter::context::*;
@@ -17,7 +17,7 @@ use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::screen::{CrossTermScreen, Screen};
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
-use crate::{RuntimeError, RuntimeErrorPos};
+use crate::{RuntimeError, RuntimeErrorPos, WithStacktrace};
 use rusty_common::*;
 use rusty_linter::{HasUserDefinedTypes, QBNumberCast};
 use rusty_parser::UserDefinedTypes;
@@ -215,7 +215,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                     }
                 },
                 Err(e) => {
-                    self.last_error_code = Some(e.as_ref().get_code());
+                    self.last_error_code = Some(e.err().get_code());
                     match ctx.error_handler {
                         ErrorHandler::Address(handler_address) => {
                             // store error address, so we can call RESUME and RESUME NEXT from within the error handler
@@ -227,7 +227,7 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                             i = ctx.nearest_statement_finder.find_next(i);
                         }
                         ErrorHandler::None => {
-                            return Err(e.patch_stacktrace(&mut self.stacktrace));
+                            return Err(e.with_stacktrace(&mut self.stacktrace));
                         }
                     }
                 }
@@ -433,12 +433,14 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer, U: HasUse
                 subprogram::push_a_to_named_arg(self, param_name);
             }
             Instruction::BuiltInSub(s) => {
-                // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                super::built_ins::run_sub(s, self).with_err_no_pos()?;
+                // the stacktrace should be already populated by Instruction::PushStack
+                debug_assert!(!self.stacktrace.is_empty());
+                super::built_ins::run_sub(s, self).with_stacktrace(&mut self.stacktrace)?;
             }
             Instruction::BuiltInFunction(f) => {
-                // note: not patching the error pos for built-ins because it's already in-place by Instruction::PushStack
-                super::built_ins::run_function(f, self).with_err_no_pos()?;
+                // the stacktrace should be already populated by Instruction::PushStack
+                debug_assert!(!self.stacktrace.is_empty());
+                super::built_ins::run_function(f, self).with_stacktrace(&mut self.stacktrace)?;
             }
             Instruction::Label(_) => (), // no-op
             Instruction::Halt => {

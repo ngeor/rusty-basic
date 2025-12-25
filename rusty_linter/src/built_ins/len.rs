@@ -1,13 +1,13 @@
 use crate::core::CanCastTo;
 use crate::core::{LintError, LintErrorPos};
-use rusty_common::AtPos;
+use rusty_common::{AtPos, Position};
 use rusty_parser::{
     ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType, TypeQualifier,
 };
 
-pub fn lint(args: &Expressions) -> Result<(), LintErrorPos> {
+pub fn lint(args: &Expressions, pos: Position) -> Result<(), LintErrorPos> {
     if args.len() != 1 {
-        Err(LintError::ArgumentCountMismatch.at_no_pos())
+        Err(LintError::ArgumentCountMismatch.at_pos(pos))
     } else {
         let arg: &ExpressionPos = &args[0];
         if arg.is_by_ref() {

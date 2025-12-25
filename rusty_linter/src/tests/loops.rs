@@ -17,7 +17,7 @@ fn test_for_loop_with_string_variable() {
     FOR a$ = 1 TO 5
     NEXT
     ";
-    assert_linter_err!(input, LintError::TypeMismatch, 2, 5);
+    assert_linter_err!(input, LintError::TypeMismatch, 2, 9);
 }
 
 #[test]

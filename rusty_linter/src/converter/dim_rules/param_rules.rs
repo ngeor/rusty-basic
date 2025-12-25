@@ -8,7 +8,7 @@ use rusty_parser::Parameter;
 
 impl ConvertibleIn<Position> for Parameter {
     fn convert_in(self, ctx: &mut Context, pos: Position) -> Result<Self, LintErrorPos> {
-        validation::validate(&self, ctx)?;
+        validation::validate(&self, ctx, pos)?;
         let Self {
             bare_name,
             var_type,

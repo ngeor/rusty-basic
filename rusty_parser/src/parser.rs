@@ -62,7 +62,7 @@ mod tests {
             program,
             vec![
                 // DECLARE FUNCTION Fib! (N!)
-                GlobalStatement::FunctionDeclaration(
+                GlobalStatement::function_declaration(
                     "Fib!".as_name(1, 18),
                     vec![Parameter::new(
                         "N".into(),

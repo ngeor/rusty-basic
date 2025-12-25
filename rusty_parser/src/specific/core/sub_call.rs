@@ -210,7 +210,7 @@ mod tests {
             program,
             vec![
                 // DECLARE SUB Hello
-                GlobalStatement::SubDeclaration("Hello".as_bare_name(2, 21), vec![],),
+                GlobalStatement::sub_declaration("Hello".as_bare_name(2, 21), vec![],),
                 // Hello
                 GlobalStatement::Statement(Statement::SubCall("Hello".into(), vec![])),
                 // SUB Hello
@@ -242,7 +242,7 @@ mod tests {
             program,
             vec![
                 // DECLARE SUB Hello
-                GlobalStatement::SubDeclaration(
+                GlobalStatement::sub_declaration(
                     "Hello".as_bare_name(2, 21),
                     vec![
                         Parameter::new(

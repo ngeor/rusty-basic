@@ -49,8 +49,8 @@ impl MainContext {
                 GlobalStatement::DefType(def_type) => {
                     self.on_def_type(def_type);
                 }
-                GlobalStatement::FunctionDeclaration(name, params) => {
-                    self.on_function_declaration(name, params)?;
+                GlobalStatement::FunctionDeclaration(f) => {
+                    self.on_function_declaration(f)?;
                 }
                 GlobalStatement::FunctionImplementation(f) => {
                     self.on_function_implementation(f)?;
@@ -58,8 +58,8 @@ impl MainContext {
                 GlobalStatement::Statement(s) => {
                     self.on_statement(s)?;
                 }
-                GlobalStatement::SubDeclaration(name, params) => {
-                    self.on_sub_declaration(name, params)?;
+                GlobalStatement::SubDeclaration(s) => {
+                    self.on_sub_declaration(s)?;
                 }
                 GlobalStatement::SubImplementation(s) => {
                     self.on_sub_implementation(s)?;
@@ -76,11 +76,11 @@ impl MainContext {
         self.resolver.set(def_type);
     }
 
-    fn on_function_declaration(
-        &mut self,
-        name: &NamePos,
-        params: &Parameters,
-    ) -> Result<(), LintErrorPos> {
+    fn on_function_declaration(&mut self, f: &FunctionDeclaration) -> Result<(), LintErrorPos> {
+        let FunctionDeclaration {
+            name,
+            parameters: params,
+        } = f;
         let param_types: ResolvedParamTypes = self.on_parameters(params)?;
         let bare_name = name.element.bare_name();
         let signature = name.element.to_signature(&self.resolver, param_types);
@@ -109,11 +109,11 @@ impl MainContext {
         }
     }
 
-    fn on_sub_declaration(
-        &mut self,
-        name: &BareNamePos,
-        params: &Parameters,
-    ) -> Result<(), LintErrorPos> {
+    fn on_sub_declaration(&mut self, s: &SubDeclaration) -> Result<(), LintErrorPos> {
+        let SubDeclaration {
+            name,
+            parameters: params,
+        } = s;
         let param_types: ResolvedParamTypes = self.on_parameters(params)?;
         let bare_name = &name.element;
         let signature = bare_name.to_signature(&self.resolver, param_types);

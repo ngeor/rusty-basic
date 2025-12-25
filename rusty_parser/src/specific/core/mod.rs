@@ -55,8 +55,8 @@ pub use self::expression::{
 pub use self::expression_type::{ExpressionType, HasExpressionType};
 pub use self::file_constants::*;
 pub use self::global_statement::{
-    program_parser_p, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program,
-    SubImplementation, SubprogramImplementation,
+    program_parser_p, FunctionDeclaration, FunctionImplementation, GlobalStatement,
+    GlobalStatementPos, Program, SubDeclaration, SubImplementation, SubprogramImplementation,
 };
 pub use self::keyword::{Keyword, SORTED_KEYWORDS_STR};
 pub use self::letter_range::LetterRange;

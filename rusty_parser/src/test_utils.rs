@@ -288,7 +288,9 @@ macro_rules! assert_global_assignment {
 macro_rules! assert_function_declaration {
     ($input:expr, $expected_function_name:expr, $expected_params:expr) => {
         match $crate::parse($input).demand_single().element() {
-            $crate::specific::GlobalStatement::FunctionDeclaration(name, parameters) => {
+            $crate::specific::GlobalStatement::FunctionDeclaration(
+                $crate::specific::FunctionDeclaration { name, parameters },
+            ) => {
                 assert_eq!(
                     name.element(),
                     $expected_function_name,

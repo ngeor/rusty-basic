@@ -48,7 +48,7 @@ pub enum GlobalStatement {
     DefType(DefType),
 
     /// A function declaration, e.g. `DECLARE FUNCTION Add(A, B)`
-    FunctionDeclaration(NamePos, Parameters),
+    FunctionDeclaration(FunctionDeclaration),
 
     /// A function implementation
     FunctionImplementation(FunctionImplementation),
@@ -57,7 +57,7 @@ pub enum GlobalStatement {
     Statement(Statement),
 
     /// A sub declaration, e.g. `DECLARE SUB Connect`
-    SubDeclaration(BareNamePos, Parameters),
+    SubDeclaration(SubDeclaration),
 
     /// A sub implementation
     SubImplementation(SubImplementation),
@@ -66,11 +66,37 @@ pub enum GlobalStatement {
     UserDefinedType(UserDefinedType),
 }
 
+impl GlobalStatement {
+    pub fn function_declaration(name: NamePos, parameters: Parameters) -> Self {
+        Self::FunctionDeclaration(FunctionDeclaration::new(name, parameters))
+    }
+
+    pub fn sub_declaration(name: BareNamePos, parameters: Parameters) -> Self {
+        Self::SubDeclaration(SubDeclaration::new(name, parameters))
+    }
+}
+
 impl From<Statement> for GlobalStatement {
     fn from(s: Statement) -> Self {
         Self::Statement(s)
     }
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SubprogramDeclaration<T> {
+    pub name: Positioned<T>,
+    pub parameters: Parameters,
+}
+
+impl<T> SubprogramDeclaration<T> {
+    pub fn new(name: Positioned<T>, parameters: Parameters) -> Self {
+        Self { name, parameters }
+    }
+}
+
+pub type SubDeclaration = SubprogramDeclaration<BareName>;
+
+pub type FunctionDeclaration = SubprogramDeclaration<Name>;
 
 /// The implementation of a subprogram (FUNCTION or SUB).
 #[derive(Clone, Debug, PartialEq)]
@@ -80,7 +106,7 @@ pub struct SubprogramImplementation<T> {
     pub name: Positioned<T>,
 
     /// The parameters of the subprogram.
-    pub params: Vec<Positioned<Parameter>>,
+    pub params: Parameters,
 
     /// The body (statements) of the subprogram.
     pub body: Statements,

@@ -49,9 +49,9 @@ impl ConvertibleIn<Position, Vec<GlobalStatementPos>> for GlobalStatement {
                 ctx.resolver.set(&def_type);
                 Ok(vec![])
             }
-            Self::FunctionDeclaration(_, _)
-            | Self::SubDeclaration(_, _)
-            | Self::UserDefinedType(_) => Ok(vec![]),
+            Self::FunctionDeclaration(_) | Self::SubDeclaration(_) | Self::UserDefinedType(_) => {
+                Ok(vec![])
+            }
             Self::FunctionImplementation(f) => on_function_implementation(f, ctx)
                 .map(|f| vec![Self::FunctionImplementation(f).at_pos(pos.clone())]),
             Self::SubImplementation(s) => on_sub_implementation(s, ctx)

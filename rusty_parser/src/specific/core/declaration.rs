@@ -19,9 +19,9 @@ pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement> {
     keyword_followed_by_whitespace_p(Keyword::Declare).and_without_undo_keep_right(
         OrParser::new(vec![
             Box::new(
-                function_declaration_p().map(|(n, p)| GlobalStatement::FunctionDeclaration(n, p)),
+                function_declaration_p().map(|(n, p)| GlobalStatement::function_declaration(n, p)),
             ),
-            Box::new(sub_declaration_p().map(|(n, p)| GlobalStatement::SubDeclaration(n, p))),
+            Box::new(sub_declaration_p().map(|(n, p)| GlobalStatement::sub_declaration(n, p))),
         ])
         .or_syntax_error("Expected: FUNCTION or SUB after DECLARE"),
     )
@@ -107,7 +107,7 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                GlobalStatement::FunctionDeclaration(
+                GlobalStatement::function_declaration(
                     "Echo".as_name(2, 26),
                     vec![Parameter::new("X".into(), ParamType::Bare).at_rc(2, 31)]
                 )
@@ -179,7 +179,7 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                GlobalStatement::FunctionDeclaration(
+                GlobalStatement::function_declaration(
                     "Echo".as_name(2, 26),
                     vec![Parameter::new(
                         "X".into(),
@@ -218,7 +218,8 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                GlobalStatement::SubDeclaration("ScrollUp".as_bare_name(2, 21), vec![]).at_rc(2, 9)
+                GlobalStatement::sub_declaration("ScrollUp".as_bare_name(2, 21), vec![])
+                    .at_rc(2, 9)
             ]
         );
     }
@@ -231,7 +232,7 @@ mod tests {
         let program = parse(input);
         assert_eq!(
             program,
-            vec![GlobalStatement::SubDeclaration(
+            vec![GlobalStatement::sub_declaration(
                 "LCenter".as_bare_name(2, 21),
                 vec![Parameter::new(
                     "text".into(),

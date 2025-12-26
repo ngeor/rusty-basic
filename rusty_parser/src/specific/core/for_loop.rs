@@ -90,7 +90,7 @@ mod tests {
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
                 statements: vec![
-                    Statement::SubCall("Flint".into(), vec!["I".as_var_expr(2, 7)]).at_rc(2, 1)
+                    Statement::sub_call("Flint".into(), vec!["I".as_var_expr(2, 7)]).at_rc(2, 1)
                 ],
                 next_counter: None,
             })
@@ -109,7 +109,7 @@ mod tests {
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
                 statements: vec![
-                    Statement::SubCall("flint".into(), vec!["i".as_var_expr(2, 7)]).at_rc(2, 1)
+                    Statement::sub_call("Flint".into(), vec!["i".as_var_expr(2, 7)]).at_rc(2, 1)
                 ],
                 next_counter: None,
             })
@@ -228,7 +228,7 @@ mod tests {
                     step: None,
                     statements: vec![
                         Statement::Comment(" for loop".to_string()).at_rc(2, 25),
-                        Statement::SubCall("Flint".into(), vec!["I".as_var_expr(3, 15)])
+                        Statement::sub_call("Flint".into(), vec!["I".as_var_expr(3, 15)])
                             .at_rc(3, 9),
                         Statement::Comment(" print it".to_string()).at_rc(3, 17),
                     ],

@@ -179,14 +179,14 @@ mod tests {
                         expression_list: vec![CaseExpression::Simple(1.as_lit_expr(3, 14))],
                         statements: vec![
                             Statement::Comment(" is it one?".to_string()).at_rc(3, 23),
-                            Statement::SubCall("Flint".into(), vec!["One".as_lit_expr(4, 15)])
+                            Statement::sub_call("Flint".into(), vec!["One".as_lit_expr(4, 15)])
                                 .at_rc(4, 9),
                             Statement::Comment(" print it".to_string()).at_rc(4, 23),
                         ]
                     }],
                     else_block: Some(vec![
                         Statement::Comment(" something else?".to_string()).at_rc(5, 23),
-                        Statement::SubCall("Flint".into(), vec!["Nope".as_lit_expr(6, 15)])
+                        Statement::sub_call("Flint".into(), vec!["Nope".as_lit_expr(6, 15)])
                             .at_rc(6, 9),
                         Statement::Comment(" print nope".to_string()).at_rc(6, 23),
                     ]),
@@ -242,7 +242,7 @@ mod tests {
                         expression_list: vec![CaseExpression::Simple(1.as_lit_expr(4, 14))],
                         statements: vec![
                             Statement::Comment(" is it one?".to_string()).at_rc(4, 23),
-                            Statement::SubCall("Flint".into(), vec!["One".as_lit_expr(5, 15)])
+                            Statement::sub_call("Flint".into(), vec!["One".as_lit_expr(5, 15)])
                                 .at_rc(5, 9),
                             Statement::Comment(" print it".to_string()).at_rc(5, 23),
                         ]

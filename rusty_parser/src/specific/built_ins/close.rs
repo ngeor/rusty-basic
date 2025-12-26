@@ -67,7 +67,7 @@ mod tests {
     fn test_one_file_number_no_hash_no_leading_space() {
         let input = "CLOSE1";
         let statement = parse(input).demand_single_statement();
-        assert_eq!(statement, Statement::SubCall("CLOSE1".into(), vec![]));
+        assert_eq!(statement, Statement::sub_call("CLOSE1".into(), vec![]));
     }
 
     #[test]

@@ -8,7 +8,7 @@ mod tests {
     fn parse_without_args() {
         let input = "CLS";
         let statement = parse(input).demand_single_statement();
-        assert_eq!(statement, Statement::SubCall("CLS".into(), vec![]));
+        assert_eq!(statement, Statement::sub_call("CLS".into(), vec![]));
     }
 
     #[test]
@@ -17,7 +17,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::SubCall("CLS".into(), vec![2.as_lit_expr(1, 5)])
+            Statement::sub_call("CLS".into(), vec![2.as_lit_expr(1, 5)])
         );
     }
 }

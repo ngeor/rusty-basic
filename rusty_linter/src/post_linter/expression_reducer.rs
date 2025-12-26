@@ -108,9 +108,9 @@ pub trait ExpressionReducer {
                 // any further.
                 Ok(Statement::Const(c))
             }
-            Statement::SubCall(b, e) => self
-                .visit_sub_call(b, e)
-                .map(|(reduced_name, reduced_expr)| Statement::SubCall(reduced_name, reduced_expr)),
+            Statement::SubCall(s) => self.visit_sub_call(s).map(|(reduced_name, reduced_expr)| {
+                Statement::sub_call(reduced_name, reduced_expr)
+            }),
             Statement::BuiltInSubCall(b, e) => {
                 self.visit_built_in_sub_call(b, e)
                     .map(|(reduced_name, reduced_expr)| {
@@ -140,9 +140,9 @@ pub trait ExpressionReducer {
 
     fn visit_sub_call(
         &mut self,
-        name: CaseInsensitiveString,
-        args: Expressions,
+        sub_call: SubCall,
     ) -> Result<(CaseInsensitiveString, Expressions), LintErrorPos> {
+        let (name, args) = sub_call.into();
         Ok((name, self.visit_expressions(args)?))
     }
 

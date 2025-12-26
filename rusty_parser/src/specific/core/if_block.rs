@@ -111,7 +111,7 @@ mod tests {
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
-                    statements: vec![Statement::SubCall(
+                    statements: vec![Statement::sub_call(
                         "Flint".into(),
                         vec!["X".as_var_expr(2, 7)]
                     )
@@ -136,7 +136,7 @@ mod tests {
                 GlobalStatement::Statement(Statement::IfBlock(IfBlock {
                     if_block: ConditionalBlock {
                         condition: "X".as_var_expr(2, 12),
-                        statements: vec![Statement::SubCall(
+                        statements: vec![Statement::sub_call(
                             "Flint".into(),
                             vec!["X".as_var_expr(2, 25)]
                         )
@@ -163,14 +163,14 @@ END IF"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
-                    statements: vec![Statement::SubCall(
+                    statements: vec![Statement::sub_call(
                         "Flint".into(),
                         vec!["X".as_var_expr(2, 11)]
                     )
                     .at_rc(2, 5)],
                 },
                 else_if_blocks: vec![],
-                else_block: Some(vec![Statement::SubCall(
+                else_block: Some(vec![Statement::sub_call(
                     "Flint".into(),
                     vec!["Y".as_var_expr(4, 11)]
                 )
@@ -192,7 +192,7 @@ END IF"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
-                    statements: vec![Statement::SubCall(
+                    statements: vec![Statement::sub_call(
                         "Flint".into(),
                         vec!["X".as_var_expr(2, 11)]
                     )
@@ -200,7 +200,7 @@ END IF"#;
                 },
                 else_if_blocks: vec![ConditionalBlock {
                     condition: "Y".as_var_expr(3, 8),
-                    statements: vec![Statement::SubCall(
+                    statements: vec![Statement::sub_call(
                         "Flint".into(),
                         vec!["Y".as_var_expr(4, 11)]
                     )
@@ -226,7 +226,7 @@ END IF"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
-                    statements: vec![Statement::SubCall(
+                    statements: vec![Statement::sub_call(
                         "Flint".into(),
                         vec!["X".as_var_expr(2, 11)]
                     )
@@ -235,7 +235,7 @@ END IF"#;
                 else_if_blocks: vec![
                     ConditionalBlock {
                         condition: "Y".as_var_expr(3, 8),
-                        statements: vec![Statement::SubCall(
+                        statements: vec![Statement::sub_call(
                             "Flint".into(),
                             vec!["Y".as_var_expr(4, 11)]
                         )
@@ -243,7 +243,7 @@ END IF"#;
                     },
                     ConditionalBlock {
                         condition: "Z".as_var_expr(5, 8),
-                        statements: vec![Statement::SubCall(
+                        statements: vec![Statement::sub_call(
                             "Flint".into(),
                             vec!["Z".as_var_expr(6, 11)]
                         )
@@ -270,7 +270,7 @@ END IF"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
-                    statements: vec![Statement::SubCall(
+                    statements: vec![Statement::sub_call(
                         "Flint".into(),
                         vec!["X".as_var_expr(2, 11)]
                     )
@@ -278,13 +278,13 @@ END IF"#;
                 },
                 else_if_blocks: vec![ConditionalBlock {
                     condition: "Y".as_var_expr(3, 8),
-                    statements: vec![Statement::SubCall(
+                    statements: vec![Statement::sub_call(
                         "Flint".into(),
                         vec!["Y".as_var_expr(4, 11)]
                     )
                     .at_rc(4, 5)],
                 }],
-                else_block: Some(vec![Statement::SubCall(
+                else_block: Some(vec![Statement::sub_call(
                     "Flint".into(),
                     vec!["Z".as_var_expr(6, 11)]
                 )
@@ -308,7 +308,7 @@ end if"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock {
                     condition: "x".as_var_expr(1, 4),
-                    statements: vec![Statement::SubCall(
+                    statements: vec![Statement::sub_call(
                         "flint".into(),
                         vec!["x".as_var_expr(2, 11)]
                     )
@@ -316,13 +316,13 @@ end if"#;
                 },
                 else_if_blocks: vec![ConditionalBlock {
                     condition: "y".as_var_expr(3, 8),
-                    statements: vec![Statement::SubCall(
+                    statements: vec![Statement::sub_call(
                         "flint".into(),
                         vec!["y".as_var_expr(4, 11)]
                     )
                     .at_rc(4, 5)],
                 }],
-                else_block: Some(vec![Statement::SubCall(
+                else_block: Some(vec![Statement::sub_call(
                     "flint".into(),
                     vec!["z".as_var_expr(6, 11)]
                 )
@@ -382,7 +382,7 @@ end if"#;
                         condition: "A".as_var_expr(2, 12),
                         statements: vec![
                             Statement::Comment(" is a true?".to_string()).at_rc(2, 23),
-                            Statement::SubCall("Flint".into(), vec!["A".as_var_expr(3, 19)])
+                            Statement::sub_call("Flint".into(), vec!["A".as_var_expr(3, 19)])
                                 .at_rc(3, 13),
                             Statement::Comment(" print a".to_string()).at_rc(3, 23)
                         ],
@@ -391,14 +391,14 @@ end if"#;
                         condition: "B".as_var_expr(4, 16),
                         statements: vec![
                             Statement::Comment(" is b true?".to_string()).at_rc(4, 23),
-                            Statement::SubCall("Flint".into(), vec!["B".as_var_expr(5, 19)])
+                            Statement::sub_call("Flint".into(), vec!["B".as_var_expr(5, 19)])
                                 .at_rc(5, 13),
                             Statement::Comment(" print b".to_string()).at_rc(5, 23)
                         ],
                     }],
                     else_block: Some(vec![
                         Statement::Comment(" nothing is true".to_string()).at_rc(6, 23),
-                        Statement::SubCall("Flint".into(), vec!["C".as_var_expr(7, 19)])
+                        Statement::sub_call("Flint".into(), vec!["C".as_var_expr(7, 19)])
                             .at_rc(7, 13),
                         Statement::Comment(" print c".to_string()).at_rc(7, 23)
                     ])
@@ -441,7 +441,7 @@ end if"#;
                         .at_rc(2, 13)
                     ))
                     .at_rc(2, 11),
-                    statements: vec![Statement::SubCall(
+                    statements: vec![Statement::sub_call(
                         "Flint".into(),
                         vec!["positive".as_lit_expr(3, 19)]
                     )
@@ -458,13 +458,13 @@ end if"#;
                         .at_rc(4, 17)
                     ))
                     .at_rc(4, 15),
-                    statements: vec![Statement::SubCall(
+                    statements: vec![Statement::sub_call(
                         "Flint".into(),
                         vec!["negative".as_lit_expr(5, 19)]
                     )
                     .at_rc(5, 13),],
                 }],
-                else_block: Some(vec![Statement::SubCall(
+                else_block: Some(vec![Statement::sub_call(
                     "Flint".into(),
                     vec!["zero".as_lit_expr(7, 19)]
                 )
@@ -504,7 +504,7 @@ end if"#;
                         ExpressionType::Unresolved
                     )
                     .at_rc(2, 20),
-                    statements: vec![Statement::SubCall("BEEP".into(), vec![]).at_rc(3, 13)]
+                    statements: vec![Statement::sub_call("BEEP".into(), vec![]).at_rc(3, 13)]
                 },
                 else_if_blocks: vec![],
                 else_block: None

@@ -40,11 +40,13 @@ impl Parser<RcStringView> for SubCallOrAssignment {
                 .parse(tokenizer)
                 .map_ok(|right_side_expr| Statement::assignment(name_expr, right_side_expr)),
             _ => match expr_to_bare_name_args(name_expr) {
-                Ok((bare_name, Some(args))) => Ok((tokenizer, Statement::SubCall(bare_name, args))),
+                Ok((bare_name, Some(args))) => {
+                    Ok((tokenizer, Statement::sub_call(bare_name, args)))
+                }
                 Ok((bare_name, None)) => csv_expressions_first_guarded()
                     .or_default()
                     .parse(tokenizer)
-                    .map_ok(|args| Statement::SubCall(bare_name, args)),
+                    .map_ok(|args| Statement::sub_call(bare_name, args)),
                 Err(err) => Err((true, tokenizer, err)),
             },
         }
@@ -122,7 +124,7 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::SubCall("Flint".into(), vec!["Hello, world!".as_lit_expr(1, 7)])
+            Statement::sub_call("Flint".into(), vec!["Hello, world!".as_lit_expr(1, 7)])
         );
     }
 
@@ -212,12 +214,12 @@ mod tests {
                 // DECLARE SUB Hello
                 GlobalStatement::sub_declaration("Hello".as_bare_name(2, 21), vec![],),
                 // Hello
-                GlobalStatement::Statement(Statement::SubCall("Hello".into(), vec![])),
+                GlobalStatement::Statement(Statement::sub_call("Hello".into(), vec![])),
                 // SUB Hello
                 GlobalStatement::SubImplementation(SubImplementation {
                     name: "Hello".as_bare_name(4, 13),
                     params: vec![],
-                    body: vec![Statement::SubCall(
+                    body: vec![Statement::sub_call(
                         "ENVIRON".into(),
                         vec!["FOO=BAR".as_lit_expr(5, 21)]
                     )
@@ -258,7 +260,7 @@ mod tests {
                     ],
                 ),
                 // Hello
-                GlobalStatement::Statement(Statement::SubCall(
+                GlobalStatement::Statement(Statement::sub_call(
                     "Hello".into(),
                     vec!["FOO".as_lit_expr(3, 15), "BAR".as_lit_expr(3, 22)]
                 )),
@@ -277,7 +279,7 @@ mod tests {
                         )
                         .at_rc(4, 23)
                     ],
-                    body: vec![Statement::SubCall(
+                    body: vec![Statement::sub_call(
                         "ENVIRON".into(),
                         vec![Expression::BinaryExpression(
                             Operator::Plus,

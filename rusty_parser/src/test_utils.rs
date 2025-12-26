@@ -161,7 +161,8 @@ impl ExpressionVariableFactory for str {
 macro_rules! assert_sub_call {
     ($actual_statement: expr, $expected_name: expr) => {
         match $actual_statement {
-            Statement::SubCall(actual_bare_name, actual_args) => {
+            Statement::SubCall(sub_call) => {
+                let (actual_bare_name, actual_args) = sub_call.into();
                 let expected_bare_name: $crate::specific::BareName = $expected_name.into();
                 assert_eq!(actual_bare_name, expected_bare_name, "SubCall name mismatch");
                 assert!(actual_args.is_empty(), "Expected no args in SubCall");
@@ -172,7 +173,8 @@ macro_rules! assert_sub_call {
 
     ($actual_statement: expr, $expected_name: expr, $($arg: expr),+) => {
         match $actual_statement {
-            Statement::SubCall(actual_bare_name, actual_args) => {
+            Statement::SubCall(sub_call) => {
+                let (actual_bare_name, actual_args) = sub_call.into();
                 let expected_bare_name: $crate::specific::BareName = $expected_name.into();
                 assert_eq!(actual_bare_name, expected_bare_name, "SubCall name mismatch");
                 let actual_args_no_pos: Vec<$crate::specific::Expression> = rusty_common::NoPosContainer::no_pos(actual_args);

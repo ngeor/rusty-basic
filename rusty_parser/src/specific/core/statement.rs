@@ -99,7 +99,7 @@ pub enum Statement {
 
     Redim(DimList),
 
-    SubCall(BareName, Expressions),
+    SubCall(SubCall),
     BuiltInSubCall(BuiltInSub, Expressions),
 
     /*
@@ -172,6 +172,11 @@ bi_tuple!(
 bi_tuple!(
     /// An assignment statement.
     Assignment(Expression, ExpressionPos)
+);
+
+bi_tuple!(
+    /// A call to a user defined SUB.
+    SubCall(BareName, Expressions)
 );
 
 /// A list of variables defined in a DIM statement.
@@ -284,11 +289,15 @@ pub enum DoLoopConditionKind {
 
 impl Statement {
     pub fn constant(name: NamePos, value: ExpressionPos) -> Self {
-        Self::Const(Constant(name, value))
+        Self::Const(Constant::new(name, value))
     }
 
     pub fn assignment(left: Expression, right: ExpressionPos) -> Self {
-        Self::Assignment(Assignment(left, right))
+        Self::Assignment(Assignment::new(left, right))
+    }
+
+    pub fn sub_call(name: BareName, args: Expressions) -> Self {
+        Self::SubCall(SubCall::new(name, args))
     }
 }
 

@@ -14,7 +14,7 @@ impl ConvertibleIn<Position> for Statement {
             Self::Assignment(a) => assignment::on_assignment(a, ctx, pos),
             // CONST is mapped to None and is filtered out
             Self::Const(c) => const_rules::on_const(ctx, c),
-            Self::SubCall(n, args) => ctx.sub_call(n, args),
+            Self::SubCall(sub_call) => ctx.sub_call(sub_call),
             Self::BuiltInSubCall(built_in_sub, args) => {
                 let converted_args = args.convert_in(ctx, ExprContext::Argument)?;
                 Ok(Self::BuiltInSubCall(built_in_sub, converted_args))

@@ -133,7 +133,7 @@ fn test_constant_definition_and_usage_in_sub_call_arg() {
                 Expression::StringLiteral("hello".to_owned()).at_rc(2, 15)
             ),)
             .at_rc(2, 5),
-            GlobalStatement::Statement(Statement::SubCall(
+            GlobalStatement::Statement(Statement::sub_call(
                 "MySub".into(),
                 vec![Expression::StringLiteral("hello".to_owned()).at_rc(3, 11)]
             ))

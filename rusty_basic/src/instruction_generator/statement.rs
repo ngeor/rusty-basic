@@ -29,7 +29,7 @@ impl Visitor<StatementPos> for InstructionGenerator {
                 // because the linter has replaced expressions that reference constants
                 // with their actual value.
             }
-            Statement::SubCall(n, args) => self.generate_sub_call_instructions(n.at_pos(pos), args),
+            Statement::SubCall(sub_call) => self.generate_sub_call_instructions(sub_call, pos),
             Statement::BuiltInSubCall(n, args) => {
                 self.generate_built_in_sub_call_instructions(n, args, pos)
             }

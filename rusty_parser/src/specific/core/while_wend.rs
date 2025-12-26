@@ -77,7 +77,7 @@ mod tests {
                         .at_rc(1, 20)
                     )
                     .at_rc(1, 14),
-                    Statement::SubCall(BareName::from("Flint"), vec!["A".as_var_expr(1, 31)])
+                    Statement::sub_call(BareName::from("Flint"), vec!["A".as_var_expr(1, 31)])
                         .at_rc(1, 25)
                 ]
             })
@@ -146,7 +146,7 @@ mod tests {
                 ))
                 .at_rc(2, 14),
                 statements: vec![
-                    Statement::SubCall("Flint".into(), vec!["X".as_var_expr(3, 19)]).at_rc(3, 13)
+                    Statement::sub_call("Flint".into(), vec!["X".as_var_expr(3, 19)]).at_rc(3, 13)
                 ]
             })
         );
@@ -197,7 +197,7 @@ mod tests {
                         .at_rc(3, 19)
                     )
                     .at_rc(3, 13),
-                    Statement::SubCall(BareName::from("Flint"), vec!["A".as_var_expr(4, 19)])
+                    Statement::sub_call(BareName::from("Flint"), vec!["A".as_var_expr(4, 19)])
                         .at_rc(4, 13)
                 ]
             })

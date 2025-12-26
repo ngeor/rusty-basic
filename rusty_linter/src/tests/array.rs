@@ -104,7 +104,7 @@ fn test_passing_array_parameter_with_parenthesis() {
                     .build_list_rc(2, 9)
             ))
             .at_rc(2, 5),
-            GlobalStatement::Statement(Statement::SubCall(
+            GlobalStatement::Statement(Statement::sub_call(
                 "Menu".into(),
                 vec![Expression::ArrayElement(
                     "choice$".into(),

@@ -66,8 +66,8 @@ impl InstructionGenerator {
         self.generate_un_stash_function_return_value(pos);
     }
 
-    pub fn generate_sub_call_instructions(&mut self, name_pos: BareNamePos, args: Expressions) {
-        let Positioned { element: name, pos } = name_pos;
+    pub fn generate_sub_call_instructions(&mut self, sub_call: SubCall, pos: Position) {
+        let (name, args) = sub_call.into();
         let subprogram_name = SubprogramName::Sub(name);
         // cloning to fight the borrow checker
         let sub_impl_parameters: Vec<Parameter> = self

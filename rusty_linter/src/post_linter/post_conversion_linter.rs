@@ -57,7 +57,7 @@ pub trait PostConversionLinter {
     fn visit_statement_pos(&mut self, s: &Statement, pos: Position) -> Result<(), LintErrorPos> {
         match s {
             Statement::Assignment(a) => self.visit_assignment(a, pos),
-            Statement::SubCall(b, e) => self.visit_sub_call(b, pos, e),
+            Statement::SubCall(sub_call) => self.visit_sub_call(sub_call, pos),
             Statement::BuiltInSubCall(b, e) => self.visit_built_in_sub_call(b, pos, e),
             Statement::IfBlock(i) => self.visit_if_block(i),
             Statement::SelectCase(s) => self.visit_select_case(s),
@@ -138,12 +138,8 @@ pub trait PostConversionLinter {
         Ok(())
     }
 
-    fn visit_sub_call(
-        &mut self,
-        _name: &CaseInsensitiveString,
-        _pos: Position,
-        args: &Expressions,
-    ) -> Result<(), LintErrorPos> {
+    fn visit_sub_call(&mut self, sub_call: &SubCall, _pos: Position) -> Result<(), LintErrorPos> {
+        let (_, args) = sub_call.into();
         self.visit_expressions(args)
     }
 

@@ -1,7 +1,7 @@
 use crate::converter::common::DimNameState;
 use crate::converter::common::*;
-use crate::core::validate_string_length;
 use crate::core::IntoTypeQualifier;
+use crate::core::ValidateStringLength;
 use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::*;
@@ -97,7 +97,7 @@ fn fixed_length_string_to_dim_type(
     length_expression: &ExpressionPos,
 ) -> Result<DimType, LintErrorPos> {
     require_extended_can_be_defined(ctx, bare_name, length_expression.pos)?;
-    let string_length: u16 = validate_string_length(length_expression, &ctx.names)?;
+    let string_length: u16 = length_expression.validate_string_length(&ctx.names)?;
     Ok(DimType::fixed_length_string(
         string_length,
         length_expression.pos(),

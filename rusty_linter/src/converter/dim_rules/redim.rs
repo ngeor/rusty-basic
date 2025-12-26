@@ -1,8 +1,8 @@
 use crate::converter::common::Context;
 use crate::converter::common::Convertible;
 use crate::converter::common::DimNameState;
-use crate::core::validate_string_length;
 use crate::core::IntoTypeQualifier;
+use crate::core::ValidateStringLength;
 use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::*;
@@ -188,7 +188,7 @@ fn fixed_length_string_to_dim_type(
     array_dimensions: &ArrayDimensions,
     length_expression: &ExpressionPos,
 ) -> Result<DimType, LintErrorPos> {
-    let string_length: u16 = validate_string_length(length_expression, &ctx.names)?;
+    let string_length: u16 = length_expression.validate_string_length(&ctx.names)?;
     ctx.names
         .find_name_or_shared_in_parent(bare_name)
         .into_iter()

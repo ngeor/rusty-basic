@@ -1,4 +1,4 @@
-use crate::core::validate_string_length;
+use crate::core::ValidateStringLength;
 use crate::core::{LintError, LintErrorPos};
 use crate::pre_linter::ConstantMap;
 use rusty_common::{AtPos, Position, Positioned};
@@ -39,7 +39,7 @@ pub fn user_defined_type(
                 ElementType::Single => ElementType::Single,
                 ElementType::Double => ElementType::Double,
                 ElementType::FixedLengthString(str_len_expression_pos, _) => {
-                    let l: u16 = validate_string_length(str_len_expression_pos, global_constants)?;
+                    let l: u16 = str_len_expression_pos.validate_string_length(global_constants)?;
                     ElementType::FixedLengthString(
                         Expression::IntegerLiteral(l as i32).at(str_len_expression_pos),
                         l,

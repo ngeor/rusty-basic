@@ -186,7 +186,8 @@ where
     P: Visitor<Statement> + SetPosition,
 {
     fn visit(&mut self, element: &CaseBlock) -> VisitResult {
-        self.visit(&element.statements)
+        let (_, statements) = element.into();
+        self.visit(statements)
     }
 }
 

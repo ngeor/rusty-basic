@@ -197,10 +197,11 @@ pub trait PostConversionLinter {
         case_block: &CaseBlock,
         select_expr: &ExpressionPos,
     ) -> Result<(), LintErrorPos> {
-        for case_expr in &case_block.expression_list {
+        let (expression_list, statements) = case_block.into();
+        for case_expr in expression_list {
             self.visit_case_expression(case_expr, select_expr)?;
         }
-        self.visit_statements(&case_block.statements)
+        self.visit_statements(statements)
     }
 
     fn visit_case_expression(

@@ -265,10 +265,21 @@ pub struct SelectCase {
     pub inline_comments: Vec<Positioned<String>>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct CaseBlock {
-    pub expression_list: Vec<CaseExpression>,
-    pub statements: Statements,
+bi_tuple!(
+    /// A case block can have one or more condition expressions and
+    /// the statements to execute if the condition is met.
+    CaseBlock(Vec<CaseExpression>, Statements)
+);
+
+impl CaseBlock {
+    pub fn conditions(&self) -> &Vec<CaseExpression> {
+        &self.0
+    }
+
+    pub fn has_conditions(&self) -> bool {
+        // the CASE ELSE block does not have conditions
+        !self.conditions().is_empty()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

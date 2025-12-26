@@ -29,12 +29,15 @@ pub fn select_case_p() -> impl Parser<RcStringView, Output = Statement> {
             let case_blocks = all_case_blocks
                 .clone()
                 .into_iter()
-                .filter(|x| !x.expression_list.is_empty())
+                .filter(|x| x.has_conditions())
                 .collect();
             let else_block = all_case_blocks
                 .into_iter()
-                .find(|x| x.expression_list.is_empty())
-                .map(|x| x.statements);
+                .find(|x| !x.has_conditions())
+                .map(|x| {
+                    let (_, right) = x.into();
+                    right
+                });
             Statement::SelectCase(SelectCase {
                 expr,
                 case_blocks,
@@ -91,10 +94,7 @@ fn continue_after_case() -> impl Parser<RcStringView, Output = CaseBlock> {
                 Box::new(case_expression_list()),
             ]),
             ZeroOrMoreStatements::new_multi(vec![Keyword::Case, Keyword::End]),
-            |expression_list, statements| CaseBlock {
-                expression_list,
-                statements,
-            },
+            CaseBlock::new,
         ),
     )
 }
@@ -175,15 +175,15 @@ mod tests {
                 GlobalStatement::Statement(Statement::SelectCase(SelectCase {
                     expr: "X".as_var_expr(2, 21),
                     inline_comments: vec![" testing for x".to_string().at_rc(2, 23)],
-                    case_blocks: vec![CaseBlock {
-                        expression_list: vec![CaseExpression::Simple(1.as_lit_expr(3, 14))],
-                        statements: vec![
+                    case_blocks: vec![CaseBlock::new(
+                        vec![CaseExpression::Simple(1.as_lit_expr(3, 14))],
+                        vec![
                             Statement::Comment(" is it one?".to_string()).at_rc(3, 23),
                             Statement::sub_call("Flint".into(), vec!["One".as_lit_expr(4, 15)])
                                 .at_rc(4, 9),
                             Statement::Comment(" print it".to_string()).at_rc(4, 23),
                         ]
-                    }],
+                    )],
                     else_block: Some(vec![
                         Statement::Comment(" something else?".to_string()).at_rc(5, 23),
                         Statement::sub_call("Flint".into(), vec!["Nope".as_lit_expr(6, 15)])
@@ -238,15 +238,15 @@ mod tests {
                         " testing for x".to_string().at_rc(2, 23),
                         " first case".to_string().at_rc(3, 9)
                     ],
-                    case_blocks: vec![CaseBlock {
-                        expression_list: vec![CaseExpression::Simple(1.as_lit_expr(4, 14))],
-                        statements: vec![
+                    case_blocks: vec![CaseBlock::new(
+                        vec![CaseExpression::Simple(1.as_lit_expr(4, 14))],
+                        vec![
                             Statement::Comment(" is it one?".to_string()).at_rc(4, 23),
                             Statement::sub_call("Flint".into(), vec!["One".as_lit_expr(5, 15)])
                                 .at_rc(5, 9),
                             Statement::Comment(" print it".to_string()).at_rc(5, 23),
                         ]
-                    }],
+                    )],
                     else_block: None
                 }))
                 .at_rc(2, 9)
@@ -271,31 +271,31 @@ mod tests {
                 expr: paren_exp!( bin_exp!( int_lit!(5 at 2:21) ; plus int_lit!(2 at 2:23) ; at 2:22 ) ; at 2:20 ),
                 inline_comments: vec![],
                 case_blocks: vec![
-                    CaseBlock {
-                        expression_list: vec![CaseExpression::Simple(
+                    CaseBlock::new(
+                        vec![CaseExpression::Simple(
                             paren_exp!( bin_exp!( int_lit!(6 at 3:14) ; plus int_lit!(5 at 3:16) ; at 3:15 ) ; at 3:13 )
                         )],
-                        statements: vec![Statement::Print(Print {
+                        vec![Statement::Print(Print {
                             file_number: None,
                             lpt1: false,
                             format_string: None,
                             args: vec![PrintArg::Expression(11.as_lit_expr(4, 19))]
                         })
                         .at_rc(4, 13)]
-                    },
-                    CaseBlock {
-                        expression_list: vec![CaseExpression::Range(
+                    ),
+                    CaseBlock::new(
+                        vec![CaseExpression::Range(
                             Expression::Parenthesis(Box::new(2.as_lit_expr(5, 14))).at_rc(5, 13),
                             Expression::Parenthesis(Box::new(5.as_lit_expr(5, 19))).at_rc(5, 18)
                         )],
-                        statements: vec![Statement::Print(Print {
+                        vec![Statement::Print(Print {
                             file_number: None,
                             lpt1: false,
                             format_string: None,
                             args: vec![PrintArg::Expression(2.as_lit_expr(6, 19))]
                         })
                         .at_rc(6, 13)]
-                    },
+                    ),
                 ],
                 else_block: None
             })

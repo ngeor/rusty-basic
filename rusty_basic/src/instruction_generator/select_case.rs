@@ -32,9 +32,12 @@ impl InstructionGenerator {
             // where to jump out from here if the case block isn't matching
             let next_case_label =
                 labels::next_case_label(case_blocks_len, has_else, case_block_index);
-            let is_multi_expr = case_block.expression_list.len() > 1;
+
+            let (expression_list, statements) = case_block.into();
+
+            let is_multi_expr = expression_list.len() > 1;
             self.generate_case_expressions(
-                case_block.expression_list,
+                expression_list,
                 next_case_label.as_str(),
                 pos,
                 case_block_index,
@@ -45,7 +48,7 @@ impl InstructionGenerator {
                 self.label(&labels::case_statements(case_block_index), pos);
             }
             // run matched CASE block statements
-            self.visit(case_block.statements);
+            self.visit(statements);
             // jump out of SELECT
             self.jump(labels::end_select(), pos);
         }

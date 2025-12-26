@@ -203,18 +203,15 @@ pub trait ExpressionReducer {
     }
 
     fn visit_case_block(&mut self, s: CaseBlock) -> Result<CaseBlock, LintErrorPos> {
-        let CaseBlock {
-            expression_list,
-            statements,
-        } = s;
+        let (expression_list, statements) = s.into();
         let expression_list: Vec<CaseExpression> = expression_list
             .into_iter()
             .map(|case_expr| self.visit_case_expression(case_expr))
             .collect::<Result<Vec<CaseExpression>, LintErrorPos>>()?;
-        Ok(CaseBlock {
+        Ok(CaseBlock::new(
             expression_list,
-            statements: self.visit_statements(statements)?,
-        })
+            self.visit_statements(statements)?,
+        ))
     }
 
     fn visit_case_expression(&mut self, s: CaseExpression) -> Result<CaseExpression, LintErrorPos> {

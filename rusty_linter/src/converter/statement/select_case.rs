@@ -21,12 +21,10 @@ impl Convertible for SelectCase {
 
 impl Convertible for CaseBlock {
     fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {
-        let expression_list = self.expression_list.convert(ctx)?;
-        let statements = self.statements.convert(ctx)?;
-        Ok(Self {
-            expression_list,
-            statements,
-        })
+        let (expression_list, statements) = self.into();
+        let expression_list = expression_list.convert(ctx)?;
+        let statements = statements.convert(ctx)?;
+        Ok(Self::new(expression_list, statements))
     }
 }
 

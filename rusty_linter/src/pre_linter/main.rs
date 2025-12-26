@@ -9,6 +9,7 @@ use rusty_parser::*;
 // TYPE ... END TYPE -> stored in user_defined_types depends on CONST for resolving string length (AS STRING * some_const)
 // FUNCTION/SUB -> depends on resolver for resolving bare names and on user_defined_types to ensure types exist
 
+#[derive(Default)]
 struct MainContext {
     resolver: TypeResolverImpl,
     user_defined_types: UserDefinedTypes,
@@ -19,14 +20,7 @@ struct MainContext {
 }
 
 pub fn pre_lint_program(program: &Program) -> Result<PreLinterResult, LintErrorPos> {
-    let mut ctx = MainContext {
-        resolver: TypeResolverImpl::new(),
-        user_defined_types: Default::default(),
-        functions: SubprogramContext::new(),
-        subs: SubprogramContext::new(),
-        global_constants: Default::default(),
-        declaration_pos: Position::start(),
-    };
+    let mut ctx = MainContext::default();
     <MainContext as Visitor<Program>>::visit(&mut ctx, program)?;
     ctx.post_visit_functions()?;
     ctx.post_visit_subs()?;

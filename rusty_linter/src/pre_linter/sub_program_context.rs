@@ -109,10 +109,6 @@ impl Implementations {
 }
 
 impl SubprogramContext {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn add_declaration(
         &mut self,
         bare_name: BareName,

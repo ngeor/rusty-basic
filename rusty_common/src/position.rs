@@ -32,3 +32,9 @@ impl Position {
         self.col
     }
 }
+
+impl Default for Position {
+    fn default() -> Self {
+        Self::start()
+    }
+}

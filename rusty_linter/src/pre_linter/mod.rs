@@ -1,4 +1,3 @@
-mod const_rules;
 mod constant_map;
 mod main;
 mod pre_linter_result;

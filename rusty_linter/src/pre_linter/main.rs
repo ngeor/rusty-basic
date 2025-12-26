@@ -1,5 +1,4 @@
 use crate::core::*;
-use crate::pre_linter::const_rules::global_const;
 use crate::pre_linter::sub_program_context::SubprogramContext;
 use crate::pre_linter::{ConstantMap, PreLinterResult};
 use rusty_common::*;
@@ -116,7 +115,7 @@ impl Visitor<SubImplementation> for MainContext {
 impl Visitor<Statement> for MainContext {
     fn visit(&mut self, s: &Statement) -> VisitResult {
         match s {
-            Statement::Const(c) => global_const(&mut self.global_constants, c),
+            Statement::Const(c) => self.global_constants.visit(c),
             _ => Ok(()),
         }
     }

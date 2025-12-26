@@ -20,8 +20,9 @@ struct MainContext {
 }
 
 pub fn pre_lint_program(program: &Program) -> Result<PreLinterResult, LintErrorPos> {
-    let mut ctx = MainContext::default();
-    <MainContext as Visitor<Program>>::visit(&mut ctx, program)?;
+    let mut visitor = ShallowVisitor::new(MainContext::default());
+    visitor.visit(program)?;
+    let ctx = visitor.delegate();
     ctx.post_visit_functions()?;
     ctx.post_visit_subs()?;
     Ok(PreLinterResult::new(
@@ -130,8 +131,6 @@ impl DelegateVisitor<UserDefinedType> for MainContext {
         )
     }
 }
-
-impl ShallowGlobalStatementVisitor for MainContext {}
 
 impl MainContext {
     fn on_parameters(&self, parameters: &Parameters) -> Result<ResolvedParamTypes, LintErrorPos> {

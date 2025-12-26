@@ -15,43 +15,47 @@ trait NoDotNamesCheck<T, E> {
     fn ensure_no_dots(&self, x: &T) -> Result<(), E>;
 }
 
-impl NoDotNamesCheck<FunctionImplementation, LintErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &FunctionImplementation) -> Result<(), LintErrorPos> {
-        self.ensure_no_dots(&x.name)?;
-        self.ensure_no_dots(&x.params)
+// Blanket for Positioned
+
+impl<T, E> NoDotNamesCheck<Positioned<T>, Positioned<E>> for DotsLinter
+where
+    DotsLinter: NoDotNamesCheck<T, E>,
+{
+    fn ensure_no_dots(&self, element: &Positioned<T>) -> Result<(), Positioned<E>> {
+        let Positioned { element, pos } = element;
+        self.ensure_no_dots(element).map_err(|e| e.at_pos(*pos))
     }
 }
 
-impl NoDotNamesCheck<SubImplementation, LintErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &SubImplementation) -> Result<(), LintErrorPos> {
-        self.ensure_no_dots(&x.name)?;
-        self.ensure_no_dots(&x.params)
-    }
-}
+// Blanket for Vec
 
-impl NoDotNamesCheck<Vec<Positioned<Parameter>>, LintErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &Vec<Positioned<Parameter>>) -> Result<(), LintErrorPos> {
+impl<T, E> NoDotNamesCheck<Vec<T>, E> for DotsLinter
+where
+    DotsLinter: NoDotNamesCheck<T, E>,
+{
+    fn ensure_no_dots(&self, x: &Vec<T>) -> Result<(), E> {
         x.iter().try_for_each(|x| self.ensure_no_dots(x))
     }
 }
 
-impl NoDotNamesCheck<Positioned<Parameter>, LintErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &Positioned<Parameter>) -> Result<(), LintErrorPos> {
-        let Positioned { element, pos } = x;
-        self.ensure_no_dots(element).map_err(|e| e.at(pos))
+// FunctionImplementation and SubImplementation
+
+impl<T> NoDotNamesCheck<SubprogramImplementation<T>, LintErrorPos> for DotsLinter
+where
+    DotsLinter:
+        NoDotNamesCheck<Positioned<T>, LintErrorPos> + NoDotNamesCheck<Parameters, LintErrorPos>,
+{
+    fn ensure_no_dots(&self, x: &SubprogramImplementation<T>) -> Result<(), LintErrorPos> {
+        self.ensure_no_dots(&x.name)?;
+        self.ensure_no_dots(&x.params)
     }
 }
+
+// TODO the next 4 can be merged into one with a trait like AsRef<BareName>
 
 impl NoDotNamesCheck<Parameter, LintError> for DotsLinter {
     fn ensure_no_dots(&self, x: &Parameter) -> Result<(), LintError> {
         self.ensure_no_dots(&x.bare_name)
-    }
-}
-
-impl NoDotNamesCheck<DimVarPos, LintErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &DimVarPos) -> Result<(), LintErrorPos> {
-        let Positioned { element, pos } = x;
-        self.ensure_no_dots(element).map_err(|e| e.at(pos))
     }
 }
 
@@ -61,23 +65,9 @@ impl NoDotNamesCheck<DimVar, LintError> for DotsLinter {
     }
 }
 
-impl NoDotNamesCheck<NamePos, LintErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, name_pos: &NamePos) -> Result<(), LintErrorPos> {
-        let name = &name_pos.element;
-        self.ensure_no_dots(name).map_err(|e| e.at(name_pos))
-    }
-}
-
 impl NoDotNamesCheck<Name, LintError> for DotsLinter {
     fn ensure_no_dots(&self, name: &Name) -> Result<(), LintError> {
         self.ensure_no_dots(name.bare_name())
-    }
-}
-
-impl NoDotNamesCheck<BareNamePos, LintErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &BareNamePos) -> Result<(), LintErrorPos> {
-        let Positioned { element, pos } = x;
-        self.ensure_no_dots(element).map_err(|e| e.at(pos))
     }
 }
 
@@ -93,12 +83,6 @@ impl NoDotNamesCheck<BareName, LintError> for DotsLinter {
             }
             _ => Ok(()),
         }
-    }
-}
-
-impl NoDotNamesCheck<Expressions, LintErrorPos> for DotsLinter {
-    fn ensure_no_dots(&self, x: &Expressions) -> Result<(), LintErrorPos> {
-        x.iter().try_for_each(|x| self.ensure_no_dots(x))
     }
 }
 

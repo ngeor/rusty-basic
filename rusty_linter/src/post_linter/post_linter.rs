@@ -28,27 +28,34 @@ fn apply_linters(
     let mut linter = for_next_counter_match_linter::ForNextCounterMatch::visitor();
     linter.visit(result)?;
 
+    // TODO migrate to Visitor
     let mut linter = dots_linter::DotsLinter::default();
     linter.visit_program(result)?;
 
+    // TODO migrate to Visitor
     let mut linter = built_in_linter::BuiltInLinter::new();
     linter.visit_program(result)?;
 
     let mut linter = print_linter::PrintLinter::visitor();
     linter.visit(result)?;
 
+    // TODO migrate to Visitor
     let mut linter = user_defined_function_linter::UserDefinedFunctionLinter { linter_context };
     linter.visit_program(result)?;
 
+    // TODO migrate to Visitor
     let mut linter = user_defined_sub_linter::UserDefinedSubLinter { linter_context };
     linter.visit_program(result)?;
 
+    // TODO migrate to Visitor
     let mut linter = select_case_linter::SelectCaseLinter {};
     linter.visit_program(result)?;
 
+    // TODO migrate to Visitor
     let mut linter = condition_type_linter::ConditionTypeLinter {};
     linter.visit_program(result)?;
 
+    // TODO migrate to Visitor
     let mut linter = label_linter::LabelLinter::default();
     linter.visit_program(result)?;
     Ok(())

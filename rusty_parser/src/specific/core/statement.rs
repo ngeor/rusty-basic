@@ -44,7 +44,7 @@ pub enum Statement {
     /// ```
     ///
     /// The validity of the assignment is determined at the linting phase.
-    Assignment(Expression, ExpressionPos),
+    Assignment(Assignment),
 
     Const(Constant),
 
@@ -138,6 +138,7 @@ pub enum Statement {
     Print(Print),
 }
 
+/// A constant declaration.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Constant(NamePos, ExpressionPos);
 
@@ -149,6 +150,28 @@ impl From<Constant> for (NamePos, ExpressionPos) {
 
 impl<'a> From<&'a Constant> for (&'a NamePos, &'a ExpressionPos) {
     fn from(value: &'a Constant) -> Self {
+        (&value.0, &value.1)
+    }
+}
+
+/// An assignment statement.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Assignment(Expression, ExpressionPos);
+
+impl Assignment {
+    pub fn new(left: Expression, right: ExpressionPos) -> Self {
+        Self(left, right)
+    }
+}
+
+impl From<Assignment> for (Expression, ExpressionPos) {
+    fn from(value: Assignment) -> Self {
+        (value.0, value.1)
+    }
+}
+
+impl<'a> From<&'a Assignment> for (&'a Expression, &'a ExpressionPos) {
+    fn from(value: &'a Assignment) -> Self {
         (&value.0, &value.1)
     }
 }
@@ -264,6 +287,10 @@ pub enum DoLoopConditionKind {
 impl Statement {
     pub fn constant(name: NamePos, value: ExpressionPos) -> Self {
         Self::Const(Constant(name, value))
+    }
+
+    pub fn assignment(left: Expression, right: ExpressionPos) -> Self {
+        Self::Assignment(Assignment(left, right))
     }
 }
 

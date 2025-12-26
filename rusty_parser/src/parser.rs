@@ -129,7 +129,7 @@ mod tests {
                                 .at_rc(9, 10),
                                 statements: vec![
                                     // Fib = N
-                                    Statement::Assignment(
+                                    Statement::assignment(
                                         Expression::var_unresolved("Fib"),
                                         "N".as_var_expr(10, 15)
                                     )
@@ -139,7 +139,7 @@ mod tests {
                             else_if_blocks: vec![],
                             else_block: Some(vec![
                                 // ELSE Fib = Fib(N - 1) + Fib(N - 2)
-                                Statement::Assignment(
+                                Statement::assignment(
                                     Expression::var_unresolved("Fib"),
                                     Expression::BinaryExpression(
                                         Operator::Plus,

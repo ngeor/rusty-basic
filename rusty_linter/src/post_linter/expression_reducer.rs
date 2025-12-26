@@ -101,12 +101,7 @@ pub trait ExpressionReducer {
 
     fn visit_map_statement(&mut self, s: Statement) -> Result<Statement, LintErrorPos> {
         match s {
-            Statement::Assignment(left, right) => {
-                self.visit_assignment(left, right)
-                    .map(|(reduced_left, reduced_right)| {
-                        Statement::Assignment(reduced_left, reduced_right)
-                    })
-            }
+            Statement::Assignment(a) => self.visit_assignment(a).map(Statement::Assignment),
             Statement::Const(c) => {
                 // The converter is smart enough to replace Expressions that reference
                 // constants with their actual value, so the `CONST` statement isn't used
@@ -159,12 +154,9 @@ pub trait ExpressionReducer {
         Ok((name, self.visit_expressions(args)?))
     }
 
-    fn visit_assignment(
-        &mut self,
-        name: Expression,
-        v: ExpressionPos,
-    ) -> Result<(Expression, ExpressionPos), LintErrorPos> {
-        Ok((name, self.visit_expression_pos(v)?))
+    fn visit_assignment(&mut self, a: Assignment) -> Result<Assignment, LintErrorPos> {
+        let (name, v) = a.into();
+        Ok(Assignment::new(name, self.visit_expression_pos(v)?))
     }
 
     fn visit_for_loop(&mut self, f: ForLoop) -> Result<ForLoop, LintErrorPos> {

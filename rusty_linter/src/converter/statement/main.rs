@@ -11,7 +11,7 @@ use rusty_parser::{ExitObject, Statement};
 impl ConvertibleIn<Position> for Statement {
     fn convert_in(self, ctx: &mut Context, pos: Position) -> Result<Self, LintErrorPos> {
         match self {
-            Self::Assignment(n, e) => assignment::on_assignment(n, e, ctx, pos),
+            Self::Assignment(a) => assignment::on_assignment(a, ctx, pos),
             // CONST is mapped to None and is filtered out
             Self::Const(c) => const_rules::on_const(ctx, c),
             Self::SubCall(n, args) => ctx.sub_call(n, args),

@@ -56,7 +56,7 @@ pub trait PostConversionLinter {
 
     fn visit_statement_pos(&mut self, s: &Statement, pos: Position) -> Result<(), LintErrorPos> {
         match s {
-            Statement::Assignment(left, right) => self.visit_assignment(left, pos, right),
+            Statement::Assignment(a) => self.visit_assignment(a, pos),
             Statement::SubCall(b, e) => self.visit_sub_call(b, pos, e),
             Statement::BuiltInSubCall(b, e) => self.visit_built_in_sub_call(b, pos, e),
             Statement::IfBlock(i) => self.visit_if_block(i),
@@ -158,10 +158,10 @@ pub trait PostConversionLinter {
 
     fn visit_assignment(
         &mut self,
-        _name: &Expression,
+        assignment: &Assignment,
         _name_pos: Position,
-        v: &ExpressionPos,
     ) -> Result<(), LintErrorPos> {
+        let (_, v) = assignment.into();
         self.visit_expression(v)
     }
 

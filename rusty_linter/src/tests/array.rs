@@ -134,7 +134,7 @@ fn test_passing_array_parameter_with_parenthesis() {
                             .into_list_rc(7, 9)
                     )
                     .at_rc(7, 9),
-                    Statement::Assignment(
+                    Statement::assignment(
                         Expression::var_resolved("X$"),
                         Expression::ArrayElement(
                             "choice$".into(),
@@ -189,7 +189,7 @@ fn test_passing_array_without_parenthesis() {
                     .into_list_rc(2, 9)
             ))
             .at_rc(2, 5),
-            GlobalStatement::Statement(Statement::Assignment(
+            GlobalStatement::Statement(Statement::assignment(
                 Expression::Variable(
                     "X!".into(),
                     VariableInfo::new_local(ExpressionType::BuiltIn(TypeQualifier::BangSingle))

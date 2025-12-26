@@ -65,7 +65,7 @@ fn test_assign_binary_plus() {
         Statement::Dim(
             DimVar::new_compact_local("X", TypeQualifier::PercentInteger).into_list_rc(1, 1)
         ),
-        Statement::Assignment(
+        Statement::assignment(
             Expression::var_resolved("X%"),
             Expression::BinaryExpression(
                 Operator::Plus,
@@ -85,7 +85,7 @@ fn test_possible_property_folded_back_to_variable() {
         Statement::Dim(
             DimVar::new_compact_local("A.B", TypeQualifier::BangSingle).into_list_rc(1, 1)
         ),
-        Statement::Assignment(
+        Statement::assignment(
             Expression::var_resolved("A.B!"),
             Expression::IntegerLiteral(12).at_rc(1, 7),
         )

@@ -267,17 +267,19 @@ macro_rules! assert_parser_err {
 macro_rules! assert_global_assignment {
     ($input:expr, $name_expr:expr) => {
         match $crate::parse($input).demand_single_statement() {
-            Statement::Assignment(n, _) => {
-                assert_eq!(n, $name_expr);
+            Statement::Assignment(a) => {
+                let (left, _) = a.into();
+                assert_eq!(left, $name_expr);
             }
             _ => panic!("Expected: assignment"),
         }
     };
     ($input:expr, $name:expr, $value:expr) => {
         match $crate::parse($input).demand_single_statement() {
-            Statement::Assignment(n, rusty_common::Positioned { element: v, .. }) => {
-                assert_eq!(n, Expression::var_unresolved($name));
-                assert_eq!(v, Expression::IntegerLiteral($value));
+            Statement::Assignment(a) => {
+                let (left, right) = a.into();
+                assert_eq!(left, Expression::var_unresolved($name));
+                assert_eq!(right.element, Expression::IntegerLiteral($value));
             }
             _ => panic!("Expected: assignment"),
         }

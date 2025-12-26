@@ -38,7 +38,7 @@ impl Parser<RcStringView> for SubCallOrAssignment {
             Some(_) => expression_pos_p()
                 .or_syntax_error("Expected: expression for assignment")
                 .parse(tokenizer)
-                .map_ok(|right_side_expr| Statement::Assignment(name_expr, right_side_expr)),
+                .map_ok(|right_side_expr| Statement::assignment(name_expr, right_side_expr)),
             _ => match expr_to_bare_name_args(name_expr) {
                 Ok((bare_name, Some(args))) => Ok((tokenizer, Statement::SubCall(bare_name, args))),
                 Ok((bare_name, None)) => csv_expressions_first_guarded()

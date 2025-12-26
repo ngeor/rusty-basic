@@ -170,12 +170,8 @@ impl PostConversionLinter for DotsLinter {
             .try_for_each(|dim_var_pos| self.ensure_no_dots(dim_var_pos))
     }
 
-    fn visit_assignment(
-        &mut self,
-        name: &Expression,
-        name_pos: Position,
-        v: &ExpressionPos,
-    ) -> Result<(), LintErrorPos> {
+    fn visit_assignment(&mut self, a: &Assignment, name_pos: Position) -> Result<(), LintErrorPos> {
+        let (name, v) = a.into();
         self.ensure_no_dots(&Positioned::new(name, name_pos))?;
         self.visit_expression(v)
     }

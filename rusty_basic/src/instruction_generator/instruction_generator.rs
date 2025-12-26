@@ -5,11 +5,11 @@ use crate::instruction_generator::subprogram_info::{
 use crate::RuntimeError;
 use rusty_common::{AtPos, CaseInsensitiveString, Position, Positioned};
 use rusty_linter::{Context, Names, SubprogramName};
-use rusty_parser::BuiltInSub;
+use rusty_parser::{Assignment, BuiltInSub};
 use rusty_parser::{
-    BareName, DimVar, Expression, ExpressionPos, ExpressionType, FileHandle,
-    FunctionImplementation, GlobalStatement, HasExpressionType, Name, Parameter, Program,
-    QualifiedName, Statement, Statements, SubImplementation, TypeQualifier,
+    BareName, DimVar, Expression, ExpressionType, FileHandle, FunctionImplementation,
+    GlobalStatement, HasExpressionType, Name, Parameter, Program, QualifiedName, Statement,
+    Statements, SubImplementation, TypeQualifier,
 };
 use rusty_parser::{BuiltInFunction, UserDefinedTypes};
 use rusty_variant::Variant;
@@ -449,12 +449,8 @@ impl InstructionGenerator {
         );
     }
 
-    pub fn generate_assignment_instructions(
-        &mut self,
-        l: Expression,
-        r: ExpressionPos,
-        pos: Position,
-    ) {
+    pub fn generate_assignment_instructions(&mut self, a: Assignment, pos: Position) {
+        let (l, r) = a.into();
         let left_type = l.expression_type();
         self.generate_expression_instructions_casting(r, left_type);
         self.generate_store_instructions(l, pos);

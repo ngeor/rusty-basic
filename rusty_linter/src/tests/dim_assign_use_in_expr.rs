@@ -23,7 +23,7 @@ fn bare() {
         vec![
             GlobalStatement::Statement(Statement::Dim(DimVar::parse("A!").into_list_rc(2, 9)))
                 .at_rc(2, 5),
-            GlobalStatement::Statement(Statement::Assignment(
+            GlobalStatement::Statement(Statement::assignment(
                 Expression::var_resolved("A!"),
                 Expression::IntegerLiteral(42).at_rc(3, 9)
             ))
@@ -48,7 +48,7 @@ fn compact_string() {
         vec![
             GlobalStatement::Statement(Statement::Dim(DimVar::parse("A$").into_list_rc(2, 9)))
                 .at_rc(2, 5),
-            GlobalStatement::Statement(Statement::Assignment(
+            GlobalStatement::Statement(Statement::assignment(
                 Expression::var_resolved("A$"),
                 Expression::StringLiteral("hello".to_string()).at_rc(3, 10)
             ))
@@ -79,7 +79,7 @@ fn extended_string() {
                 .into_list_rc(2, 9)
             ))
             .at_rc(2, 5),
-            GlobalStatement::Statement(Statement::Assignment(
+            GlobalStatement::Statement(Statement::assignment(
                 Expression::var_resolved("A$"),
                 Expression::StringLiteral("hello".to_string()).at_rc(3, 9)
             ))
@@ -123,7 +123,7 @@ fn user_defined_type() {
                 .into_list_rc(7, 9)
             ))
             .at_rc(7, 5),
-            GlobalStatement::Statement(Statement::Assignment(
+            GlobalStatement::Statement(Statement::assignment(
                 Expression::var_user_defined("A", "Card"),
                 Expression::var_user_defined("B", "Card").at_rc(8, 9)
             ))
@@ -178,7 +178,7 @@ fn user_defined_type_integer_element() {
             )
             .into_list_rc(6, 9)
         ),
-        Statement::Assignment(
+        Statement::assignment(
             Expression::Property(
                 Box::new(Expression::var_user_defined("A", "Card")),
                 "Value".into(),
@@ -217,7 +217,7 @@ fn user_defined_type_string_element() {
             )
             .into_list_rc(6, 9)
         ),
-        Statement::Assignment(
+        Statement::assignment(
             Expression::Property(
                 Box::new(Expression::var_user_defined("A", "Card")),
                 "Suit".into(),

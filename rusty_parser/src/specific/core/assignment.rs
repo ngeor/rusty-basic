@@ -204,7 +204,7 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                GlobalStatement::Statement(Statement::Assignment(
+                GlobalStatement::Statement(Statement::assignment(
                     Expression::var_unresolved("ANSWER"),
                     42.as_lit_expr(1, 10)
                 ))
@@ -223,7 +223,7 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::Assignment(
+            Statement::assignment(
                 Expression::func("A", vec![2.as_lit_expr(1, 3)]),
                 1.as_lit_expr(1, 8)
             )
@@ -236,7 +236,7 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::Assignment(
+            Statement::assignment(
                 Expression::func("A", vec![1.as_lit_expr(1, 3), 2.as_lit_expr(1, 6)]),
                 3.as_lit_expr(1, 11)
             )
@@ -249,7 +249,7 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::Assignment(
+            Statement::assignment(
                 Expression::func("A$", vec!["N!".as_var_expr(1, 4)]),
                 1.as_lit_expr(1, 10)
             )
@@ -262,7 +262,7 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::Assignment(
+            Statement::assignment(
                 Expression::Property(
                     Box::new(Expression::func("A", vec![1.as_lit_expr(1, 3)])),
                     "Height".into(),
@@ -279,7 +279,7 @@ mod tests {
         let program = parse(input).demand_single_statement();
         assert_eq!(
             program,
-            Statement::Assignment(
+            Statement::assignment(
                 Expression::Property(
                     Box::new(Expression::var_unresolved("A")),
                     "B".into(),
@@ -300,7 +300,7 @@ mod tests {
             let program = parse(input).demand_single_statement();
             assert_eq!(
                 program,
-                Statement::Assignment(
+                Statement::assignment(
                     Expression::Variable("DIM$".into(), VariableInfo::unresolved()),
                     "hello".as_lit_expr(1, 8)
                 )

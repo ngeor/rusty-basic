@@ -79,7 +79,7 @@ mod tests {
                     Parameter::new("A".into(), ParamType::Bare).at_rc(2, 22),
                     Parameter::new("B".into(), ParamType::Bare).at_rc(2, 25)
                 ],
-                body: vec![Statement::Assignment(
+                body: vec![Statement::assignment(
                     Expression::var_unresolved("Add"),
                     Expression::BinaryExpression(
                         Operator::Plus,
@@ -112,7 +112,7 @@ mod tests {
                     Parameter::new("a".into(), ParamType::Bare).at_rc(2, 22),
                     Parameter::new("b".into(), ParamType::Bare).at_rc(2, 25)
                 ],
-                body: vec![Statement::Assignment(
+                body: vec![Statement::assignment(
                     Expression::var_unresolved("add"),
                     Expression::BinaryExpression(
                         Operator::Plus,

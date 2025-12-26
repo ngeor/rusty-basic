@@ -138,43 +138,41 @@ pub enum Statement {
     Print(Print),
 }
 
-/// A constant declaration.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Constant(NamePos, ExpressionPos);
+macro_rules! bi_tuple {
+    ($(#[$($attrss:tt)*])* $name: ident($left: ty, $right: ty)) => {
+        $(#[$($attrss)*])*
+        #[derive(Clone, Debug, PartialEq)]
+        pub struct $name($left, $right);
 
-impl From<Constant> for (NamePos, ExpressionPos) {
-    fn from(value: Constant) -> Self {
-        (value.0, value.1)
-    }
+        impl $name {
+            pub fn new(left: $left, right: $right) -> Self {
+                Self(left, right)
+            }
+        }
+
+        impl From<$name> for ($left, $right) {
+            fn from(value: $name) -> Self {
+                (value.0, value.1)
+            }
+        }
+
+        impl<'a> From<&'a $name> for (&'a $left, &'a $right) {
+            fn from(value: &'a $name) -> Self {
+                (&value.0, &value.1)
+            }
+        }
+    };
 }
 
-impl<'a> From<&'a Constant> for (&'a NamePos, &'a ExpressionPos) {
-    fn from(value: &'a Constant) -> Self {
-        (&value.0, &value.1)
-    }
-}
+bi_tuple!(
+    /// A constant declaration.
+    Constant(NamePos, ExpressionPos)
+);
 
-/// An assignment statement.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Assignment(Expression, ExpressionPos);
-
-impl Assignment {
-    pub fn new(left: Expression, right: ExpressionPos) -> Self {
-        Self(left, right)
-    }
-}
-
-impl From<Assignment> for (Expression, ExpressionPos) {
-    fn from(value: Assignment) -> Self {
-        (value.0, value.1)
-    }
-}
-
-impl<'a> From<&'a Assignment> for (&'a Expression, &'a ExpressionPos) {
-    fn from(value: &'a Assignment) -> Self {
-        (&value.0, &value.1)
-    }
-}
+bi_tuple!(
+    /// An assignment statement.
+    Assignment(Expression, ExpressionPos)
+);
 
 /// A list of variables defined in a DIM statement.
 #[derive(Clone, Debug, PartialEq)]

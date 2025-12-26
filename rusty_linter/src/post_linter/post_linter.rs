@@ -1,5 +1,5 @@
+use crate::core::HasSubprograms;
 use crate::core::LintErrorPos;
-use crate::core::{HasFunctions, HasSubs};
 use crate::post_linter::expression_reducer::ExpressionReducer;
 use crate::post_linter::post_conversion_linter::PostConversionLinter;
 use crate::post_linter::{
@@ -11,7 +11,7 @@ use rusty_parser::Program;
 
 pub fn post_linter(
     result: Program,
-    linter_context: &(impl HasFunctions + HasSubs),
+    linter_context: &impl HasSubprograms,
 ) -> Result<Program, LintErrorPos> {
     // lint
     apply_linters(&result, linter_context)?;
@@ -22,7 +22,7 @@ pub fn post_linter(
 
 fn apply_linters(
     result: &Program,
-    linter_context: &(impl HasFunctions + HasSubs),
+    linter_context: &impl HasSubprograms,
 ) -> Result<(), LintErrorPos> {
     let mut linter = for_next_counter_match_linter::ForNextCounterMatch {};
     linter.visit_program(result)?;

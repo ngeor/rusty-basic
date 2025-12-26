@@ -1,6 +1,6 @@
 use crate::converter::common::Context;
 use crate::core::IntoTypeQualifier;
-use crate::core::{HasFunctions, HasSubs, HasUserDefinedTypes};
+use crate::core::{HasSubprograms, HasUserDefinedTypes};
 use crate::core::{LintError, LintErrorPos};
 use crate::names::ManyNamesTrait;
 use rusty_common::{AtPos, Position, Positioned};
@@ -24,7 +24,7 @@ where
     cannot_clash_with_local_constants(var_name, ctx, pos)
 }
 
-fn cannot_clash_with_subs<T, C: HasSubs>(
+fn cannot_clash_with_subs<T, C: HasSubprograms>(
     var_name: &TypedName<T>,
     ctx: &C,
     pos: Position,

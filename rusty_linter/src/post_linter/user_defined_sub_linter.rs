@@ -1,6 +1,6 @@
 use super::post_conversion_linter::PostConversionLinter;
 use super::user_defined_function_linter::lint_call_args;
-use crate::core::HasSubs;
+use crate::core::HasSubprograms;
 use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::Expressions;
@@ -11,7 +11,7 @@ pub struct UserDefinedSubLinter<'a, R> {
 
 impl<'a, R> PostConversionLinter for UserDefinedSubLinter<'a, R>
 where
-    R: HasSubs,
+    R: HasSubprograms,
 {
     fn visit_sub_call(
         &mut self,

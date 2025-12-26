@@ -3,11 +3,8 @@ use rusty_parser::{
     Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UserDefinedTypes,
 };
 
-pub trait HasFunctions {
+pub trait HasSubprograms {
     fn functions(&self) -> &SignatureMap;
-}
-
-pub trait HasSubs {
     fn subs(&self) -> &SignatureMap;
 }
 

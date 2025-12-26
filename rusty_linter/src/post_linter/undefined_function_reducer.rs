@@ -1,6 +1,6 @@
 use super::expression_reducer::*;
 use crate::core::binary_cast;
-use crate::core::HasFunctions;
+use crate::core::HasSubprograms;
 use crate::core::LintErrorPos;
 use rusty_parser::Expression;
 
@@ -11,7 +11,7 @@ pub struct UndefinedFunctionReducer<'a, R> {
 
 impl<'a, R> ExpressionReducer for UndefinedFunctionReducer<'a, R>
 where
-    R: HasFunctions,
+    R: HasSubprograms,
 {
     fn visit_expression(&mut self, expression: Expression) -> Result<Expression, LintErrorPos> {
         match expression {

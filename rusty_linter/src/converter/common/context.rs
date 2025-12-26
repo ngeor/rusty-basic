@@ -16,13 +16,10 @@ impl TypeResolver for Context {
     }
 }
 
-impl HasFunctions for Context {
+impl HasSubprograms for Context {
     fn functions(&self) -> &SignatureMap {
         self.pre_linter_result.functions()
     }
-}
-
-impl HasSubs for Context {
     fn subs(&self) -> &SignatureMap {
         self.pre_linter_result.subs()
     }

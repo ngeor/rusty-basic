@@ -1,7 +1,7 @@
 use crate::converter::common::{Context, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
 use crate::core::{
-    qualifier_of_const_variant, HasSubs, IntoQualified, IntoTypeQualifier, LintResult,
+    qualifier_of_const_variant, HasSubprograms, IntoQualified, IntoTypeQualifier, LintResult,
 };
 use crate::core::{LintError, LintErrorPos};
 use crate::names::ManyNamesTrait;

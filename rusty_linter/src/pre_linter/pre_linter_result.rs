@@ -1,7 +1,7 @@
 use rusty_parser::UserDefinedTypes;
 
 use crate::{
-    core::{HasFunctions, HasSubs, SignatureMap},
+    core::{HasSubprograms, SignatureMap},
     HasUserDefinedTypes,
 };
 
@@ -32,13 +32,10 @@ impl From<PreLinterResult> for UserDefinedTypes {
     }
 }
 
-impl HasFunctions for PreLinterResult {
+impl HasSubprograms for PreLinterResult {
     fn functions(&self) -> &SignatureMap {
         &self.functions
     }
-}
-
-impl HasSubs for PreLinterResult {
     fn subs(&self) -> &SignatureMap {
         &self.subs
     }

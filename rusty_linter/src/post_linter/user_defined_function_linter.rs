@@ -152,7 +152,7 @@ fn has_at_least_one_arg(opt_args: Option<&Expressions>) -> bool {
 
 impl<'a, R> UserDefinedFunctionLinter<'a, R>
 where
-    R: HasFunctions,
+    R: HasSubprograms,
 {
     fn visit_function(
         &self,
@@ -198,7 +198,7 @@ where
 
 impl<'a, R> PostConversionLinter for UserDefinedFunctionLinter<'a, R>
 where
-    R: HasFunctions,
+    R: HasSubprograms,
 {
     fn visit_expression(&mut self, expr_pos: &ExpressionPos) -> Result<(), LintErrorPos> {
         let Positioned { element: e, pos } = expr_pos;

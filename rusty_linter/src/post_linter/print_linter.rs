@@ -1,12 +1,30 @@
-use super::post_conversion_linter::PostConversionLinter;
-use crate::core::{LintError, LintErrorPos};
-use rusty_common::AtPos;
-use rusty_parser::{ExpressionType, HasExpressionType, Print, PrintArg, TypeQualifier};
+use crate::core::*;
+use crate::{no_op_visitor, no_pos_visitor};
+use rusty_common::*;
+use rusty_parser::*;
 
 pub struct PrintLinter;
 
-impl PostConversionLinter for PrintLinter {
-    fn visit_print(&mut self, print: &Print) -> Result<(), LintErrorPos> {
+no_op_visitor!(PrintLinter: DefType, FunctionDeclaration, FunctionImplementation, SubDeclaration, SubImplementation, UserDefinedType);
+no_pos_visitor!(PrintLinter);
+
+impl PrintLinter {
+    pub fn visitor() -> impl Visitor<Program> + SetPosition {
+        DeepStatementVisitor::new(Self)
+    }
+}
+
+impl Visitor<Statement> for PrintLinter {
+    fn visit(&mut self, element: &Statement) -> VisitResult {
+        match element {
+            Statement::Print(p) => self.visit(p),
+            _ => Ok(()),
+        }
+    }
+}
+
+impl Visitor<Print> for PrintLinter {
+    fn visit(&mut self, print: &Print) -> VisitResult {
         if let Some(f) = &print.format_string {
             if f.expression_type() != ExpressionType::BuiltIn(TypeQualifier::DollarString) {
                 return Err(LintError::TypeMismatch.at(f));

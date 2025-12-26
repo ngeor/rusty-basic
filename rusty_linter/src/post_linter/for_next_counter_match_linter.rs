@@ -1,10 +1,34 @@
-use crate::core::{LintError, LintErrorPos};
+use crate::core::*;
+use crate::{no_op_visitor, no_pos_visitor};
 use rusty_common::*;
-use rusty_parser::{Expression, ExpressionType, ForLoop, TypeQualifier, VariableInfo};
-
-use super::post_conversion_linter::*;
+use rusty_parser::*;
 
 pub struct ForNextCounterMatch;
+
+no_op_visitor!(ForNextCounterMatch: DefType, FunctionDeclaration, FunctionImplementation, SubDeclaration, SubImplementation, UserDefinedType);
+no_pos_visitor!(ForNextCounterMatch);
+
+impl ForNextCounterMatch {
+    pub fn visitor() -> impl Visitor<Program> + SetPosition {
+        DeepStatementVisitor::new(Self)
+    }
+}
+
+impl Visitor<Statement> for ForNextCounterMatch {
+    fn visit(&mut self, element: &Statement) -> VisitResult {
+        match element {
+            Statement::ForLoop(f) => self.visit(f),
+            _ => Ok(()),
+        }
+    }
+}
+
+impl Visitor<ForLoop> for ForNextCounterMatch {
+    fn visit(&mut self, f: &ForLoop) -> crate::core::VisitResult {
+        self.ensure_numeric_variable(f)?;
+        self.ensure_for_next_counter_match(f)
+    }
+}
 
 impl ForNextCounterMatch {
     fn ensure_numeric_variable(&self, f: &ForLoop) -> Result<(), LintErrorPos> {
@@ -26,7 +50,7 @@ impl ForNextCounterMatch {
                 ExpressionType::BuiltIn(_) => Ok(()),
                 _ => Err(LintError::TypeMismatch.at_pos(*pos)),
             },
-            _ => unimplemented!(),
+            _ => panic!("It should not be possible for the FOR variable to be something othe than a variable"),
         }
     }
 
@@ -56,13 +80,5 @@ impl ForNextCounterMatch {
             // does not have a NEXT variable
             Ok(())
         }
-    }
-}
-
-impl PostConversionLinter for ForNextCounterMatch {
-    fn visit_for_loop(&mut self, f: &ForLoop) -> Result<(), LintErrorPos> {
-        self.visit_statements(&f.statements)?;
-        self.ensure_numeric_variable(f)?;
-        self.ensure_for_next_counter_match(f)
     }
 }

@@ -20,7 +20,7 @@ struct MainContext {
 }
 
 pub fn pre_lint_program(program: &Program) -> Result<PreLinterResult, LintErrorPos> {
-    let mut visitor = ShallowVisitor::new(MainContext::default());
+    let mut visitor = GlobalVisitor::new(MainContext::default());
     visitor.visit(program)?;
     let ctx = visitor.delegate();
     ctx.post_visit_functions()?;

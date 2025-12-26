@@ -1,6 +1,7 @@
 use rusty_common::{Position, Positioned};
 use rusty_parser::*;
 
+use crate::delegate_visitor;
 use crate::LintErrorPos;
 
 /// The result of a visitor.
@@ -17,6 +18,20 @@ pub trait Visitor<T> {
 pub trait SetPosition {
     /// Sets the most recently visited [Position].
     fn set_position(&mut self, pos: Position);
+}
+
+// Blanket implementation for Option
+
+impl<P, T> Visitor<Option<T>> for P
+where
+    P: Visitor<T>,
+{
+    fn visit(&mut self, element: &Option<T>) -> VisitResult {
+        match element {
+            Some(t) => self.visit(t),
+            _ => Ok(()),
+        }
+    }
 }
 
 // Blanket implementation for Vec
@@ -51,34 +66,14 @@ pub trait DelegateVisitor<T> {
     fn delegate(&mut self) -> impl Visitor<T>;
 }
 
-/// A visitor that can visit global statements
-/// but does not enter the implementations of functions or subs.
-/// Actual visiting logic is handled by the delegate.
-pub struct ShallowVisitor<P> {
-    delegate: P,
-}
+delegate_visitor!(
+    /// A visitor that can visit global statements
+    /// but does not enter the implementations of functions or subs.
+    /// Actual visiting logic is handled by the delegate.
+    GlobalVisitor
+);
 
-impl<P> ShallowVisitor<P> {
-    pub fn new(delegate: P) -> Self {
-        Self { delegate }
-    }
-
-    /// Returns the delegate back.
-    pub fn delegate(self) -> P {
-        self.delegate
-    }
-}
-
-impl<P> SetPosition for ShallowVisitor<P>
-where
-    P: SetPosition,
-{
-    fn set_position(&mut self, pos: Position) {
-        self.delegate.set_position(pos);
-    }
-}
-
-impl<P> Visitor<GlobalStatement> for ShallowVisitor<P>
+impl<P> Visitor<GlobalStatement> for GlobalVisitor<P>
 where
     P: Visitor<DefType>
         + Visitor<FunctionDeclaration>
@@ -101,4 +96,181 @@ where
             }
         }
     }
+}
+
+delegate_visitor!(
+    /// A visitor that can visit statements
+    /// and also enters the implementations of functions or subs,
+    /// as well as nested block statements (e.g. inside IF statements).
+    /// Actual visiting logic is handled by the delegate.
+    DeepStatementVisitor
+);
+
+impl<P> Visitor<GlobalStatement> for DeepStatementVisitor<P>
+where
+    P: Visitor<DefType>
+        + Visitor<FunctionDeclaration>
+        + Visitor<FunctionImplementation>
+        + Visitor<SubDeclaration>
+        + Visitor<SubImplementation>
+        + Visitor<UserDefinedType>
+        + Visitor<Statement>
+        + SetPosition,
+{
+    fn visit(&mut self, element: &GlobalStatement) -> VisitResult {
+        match element {
+            GlobalStatement::DefType(def_type) => self.delegate.visit(def_type),
+            GlobalStatement::FunctionDeclaration(f) => self.delegate.visit(f),
+            GlobalStatement::FunctionImplementation(f) => {
+                // notify first the delegate about the FUNCTION implementation
+                self.delegate.visit(f)?;
+                // then visit the body (this will go into the statements of the FUNCTION)
+                self.visit(&f.body)
+            }
+            GlobalStatement::Statement(statement) => self.visit(statement),
+            GlobalStatement::SubDeclaration(s) => self.delegate.visit(s),
+            GlobalStatement::SubImplementation(s) => {
+                // notify first the delegate about the SUB implementation
+                self.delegate.visit(s)?;
+                // then visit the body (this will go into the statements of the SUB)
+                self.visit(&s.body)
+            }
+            GlobalStatement::UserDefinedType(user_defined_type) => {
+                self.delegate.visit(user_defined_type)
+            }
+        }
+    }
+}
+
+impl<P> Visitor<Statement> for DeepStatementVisitor<P>
+where
+    P: Visitor<Statement> + SetPosition,
+{
+    fn visit(&mut self, element: &Statement) -> VisitResult {
+        // first visit the delegate
+        self.delegate.visit(element)?;
+
+        // then dive into the statement to for cases of blocks
+        match element {
+            Statement::IfBlock(if_block) => self.visit(if_block),
+            Statement::SelectCase(select_case) => self.visit(select_case),
+            Statement::ForLoop(for_loop) => self.visit(for_loop),
+            Statement::While(conditional_block) => self.visit(conditional_block),
+            Statement::DoLoop(do_loop) => self.visit(do_loop),
+            _ => Ok(()),
+        }
+    }
+}
+
+impl<P> Visitor<ForLoop> for DeepStatementVisitor<P>
+where
+    P: Visitor<Statement> + SetPosition,
+{
+    fn visit(&mut self, element: &ForLoop) -> VisitResult {
+        self.visit(&element.statements)
+    }
+}
+
+impl<P> Visitor<SelectCase> for DeepStatementVisitor<P>
+where
+    P: Visitor<Statement> + SetPosition,
+{
+    fn visit(&mut self, element: &SelectCase) -> VisitResult {
+        self.visit(&element.case_blocks)?;
+        self.visit(&element.else_block)
+    }
+}
+
+impl<P> Visitor<CaseBlock> for DeepStatementVisitor<P>
+where
+    P: Visitor<Statement> + SetPosition,
+{
+    fn visit(&mut self, element: &CaseBlock) -> VisitResult {
+        self.visit(&element.statements)
+    }
+}
+
+impl<P> Visitor<IfBlock> for DeepStatementVisitor<P>
+where
+    P: Visitor<Statement> + SetPosition,
+{
+    fn visit(&mut self, element: &IfBlock) -> VisitResult {
+        self.visit(&element.if_block)?;
+        self.visit(&element.else_if_blocks)?;
+        self.visit(&element.else_block)
+    }
+}
+
+impl<P> Visitor<DoLoop> for DeepStatementVisitor<P>
+where
+    P: Visitor<Statement> + SetPosition,
+{
+    fn visit(&mut self, element: &DoLoop) -> VisitResult {
+        self.visit(&element.statements)
+    }
+}
+
+impl<P> Visitor<ConditionalBlock> for DeepStatementVisitor<P>
+where
+    P: Visitor<Statement> + SetPosition,
+{
+    fn visit(&mut self, element: &ConditionalBlock) -> VisitResult {
+        self.visit(&element.statements)
+    }
+}
+
+/// Creates a no-op visitor implementation
+/// for the given types.
+#[macro_export]
+macro_rules! no_op_visitor {
+    ($visitor_name: ident: $($types:tt),+) => {
+        $(
+            impl Visitor<$types> for $visitor_name {
+                fn visit(&mut self, _element: &$types) -> VisitResult {
+                    Ok(())
+                }
+            }
+        )+
+    };
+}
+
+#[macro_export]
+macro_rules! no_pos_visitor {
+    ($visitor_name: ident) => {
+        impl SetPosition for $visitor_name {
+            fn set_position(&mut self, _pos: Position) {}
+        }
+    };
+}
+
+/// Creates a visitor that delegates to another.
+#[macro_export]
+macro_rules! delegate_visitor {
+    ($(#[$($attrss:tt)*])* $name: ident) => {
+        $(#[$($attrss)*])*
+        pub struct $name<P> {
+            delegate: P
+        }
+
+        impl<P> $name<P> {
+            pub fn new(delegate: P) -> Self {
+                Self { delegate }
+            }
+
+            /// Returns the delegate back.
+            #[allow(unused)]
+            pub fn delegate(self) -> P {
+                self.delegate
+            }
+        }
+
+        impl<P> SetPosition for $name<P>
+        where
+            P: SetPosition,
+        {
+            fn set_position(&mut self, pos: Position) {
+                self.delegate.set_position(pos);
+            }
+        }
+    };
 }

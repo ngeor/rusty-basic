@@ -1,5 +1,6 @@
 use crate::core::HasSubprograms;
 use crate::core::LintErrorPos;
+use crate::core::Visitor;
 use crate::post_linter::expression_reducer::ExpressionReducer;
 use crate::post_linter::post_conversion_linter::PostConversionLinter;
 use crate::post_linter::{
@@ -24,8 +25,8 @@ fn apply_linters(
     result: &Program,
     linter_context: &impl HasSubprograms,
 ) -> Result<(), LintErrorPos> {
-    let mut linter = for_next_counter_match_linter::ForNextCounterMatch {};
-    linter.visit_program(result)?;
+    let mut linter = for_next_counter_match_linter::ForNextCounterMatch::visitor();
+    linter.visit(result)?;
 
     let mut linter = dots_linter::DotsLinter::default();
     linter.visit_program(result)?;
@@ -33,8 +34,8 @@ fn apply_linters(
     let mut linter = built_in_linter::BuiltInLinter::new();
     linter.visit_program(result)?;
 
-    let mut linter = print_linter::PrintLinter {};
-    linter.visit_program(result)?;
+    let mut linter = print_linter::PrintLinter::visitor();
+    linter.visit(result)?;
 
     let mut linter = user_defined_function_linter::UserDefinedFunctionLinter { linter_context };
     linter.visit_program(result)?;

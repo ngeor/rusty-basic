@@ -6,11 +6,12 @@ use rusty_variant::Variant;
 
 use crate::core::*;
 
-pub type ConstantMap = HashMap<BareName, Variant>;
+#[derive(Default)]
+pub struct ConstantMap(HashMap<BareName, Variant>);
 
 impl ConstLookup for ConstantMap {
     fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
-        self.get(name)
+        self.0.get(name)
     }
 }
 
@@ -20,7 +21,7 @@ impl Visitor<Constant> for ConstantMap {
         let (name_pos, expression_pos) = element.into();
         let Positioned { element: name, pos } = name_pos;
         let bare_name: &BareName = name.bare_name();
-        (match self.get(bare_name) {
+        (match self.0.get(bare_name) {
             Some(_) => Err(LintError::DuplicateDefinition.at(pos)),
             _ => Ok(()),
         })
@@ -30,7 +31,7 @@ impl Visitor<Constant> for ConstantMap {
             Name::Qualified(_, qualifier) => v.cast(*qualifier).map_err(|e| e.at(expression_pos)),
         })
         .map(|casted| {
-            self.insert(bare_name.clone(), casted);
+            self.0.insert(bare_name.clone(), casted);
         })
     }
 }

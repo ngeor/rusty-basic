@@ -13,7 +13,7 @@ impl ConvertibleIn<Position> for Statement {
         match self {
             Self::Assignment(n, e) => assignment::on_assignment(n, e, ctx, pos),
             // CONST is mapped to None and is filtered out
-            Self::Const(n, e) => const_rules::on_const(ctx, n, e),
+            Self::Const(c) => const_rules::on_const(ctx, c),
             Self::SubCall(n, args) => ctx.sub_call(n, args),
             Self::BuiltInSubCall(built_in_sub, args) => {
                 let converted_args = args.convert_in(ctx, ExprContext::Argument)?;

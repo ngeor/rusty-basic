@@ -106,7 +106,7 @@ fn test_constant_definition_and_usage_in_print() {
     "#;
     assert_linter_ok_global_statements!(
         program,
-        Statement::Const(
+        Statement::constant(
             Name::from("X").at_rc(2, 11),
             Expression::StringLiteral("hello".to_owned()).at_rc(2, 15)
         ),
@@ -128,7 +128,7 @@ fn test_constant_definition_and_usage_in_sub_call_arg() {
     assert_eq!(
         linter_ok(program),
         vec![
-            GlobalStatement::Statement(Statement::Const(
+            GlobalStatement::Statement(Statement::constant(
                 Name::from("X").at_rc(2, 11),
                 Expression::StringLiteral("hello".to_owned()).at_rc(2, 15)
             ),)

@@ -107,11 +107,11 @@ pub trait ExpressionReducer {
                         Statement::Assignment(reduced_left, reduced_right)
                     })
             }
-            Statement::Const(left, right) => {
+            Statement::Const(c) => {
                 // The converter is smart enough to replace Expressions that reference
                 // constants with their actual value, so the `CONST` statement isn't used
                 // any further.
-                Ok(Statement::Const(left, right))
+                Ok(Statement::Const(c))
             }
             Statement::SubCall(b, e) => self
                 .visit_sub_call(b, e)

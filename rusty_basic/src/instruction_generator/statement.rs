@@ -26,7 +26,7 @@ impl Visitor<StatementPos> for InstructionGenerator {
             Statement::Assignment(left_side, right_side) => {
                 self.generate_assignment_instructions(left_side, right_side, pos)
             }
-            Statement::Const(_, _) => {
+            Statement::Const(_) => {
                 // The CONST statement does not generate any instructions,
                 // because the linter has replaced expressions that reference constants
                 // with their actual value.

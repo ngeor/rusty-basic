@@ -116,7 +116,7 @@ impl Visitor<SubImplementation> for MainContext {
 impl Visitor<Statement> for MainContext {
     fn visit(&mut self, s: &Statement) -> VisitResult {
         match s {
-            Statement::Const(name, expr) => global_const(&mut self.global_constants, name, expr),
+            Statement::Const(c) => global_const(&mut self.global_constants, c),
             _ => Ok(()),
         }
     }

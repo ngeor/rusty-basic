@@ -13,7 +13,7 @@ pub fn constant_p() -> impl Parser<RcStringView, Output = Statement> {
             .or_syntax_error("Expected: const name"),
         equal_sign(),
         expression_pos_p().or_syntax_error("Expected: const value"),
-        |_, _, const_name, _, const_value_expr| Statement::Const(const_name, const_value_expr),
+        |_, _, const_name, _, const_value_expr| Statement::constant(const_name, const_value_expr),
     )
 }
 
@@ -34,11 +34,11 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                GlobalStatement::Statement(Statement::Const(
+                GlobalStatement::Statement(Statement::constant(
                     "X".as_name(2, 15),
                     42.as_lit_expr(2, 19),
                 )),
-                GlobalStatement::Statement(Statement::Const(
+                GlobalStatement::Statement(Statement::constant(
                     "Y$".as_name(3, 15),
                     "hello".as_lit_expr(3, 20),
                 ))
@@ -55,12 +55,10 @@ mod tests {
                 let input = format!("CONST {} = {}", name, value);
                 let statement = parse(&input).demand_single_statement();
                 match statement {
-                    Statement::Const(
-                        Positioned { element: left, .. },
-                        Positioned { element: right, .. },
-                    ) => {
-                        assert_eq!(left, Name::from(*name));
-                        assert_eq!(right, Expression::IntegerLiteral(*value));
+                    Statement::Const(c) => {
+                        let (left, right) = c.into();
+                        assert_eq!(left.element, Name::from(*name));
+                        assert_eq!(right.element, Expression::IntegerLiteral(*value));
                     }
                     _ => panic!("Expected constant"),
                 }
@@ -75,7 +73,7 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                GlobalStatement::Statement(Statement::Const(
+                GlobalStatement::Statement(Statement::constant(
                     "ANSWER".as_name(1, 7),
                     42.as_lit_expr(1, 16),
                 ))

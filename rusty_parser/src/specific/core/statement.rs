@@ -46,7 +46,7 @@ pub enum Statement {
     /// The validity of the assignment is determined at the linting phase.
     Assignment(Expression, ExpressionPos),
 
-    Const(NamePos, ExpressionPos),
+    Const(Constant),
 
     /// Declares a variable.
     ///
@@ -136,6 +136,21 @@ pub enum Statement {
      * Special statements
      */
     Print(Print),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Constant(NamePos, ExpressionPos);
+
+impl From<Constant> for (NamePos, ExpressionPos) {
+    fn from(value: Constant) -> Self {
+        (value.0, value.1)
+    }
+}
+
+impl<'a> From<&'a Constant> for (&'a NamePos, &'a ExpressionPos) {
+    fn from(value: &'a Constant) -> Self {
+        (&value.0, &value.1)
+    }
 }
 
 /// A list of variables defined in a DIM statement.
@@ -244,6 +259,12 @@ pub enum DoLoopConditionPosition {
 pub enum DoLoopConditionKind {
     Until,
     While,
+}
+
+impl Statement {
+    pub fn constant(name: NamePos, value: ExpressionPos) -> Self {
+        Self::Const(Constant(name, value))
+    }
 }
 
 lazy_parser!(pub fn statement_p<I = RcStringView, Output = Statement> ; struct LazyStatementP ; OrParser::new(vec![

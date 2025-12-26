@@ -5,11 +5,8 @@ use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::*;
 
-pub fn on_const(
-    ctx: &mut Context,
-    left_side: NamePos,
-    right_side: ExpressionPos,
-) -> Result<Statement, LintErrorPos> {
+pub fn on_const(ctx: &mut Context, c: Constant) -> Result<Statement, LintErrorPos> {
+    let (left_side, right_side) = c.into();
     const_cannot_clash_with_existing_names(ctx, &left_side)?;
     new_const(ctx, left_side, right_side)
 }
@@ -61,5 +58,5 @@ fn new_const(
     // However the `CONST` statement gets ignored anyway. It stored the resolved
     // value in the context, so all expressions that reference it
     // will use it.
-    Ok(Statement::Const(const_name.at_pos(pos), right_side))
+    Ok(Statement::constant(const_name.at_pos(pos), right_side))
 }

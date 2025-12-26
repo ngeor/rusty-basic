@@ -43,10 +43,6 @@ impl Context {
         }
     }
 
-    pub fn unwrap(self) -> (PreLinterResult, TypeResolverImpl, Names) {
-        (self.pre_linter_result, self.resolver, self.names)
-    }
-
     pub fn is_in_subprogram(&self) -> bool {
         self.names.is_in_subprogram()
     }
@@ -57,5 +53,11 @@ impl Context {
         self.functions()
             .get(bare_name)
             .and_then(|function_signature_pos| function_signature_pos.element.qualifier())
+    }
+}
+
+impl From<Context> for (PreLinterResult, Names) {
+    fn from(value: Context) -> Self {
+        (value.pre_linter_result, value.names)
     }
 }

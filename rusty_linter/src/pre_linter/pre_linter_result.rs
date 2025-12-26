@@ -24,9 +24,11 @@ impl PreLinterResult {
             user_defined_types,
         }
     }
+}
 
-    pub fn unwrap(self) -> (SignatureMap, SignatureMap, UserDefinedTypes) {
-        (self.functions, self.subs, self.user_defined_types)
+impl From<PreLinterResult> for UserDefinedTypes {
+    fn from(value: PreLinterResult) -> Self {
+        value.user_defined_types
     }
 }
 

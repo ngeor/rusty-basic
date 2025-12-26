@@ -15,8 +15,8 @@ use rusty_parser::{BuiltInFunction, UserDefinedTypes};
 use rusty_variant::Variant;
 
 pub fn unwrap_linter_context(linter_context: Context) -> (Names, UserDefinedTypes) {
-    let (pre_linter_result, _, linter_names) = linter_context.unwrap();
-    let (_, _, user_defined_types) = pre_linter_result.unwrap();
+    let (pre_linter_result, linter_names) = linter_context.into();
+    let user_defined_types = pre_linter_result.into();
     (linter_names, user_defined_types)
 }
 

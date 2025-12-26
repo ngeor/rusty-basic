@@ -1,14 +1,14 @@
-use crate::core::{FunctionMap, ResolvedParamType, SubMap};
+use crate::core::{ResolvedParamType, SignatureMap};
 use rusty_parser::{
     Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UserDefinedTypes,
 };
 
 pub trait HasFunctions {
-    fn functions(&self) -> &FunctionMap;
+    fn functions(&self) -> &SignatureMap;
 }
 
 pub trait HasSubs {
-    fn subs(&self) -> &SubMap;
+    fn subs(&self) -> &SignatureMap;
 }
 
 pub trait HasUserDefinedTypes {

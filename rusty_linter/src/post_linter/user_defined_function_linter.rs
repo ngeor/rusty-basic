@@ -1,6 +1,4 @@
-use crate::core::{CanCastTo, HasFunctions, ResolvedParamType};
-use crate::core::{LintError, LintErrorPos};
-use crate::pre_linter::ResolvedParamTypes;
+use crate::core::*;
 use rusty_common::*;
 use rusty_parser::*;
 
@@ -165,7 +163,7 @@ where
         if let Name::Qualified(bare_name, qualifier) = name {
             match self.linter_context.functions().get(bare_name) {
                 Some(function_signature_pos) => {
-                    if function_signature_pos.element.qualifier() != *qualifier {
+                    if function_signature_pos.element != *qualifier {
                         Err(LintError::TypeMismatch.at(function_signature_pos))
                     } else {
                         lint_call_args(args, function_signature_pos.element.param_types(), pos)

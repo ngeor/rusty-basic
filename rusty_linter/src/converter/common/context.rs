@@ -1,6 +1,4 @@
-use crate::core::TypeResolver;
-use crate::core::TypeResolverImpl;
-use crate::core::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, SubMap};
+use crate::core::*;
 use crate::names::Names;
 use crate::pre_linter::PreLinterResult;
 use rusty_parser::*;
@@ -19,13 +17,13 @@ impl TypeResolver for Context {
 }
 
 impl HasFunctions for Context {
-    fn functions(&self) -> &FunctionMap {
+    fn functions(&self) -> &SignatureMap {
         self.pre_linter_result.functions()
     }
 }
 
 impl HasSubs for Context {
-    fn subs(&self) -> &SubMap {
+    fn subs(&self) -> &SignatureMap {
         self.pre_linter_result.subs()
     }
 }
@@ -58,6 +56,6 @@ impl Context {
     pub fn function_qualifier(&self, bare_name: &BareName) -> Option<TypeQualifier> {
         self.functions()
             .get(bare_name)
-            .map(|function_signature_pos| function_signature_pos.element.qualifier())
+            .and_then(|function_signature_pos| function_signature_pos.element.qualifier())
     }
 }

@@ -1,15 +1,23 @@
-use crate::core::{FunctionMap, HasFunctions, HasSubs, HasUserDefinedTypes, SubMap};
 use rusty_parser::UserDefinedTypes;
+
+use crate::{
+    core::{HasFunctions, HasSubs, SignatureMap},
+    HasUserDefinedTypes,
+};
 
 /// Stores the result of the pre-linter.
 pub struct PreLinterResult {
-    functions: FunctionMap,
-    subs: SubMap,
+    functions: SignatureMap,
+    subs: SignatureMap,
     user_defined_types: UserDefinedTypes,
 }
 
 impl PreLinterResult {
-    pub fn new(functions: FunctionMap, subs: SubMap, user_defined_types: UserDefinedTypes) -> Self {
+    pub fn new(
+        functions: SignatureMap,
+        subs: SignatureMap,
+        user_defined_types: UserDefinedTypes,
+    ) -> Self {
         Self {
             functions,
             subs,
@@ -17,19 +25,19 @@ impl PreLinterResult {
         }
     }
 
-    pub fn unwrap(self) -> (FunctionMap, SubMap, UserDefinedTypes) {
+    pub fn unwrap(self) -> (SignatureMap, SignatureMap, UserDefinedTypes) {
         (self.functions, self.subs, self.user_defined_types)
     }
 }
 
 impl HasFunctions for PreLinterResult {
-    fn functions(&self) -> &FunctionMap {
+    fn functions(&self) -> &SignatureMap {
         &self.functions
     }
 }
 
 impl HasSubs for PreLinterResult {
-    fn subs(&self) -> &SubMap {
+    fn subs(&self) -> &SignatureMap {
         &self.subs
     }
 }

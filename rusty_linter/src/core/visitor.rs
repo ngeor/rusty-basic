@@ -75,3 +75,7 @@ where
         }
     }
 }
+
+pub trait DelegateVisitor<T> {
+    fn delegate(&mut self) -> impl Visitor<T>;
+}

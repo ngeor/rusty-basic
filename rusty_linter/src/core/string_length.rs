@@ -3,18 +3,16 @@ use rusty_common::Positioned;
 use rusty_parser::{Expression, TypeQualifier};
 use rusty_variant::{Variant, MAX_INTEGER};
 
-pub trait ValidateStringLength<E> {
-    fn validate_string_length(&self, const_lookup: &impl ConstLookup) -> Result<u16, E>;
+pub trait ValidateStringLength<E, C: ConstLookup + ?Sized> {
+    fn validate_string_length(&self, const_lookup: &C) -> Result<u16, E>;
 }
 
-impl<T, E> ValidateStringLength<Positioned<E>> for Positioned<T>
+impl<T, E, C> ValidateStringLength<Positioned<E>, C> for Positioned<T>
 where
-    T: ValidateStringLength<E>,
+    T: ValidateStringLength<E, C>,
+    C: ConstLookup + ?Sized,
 {
-    fn validate_string_length(
-        &self,
-        const_lookup: &impl ConstLookup,
-    ) -> Result<u16, Positioned<E>> {
+    fn validate_string_length(&self, const_lookup: &C) -> Result<u16, Positioned<E>> {
         let Positioned { element, pos } = self;
         element
             .validate_string_length(const_lookup)
@@ -22,8 +20,8 @@ where
     }
 }
 
-impl ValidateStringLength<LintError> for Expression {
-    fn validate_string_length(&self, const_lookup: &impl ConstLookup) -> Result<u16, LintError> {
+impl<C: ConstLookup + ?Sized> ValidateStringLength<LintError, C> for Expression {
+    fn validate_string_length(&self, const_lookup: &C) -> Result<u16, LintError> {
         match self {
             Self::IntegerLiteral(i) => {
                 if (1..=MAX_INTEGER).contains(i) {

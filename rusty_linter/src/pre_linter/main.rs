@@ -123,11 +123,16 @@ impl Visitor<Statement> for MainContext {
 
 impl Visitor<UserDefinedType> for MainContext {
     fn visit(&mut self, user_defined_type: &UserDefinedType) -> VisitResult {
-        super::user_defined_type_rules::user_defined_type(
+        self.delegate().visit(user_defined_type)
+    }
+}
+
+impl DelegateVisitor<UserDefinedType> for MainContext {
+    fn delegate(&mut self) -> impl Visitor<UserDefinedType> {
+        super::user_defined_type_visitor::UserDefinedTypeVisitor::new(
             &mut self.user_defined_types,
-            &self.global_constants,
-            user_defined_type,
             self.declaration_pos,
+            &self.global_constants,
         )
     }
 }

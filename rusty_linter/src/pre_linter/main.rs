@@ -1,5 +1,6 @@
 use crate::core::IntoTypeQualifier;
-use crate::core::PosVisitor;
+use crate::core::SetPosition;
+use crate::core::ShallowGlobalStatementVisitor;
 use crate::core::TypeResolverImpl;
 use crate::core::VisitResult;
 use crate::core::Visitor;
@@ -94,8 +95,8 @@ impl MainContext {
     }
 }
 
-impl PosVisitor for MainContext {
-    fn set_pos(&mut self, pos: Position) {
+impl SetPosition for MainContext {
+    fn set_position(&mut self, pos: Position) {
         self.declaration_pos = pos;
     }
 }
@@ -180,3 +181,5 @@ impl Visitor<UserDefinedType> for MainContext {
         )
     }
 }
+
+impl ShallowGlobalStatementVisitor for MainContext {}

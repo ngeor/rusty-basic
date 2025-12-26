@@ -15,7 +15,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
         comma(),
         csv_non_opt(field_item_p(), "Expected: field width"),
         |_, _, file_number, _, fields| {
-            Statement::BuiltInSubCall(BuiltInSub::Field, build_args(file_number, fields))
+            Statement::built_in_sub_call(BuiltInSub::Field, build_args(file_number, fields))
         },
     )
 }

@@ -7,7 +7,7 @@ use rusty_common::*;
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Width)
         .and_without_undo_keep_right(csv_allow_missing())
-        .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::Width, map_args(opt_args)))
+        .map(|opt_args| Statement::built_in_sub_call(BuiltInSub::Width, map_args(opt_args)))
 }
 
 fn map_args(args: Vec<Option<ExpressionPos>>) -> Expressions {
@@ -36,7 +36,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Width,
                 vec![
                     1.as_lit_expr(1, 1),   // row present
@@ -54,7 +54,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Width,
                 vec![
                     0.as_lit_expr(1, 1),  // row absent

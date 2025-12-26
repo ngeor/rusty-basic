@@ -7,7 +7,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     seq2(
         keyword(Keyword::Data),
         csv_expressions_first_guarded().or_default(),
-        |_, args| Statement::BuiltInSubCall(BuiltInSub::Data, args),
+        |_, args| Statement::built_in_sub_call(BuiltInSub::Data, args),
     )
 }
 
@@ -24,7 +24,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(BuiltInSub::Data, vec![])
+            Statement::built_in_sub_call(BuiltInSub::Data, vec![])
         );
     }
 
@@ -34,7 +34,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(BuiltInSub::Data, vec![42.as_lit_expr(1, 6)])
+            Statement::built_in_sub_call(BuiltInSub::Data, vec![42.as_lit_expr(1, 6)])
         );
     }
 
@@ -44,7 +44,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Data,
                 vec![42.as_lit_expr(1, 6), "hello".as_lit_expr(1, 10)]
             )

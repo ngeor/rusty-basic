@@ -13,7 +13,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     seq2(
         keyword(Keyword::Close),
         file_handles(),
-        |_, file_handles| Statement::BuiltInSubCall(BuiltInSub::Close, file_handles),
+        |_, file_handles| Statement::built_in_sub_call(BuiltInSub::Close, file_handles),
     )
 }
 
@@ -49,7 +49,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(BuiltInSub::Close, vec![])
+            Statement::built_in_sub_call(BuiltInSub::Close, vec![])
         );
     }
 
@@ -59,7 +59,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(BuiltInSub::Close, vec![1.as_lit_expr(1, 7)])
+            Statement::built_in_sub_call(BuiltInSub::Close, vec![1.as_lit_expr(1, 7)])
         );
     }
 
@@ -76,7 +76,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Close,
                 vec![Expression::Parenthesis(Box::new(1.as_lit_expr(1, 8))).at_rc(1, 7)]
             )
@@ -89,7 +89,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Close,
                 vec![Expression::Parenthesis(Box::new(1.as_lit_expr(1, 7))).at_rc(1, 6)]
             )
@@ -102,7 +102,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(BuiltInSub::Close, vec![1.as_lit_expr(1, 7)])
+            Statement::built_in_sub_call(BuiltInSub::Close, vec![1.as_lit_expr(1, 7)])
         );
     }
 
@@ -140,7 +140,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Close,
                 vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 10)]
             )
@@ -153,7 +153,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Close,
                 vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 10)]
             )
@@ -166,7 +166,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Close,
                 vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 11)]
             )
@@ -179,7 +179,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Close,
                 vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 9)]
             )
@@ -192,7 +192,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Close,
                 vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 11)]
             )
@@ -205,7 +205,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Close,
                 vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 11)]
             )
@@ -218,7 +218,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Close,
                 vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 12)]
             )
@@ -231,7 +231,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Close,
                 vec![1.as_lit_expr(1, 7), 2.as_lit_expr(1, 10)]
             )
@@ -245,7 +245,7 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                GlobalStatement::Statement(Statement::BuiltInSubCall(
+                GlobalStatement::Statement(Statement::built_in_sub_call(
                     BuiltInSub::Close,
                     vec![1.as_lit_expr(1, 7)]
                 ))

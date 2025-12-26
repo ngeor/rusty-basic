@@ -13,7 +13,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
         equal_sign(),
         expression_pos_p().or_syntax_error("Expected: expression"),
         |_, _, name_pos, _, value_expr_pos| {
-            Statement::BuiltInSubCall(BuiltInSub::LSet, build_args(name_pos, value_expr_pos))
+            Statement::built_in_sub_call(BuiltInSub::LSet, build_args(name_pos, value_expr_pos))
         },
     )
 }

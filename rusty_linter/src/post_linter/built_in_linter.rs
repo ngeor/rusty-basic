@@ -1,12 +1,8 @@
 use super::post_conversion_linter::PostConversionLinter;
 use crate::built_ins::{lint_function_call, lint_sub_call};
-use crate::core::LintErrorPos;
-use crate::core::NameContext;
+use crate::core::{LintErrorPos, NameContext};
 use rusty_common::*;
-use rusty_parser::BuiltInSub;
-use rusty_parser::{
-    Expression, ExpressionPos, Expressions, FunctionImplementation, SubImplementation,
-};
+use rusty_parser::*;
 
 /// Lints built-in functions and subs.
 pub struct BuiltInLinter {
@@ -41,10 +37,10 @@ impl PostConversionLinter for BuiltInLinter {
 
     fn visit_built_in_sub_call(
         &mut self,
-        built_in_sub: &BuiltInSub,
+        built_in_sub_call: &BuiltInSubCall,
         pos: Position,
-        args: &Expressions,
     ) -> Result<(), LintErrorPos> {
+        let (built_in_sub, args) = built_in_sub_call.into();
         self.visit_expressions(args)?;
         lint_sub_call(built_in_sub, pos, args, self.name_context)
     }

@@ -12,7 +12,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
         parse_file_number_p().or_syntax_error("Expected: AS file-number"),
         parse_len_p().to_option(),
         |_, file_name, opt_file_mode, opt_file_access, file_number, opt_len| {
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Open,
                 vec![
                     file_name,
@@ -109,7 +109,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Open,
                 vec![
                     "FILE.TXT".as_lit_expr(1, 6),
@@ -128,7 +128,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Open,
                 vec![
                     Expression::Parenthesis(Box::new("FILE.TXT".as_lit_expr(1, 6))).at_rc(1, 5),
@@ -147,7 +147,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Open,
                 vec![
                     "FILE.TXT".as_lit_expr(1, 6),
@@ -166,7 +166,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Open,
                 vec![
                     "FILE.TXT".as_lit_expr(1, 6),
@@ -185,7 +185,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Open,
                 vec![
                     "FILE.TXT".as_lit_expr(1, 6),
@@ -204,7 +204,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Open,
                 vec![
                     "FILE.TXT".as_lit_expr(1, 6),
@@ -223,7 +223,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Open,
                 vec![
                     Expression::Parenthesis(Box::new("FILE.TXT".as_lit_expr(1, 6))).at_rc(1, 5),
@@ -253,7 +253,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Open,
                 vec![
                     "A.TXT".as_lit_expr(1, 6),

@@ -9,7 +9,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
         keyword_pair(Keyword::Def, Keyword::Seg),
         equal_sign_and_expression().to_option(),
         |_, opt_expr_pos| {
-            Statement::BuiltInSubCall(BuiltInSub::DefSeg, opt_expr_pos.into_iter().collect())
+            Statement::built_in_sub_call(BuiltInSub::DefSeg, opt_expr_pos.into_iter().collect())
         },
     )
 }
@@ -33,7 +33,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(BuiltInSub::DefSeg, vec![])
+            Statement::built_in_sub_call(BuiltInSub::DefSeg, vec![])
         );
     }
 
@@ -43,7 +43,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(BuiltInSub::DefSeg, vec![42.as_lit_expr(1, 11)])
+            Statement::built_in_sub_call(BuiltInSub::DefSeg, vec![42.as_lit_expr(1, 11)])
         );
     }
 }

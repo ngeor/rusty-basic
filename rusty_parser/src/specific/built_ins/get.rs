@@ -18,7 +18,7 @@ pub fn parse_get_or_put(
         comma(),
         expression_pos_p().or_syntax_error("Expected: record-number"),
         move |_, _, file_number_pos, _, record_number_expr_pos| {
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 built_in_sub,
                 vec![
                     file_number_pos.map(Expression::from),

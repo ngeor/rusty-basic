@@ -22,7 +22,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Color,
                 vec![1.as_lit_expr(1, 1), 7.as_lit_expr(1, 7)]
             )
@@ -35,7 +35,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Color,
                 vec![2.as_lit_expr(1, 1), 7.as_lit_expr(1, 9)]
             )
@@ -48,7 +48,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Color,
                 vec![
                     3.as_lit_expr(1, 1),

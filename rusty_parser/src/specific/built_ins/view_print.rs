@@ -6,7 +6,7 @@ use crate::BuiltInSub;
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     keyword_pair(Keyword::View, Keyword::Print)
         .and_without_undo_keep_right(parse_args().or_default())
-        .map(|opt_args| Statement::BuiltInSubCall(BuiltInSub::ViewPrint, opt_args))
+        .map(|opt_args| Statement::built_in_sub_call(BuiltInSub::ViewPrint, opt_args))
 }
 
 fn parse_args() -> impl Parser<RcStringView, Output = Expressions> {
@@ -30,7 +30,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(BuiltInSub::ViewPrint, vec![])
+            Statement::built_in_sub_call(BuiltInSub::ViewPrint, vec![])
         );
     }
 
@@ -40,7 +40,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::ViewPrint,
                 vec![1.as_lit_expr(1, 12), 20.as_lit_expr(1, 17)]
             )

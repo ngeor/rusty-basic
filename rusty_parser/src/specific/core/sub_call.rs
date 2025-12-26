@@ -175,7 +175,7 @@ mod tests {
         assert_eq!(
             program,
             vec![
-                GlobalStatement::Statement(Statement::BuiltInSubCall(
+                GlobalStatement::Statement(Statement::built_in_sub_call(
                     BuiltInSub::Input,
                     vec![
                         0.as_lit_expr(1, 1), // no file number

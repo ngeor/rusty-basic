@@ -66,9 +66,9 @@ pub use self::param_name::{ParamType, Parameter, ParameterPos, Parameters};
 pub use self::print::{Print, PrintArg};
 pub use self::qualified_name::QualifiedName;
 pub use self::statement::{
-    Assignment, CaseBlock, CaseExpression, ConditionalBlock, Constant, DimList, DoLoop,
-    DoLoopConditionKind, DoLoopConditionPosition, ExitObject, ForLoop, IfBlock, OnErrorOption,
-    ResumeOption, SelectCase, Statement, StatementPos, Statements, SubCall,
+    Assignment, BuiltInSubCall, CaseBlock, CaseExpression, ConditionalBlock, Constant, DimList,
+    DoLoop, DoLoopConditionKind, DoLoopConditionPosition, ExitObject, ForLoop, IfBlock,
+    OnErrorOption, ResumeOption, SelectCase, Statement, StatementPos, Statements, SubCall,
 };
 pub use self::type_qualifier::TypeQualifier;
 pub use self::unary_operator::UnaryOperator;

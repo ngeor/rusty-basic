@@ -22,10 +22,10 @@ impl InstructionGenerator {
 
     pub fn generate_built_in_sub_call_instructions(
         &mut self,
-        name: BuiltInSub,
-        args: Expressions,
+        built_in_sub_call: BuiltInSubCall,
         pos: Position,
     ) {
+        let (name, args) = built_in_sub_call.into();
         self.generate_push_unnamed_args_instructions(&args, pos);
         self.push(Instruction::PushStack, pos);
         self.push(Instruction::BuiltInSub(name), pos);

@@ -22,7 +22,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Locate,
                 vec![
                     1.as_lit_expr(1, 1),  // row present
@@ -38,7 +38,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Locate,
                 vec![
                     2.as_lit_expr(1, 1),   // col present
@@ -54,7 +54,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Locate,
                 vec![
                     3.as_lit_expr(1, 1),   // row and col present
@@ -71,7 +71,7 @@ mod tests {
         let statement = parse(input).demand_single_statement();
         assert_eq!(
             statement,
-            Statement::BuiltInSubCall(
+            Statement::built_in_sub_call(
                 BuiltInSub::Locate,
                 vec![
                     4.as_lit_expr(1, 1),  // cursor present

@@ -16,7 +16,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
             let mut args: Expressions = encode_opt_file_handle_arg(opt_file_number_pos);
             // add the LINE INPUT variable
             args.push(variable);
-            Statement::BuiltInSubCall(BuiltInSub::LineInput, args)
+            Statement::built_in_sub_call(BuiltInSub::LineInput, args)
         },
     )
 }

@@ -1,6 +1,5 @@
 use crate::core::LintErrorPos;
 use rusty_common::*;
-use rusty_parser::BuiltInSub;
 use rusty_parser::*;
 
 /// Visits the converted program and transforms it into a different program.
@@ -108,15 +107,10 @@ pub trait ExpressionReducer {
                 // any further.
                 Ok(Statement::Const(c))
             }
-            Statement::SubCall(s) => self.visit_sub_call(s).map(|(reduced_name, reduced_expr)| {
-                Statement::sub_call(reduced_name, reduced_expr)
-            }),
-            Statement::BuiltInSubCall(b, e) => {
-                self.visit_built_in_sub_call(b, e)
-                    .map(|(reduced_name, reduced_expr)| {
-                        Statement::BuiltInSubCall(reduced_name, reduced_expr)
-                    })
-            }
+            Statement::SubCall(s) => self.visit_sub_call(s).map(Statement::SubCall),
+            Statement::BuiltInSubCall(s) => self
+                .visit_built_in_sub_call(s)
+                .map(Statement::BuiltInSubCall),
             Statement::Print(p) => self.visit_print(p).map(Statement::Print),
             Statement::IfBlock(i) => self.visit_if_block(i).map(Statement::IfBlock),
             Statement::SelectCase(s) => self.visit_select_case(s).map(Statement::SelectCase),
@@ -138,20 +132,15 @@ pub trait ExpressionReducer {
         }
     }
 
-    fn visit_sub_call(
-        &mut self,
-        sub_call: SubCall,
-    ) -> Result<(CaseInsensitiveString, Expressions), LintErrorPos> {
-        let (name, args) = sub_call.into();
-        Ok((name, self.visit_expressions(args)?))
+    fn visit_sub_call(&mut self, sub_call: SubCall) -> Result<SubCall, LintErrorPos> {
+        sub_call.try_map_right(|args| self.visit_expressions(args))
     }
 
     fn visit_built_in_sub_call(
         &mut self,
-        name: BuiltInSub,
-        args: Expressions,
-    ) -> Result<(BuiltInSub, Expressions), LintErrorPos> {
-        Ok((name, self.visit_expressions(args)?))
+        sub_call: BuiltInSubCall,
+    ) -> Result<BuiltInSubCall, LintErrorPos> {
+        sub_call.try_map_right(|args| self.visit_expressions(args))
     }
 
     fn visit_assignment(&mut self, a: Assignment) -> Result<Assignment, LintErrorPos> {

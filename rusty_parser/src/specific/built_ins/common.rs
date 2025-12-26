@@ -15,7 +15,7 @@ pub fn parse_built_in_sub_with_opt_args(
         whitespace(),
         csv_allow_missing(),
         move |_, _, opt_args| {
-            Statement::BuiltInSubCall(built_in_sub, map_opt_args_to_flags(opt_args))
+            Statement::built_in_sub_call(built_in_sub, map_opt_args_to_flags(opt_args))
         },
     )
 }

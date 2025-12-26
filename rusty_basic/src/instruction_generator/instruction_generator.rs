@@ -326,7 +326,7 @@ impl InstructionGenerator {
         let mut data_statements: Statements = vec![];
         let mut other_statements: Statements = vec![];
         for statement in statements {
-            if let Statement::BuiltInSubCall(BuiltInSub::Data, _) = &statement.element {
+            if Self::is_data_statement(&statement.element) {
                 data_statements.push(statement);
             } else {
                 other_statements.push(statement);
@@ -334,6 +334,14 @@ impl InstructionGenerator {
         }
         data_statements.append(&mut other_statements);
         data_statements
+    }
+
+    fn is_data_statement(statement: &Statement) -> bool {
+        if let Statement::BuiltInSubCall(b) = statement {
+            *b.left() == BuiltInSub::Data
+        } else {
+            false
+        }
     }
 
     fn visit_global_statements(&mut self, statements: Statements) {

@@ -1,6 +1,5 @@
 use crate::core::LintErrorPos;
 use rusty_common::*;
-use rusty_parser::BuiltInSub;
 use rusty_parser::*;
 
 /// Invoked after the conversion to fully typed program.
@@ -58,7 +57,7 @@ pub trait PostConversionLinter {
         match s {
             Statement::Assignment(a) => self.visit_assignment(a, pos),
             Statement::SubCall(sub_call) => self.visit_sub_call(sub_call, pos),
-            Statement::BuiltInSubCall(b, e) => self.visit_built_in_sub_call(b, pos, e),
+            Statement::BuiltInSubCall(sub_call) => self.visit_built_in_sub_call(sub_call, pos),
             Statement::IfBlock(i) => self.visit_if_block(i),
             Statement::SelectCase(s) => self.visit_select_case(s),
             Statement::ForLoop(f) => self.visit_for_loop(f),
@@ -145,10 +144,10 @@ pub trait PostConversionLinter {
 
     fn visit_built_in_sub_call(
         &mut self,
-        _name: &BuiltInSub,
+        sub_call: &BuiltInSubCall,
         _pos: Position,
-        args: &Expressions,
     ) -> Result<(), LintErrorPos> {
+        let (_, args) = sub_call.into();
         self.visit_expressions(args)
     }
 

@@ -30,8 +30,8 @@ impl Visitor<StatementPos> for InstructionGenerator {
                 // with their actual value.
             }
             Statement::SubCall(sub_call) => self.generate_sub_call_instructions(sub_call, pos),
-            Statement::BuiltInSubCall(n, args) => {
-                self.generate_built_in_sub_call_instructions(n, args, pos)
+            Statement::BuiltInSubCall(sub_call) => {
+                self.generate_built_in_sub_call_instructions(sub_call, pos)
             }
             Statement::Print(print) => {
                 self.generate_print_instructions(print, pos);

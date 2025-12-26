@@ -190,7 +190,8 @@ macro_rules! assert_built_in_sub_call {
     ($input: expr, $expected_name: expr) => {
         let result = parse($input).demand_single_statement();
         match result {
-            Statement::BuiltInSubCall(actual_name, actual_args) => {
+            Statement::BuiltInSubCall(sub_call) => {
+                let (actual_name, actual_args) = sub_call.into();
                 assert_eq!(actual_name, $expected_name);
                 assert!(actual_args.is_empty(), "Expected no args");
             }
@@ -201,7 +202,8 @@ macro_rules! assert_built_in_sub_call {
     ($input: expr, $expected_name: expr, $($arg: expr),+) => {
         let result = parse($input).demand_single_statement();
         match result {
-            Statement::BuiltInSubCall(actual_name, actual_args) => {
+            Statement::BuiltInSubCall(sub_call) => {
+                let (actual_name, actual_args) = sub_call.into();
                 assert_eq!(actual_name, $expected_name);
                 let actual_args_no_pos: Vec<$crate::specific::Expression> = rusty_common::NoPosContainer::no_pos(actual_args);
                 assert_eq!(actual_args_no_pos, vec![$($arg),+]);
@@ -387,7 +389,8 @@ macro_rules! assert_file_handle {
     ($input:expr, $expected_file_handle:expr) => {
         let result: Statement = $crate::parse($input).demand_single_statement();
         match result {
-            Statement::BuiltInSubCall(_, args) => {
+            Statement::BuiltInSubCall(sub_call) => {
+                let (_, args) = sub_call.into();
                 assert_eq!(
                     args.into_iter().next().unwrap().element,
                     Expression::IntegerLiteral($expected_file_handle)

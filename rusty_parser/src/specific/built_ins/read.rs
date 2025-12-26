@@ -8,7 +8,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
         .and_without_undo_keep_right(
             csv_expressions_first_guarded().or_syntax_error("Expected: variable"),
         )
-        .map(|args| Statement::BuiltInSubCall(BuiltInSub::Read, args))
+        .map(|args| Statement::built_in_sub_call(BuiltInSub::Read, args))
 }
 
 #[cfg(test)]

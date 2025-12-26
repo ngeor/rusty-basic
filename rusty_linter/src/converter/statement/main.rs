@@ -15,9 +15,10 @@ impl ConvertibleIn<Position> for Statement {
             // CONST is mapped to None and is filtered out
             Self::Const(c) => const_rules::on_const(ctx, c),
             Self::SubCall(sub_call) => ctx.sub_call(sub_call),
-            Self::BuiltInSubCall(built_in_sub, args) => {
+            Self::BuiltInSubCall(sub_call) => {
+                let (built_in_sub, args) = sub_call.into();
                 let converted_args = args.convert_in(ctx, ExprContext::Argument)?;
-                Ok(Self::BuiltInSubCall(built_in_sub, converted_args))
+                Ok(Self::built_in_sub_call(built_in_sub, converted_args))
             }
             Self::IfBlock(i) => i.convert(ctx).map(Statement::IfBlock),
             Self::SelectCase(s) => s.convert(ctx).map(Statement::SelectCase),

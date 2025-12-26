@@ -10,7 +10,7 @@ impl Context {
         let converted_args = args.convert_in(self, ExprContext::Argument)?;
         let opt_built_in: Option<BuiltInSub> = BuiltInSub::parse_non_keyword_sub(sub_name.as_ref());
         match opt_built_in {
-            Some(b) => Ok(Statement::BuiltInSubCall(b, converted_args)),
+            Some(b) => Ok(Statement::built_in_sub_call(b, converted_args)),
             None => Ok(Statement::sub_call(sub_name, converted_args)),
         }
     }

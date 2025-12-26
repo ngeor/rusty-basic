@@ -100,7 +100,7 @@ pub enum Statement {
     Redim(DimList),
 
     SubCall(SubCall),
-    BuiltInSubCall(BuiltInSub, Expressions),
+    BuiltInSubCall(BuiltInSubCall),
 
     /*
      * Decision flow
@@ -148,6 +148,21 @@ macro_rules! bi_tuple {
             pub fn new(left: $left, right: $right) -> Self {
                 Self(left, right)
             }
+
+            pub fn try_map_right<F, E>(self, f: F) -> Result<Self, E>
+            where F : FnOnce($right) -> Result<$right, E>
+            {
+                let (left, right) = self.into();
+                f(right).map(|new_right| Self::new(left, new_right))
+            }
+
+            pub fn left(&self) -> &$left {
+                &self.0
+            }
+
+            pub fn right(&self) -> &$right {
+                &self.1
+            }
         }
 
         impl From<$name> for ($left, $right) {
@@ -177,6 +192,11 @@ bi_tuple!(
 bi_tuple!(
     /// A call to a user defined SUB.
     SubCall(BareName, Expressions)
+);
+
+bi_tuple!(
+    /// A call to a built-in SUB.
+    BuiltInSubCall(BuiltInSub, Expressions)
 );
 
 /// A list of variables defined in a DIM statement.
@@ -298,6 +318,10 @@ impl Statement {
 
     pub fn sub_call(name: BareName, args: Expressions) -> Self {
         Self::SubCall(SubCall::new(name, args))
+    }
+
+    pub fn built_in_sub_call(name: BuiltInSub, args: Expressions) -> Self {
+        Self::BuiltInSubCall(BuiltInSubCall::new(name, args))
     }
 }
 

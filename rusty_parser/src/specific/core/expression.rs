@@ -346,12 +346,9 @@ impl HasExpressionType for Expression {
                     expression_type.clone()
                 }
             }
-            Self::FunctionCall(Name::Qualified(_, qualifier), _) => {
-                ExpressionType::BuiltIn(*qualifier)
-            }
+            Self::FunctionCall(name, _) => name.expression_type(),
             Self::BuiltInFunctionCall(f, _) => ExpressionType::BuiltIn(f.into()),
             Self::UnaryExpression(_, c) | Self::Parenthesis(c) => c.expression_type(),
-            Self::FunctionCall(Name::Bare(_), _) => ExpressionType::Unresolved,
         }
     }
 }
@@ -806,7 +803,7 @@ mod variable {
             .map(|token| token.text)
             .collect();
         let mut result = Expression::Variable(
-            Name::Bare(BareName::new(property_names.pop_front().unwrap())),
+            Name::bare(BareName::new(property_names.pop_front().unwrap())),
             VariableInfo::unresolved(),
         );
         while let Some(property_name) = property_names.pop_front() {

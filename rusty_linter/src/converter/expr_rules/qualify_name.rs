@@ -12,10 +12,11 @@ pub fn qualify_name(expression_type: &ExpressionType, name: Name) -> Result<Name
             try_qualify(name, expr_q).map_err(|_| LintError::TypeMismatch)
         }
         None => {
-            match name {
+            if name.is_bare() {
+                Ok(name)
+            } else {
                 // trying to use a qualifier on an ExpressionType that doesn't accept it
-                Name::Qualified(_, _) => Err(LintError::TypeMismatch),
-                _ => Ok(name),
+                Err(LintError::TypeMismatch)
             }
         }
     }
@@ -24,10 +25,10 @@ pub fn qualify_name(expression_type: &ExpressionType, name: Name) -> Result<Name
 /// Tries to convert this name into a qualified name.
 /// Fails if the name is already qualified with a different qualifier.
 pub fn try_qualify(name: Name, qualifier: TypeQualifier) -> Result<Name, LintError> {
-    match name {
-        Name::Bare(bare_name) => Ok(Name::Qualified(bare_name, qualifier)),
-        Name::Qualified(_, q) if q != qualifier => Err(LintError::DuplicateDefinition),
-        _ => Ok(name),
+    match name.qualifier() {
+        Some(q) if q != qualifier => Err(LintError::DuplicateDefinition),
+        Some(_) => Ok(name),
+        None => Ok(Name::qualified(name.into(), qualifier)),
     }
 }
 
@@ -60,29 +61,17 @@ pub fn try_built_in_function(n: &Name) -> Result<Option<BuiltInFunction>, LintEr
             | BuiltInFunction::Space
             | BuiltInFunction::UCase => {
                 // ENVIRON$ must be qualified
-                match n {
-                    Name::Bare(_) => Err(LintError::TypeMismatch),
-                    Name::Qualified(_, qualifier) => {
-                        if *qualifier == TypeQualifier::DollarString {
-                            Ok(Some(b))
-                        } else {
-                            Err(LintError::TypeMismatch)
-                        }
-                    }
+                match n.qualifier() {
+                    Some(TypeQualifier::DollarString) => Ok(Some(b)),
+                    _ => Err(LintError::TypeMismatch),
                 }
             }
             BuiltInFunction::Chr | BuiltInFunction::Str | BuiltInFunction::String => {
                 // STR$ or otherwise it's undefined
-                match n {
-                    // confirmed that even with DEFSTR A-Z it won't work as unqualified
-                    Name::Bare(_) => Ok(None),
-                    Name::Qualified(_, qualifier) => {
-                        if *qualifier == TypeQualifier::DollarString {
-                            Ok(Some(b))
-                        } else {
-                            Ok(None)
-                        }
-                    }
+                // confirmed that even with DEFSTR A-Z it won't work as unqualified
+                match n.qualifier() {
+                    Some(TypeQualifier::DollarString) => Ok(Some(b)),
+                    _ => Ok(None),
                 }
             }
         },
@@ -94,8 +83,9 @@ fn demand_unqualified(
     built_in: BuiltInFunction,
     n: &Name,
 ) -> Result<Option<BuiltInFunction>, LintError> {
-    match n {
-        Name::Bare(_) => Ok(Some(built_in)),
-        _ => Err(LintError::TypeMismatch),
+    if n.is_bare() {
+        Ok(Some(built_in))
+    } else {
+        Err(LintError::TypeMismatch)
     }
 }

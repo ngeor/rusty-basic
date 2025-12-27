@@ -372,17 +372,16 @@ impl InstructionGenerator {
             body,
             ..
         } = function_implementation;
-        match function_name {
-            Name::Bare(_) => panic!("Expected qualified function name"),
-            Name::Qualified(bare_name, qualifier) => {
-                let qualifier_copy = qualifier;
-                let q_function_name = QualifiedName::new(bare_name, qualifier);
-                self.mark_current_subprogram(SubprogramName::Function(q_function_name), pos);
-                // set default value
-                self.push(Instruction::AllocateBuiltIn(qualifier_copy), pos);
-                self.subprogram_body(body, pos);
-            }
-        }
+
+        let qualifier = function_name
+            .qualifier()
+            .expect("Expected qualified function name");
+        let bare_name = function_name.bare_name().clone();
+        let q_function_name = QualifiedName::new(bare_name, qualifier);
+        self.mark_current_subprogram(SubprogramName::Function(q_function_name), pos);
+        // set default value
+        self.push(Instruction::AllocateBuiltIn(qualifier), pos);
+        self.subprogram_body(body, pos);
     }
 
     fn visit_subs(&mut self, subs: Vec<Positioned<SubImplementation>>) {

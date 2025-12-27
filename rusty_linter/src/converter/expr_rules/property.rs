@@ -178,7 +178,7 @@ fn existing_property_element_type(
     property_name: Name,
 ) -> Result<Expression, LintErrorPos> {
     let bare_name = property_name.into();
-    let property_name = Name::Bare(bare_name);
+    let property_name = Name::bare(bare_name);
     Ok(Expression::Property(
         Box::new(resolved_left_side),
         property_name,

@@ -82,14 +82,14 @@ pub enum ElementType {
 
 impl ElementType {
     pub fn can_be_referenced_by_property_name(&self, name: &Name) -> bool {
-        match name {
-            Name::Bare(_) => true,
-            Name::Qualified(_, qualifier) => match self {
-                Self::Integer => *qualifier == TypeQualifier::PercentInteger,
-                Self::Long => *qualifier == TypeQualifier::AmpersandLong,
-                Self::Single => *qualifier == TypeQualifier::BangSingle,
-                Self::Double => *qualifier == TypeQualifier::HashDouble,
-                Self::FixedLengthString(_, _) => *qualifier == TypeQualifier::DollarString,
+        match name.qualifier() {
+            None => true,
+            Some(qualifier) => match self {
+                Self::Integer => qualifier == TypeQualifier::PercentInteger,
+                Self::Long => qualifier == TypeQualifier::AmpersandLong,
+                Self::Single => qualifier == TypeQualifier::BangSingle,
+                Self::Double => qualifier == TypeQualifier::HashDouble,
+                Self::FixedLengthString(_, _) => qualifier == TypeQualifier::DollarString,
                 _ => false,
             },
         }

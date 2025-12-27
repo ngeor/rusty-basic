@@ -22,7 +22,7 @@ impl QualifiedName {
 
 impl From<QualifiedName> for Name {
     fn from(qualified_name: QualifiedName) -> Self {
-        Self::Qualified(qualified_name.bare_name, qualified_name.qualifier)
+        Self::qualified(qualified_name.bare_name, qualified_name.qualifier)
     }
 }
 

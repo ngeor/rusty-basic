@@ -29,9 +29,9 @@ impl IntoTypeQualifier for BareName {
 
 impl IntoTypeQualifier for Name {
     fn qualify(&self, resolver: &impl TypeResolver) -> TypeQualifier {
-        match self {
-            Self::Bare(bare_name) => bare_name.qualify(resolver),
-            Self::Qualified(_, qualifier) => *qualifier,
+        match self.qualifier() {
+            Some(qualifier) => qualifier,
+            _ => self.bare_name().qualify(resolver),
         }
     }
 }
@@ -52,7 +52,7 @@ impl IntoQualified for BareName {
 
     fn to_qualified(self, resolver: &impl TypeResolver) -> Self::Output {
         let q = self.qualify(resolver);
-        Name::Qualified(self, q)
+        Name::qualified(self, q)
     }
 }
 
@@ -62,9 +62,11 @@ impl IntoQualified for Name {
     type Output = Self;
 
     fn to_qualified(self, resolver: &impl TypeResolver) -> Self::Output {
-        match self {
-            Self::Bare(bare_name) => bare_name.to_qualified(resolver),
-            _ => self,
+        if self.is_bare() {
+            let bare_name: BareName = self.into();
+            bare_name.to_qualified(resolver)
+        } else {
+            self
         }
     }
 }

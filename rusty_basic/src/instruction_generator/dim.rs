@@ -97,7 +97,7 @@ impl InstructionGenerator {
                 self.push(Instruction::AllocateBuiltIn(q), pos);
                 self.push(
                     Instruction::VarPathName(RootPath {
-                        name: Name::Qualified(bare_name, q),
+                        name: Name::qualified(bare_name, q),
                         shared,
                     }),
                     pos,
@@ -108,7 +108,7 @@ impl InstructionGenerator {
                 self.push(Instruction::AllocateFixedLengthString(len), pos);
                 self.push(
                     Instruction::VarPathName(RootPath {
-                        name: Name::Qualified(bare_name, TypeQualifier::DollarString),
+                        name: Name::qualified(bare_name, TypeQualifier::DollarString),
                         shared,
                     }),
                     pos,
@@ -125,7 +125,7 @@ impl InstructionGenerator {
                 );
                 self.push(
                     Instruction::VarPathName(RootPath {
-                        name: Name::Bare(bare_name),
+                        name: Name::bare(bare_name),
                         shared,
                     }),
                     pos,

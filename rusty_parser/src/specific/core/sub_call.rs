@@ -85,17 +85,19 @@ fn expr_to_bare_name_args(
 }
 
 fn demand_unqualified(name: Name) -> Result<BareName, ParseError> {
-    match name {
-        Name::Bare(bare_name) => Ok(bare_name),
-        _ => Err(ParseError::syntax_error("Sub cannot be qualified")),
+    if name.is_bare() {
+        Ok(name.into())
+    } else {
+        Err(ParseError::syntax_error("Sub cannot be qualified"))
     }
 }
 
 fn fold_to_bare_name(expr: Expression) -> Result<BareName, ParseError> {
     match expr {
-        Expression::Variable(Name::Bare(bare_name), _) => Ok(bare_name),
-        Expression::Property(boxed_left_side, Name::Bare(bare_name), _) => {
+        Expression::Variable(name, _) => demand_unqualified(name),
+        Expression::Property(boxed_left_side, name, _) => {
             let left_side_name = fold_to_bare_name(*boxed_left_side)?;
+            let bare_name = demand_unqualified(name)?;
             Ok(Name::dot_concat(left_side_name, bare_name))
         }
         _ => Err(ParseError::syntax_error("Illegal sub name")),

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use rusty_common::{AtPos, CaseInsensitiveString, Positioned};
-use rusty_parser::{BareName, Constant, Name};
+use rusty_parser::{BareName, Constant};
 use rusty_variant::Variant;
 
 use crate::core::*;
@@ -26,9 +26,9 @@ impl Visitor<Constant> for ConstantMap {
             _ => Ok(()),
         })
         .and_then(|_| self.resolve_const(expression_pos))
-        .and_then(|v| match name {
-            Name::Bare(_) => Ok(v),
-            Name::Qualified(_, qualifier) => v.cast(*qualifier).map_err(|e| e.at(expression_pos)),
+        .and_then(|v| match name.qualifier() {
+            Some(qualifier) => v.cast(qualifier).map_err(|e| e.at(expression_pos)),
+            _ => Ok(v),
         })
         .map(|casted| {
             self.0.insert(bare_name.clone(), casted);

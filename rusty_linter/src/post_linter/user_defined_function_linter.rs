@@ -160,19 +160,17 @@ where
         pos: Position,
         args: &Expressions,
     ) -> Result<(), LintErrorPos> {
-        if let Name::Qualified(bare_name, qualifier) = name {
-            match self.linter_context.functions().get(bare_name) {
-                Some(function_signature_pos) => {
-                    if function_signature_pos.element != *qualifier {
-                        Err(LintError::TypeMismatch.at(function_signature_pos))
-                    } else {
-                        lint_call_args(args, function_signature_pos.element.param_types(), pos)
-                    }
+        let qualifier = name.qualifier().expect("Unresolved function!");
+        let bare_name = name.bare_name();
+        match self.linter_context.functions().get(bare_name) {
+            Some(function_signature_pos) => {
+                if function_signature_pos.element != qualifier {
+                    Err(LintError::TypeMismatch.at(function_signature_pos))
+                } else {
+                    lint_call_args(args, function_signature_pos.element.param_types(), pos)
                 }
-                None => self.handle_undefined_function(args),
             }
-        } else {
-            panic!("Unresolved function {:?}", name)
+            None => self.handle_undefined_function(args),
         }
     }
 

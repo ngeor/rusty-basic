@@ -30,47 +30,52 @@ const MAX_LENGTH: usize = 40;
 /// <letter-or-digit> ::= <letter> | <digit>
 /// ```
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Name {
-    Bare(BareName),
-    Qualified(BareName, TypeQualifier),
+pub struct Name {
+    bare_name: BareName,
+    opt_q: Option<TypeQualifier>,
 }
 
 impl Name {
-    pub fn new(bare_name: BareName, optional_type_qualifier: Option<TypeQualifier>) -> Self {
-        match optional_type_qualifier {
-            Some(q) => Self::Qualified(bare_name, q),
-            None => Self::Bare(bare_name),
-        }
+    pub fn new(bare_name: BareName, opt_q: Option<TypeQualifier>) -> Self {
+        Self { bare_name, opt_q }
     }
 
-    pub fn is_bare(&self) -> bool {
-        matches!(self, Self::Bare(_))
+    pub fn bare(bare_name: BareName) -> Self {
+        Self::new(bare_name, None)
     }
 
-    pub fn is_bare_or_of_type(&self, qualifier: TypeQualifier) -> bool {
-        match self {
-            Self::Bare(_) => true,
-            Self::Qualified(_, q) => *q == qualifier,
-        }
+    pub fn qualified(bare_name: BareName, q: TypeQualifier) -> Self {
+        Self::new(bare_name, Some(q))
+    }
+
+    pub fn bare_name(&self) -> &BareName {
+        &self.bare_name
     }
 
     pub fn qualifier(&self) -> Option<TypeQualifier> {
-        match self {
-            Self::Bare(_) => None,
-            Self::Qualified(_, qualifier) => Some(*qualifier),
-        }
+        self.opt_q.as_ref().copied()
+    }
+
+    pub fn is_bare(&self) -> bool {
+        self.opt_q.is_none()
+    }
+
+    pub fn is_of_type(&self, qualifier: TypeQualifier) -> bool {
+        self.opt_q.filter(|q| *q == qualifier).is_some()
+    }
+
+    pub fn is_bare_or_of_type(&self, qualifier: TypeQualifier) -> bool {
+        self.is_bare() || self.is_of_type(qualifier)
     }
 
     pub fn try_concat_name(self, right: Self) -> Option<Self> {
-        match self {
-            Self::Bare(left_name) => match right {
-                Self::Bare(right_bare) => Some(Self::Bare(Self::dot_concat(left_name, right_bare))),
-                Self::Qualified(right_bare, qualifier) => Some(Self::Qualified(
-                    Self::dot_concat(left_name, right_bare),
-                    qualifier,
-                )),
-            },
-            _ => None,
+        if self.is_bare() {
+            Some(Self::new(
+                Self::dot_concat(self.bare_name, right.bare_name),
+                right.opt_q,
+            ))
+        } else {
+            None
         }
     }
 
@@ -81,31 +86,23 @@ impl Name {
     }
 
     pub fn demand_bare(self) -> BareName {
-        match self {
-            Self::Bare(bare_name) => bare_name,
-            _ => panic!("{:?} was not bare", self),
+        if !self.is_bare() {
+            panic!("{:?} was not bare", self)
         }
+        self.bare_name
     }
 
     pub fn demand_qualified(self) -> QualifiedName {
-        match self {
-            Self::Qualified(bare_name, qualifier) => QualifiedName::new(bare_name, qualifier),
+        match self.opt_q {
+            Some(qualifier) => QualifiedName::new(self.bare_name, qualifier),
             _ => panic!("{:?} was not qualified", self),
-        }
-    }
-
-    pub fn bare_name(&self) -> &BareName {
-        match self {
-            Self::Bare(bare_name) | Self::Qualified(bare_name, _) => bare_name,
         }
     }
 }
 
 impl From<Name> for BareName {
     fn from(name: Name) -> Self {
-        match name {
-            Name::Bare(bare_name) | Name::Qualified(bare_name, _) => bare_name,
-        }
+        name.bare_name
     }
 }
 
@@ -115,10 +112,10 @@ impl From<&str> for Name {
         let mut buf = s.to_string();
         let last_ch: char = buf.pop().unwrap();
         match TypeQualifier::try_from(last_ch) {
-            Ok(qualifier) => Self::Qualified(buf.into(), qualifier),
+            Ok(qualifier) => Self::qualified(buf.into(), qualifier),
             _ => {
                 buf.push(last_ch);
-                Self::Bare(buf.into())
+                Self::bare(buf.into())
             }
         }
     }
@@ -126,20 +123,18 @@ impl From<&str> for Name {
 
 impl std::fmt::Display for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Bare(bare_name) => bare_name.fmt(f),
-            Self::Qualified(bare_name, qualifier) => {
-                bare_name.fmt(f).and_then(|_| qualifier.fmt(f))
-            }
-        }
+        self.bare_name.fmt(f).and_then(|res| match self.opt_q {
+            Some(q) => q.fmt(f),
+            _ => Ok(res),
+        })
     }
 }
 
 impl HasExpressionType for Name {
     fn expression_type(&self) -> ExpressionType {
-        match self {
-            Self::Bare(_) => ExpressionType::Unresolved,
-            Self::Qualified(_, qualifier) => ExpressionType::BuiltIn(*qualifier),
+        match &self.opt_q {
+            Some(qualifier) => ExpressionType::BuiltIn(*qualifier),
+            None => ExpressionType::Unresolved,
         }
     }
 }
@@ -153,10 +148,10 @@ mod type_tests {
 
     #[test]
     fn test_from() {
-        assert_eq!(Name::from("A"), Name::Bare("A".into()));
+        assert_eq!(Name::from("A"), Name::bare("A".into()));
         assert_eq!(
             Name::from("Pos%"),
-            Name::Qualified(
+            Name::qualified(
                 BareName::new("Pos".to_string()),
                 TypeQualifier::PercentInteger
             )

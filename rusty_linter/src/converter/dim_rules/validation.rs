@@ -4,10 +4,7 @@ use crate::core::{HasSubprograms, HasUserDefinedTypes};
 use crate::core::{LintError, LintErrorPos};
 use crate::names::ManyNamesTrait;
 use rusty_common::{AtPos, Position, Positioned};
-use rusty_parser::{
-    DimVar, Parameter, TypedName, VarTypeIsExtended, VarTypeQualifier,
-    VarTypeToUserDefinedRecursively,
-};
+use rusty_parser::{DimVar, Parameter, TypedName, VarType};
 
 pub fn validate<T>(
     var_name: &TypedName<T>,
@@ -15,7 +12,7 @@ pub fn validate<T>(
     pos: Position,
 ) -> Result<(), LintErrorPos>
 where
-    T: VarTypeIsExtended + VarTypeQualifier + VarTypeToUserDefinedRecursively,
+    T: VarType,
     TypedName<T>: CannotClashWithFunctions,
 {
     cannot_clash_with_subs(var_name, ctx, pos)?;
@@ -24,7 +21,7 @@ where
     cannot_clash_with_local_constants(var_name, ctx, pos)
 }
 
-fn cannot_clash_with_subs<T, C: HasSubprograms>(
+fn cannot_clash_with_subs<T: VarType, C: HasSubprograms>(
     var_name: &TypedName<T>,
     ctx: &C,
     pos: Position,
@@ -36,7 +33,7 @@ fn cannot_clash_with_subs<T, C: HasSubprograms>(
     }
 }
 
-fn cannot_clash_with_local_constants<T>(
+fn cannot_clash_with_local_constants<T: VarType>(
     var_name: &TypedName<T>,
     ctx: &Context,
     pos: Position,
@@ -98,7 +95,7 @@ fn user_defined_type_must_exist<T>(
     ctx: &Context,
 ) -> Result<(), LintErrorPos>
 where
-    T: VarTypeToUserDefinedRecursively,
+    T: VarType,
 {
     match var_name.var_type.as_user_defined_recursively() {
         Some(Positioned {

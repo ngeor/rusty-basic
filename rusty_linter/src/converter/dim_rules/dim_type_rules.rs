@@ -28,7 +28,7 @@ pub fn on_dim_type(
     }
 }
 
-pub fn bare_to_dim_type<T: VarTypeNewBuiltInCompact>(
+pub fn bare_to_dim_type<T: VarType>(
     ctx: &mut Context,
     bare_name: &BareName,
     pos: Position,
@@ -61,7 +61,7 @@ fn require_compact_can_be_defined(
         })
 }
 
-pub fn built_in_to_dim_type<T: VarTypeNewBuiltInCompact + VarTypeNewBuiltInExtended>(
+pub fn built_in_to_dim_type<T: VarType>(
     ctx: &mut Context,
     bare_name: &BareName,
     q: TypeQualifier,
@@ -104,7 +104,7 @@ fn fixed_length_string_to_dim_type(
     ))
 }
 
-pub fn user_defined_to_dim_type<T: VarTypeNewUserDefined>(
+pub fn user_defined_to_dim_type<T: VarType>(
     ctx: &mut Context,
     bare_name: &BareName,
     user_defined_type: BareNamePos,

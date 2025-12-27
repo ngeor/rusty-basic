@@ -8,16 +8,16 @@ use crate::specific::*;
 
 /// A variable name with a type.
 ///
-/// This is an abstraction to address the similarities between [DimName]
-/// and [ParamName].
+/// This is an abstraction to address the similarities between [DimVar]
+/// and [Parameter].
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TypedName<T> {
+pub struct TypedName<T: VarType> {
     // TODO make fields private
     pub bare_name: BareName,
     pub var_type: T,
 }
 
-impl<T> TypedName<T> {
+impl<T: VarType> TypedName<T> {
     pub fn new(bare_name: BareName, var_type: T) -> Self {
         Self {
             bare_name,
@@ -26,45 +26,24 @@ impl<T> TypedName<T> {
     }
 }
 
-impl<T> HasExpressionType for TypedName<T>
-where
-    T: HasExpressionType,
-{
-    fn expression_type(&self) -> ExpressionType {
-        self.var_type.expression_type()
-    }
-}
+pub trait VarType: HasExpressionType {
+    fn new_built_in_compact(q: TypeQualifier) -> Self;
 
-pub trait VarTypeToArray {
-    type ArrayType;
+    fn new_built_in_extended(q: TypeQualifier) -> Self;
 
-    /// Converts the variable type to an array variable type,
-    /// as long as the `array_type` is not empty.
-    fn to_array(self, array_type: Self::ArrayType) -> Self;
-}
-
-pub trait VarTypeNewUserDefined {
     fn new_user_defined(bare_name_pos: BareNamePos) -> Self;
-}
 
-pub trait VarTypeToUserDefinedRecursively {
+    fn is_extended(&self) -> bool;
+
     fn as_user_defined_recursively(&self) -> Option<&BareNamePos>;
-}
 
-pub trait VarTypeQualifier {
     fn to_qualifier_recursively(&self) -> Option<TypeQualifier>;
 }
 
-pub trait VarTypeIsExtended {
-    fn is_extended(&self) -> bool;
-}
-
-pub trait VarTypeNewBuiltInCompact {
-    fn new_built_in_compact(q: TypeQualifier) -> Self;
-}
-
-pub trait VarTypeNewBuiltInExtended {
-    fn new_built_in_extended(q: TypeQualifier) -> Self;
+impl<T: VarType> HasExpressionType for TypedName<T> {
+    fn expression_type(&self) -> ExpressionType {
+        self.var_type.expression_type()
+    }
 }
 
 // Used by dim_name and param_name who have almost identical parsing rules.
@@ -86,25 +65,53 @@ pub trait VarTypeNewBuiltInExtended {
 /// - `T`: The type of the variable (e.g. [DimType], [ParamType])
 /// - `A`: The type of the array indicator
 /// - `P`: The parser that parses `T` for extended built-in types.
-pub fn var_name<T, A, P>(
+pub(super) fn var_name<T, A, P>(
     array_p: impl Parser<RcStringView, Output = A> + 'static,
     built_in_extended_factory: fn() -> P,
 ) -> impl Parser<RcStringView, Output = TypedName<T>>
 where
-    T: Clone + Default + 'static,
-    T: VarTypeNewBuiltInCompact,
-    T: VarTypeNewUserDefined,
-    T: VarTypeToArray<ArrayType = A>,
+    T: Clone + Default + VarType + CreateArray<ArrayDimensions = A> + 'static,
     P: Parser<RcStringView, Output = T> + 'static,
 {
     Seq2::new(name_with_dots(), array_p).chain(
         move |(name, _)| name_chain(name, built_in_extended_factory),
         |(name, array), var_type| {
             let bare_name: BareName = name.into();
-            let final_type = var_type.to_array(array);
+            let final_type = var_type.create_array(array);
             TypedName::new(bare_name, final_type)
         },
     )
+}
+
+pub(super) trait CreateArray: VarType {
+    type ArrayDimensions;
+
+    fn create_array(self, array_dimensions: Self::ArrayDimensions) -> Self;
+}
+
+impl CreateArray for DimType {
+    type ArrayDimensions = ArrayDimensions;
+
+    fn create_array(self, array_dimensions: Self::ArrayDimensions) -> Self {
+        if array_dimensions.is_empty() {
+            self
+        } else {
+            Self::Array(array_dimensions, Box::new(self))
+        }
+    }
+}
+
+impl CreateArray for ParamType {
+    // LParen, RParen
+    type ArrayDimensions = Option<(Token, Token)>;
+
+    fn create_array(self, array_dimensions: Self::ArrayDimensions) -> Self {
+        if array_dimensions.is_none() {
+            self
+        } else {
+            Self::Array(Box::new(self))
+        }
+    }
 }
 
 /// Used in combination with [var_name], produces the type of the variable
@@ -117,9 +124,7 @@ fn name_chain<T, F, P>(
     built_in_extended_factory: F,
 ) -> impl Parser<RcStringView, Output = T>
 where
-    T: Clone + Default + 'static,
-    T: VarTypeNewBuiltInCompact,
-    T: VarTypeNewUserDefined,
+    T: Clone + Default + VarType + 'static,
     F: Fn() -> P + 'static,
     P: Parser<RcStringView, Output = T> + 'static,
 {
@@ -143,7 +148,7 @@ where
 
 fn qualified_type<T>(q: TypeQualifier) -> impl Parser<RcStringView, Output = T>
 where
-    T: VarTypeNewBuiltInCompact,
+    T: VarType,
 {
     supplier(move || T::new_built_in_compact(q))
 }
@@ -164,7 +169,7 @@ fn extended<T, F, P>(
     built_in_extended_factory: F,
 ) -> impl Parser<RcStringView, Output = T>
 where
-    T: VarTypeNewUserDefined + 'static,
+    T: VarType + 'static,
     F: Fn() -> P,
     P: Parser<RcStringView, Output = T> + 'static,
 {
@@ -179,7 +184,7 @@ fn any_extended<T>(
     built_in_parser: impl Parser<RcStringView, Output = T> + 'static,
 ) -> impl Parser<RcStringView, Output = T>
 where
-    T: VarTypeNewUserDefined + 'static,
+    T: VarType + 'static,
 {
     OrParser::new(vec![
         Box::new(built_in_parser),
@@ -190,9 +195,9 @@ where
 
 fn user_defined_type<T>() -> impl Parser<RcStringView, Output = T>
 where
-    T: VarTypeNewUserDefined,
+    T: VarType,
 {
     bare_name_without_dots()
         .with_pos()
-        .map(VarTypeNewUserDefined::new_user_defined)
+        .map(VarType::new_user_defined)
 }

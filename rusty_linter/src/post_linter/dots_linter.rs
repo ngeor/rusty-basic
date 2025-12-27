@@ -221,7 +221,7 @@ impl Visitor<Statement> for UserDefinedNamesCollector {
 
 impl<T> Visitor<TypedName<T>> for UserDefinedNamesCollector
 where
-    T: VarTypeToUserDefinedRecursively,
+    T: VarType,
 {
     fn visit(&mut self, element: &TypedName<T>) -> VisitResult {
         if element.var_type.as_user_defined_recursively().is_some() {

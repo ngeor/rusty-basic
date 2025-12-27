@@ -6,8 +6,7 @@ use crate::names::traits::ManyNamesTrait;
 use crate::{core::ConstLookup, names::ImplicitVars};
 use rusty_common::CaseInsensitiveString;
 use rusty_parser::{
-    BareName, BuiltInStyle, HasExpressionType, Name, QualifiedName, RedimInfo, TypeQualifier,
-    VarTypeIsExtended, VariableInfo,
+    BareName, BuiltInStyle, Name, QualifiedName, RedimInfo, TypeQualifier, VarType, VariableInfo,
 };
 use rusty_variant::Variant;
 
@@ -134,7 +133,7 @@ impl Names {
         self.get_const_value_recursively(bare_name).is_some()
     }
 
-    pub fn insert<T: HasExpressionType + VarTypeIsExtended>(
+    pub fn insert<T: VarType>(
         &mut self,
         bare_name: BareName,
         dim_type: &T,

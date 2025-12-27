@@ -1,8 +1,6 @@
 use crate::specific::{
     ArrayDimensions, BareNamePos, BuiltInStyle, Expression, ExpressionPos, ExpressionType,
-    HasExpressionType, TypeQualifier, VarTypeIsExtended, VarTypeNewBuiltInCompact,
-    VarTypeNewBuiltInExtended, VarTypeNewUserDefined, VarTypeQualifier, VarTypeToArray,
-    VarTypeToUserDefinedRecursively,
+    HasExpressionType, TypeQualifier, VarType,
 };
 use rusty_common::{AtPos, Position};
 
@@ -16,37 +14,19 @@ pub enum DimType {
     Array(ArrayDimensions, Box<Self>),
 }
 
-impl VarTypeNewBuiltInCompact for DimType {
+impl VarType for DimType {
     fn new_built_in_compact(q: TypeQualifier) -> Self {
         Self::BuiltIn(q, BuiltInStyle::Compact)
     }
-}
 
-impl VarTypeNewBuiltInExtended for DimType {
     fn new_built_in_extended(q: TypeQualifier) -> Self {
         Self::BuiltIn(q, BuiltInStyle::Extended)
     }
-}
 
-impl VarTypeToArray for DimType {
-    type ArrayType = ArrayDimensions;
-
-    fn to_array(self, array_type: Self::ArrayType) -> Self {
-        if array_type.is_empty() {
-            self
-        } else {
-            Self::Array(array_type, Box::new(self))
-        }
-    }
-}
-
-impl VarTypeNewUserDefined for DimType {
     fn new_user_defined(bare_name_pos: BareNamePos) -> Self {
         Self::UserDefined(bare_name_pos)
     }
-}
 
-impl VarTypeToUserDefinedRecursively for DimType {
     fn as_user_defined_recursively(&self) -> Option<&BareNamePos> {
         match self {
             Self::UserDefined(n) => Some(n),
@@ -54,15 +34,16 @@ impl VarTypeToUserDefinedRecursively for DimType {
             _ => None,
         }
     }
-}
 
-impl DimType {
-    pub fn fixed_length_string(len: u16, pos: Position) -> Self {
-        Self::FixedLengthString(Expression::IntegerLiteral(len as i32).at_pos(pos), len)
+    fn to_qualifier_recursively(&self) -> Option<TypeQualifier> {
+        match self {
+            Self::BuiltIn(q, _) => Some(*q),
+            Self::FixedLengthString(_, _) => Some(TypeQualifier::DollarString),
+            Self::Array(_, e) => e.to_qualifier_recursively(),
+            _ => None,
+        }
     }
-}
 
-impl VarTypeIsExtended for DimType {
     fn is_extended(&self) -> bool {
         match self {
             Self::BuiltIn(_, BuiltInStyle::Extended)
@@ -71,6 +52,12 @@ impl VarTypeIsExtended for DimType {
             Self::Array(_, element_type) => element_type.is_extended(),
             _ => false,
         }
+    }
+}
+
+impl DimType {
+    pub fn fixed_length_string(len: u16, pos: Position) -> Self {
+        Self::FixedLengthString(Expression::IntegerLiteral(len as i32).at_pos(pos), len)
     }
 }
 
@@ -84,17 +71,6 @@ impl HasExpressionType for DimType {
                 ExpressionType::Array(Box::new(element_type.expression_type()))
             }
             Self::Bare => panic!("Unresolved type"),
-        }
-    }
-}
-
-impl VarTypeQualifier for DimType {
-    fn to_qualifier_recursively(&self) -> Option<TypeQualifier> {
-        match self {
-            Self::BuiltIn(q, _) => Some(*q),
-            Self::FixedLengthString(_, _) => Some(TypeQualifier::DollarString),
-            Self::Array(_, e) => e.to_qualifier_recursively(),
-            _ => None,
         }
     }
 }

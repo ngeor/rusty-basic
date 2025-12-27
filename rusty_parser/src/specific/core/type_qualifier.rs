@@ -1,4 +1,3 @@
-// TODO #[cfg(test)]
 use crate::error::ParseError;
 use std::convert::TryFrom;
 use std::fmt::Display;
@@ -63,20 +62,6 @@ impl Display for TypeQualifier {
 }
 
 #[cfg(test)]
-impl PartialEq<char> for TypeQualifier {
-    fn eq(&self, that: &char) -> bool {
-        char::from(*self) == *that
-    }
-}
-
-#[cfg(test)]
-impl PartialEq<TypeQualifier> for char {
-    fn eq(&self, that: &TypeQualifier) -> bool {
-        that.eq(self)
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -121,22 +106,5 @@ mod tests {
         assert_eq!(char::from(TypeQualifier::DollarString), '$');
         assert_eq!(char::from(TypeQualifier::PercentInteger), '%');
         assert_eq!(char::from(TypeQualifier::AmpersandLong), '&');
-    }
-
-    #[test]
-    fn test_partial_eq_char() {
-        // basic five types
-        assert_eq!(TypeQualifier::BangSingle, '!');
-        assert_eq!(TypeQualifier::HashDouble, '#');
-        assert_eq!(TypeQualifier::DollarString, '$');
-        assert_eq!(TypeQualifier::PercentInteger, '%');
-        assert_eq!(TypeQualifier::AmpersandLong, '&');
-        // reflexive
-        assert_eq!('!', TypeQualifier::BangSingle);
-        // ne
-        assert_ne!(TypeQualifier::BangSingle, '#');
-        // invalid characters
-        assert_ne!(TypeQualifier::BangSingle, '.');
-        assert_ne!('.', TypeQualifier::BangSingle);
     }
 }

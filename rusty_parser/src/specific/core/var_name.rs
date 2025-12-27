@@ -12,9 +12,8 @@ use crate::specific::*;
 /// and [Parameter].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypedName<T: VarType> {
-    // TODO make fields private
-    pub bare_name: BareName,
-    pub var_type: T,
+    bare_name: BareName,
+    var_type: T,
 }
 
 impl<T: VarType> TypedName<T> {
@@ -23,6 +22,25 @@ impl<T: VarType> TypedName<T> {
             bare_name,
             var_type,
         }
+    }
+
+    pub fn bare_name(&self) -> &BareName {
+        self.as_ref()
+    }
+
+    pub fn var_type(&self) -> &T {
+        self.as_ref()
+    }
+
+    pub fn try_map_type<F, E>(self, f: F) -> Result<Self, E>
+    where
+        F: FnOnce(T) -> Result<T, E>,
+    {
+        let Self {
+            bare_name,
+            var_type,
+        } = self;
+        f(var_type).map(|new_var_type| Self::new(bare_name, new_var_type))
     }
 }
 
@@ -35,6 +53,12 @@ impl<T: VarType> AsRef<BareName> for TypedName<T> {
 impl<T: VarType> AsRef<T> for TypedName<T> {
     fn as_ref(&self) -> &T {
         &self.var_type
+    }
+}
+
+impl<T: VarType> From<TypedName<T>> for (BareName, T) {
+    fn from(value: TypedName<T>) -> Self {
+        (value.bare_name, value.var_type)
     }
 }
 

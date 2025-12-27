@@ -26,7 +26,7 @@ fn cannot_clash_with_subs<T: VarType, C: HasSubprograms>(
     ctx: &C,
     pos: Position,
 ) -> Result<(), LintErrorPos> {
-    if ctx.subs().contains_key(&var_name.bare_name) {
+    if ctx.subs().contains_key(var_name.bare_name()) {
         Err(LintError::DuplicateDefinition.at_pos(pos))
     } else {
         Ok(())
@@ -38,7 +38,7 @@ fn cannot_clash_with_local_constants<T: VarType>(
     ctx: &Context,
     pos: Position,
 ) -> Result<(), LintErrorPos> {
-    match ctx.names.names().get_const_value(&var_name.bare_name) {
+    match ctx.names.names().get_const_value(var_name.bare_name()) {
         Some(_) => Err(LintError::DuplicateDefinition.at_pos(pos)),
         _ => Ok(()),
     }
@@ -55,7 +55,7 @@ impl CannotClashWithFunctions for DimVar {
         ctx: &Context,
         pos: Position,
     ) -> Result<(), LintErrorPos> {
-        if ctx.functions().contains_key(&self.bare_name) {
+        if ctx.functions().contains_key(self.bare_name()) {
             Err(LintError::DuplicateDefinition.at_pos(pos))
         } else {
             Ok(())
@@ -69,15 +69,15 @@ impl CannotClashWithFunctions for Parameter {
         ctx: &Context,
         pos: Position,
     ) -> Result<(), LintErrorPos> {
-        if let Some(func_qualifier) = ctx.function_qualifier(&self.bare_name) {
-            if self.var_type.is_extended() {
+        if let Some(func_qualifier) = ctx.function_qualifier(self.bare_name()) {
+            if self.var_type().is_extended() {
                 Err(LintError::DuplicateDefinition.at_pos(pos))
             } else {
                 // for some reason you can have a FUNCTION Add(Add)
                 let q = self
-                    .var_type
+                    .var_type()
                     .to_qualifier_recursively()
-                    .unwrap_or_else(|| self.bare_name.qualify(ctx));
+                    .unwrap_or_else(|| self.bare_name().qualify(ctx));
                 if q == func_qualifier {
                     Ok(())
                 } else {
@@ -97,7 +97,7 @@ fn user_defined_type_must_exist<T>(
 where
     T: VarType,
 {
-    match var_name.var_type.as_user_defined_recursively() {
+    match var_name.var_type().as_user_defined_recursively() {
         Some(Positioned {
             element: type_name,
             pos,

@@ -28,6 +28,14 @@ impl<T> Positioned<T> {
             pos,
         }
     }
+
+    pub fn try_map<F, U, E>(self, op: F) -> Result<Positioned<U>, E>
+    where
+        F: FnOnce(T) -> Result<U, E>,
+    {
+        let Self { element, pos } = self;
+        op(element).map(|new_element| Positioned::new(new_element, pos))
+    }
 }
 
 // AtPos

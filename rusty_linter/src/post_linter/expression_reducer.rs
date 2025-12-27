@@ -310,22 +310,8 @@ pub trait ExpressionReducer {
     }
 
     fn visit_dim_var_pos(&mut self, dim_var_pos: DimVarPos) -> Result<DimVarPos, LintErrorPos> {
-        let DimVarPos {
-            element:
-                DimVar {
-                    bare_name,
-                    var_type: dim_type,
-                },
-            pos,
-        } = dim_var_pos;
-        let converted_dim_type = self.visit_dim_type(dim_type)?;
-        Ok(DimVarPos {
-            element: DimVar {
-                bare_name,
-                var_type: converted_dim_type,
-            },
-            pos,
-        })
+        dim_var_pos
+            .try_map(|dim_var| dim_var.try_map_type(|dim_type| self.visit_dim_type(dim_type)))
     }
 
     fn visit_dim_type(&mut self, dim_type: DimType) -> Result<DimType, LintErrorPos> {

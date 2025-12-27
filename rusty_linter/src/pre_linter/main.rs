@@ -150,7 +150,7 @@ impl MainContext {
     }
 
     fn on_parameter(&self, parameter: &Parameter) -> Result<ResolvedParamType, LintError> {
-        self.resolve_param_type(&parameter.bare_name, &parameter.var_type)
+        self.resolve_param_type(parameter.bare_name(), parameter.var_type())
     }
 
     fn resolve_param_type(

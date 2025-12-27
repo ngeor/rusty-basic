@@ -35,10 +35,7 @@ impl ConvertibleIn<DimNameState> for DimVar {
         validation::validate(&self, ctx, extra.pos)?;
         let shared = extra.shared;
         shared_illegal_in_sub_function(ctx, shared, extra.pos)?;
-        let Self {
-            bare_name,
-            var_type,
-        } = self;
+        let (bare_name, var_type) = self.into();
         let (var_type, redim_info) = if extra.dim_context == DimContext::Redim {
             on_redim_type(var_type, &bare_name, ctx, extra)?
         } else {

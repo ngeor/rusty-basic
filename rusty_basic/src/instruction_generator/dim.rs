@@ -55,10 +55,7 @@ impl InstructionGenerator {
     }
 
     fn generate_dim_name(&mut self, dim_name: DimVar, shared: bool, pos: Position) {
-        let DimVar {
-            bare_name,
-            var_type: dim_type,
-        } = dim_name;
+        let (bare_name, dim_type) = dim_name.into();
         match dim_type {
             DimType::Array(array_dimensions, box_element_type) => {
                 self.push(Instruction::BeginCollectArguments, pos);

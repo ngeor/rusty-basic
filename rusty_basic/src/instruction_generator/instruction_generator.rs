@@ -338,7 +338,7 @@ impl InstructionGenerator {
 
     fn is_data_statement(statement: &Statement) -> bool {
         if let Statement::BuiltInSubCall(b) = statement {
-            *b.left() == BuiltInSub::Data
+            *b.built_in_sub() == BuiltInSub::Data
         } else {
             false
         }

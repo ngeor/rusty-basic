@@ -141,22 +141,22 @@ pub enum Statement {
 
 bi_tuple!(
     /// A constant declaration.
-    Constant(NamePos, ExpressionPos)
+    Constant(name: NamePos, value: ExpressionPos)
 );
 
 bi_tuple!(
     /// An assignment statement.
-    Assignment(Expression, ExpressionPos)
+    Assignment(lvalue: Expression, rvalue: ExpressionPos)
 );
 
 bi_tuple!(
     /// A call to a user defined SUB.
-    SubCall(BareName, Expressions)
+    SubCall(sub_name: BareName, args: Expressions)
 );
 
 bi_tuple!(
     /// A call to a built-in SUB.
-    BuiltInSubCall(BuiltInSub, Expressions)
+    BuiltInSubCall(built_in_sub: BuiltInSub, args: Expressions)
 );
 
 /// A list of variables defined in a DIM statement.
@@ -228,14 +228,10 @@ pub struct SelectCase {
 bi_tuple!(
     /// A case block can have one or more condition expressions and
     /// the statements to execute if the condition is met.
-    CaseBlock(Vec<CaseExpression>, Statements)
+    CaseBlock(conditions: Vec<CaseExpression>, statements: Statements)
 );
 
 impl CaseBlock {
-    pub fn conditions(&self) -> &Vec<CaseExpression> {
-        &self.0
-    }
-
     pub fn has_conditions(&self) -> bool {
         // the CASE ELSE block does not have conditions
         !self.conditions().is_empty()

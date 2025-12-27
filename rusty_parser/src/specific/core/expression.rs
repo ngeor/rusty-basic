@@ -883,7 +883,7 @@ pub mod property {
                     first_expr_pos,
                     |prev_expr_pos, (name_token, opt_q_token)| {
                         let property_name = Name::new(
-                            BareName::from(name_token),
+                            BareName::new(name_token.text),
                             opt_q_token.as_ref().map(token_to_type_qualifier),
                         );
                         prev_expr_pos.map(|prev_expr| {

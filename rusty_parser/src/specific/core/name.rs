@@ -178,7 +178,7 @@ mod type_tests {
 ///
 /// Use case: user defined type elements or types.
 pub fn bare_name_without_dots() -> impl Parser<RcStringView, Output = BareName> {
-    ensure_no_trailing_dot_or_qualifier(identifier()).map(BareName::from)
+    ensure_no_trailing_dot_or_qualifier(identifier()).map(|token| BareName::new(token.text))
 }
 
 /// Parses an identifier token.

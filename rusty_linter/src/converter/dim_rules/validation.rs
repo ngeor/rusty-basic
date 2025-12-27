@@ -6,7 +6,7 @@ use crate::names::ManyNamesTrait;
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{DimVar, Parameter, TypedName, VarType};
 
-pub fn validate<T>(
+pub fn validate<T: VarType>(
     var_name: &TypedName<T>,
     ctx: &Context,
     pos: Position,
@@ -90,7 +90,7 @@ impl CannotClashWithFunctions for Parameter {
     }
 }
 
-fn user_defined_type_must_exist<T>(
+fn user_defined_type_must_exist<T: VarType>(
     var_name: &TypedName<T>,
     ctx: &Context,
 ) -> Result<(), LintErrorPos>

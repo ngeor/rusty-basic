@@ -51,7 +51,7 @@ impl Visitor<FunctionDeclaration> for MainContext {
             name: Positioned { element: name, .. },
             parameters: params,
         } = f;
-        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
+        let param_types: ResolvedParamTypes = self.resolve_parameters(params)?;
         let bare_name = name.bare_name();
         let q = name.qualify(&self.resolver);
         let signature = Signature::new_function(q, param_types);
@@ -67,7 +67,7 @@ impl Visitor<FunctionImplementation> for MainContext {
             params,
             ..
         } = f;
-        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
+        let param_types: ResolvedParamTypes = self.resolve_parameters(params)?;
         let bare_name = name.bare_name();
         let q = name.qualify(&self.resolver);
         let signature = Signature::new_function(q, param_types);
@@ -84,7 +84,7 @@ impl Visitor<SubDeclaration> for MainContext {
             },
             parameters: params,
         } = s;
-        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
+        let param_types: ResolvedParamTypes = self.resolve_parameters(params)?;
         let signature = Signature::new_sub(param_types);
         self.subs
             .add_declaration(bare_name.clone(), signature.at_pos(self.declaration_pos))
@@ -100,7 +100,7 @@ impl Visitor<SubImplementation> for MainContext {
             params,
             ..
         } = s;
-        let param_types: ResolvedParamTypes = self.on_parameters(params)?;
+        let param_types: ResolvedParamTypes = self.resolve_parameters(params)?;
         let signature = Signature::new_sub(param_types);
         self.subs
             .add_implementation(bare_name.clone(), signature.at_pos(self.declaration_pos))
@@ -131,33 +131,36 @@ impl MainContext {
         )
     }
 
-    // TODO the remaining logic regarding parameters is a different kind of Visitor
-    // with a possible signature visit(&mut self, element: &T) -> Result<U, LintErrorPos>
-
-    fn on_parameters(&self, parameters: &Parameters) -> Result<ResolvedParamTypes, LintErrorPos> {
-        parameters
-            .iter()
-            .map(|p| self.on_parameter_pos(p))
-            .collect()
+    fn resolve_parameters(
+        &mut self,
+        parameters: &Parameters,
+    ) -> Result<ResolvedParamTypes, LintErrorPos> {
+        self.ref_to_value_visit(parameters).map(|v| v.no_pos())
     }
 
-    fn on_parameter_pos(
-        &self,
-        parameter_pos: &ParameterPos,
-    ) -> Result<ResolvedParamType, LintErrorPos> {
-        self.on_parameter(&parameter_pos.element)
-            .with_err_at(parameter_pos)
+    fn post_visit_functions(&self) -> Result<(), LintErrorPos> {
+        self.functions.ensure_declarations_are_implemented()?;
+        self.functions
+            .ensure_does_not_clash_with_built_in(|name| BuiltInFunction::try_parse(name).is_some())
     }
 
-    fn on_parameter(&self, parameter: &Parameter) -> Result<ResolvedParamType, LintError> {
-        self.resolve_param_type(parameter.bare_name(), parameter.var_type())
+    fn post_visit_subs(&self) -> Result<(), LintErrorPos> {
+        // not checking if declarations are present, because in MONEY.BAS there
+        // are two SUBs declared but not implemented (and not called either)
+        self.subs.ensure_does_not_clash_with_built_in(|name| {
+            BuiltInSub::parse_non_keyword_sub(name.as_ref()).is_some()
+        })
     }
+}
 
-    fn resolve_param_type(
-        &self,
-        bare_name: &BareName,
-        param_type: &ParamType,
-    ) -> Result<ResolvedParamType, LintError> {
+impl<T> RefToValueVisitor<T, ResolvedParamType, LintError> for MainContext
+where
+    T: AsRef<BareName> + AsRef<ParamType>,
+{
+    fn ref_to_value_visit(&mut self, element: &T) -> Result<ResolvedParamType, LintError> {
+        let bare_name: &BareName = element.as_ref();
+        let param_type: &ParamType = element.as_ref();
+
         match param_type {
             ParamType::Bare => {
                 let q = bare_name.qualify(&self.resolver);
@@ -175,24 +178,28 @@ impl MainContext {
                 }
             }
             ParamType::Array(element_type) => {
-                let element_param_type =
-                    self.resolve_param_type(bare_name, element_type.as_ref())?;
+                let temp = RefParamName(bare_name, element_type);
+                let element_param_type = self.ref_to_value_visit(&temp)?;
                 Ok(ResolvedParamType::Array(Box::new(element_param_type)))
             }
         }
     }
+}
 
-    fn post_visit_functions(&self) -> Result<(), LintErrorPos> {
-        self.functions.ensure_declarations_are_implemented()?;
-        self.functions
-            .ensure_does_not_clash_with_built_in(|name| BuiltInFunction::try_parse(name).is_some())
+/// This is the same as [Parameter],
+/// but the memebers are references.
+/// It's needed due to the recursive implementation of `RefToValueVisitor`
+/// and the recursive (`Box`) implementation of `ParamType::Array`.
+struct RefParamName<'a>(&'a BareName, &'a ParamType);
+
+impl<'a> AsRef<BareName> for RefParamName<'a> {
+    fn as_ref(&self) -> &BareName {
+        self.0
     }
+}
 
-    fn post_visit_subs(&self) -> Result<(), LintErrorPos> {
-        // not checking if declarations are present, because in MONEY.BAS there
-        // are two SUBs declared but not implemented (and not called either)
-        self.subs.ensure_does_not_clash_with_built_in(|name| {
-            BuiltInSub::parse_non_keyword_sub(name.as_ref()).is_some()
-        })
+impl<'a> AsRef<ParamType> for RefParamName<'a> {
+    fn as_ref(&self) -> &ParamType {
+        self.1
     }
 }

@@ -21,6 +21,7 @@ mod if_block;
 mod implementation;
 mod keyword;
 mod letter_range;
+mod macros;
 mod name;
 mod on_error;
 mod operator;

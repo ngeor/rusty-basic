@@ -10,6 +10,7 @@ use crate::specific::core::exit::statement_exit_p;
 use crate::specific::core::for_loop::for_loop_p;
 use crate::specific::core::go_sub::{statement_go_sub_p, statement_return_p};
 use crate::specific::core::if_block::if_block_p;
+use crate::specific::core::macros::bi_tuple;
 use crate::specific::core::name::{
     bare_name_with_dots, identifier_with_dots, token_list_to_bare_name,
 };
@@ -136,47 +137,6 @@ pub enum Statement {
      * Special statements
      */
     Print(Print),
-}
-
-macro_rules! bi_tuple {
-    ($(#[$($attrss:tt)*])* $name: ident($left: ty, $right: ty)) => {
-        $(#[$($attrss)*])*
-        #[derive(Clone, Debug, PartialEq)]
-        pub struct $name($left, $right);
-
-        impl $name {
-            pub fn new(left: $left, right: $right) -> Self {
-                Self(left, right)
-            }
-
-            pub fn try_map_right<F, E>(self, f: F) -> Result<Self, E>
-            where F : FnOnce($right) -> Result<$right, E>
-            {
-                let (left, right) = self.into();
-                f(right).map(|new_right| Self::new(left, new_right))
-            }
-
-            pub fn left(&self) -> &$left {
-                &self.0
-            }
-
-            pub fn right(&self) -> &$right {
-                &self.1
-            }
-        }
-
-        impl From<$name> for ($left, $right) {
-            fn from(value: $name) -> Self {
-                (value.0, value.1)
-            }
-        }
-
-        impl<'a> From<&'a $name> for (&'a $left, &'a $right) {
-            fn from(value: &'a $name) -> Self {
-                (&value.0, &value.1)
-            }
-        }
-    };
 }
 
 bi_tuple!(

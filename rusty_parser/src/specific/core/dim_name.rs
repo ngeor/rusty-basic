@@ -5,9 +5,6 @@ use rusty_common::*;
 use crate::pc::*;
 use crate::specific::pc_specific::*;
 
-#[cfg(test)]
-use std::convert::TryFrom;
-
 pub type DimVar = TypedName<DimType>;
 pub type DimVarPos = Positioned<DimVar>;
 pub type DimVars = Vec<DimVarPos>;
@@ -37,18 +34,17 @@ impl DimVar {
 
     // TODO #[cfg(test)]
     pub fn parse(s: &str) -> Self {
-        let qualified_name = QualifiedName::try_from(s).unwrap();
+        let qualified_name = Name::from(s).demand_qualified();
         Self::from(qualified_name)
     }
 }
 
-impl From<QualifiedName> for DimVar {
-    fn from(qualified_name: QualifiedName) -> Self {
-        let QualifiedName {
-            bare_name,
-            qualifier,
-        } = qualified_name;
-        Self::new_compact_local(bare_name, qualifier)
+impl From<Name> for DimVar {
+    fn from(name: Name) -> Self {
+        match name.qualifier() {
+            Some(qualifier) => Self::new_compact_local(name.to_bare_name(), qualifier),
+            _ => Self::new(name.to_bare_name(), DimType::Bare),
+        }
     }
 }
 

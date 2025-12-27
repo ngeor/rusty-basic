@@ -132,11 +132,8 @@ impl InstructionGenerator {
         }
     }
 
-    fn generate_stash_function_return_value(
-        &mut self,
-        qualified_name: QualifiedName,
-        pos: Position,
-    ) {
+    fn generate_stash_function_return_value(&mut self, qualified_name: Name, pos: Position) {
+        debug_assert!(!qualified_name.is_bare());
         self.push(Instruction::StashFunctionReturnValue(qualified_name), pos);
     }
 

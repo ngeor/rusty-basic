@@ -1,16 +1,16 @@
 use rusty_common::Positioned;
 
 use crate::error::ParseError;
+use crate::pc::*;
 use crate::specific::pc_specific::*;
-use crate::specific::{BareName, ExpressionType, HasExpressionType, QualifiedName, TypeQualifier};
-use crate::{pc::*, AsBareName, ToBareName};
-
-#[cfg(test)]
-use std::convert::TryFrom;
+use crate::{AsBareName, BareName, ExpressionType, HasExpressionType, ToBareName, TypeQualifier};
 
 const MAX_LENGTH: usize = 40;
 
 /// Defines a name.
+///
+/// A qualified name is a bare name followed by a built-in type qualifier.
+/// Example: `name$`, `age%`.
 ///
 /// Parsing syntax reference
 ///
@@ -88,11 +88,12 @@ impl Name {
         self.bare_name
     }
 
-    pub fn demand_qualified(self) -> QualifiedName {
-        match self.opt_q {
-            Some(qualifier) => QualifiedName::new(self.bare_name, qualifier),
-            _ => panic!("{:?} was not qualified", self),
+    pub fn demand_qualified(self) -> Name {
+        if self.is_bare() {
+            panic!("{:?} was not qualified", self)
         }
+
+        self
     }
 }
 

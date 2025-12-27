@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
 use rusty_common::Positioned;
-use rusty_parser::{BareName, BuiltInStyle, QualifiedName, TypeQualifier};
+use rusty_parser::{BareName, BuiltInStyle, Name, TypeQualifier};
 
 /// Holds the resolved name of a subprogram.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum SubprogramName {
-    /// The resolved name of a function.
-    Function(QualifiedName),
+    /// The resolved qualified name of a function.
+    Function(Name),
 
     /// The resolved name of a sub.
     Sub(BareName),

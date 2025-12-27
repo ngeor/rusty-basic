@@ -1,5 +1,4 @@
-use crate::specific::{QualifiedName, TypeQualifier};
-use crate::{keyword_enum, BareName};
+use crate::{keyword_enum, BareName, Name, TypeQualifier};
 use rusty_common::*;
 use std::convert::TryFrom;
 
@@ -152,10 +151,11 @@ impl From<&BuiltInFunction> for TypeQualifier {
 
 // BuiltInFunction -> QualifiedName
 
-impl From<BuiltInFunction> for QualifiedName {
+impl From<BuiltInFunction> for Name {
     fn from(built_in_function: BuiltInFunction) -> Self {
         let qualifier: TypeQualifier = (&built_in_function).into();
-        Self::new(built_in_function.into(), qualifier)
+        let bare_name: BareName = built_in_function.into();
+        Self::qualified(bare_name, qualifier)
     }
 }
 

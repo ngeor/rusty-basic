@@ -17,18 +17,12 @@ struct LabelCollector {
     current_label_owner: LabelOwner,
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 enum LabelOwner {
+    #[default]
     Global,
-    // TODO prevent clone, store a reference here
     Sub(BareName),
-    Function(QualifiedName),
-}
-
-impl Default for LabelOwner {
-    fn default() -> Self {
-        Self::Global
-    }
+    Function(Name),
 }
 
 impl LabelLinter {

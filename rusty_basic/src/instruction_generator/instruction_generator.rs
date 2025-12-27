@@ -5,11 +5,11 @@ use crate::instruction_generator::subprogram_info::{
 use crate::RuntimeError;
 use rusty_common::{AtPos, CaseInsensitiveString, Position, Positioned};
 use rusty_linter::{Context, Names, SubprogramName};
-use rusty_parser::{Assignment, BuiltInSub, ToBareName};
+use rusty_parser::{Assignment, BuiltInSub};
 use rusty_parser::{
     BareName, DimVar, Expression, ExpressionType, FileHandle, FunctionImplementation,
-    GlobalStatement, HasExpressionType, Name, Parameter, Program, QualifiedName, Statement,
-    Statements, SubImplementation, TypeQualifier,
+    GlobalStatement, HasExpressionType, Name, Parameter, Program, Statement, Statements,
+    SubImplementation, TypeQualifier,
 };
 use rusty_parser::{BuiltInFunction, UserDefinedTypes};
 use rusty_variant::Variant;
@@ -190,7 +190,9 @@ pub enum Instruction {
     EnqueueToReturnStack(usize),
     DequeueFromReturnStack,
 
-    StashFunctionReturnValue(QualifiedName),
+    // The name of the function should be qualified.
+    StashFunctionReturnValue(Name),
+
     UnStashFunctionReturnValue,
 
     Throw(RuntimeError),
@@ -376,9 +378,7 @@ impl InstructionGenerator {
         let qualifier = function_name
             .qualifier()
             .expect("Expected qualified function name");
-        let bare_name = function_name.to_bare_name();
-        let q_function_name = QualifiedName::new(bare_name, qualifier);
-        self.mark_current_subprogram(SubprogramName::Function(q_function_name), pos);
+        self.mark_current_subprogram(SubprogramName::Function(function_name), pos);
         // set default value
         self.push(Instruction::AllocateBuiltIn(qualifier), pos);
         self.subprogram_body(body, pos);

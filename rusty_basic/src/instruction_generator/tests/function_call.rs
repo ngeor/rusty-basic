@@ -1,9 +1,8 @@
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{Instruction, RootPath};
 use rusty_common::AtPos;
-use rusty_parser::BuiltInFunction;
-use rusty_parser::{QualifiedName, TypeQualifier};
-use std::convert::TryFrom;
+use rusty_parser::TypeQualifier;
+use rusty_parser::{BuiltInFunction, Name};
 
 #[test]
 fn test_built_in_len_with_string_variable_parameter() {
@@ -42,7 +41,7 @@ fn test_built_in_len_with_string_variable_parameter() {
             Instruction::BuiltInFunction(BuiltInFunction::Len).at_rc(2, 9),
             // after function call
             Instruction::EnqueueToReturnStack(0).at_rc(2, 13),
-            Instruction::StashFunctionReturnValue(QualifiedName::try_from("LEN%").unwrap())
+            Instruction::StashFunctionReturnValue(Name::from("LEN%").demand_qualified())
                 .at_rc(2, 9),
             Instruction::PopStack.at_rc(2, 9),
             // assign to by-ref variables

@@ -6,7 +6,7 @@ use crate::names::traits::ManyNamesTrait;
 use crate::{core::ConstLookup, names::ImplicitVars};
 use rusty_common::CaseInsensitiveString;
 use rusty_parser::{
-    BareName, BuiltInStyle, Name, QualifiedName, RedimInfo, TypeQualifier, VarType, VariableInfo,
+    AsBareName, BareName, BuiltInStyle, Name, RedimInfo, TypeQualifier, VarType, VariableInfo,
 };
 use rusty_variant::Variant;
 
@@ -40,6 +40,7 @@ pub struct Names {
 /// Stores the data relevant to one level only (i.e. global symbols, or a FUNCTION, or a SUB).
 /// Collects constant and variable names in [NamesInner] and implicit variables in [ImplicitVars].
 /// TODO merge [ImplicitVars] into [NamesInner]
+/// TODO use bi_tuple macro
 #[derive(Default)]
 struct NamesOneLevel(NamesInner, ImplicitVars);
 
@@ -158,9 +159,7 @@ impl Names {
 
     pub fn is_in_function(&self, function_name: &BareName) -> bool {
         match &self.current_key {
-            Some(SubprogramName::Function(QualifiedName { bare_name, .. })) => {
-                bare_name == function_name
-            }
+            Some(SubprogramName::Function(f)) => f.as_bare_name() == function_name,
             _ => false,
         }
     }

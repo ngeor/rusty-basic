@@ -28,7 +28,6 @@ mod operator;
 mod opt_second_expression;
 mod param_name;
 mod print;
-mod qualified_name;
 mod resume;
 mod select_case;
 mod statement;
@@ -65,7 +64,6 @@ pub use self::name::{Name, NameAsTokens, NamePos};
 pub use self::operator::Operator;
 pub use self::param_name::{ParamType, Parameter, ParameterPos, Parameters};
 pub use self::print::{Print, PrintArg};
-pub use self::qualified_name::QualifiedName;
 pub use self::statement::{
     Assignment, BuiltInSubCall, CaseBlock, CaseExpression, ConditionalBlock, Constant, DimList,
     DoLoop, DoLoopConditionKind, DoLoopConditionPosition, ExitObject, ForLoop, IfBlock,

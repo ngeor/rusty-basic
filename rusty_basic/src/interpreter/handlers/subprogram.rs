@@ -1,5 +1,5 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use rusty_parser::{Name, Parameter, QualifiedName};
+use rusty_parser::{Name, Parameter};
 
 pub fn begin_collect_arguments<T: InterpreterTrait>(interpreter: &mut T) {
     interpreter.context_mut().begin_collecting_arguments();
@@ -18,11 +18,9 @@ pub fn dequeue_from_return_stack<T: InterpreterTrait>(interpreter: &mut T) {
     interpreter.registers_mut().set_a(v);
 }
 
-pub fn stash_function_return_value<T: InterpreterTrait>(
-    interpreter: &mut T,
-    function_name: &QualifiedName,
-) {
-    let name: Name = Name::from(function_name.clone());
+pub fn stash_function_return_value<T: InterpreterTrait>(interpreter: &mut T, function_name: &Name) {
+    debug_assert!(!function_name.is_bare());
+    let name = function_name.clone();
     let v = interpreter
         .context_mut()
         .variables_mut()

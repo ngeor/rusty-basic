@@ -7,5 +7,6 @@ mod positioned;
 
 pub use self::case_insensitive_str::*;
 pub use self::case_insensitive_string::*;
+pub use self::case_insensitive_utils::*;
 pub use self::position::*;
 pub use self::positioned::*;

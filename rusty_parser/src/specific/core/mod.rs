@@ -59,7 +59,7 @@ pub use self::global_statement::{
     program_parser_p, FunctionDeclaration, FunctionImplementation, GlobalStatement,
     GlobalStatementPos, Program, SubDeclaration, SubImplementation, SubprogramImplementation,
 };
-pub use self::keyword::{Keyword, SORTED_KEYWORDS_STR};
+pub use self::keyword::Keyword;
 pub use self::letter_range::LetterRange;
 pub use self::name::{Name, NameAsTokens, NamePos};
 pub use self::operator::Operator;

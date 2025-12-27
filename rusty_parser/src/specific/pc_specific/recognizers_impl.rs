@@ -5,7 +5,7 @@ use crate::pc::*;
 use crate::specific::pc_specific::recognizers_impl::string_parsers::CharToStringParser;
 use crate::specific::pc_specific::recognizers_impl::token_parsers::StringToTokenParser;
 use crate::specific::pc_specific::TokenType;
-use crate::specific::SORTED_KEYWORDS_STR;
+use crate::Keyword;
 use std::fs::File;
 
 // TODO keyword --> ensure not followed by dollar sign
@@ -137,15 +137,8 @@ fn digits() -> impl Parser<RcStringView, Output = Token> {
 fn keyword() -> impl Parser<RcStringView, Output = Token> {
     // using is_ascii_alphanumeric to read e.g. Sub1 and determine it is not a keyword
     // TODO can be done in a different way e.g. read alphabetic and then ensure it's followed by something other than alphanumeric
-    many(TokenType::Keyword, char::is_ascii_alphanumeric).filter(|token| {
-        let text = &token.text;
-        for keyword in SORTED_KEYWORDS_STR {
-            if keyword.eq_ignore_ascii_case(text) {
-                return true;
-            }
-        }
-        false
-    })
+    many(TokenType::Keyword, char::is_ascii_alphanumeric)
+        .filter(|token| Keyword::try_from(token.text.as_str()).is_ok())
 }
 
 fn identifier() -> impl Parser<RcStringView, Output = Token> {

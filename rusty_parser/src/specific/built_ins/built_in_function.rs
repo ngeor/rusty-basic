@@ -1,11 +1,10 @@
-use crate::keyword_enum;
 use crate::specific::{QualifiedName, TypeQualifier};
+use crate::{keyword_enum, BareName};
 use rusty_common::*;
-use std::borrow::Borrow;
 use std::convert::TryFrom;
 
 keyword_enum!(
-pub enum BuiltInFunction SORTED_BUILT_IN_FUNCTIONS SORTED_BUILT_IN_FUNCTION_NAMES SORTED_BUILT_IN_FUNCTIONS_CI_STR {
+pub enum BuiltInFunction SORTED_BUILT_IN_FUNCTIONS SORTED_BUILT_IN_FUNCTION_NAMES {
     /// `CHR$(ascii-code%)` returns the text representation of the given ascii code
     Chr,
 
@@ -163,10 +162,7 @@ impl From<BuiltInFunction> for QualifiedName {
 // CaseInsensitiveString -> BuiltInFunction
 
 impl BuiltInFunction {
-    pub fn try_parse<S>(s: &S) -> Option<Self>
-    where
-        S: Borrow<CaseInsensitiveStr>,
-    {
-        Self::try_from(s.borrow()).ok()
+    pub fn try_parse(s: &BareName) -> Option<Self> {
+        Self::try_from(s.as_str()).ok()
     }
 }

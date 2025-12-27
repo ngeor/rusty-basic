@@ -1,6 +1,7 @@
 use crate::pc::Token;
 use crate::specific::pc_specific::TokenType;
-use rusty_common::CaseInsensitiveStr;
+
+use rusty_common::cmp_str;
 
 // From the internets:
 // Doc comments are secretly just attributes,
@@ -13,7 +14,7 @@ use rusty_common::CaseInsensitiveStr;
 
 #[macro_export]
 macro_rules! keyword_enum {
-    ($vis:vis enum $name:ident $all_names:ident $all_names_as_str:ident $all_names_as_case_insensitive_str:ident {
+    ($vis:vis enum $name:ident $all_names:ident $all_names_as_str:ident {
         $($(#[$($attrss:tt)*])*$member:ident),+$(,)?
     }) => {
         #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -25,12 +26,8 @@ macro_rules! keyword_enum {
             $($name::$member),+
         ];
 
-        pub const $all_names_as_str : &[&str] = &[
+        const $all_names_as_str : &[&str] = &[
             $(stringify!($member)),+
-        ];
-
-        const $all_names_as_case_insensitive_str : &[&CaseInsensitiveStr] = &[
-            $( CaseInsensitiveStr::new( stringify!($member) ) ),+
         ];
 
         impl std::fmt::Display for $name {
@@ -48,11 +45,11 @@ macro_rules! keyword_enum {
             }
         }
 
-        impl TryFrom<&CaseInsensitiveStr> for $name {
+        impl TryFrom<&str> for $name {
             type Error = usize;
 
-            fn try_from(s: &CaseInsensitiveStr) -> Result<$name, usize> {
-                $all_names_as_case_insensitive_str.binary_search(&s)
+            fn try_from(s: &str) -> Result<$name, usize> {
+                $all_names_as_str.binary_search_by(|probe| cmp_str(probe, s))
                     .map(|index| $all_names[index])
             }
         }
@@ -60,7 +57,7 @@ macro_rules! keyword_enum {
     };
 }
 
-keyword_enum!(pub enum Keyword SORTED_KEYWORDS SORTED_KEYWORDS_STR SORTED_KEYWORDS_CI_STR {
+keyword_enum!(pub enum Keyword SORTED_KEYWORDS SORTED_KEYWORDS_STR {
     /// ACCESS
     Access,
     /// AND
@@ -220,8 +217,7 @@ impl PartialEq<Token> for Keyword {
 impl From<&Token> for Keyword {
     fn from(token: &Token) -> Self {
         debug_assert_eq!(token.kind, TokenType::Keyword.into());
-        let temp = CaseInsensitiveStr::new(&token.text);
-        Self::try_from(temp).expect("Token keyword not found in keywords!")
+        Self::try_from(token.text.as_str()).expect("Token keyword not found in keywords!")
     }
 }
 

@@ -26,6 +26,18 @@ impl<T: VarType> TypedName<T> {
     }
 }
 
+impl<T: VarType> AsRef<BareName> for TypedName<T> {
+    fn as_ref(&self) -> &BareName {
+        &self.bare_name
+    }
+}
+
+impl<T: VarType> AsRef<T> for TypedName<T> {
+    fn as_ref(&self) -> &T {
+        &self.var_type
+    }
+}
+
 pub trait VarType: HasExpressionType {
     fn new_built_in_compact(q: TypeQualifier) -> Self;
 

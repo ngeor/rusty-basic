@@ -2,10 +2,21 @@ use super::post_conversion_linter::PostConversionLinter;
 use rusty_common::*;
 use rusty_parser::*;
 
-use crate::core::LintResult;
-use crate::core::{LintError, LintErrorPos};
+use crate::core::*;
+use crate::{no_op_visitor, no_pos_visitor};
 use std::collections::HashSet;
 
+/// In QBasic, if you have anywhere in the program a variable of user defined type,
+/// e.g. `DIM A AS Person`,
+/// then you can't have anywhere else in the program a variable that starts with
+/// that name followed by a dot,
+/// e.g. `DIM A.B$` is illegal.
+///
+/// The QBasic behavior is probably done at the parsing level,
+/// but here we catch it at the linter.
+/// QBasic's behavior is to throw the error:
+/// "Expected: , or end-of-statement"
+/// and the error location is reported at the dot.
 #[derive(Default)]
 pub struct DotsLinter {
     user_defined_names: HashSet<CaseInsensitiveString>,
@@ -128,9 +139,9 @@ impl NoDotNamesCheck<(&Expression, Position), LintErrorPos> for DotsLinter {
 
 impl PostConversionLinter for DotsLinter {
     fn visit_program(&mut self, p: &Program) -> Result<(), LintErrorPos> {
-        let mut collector = UserDefinedNamesCollector::default();
-        collector.visit_program(p)?;
-        self.user_defined_names = collector.user_defined_names;
+        let mut collector = UserDefinedNamesCollector::visitor();
+        collector.visit(p)?;
+        self.user_defined_names = collector.delegate().user_defined_names;
         self.visit_global_statements(p)
     }
 
@@ -177,43 +188,46 @@ impl PostConversionLinter for DotsLinter {
     }
 }
 
+/// Collects names of parameters or variables that are of a user defined type.
 #[derive(Default)]
 struct UserDefinedNamesCollector {
     user_defined_names: HashSet<CaseInsensitiveString>,
 }
 
+no_op_visitor!(UserDefinedNamesCollector: DefType, FunctionDeclaration, SubDeclaration, UserDefinedType);
+no_pos_visitor!(UserDefinedNamesCollector);
+
 impl UserDefinedNamesCollector {
-    fn visit_names<T>(&mut self, params: &Vec<Positioned<TypedName<T>>>)
-    where
-        T: VarTypeToUserDefinedRecursively,
-    {
-        self.user_defined_names.extend(
-            params
-                .iter()
-                .map(|dim_var_pos| &dim_var_pos.element)
-                .filter(|dim_name| dim_name.var_type.as_user_defined_recursively().is_some())
-                .map(|dim_name| &dim_name.bare_name)
-                .cloned(),
-        );
+    pub fn visitor() -> impl Visitor<Program> + DelegateVisitor<Self> + SetPosition {
+        DeepStatementVisitor::new(Self::default())
     }
 }
 
-impl PostConversionLinter for UserDefinedNamesCollector {
-    fn visit_function_implementation(
-        &mut self,
-        f: &FunctionImplementation,
-    ) -> Result<(), LintErrorPos> {
-        self.visit_names(&f.params);
-        self.visit_statements(&f.body)
+impl<T> Visitor<SubprogramImplementation<T>> for UserDefinedNamesCollector {
+    fn visit(&mut self, element: &SubprogramImplementation<T>) -> VisitResult {
+        self.visit(&element.params)
     }
+}
 
-    fn visit_sub_implementation(&mut self, s: &SubImplementation) -> Result<(), LintErrorPos> {
-        self.visit_names(&s.params);
-        self.visit_statements(&s.body)
+impl Visitor<Statement> for UserDefinedNamesCollector {
+    fn visit(&mut self, element: &Statement) -> VisitResult {
+        match element {
+            Statement::Dim(dim_list) | Statement::Redim(dim_list) => {
+                self.visit(&dim_list.variables)
+            }
+            _ => Ok(()),
+        }
     }
+}
 
-    fn visit_dim(&mut self, dim_list: &DimList) -> Result<(), LintErrorPos> {
-        self.visit_names(&dim_list.variables);
+impl<T> Visitor<TypedName<T>> for UserDefinedNamesCollector
+where
+    T: VarTypeToUserDefinedRecursively,
+{
+    fn visit(&mut self, element: &TypedName<T>) -> VisitResult {
+        if element.var_type.as_user_defined_recursively().is_some() {
+            self.user_defined_names.insert(element.bare_name.clone());
+        }
         Ok(())
     }
 }

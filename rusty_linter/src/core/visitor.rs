@@ -61,9 +61,12 @@ where
     }
 }
 
-/// Creates a delegate visitor for the given type T.
-pub trait DelegateVisitor<T> {
-    fn delegate(&mut self) -> impl Visitor<T>;
+/// A visitor that delegates some functionality to another visitor.
+pub trait DelegateVisitor<P> {
+    /// Returns the delegate visitor.
+    /// Typically called after the visit is done, in order to extract
+    /// information from the underlying visitor.
+    fn delegate(self) -> P;
 }
 
 delegate_visitor!(
@@ -257,12 +260,6 @@ macro_rules! delegate_visitor {
             pub fn new(delegate: P) -> Self {
                 Self { delegate }
             }
-
-            /// Returns the delegate back.
-            #[allow(unused)]
-            pub fn delegate(self) -> P {
-                self.delegate
-            }
         }
 
         impl<P> SetPosition for $name<P>
@@ -271,6 +268,12 @@ macro_rules! delegate_visitor {
         {
             fn set_position(&mut self, pos: Position) {
                 self.delegate.set_position(pos);
+            }
+        }
+
+        impl<P> DelegateVisitor<P> for $name<P> {
+            fn delegate(self) -> P {
+                self.delegate
             }
         }
     };

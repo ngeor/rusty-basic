@@ -118,21 +118,22 @@ impl Visitor<Statement> for MainContext {
 
 impl Visitor<UserDefinedType> for MainContext {
     fn visit(&mut self, user_defined_type: &UserDefinedType) -> VisitResult {
-        self.delegate().visit(user_defined_type)
+        self.user_defined_types_visitor().visit(user_defined_type)
     }
 }
 
-impl DelegateVisitor<UserDefinedType> for MainContext {
-    fn delegate(&mut self) -> impl Visitor<UserDefinedType> {
+impl MainContext {
+    fn user_defined_types_visitor(&mut self) -> impl Visitor<UserDefinedType> + use<'_> {
         super::user_defined_type_visitor::UserDefinedTypeVisitor::new(
             &mut self.user_defined_types,
             self.declaration_pos,
             &self.global_constants,
         )
     }
-}
 
-impl MainContext {
+    // TODO the remaining logic regarding parameters is a different kind of Visitor
+    // with a possible signature visit(&mut self, element: &T) -> Result<U, LintErrorPos>
+
     fn on_parameters(&self, parameters: &Parameters) -> Result<ResolvedParamTypes, LintErrorPos> {
         parameters
             .iter()

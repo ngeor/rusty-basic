@@ -1,7 +1,6 @@
 use rusty_common::{Position, Positioned};
 use rusty_parser::*;
 
-use crate::delegate_visitor;
 use crate::LintErrorPos;
 
 /// The result of a visitor.
@@ -225,7 +224,6 @@ where
 
 /// Creates a no-op visitor implementation
 /// for the given types.
-#[macro_export]
 macro_rules! no_op_visitor {
     ($visitor_name: ident: $($types:tt),+) => {
         $(
@@ -238,7 +236,6 @@ macro_rules! no_op_visitor {
     };
 }
 
-#[macro_export]
 macro_rules! no_pos_visitor {
     ($visitor_name: ident) => {
         impl SetPosition for $visitor_name {
@@ -248,7 +245,6 @@ macro_rules! no_pos_visitor {
 }
 
 /// Creates a visitor that delegates to another.
-#[macro_export]
 macro_rules! delegate_visitor {
     ($(#[$($attrss:tt)*])* $name: ident) => {
         $(#[$($attrss)*])*
@@ -278,3 +274,7 @@ macro_rules! delegate_visitor {
         }
     };
 }
+
+pub(crate) use delegate_visitor;
+pub(crate) use no_op_visitor;
+pub(crate) use no_pos_visitor;

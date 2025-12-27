@@ -3,7 +3,6 @@ use rusty_common::*;
 use rusty_parser::*;
 
 use crate::core::*;
-use crate::{no_op_visitor, no_pos_visitor};
 use std::collections::HashSet;
 
 /// In QBasic, if you have anywhere in the program a variable of user defined type,

@@ -1,5 +1,4 @@
 use crate::core::*;
-use crate::{no_op_visitor, no_pos_visitor};
 use rusty_common::*;
 use rusty_parser::*;
 

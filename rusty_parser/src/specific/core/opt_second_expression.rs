@@ -23,20 +23,22 @@ where
     first_parser.chain(
         move |first| {
             let is_paren = is_first_wrapped_in_parenthesis(&first);
-            parse_second(keyword, is_paren)
+            parse_second(keyword, is_paren).to_option()
         },
         |first, opt_second| (first, opt_second),
     )
 }
 
+// first_parser AND [ cond_ws(is_first_paren) KEYWORD !AND! ws_expr ]
 fn parse_second(
     k: Keyword,
-    is_paren: bool,
-) -> impl Parser<RcStringView, Output = Option<ExpressionPos>> {
-    conditionally_opt_whitespace(is_paren)
-        .and_tuple(keyword(k))
-        .and_without_undo_keep_right(ws_expr_pos_p().or_fail(err(k)))
-        .to_option()
+    is_preceded_by_paren: bool,
+) -> impl Parser<RcStringView, Output = ExpressionPos> {
+    ws_keyword(k, is_preceded_by_paren).and_without_undo_keep_right(ws_expr_pos_p().or_fail(err(k)))
+}
+
+fn ws_keyword(k: Keyword, is_preceded_by_paren: bool) -> impl Parser<RcStringView> {
+    conditionally_opt_whitespace(is_preceded_by_paren).and_tuple(keyword(k))
 }
 
 fn err(keyword: Keyword) -> ParseError {

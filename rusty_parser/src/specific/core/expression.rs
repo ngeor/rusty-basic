@@ -542,7 +542,7 @@ fn preceded_by_ws(
 fn followed_by_ws(
     parser: impl Parser<RcStringView, Output = ExpressionPos>,
 ) -> impl Parser<RcStringView, Output = ExpressionPos> {
-    parser.chain(
+    parser.then_with(
         |expr_pos| {
             let is_paren = expr_pos.is_parenthesis();
             conditionally_opt_whitespace(is_paren).no_incomplete()

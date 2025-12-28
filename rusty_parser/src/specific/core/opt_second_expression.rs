@@ -1,6 +1,8 @@
 use crate::error::ParseError;
 use crate::pc::boxed::boxed;
-use crate::pc::{And, AndWithoutUndo, Chain, Errors, Map, Parser, RcStringView, ToOption, Token};
+use crate::pc::{
+    And, AndWithoutUndo, Errors, Map, Parser, RcStringView, ThenWith, ToOption, Token,
+};
 use crate::specific::core::expression::ws_expr_pos_p;
 use crate::specific::pc_specific::{keyword, opt_whitespace, whitespace};
 use crate::specific::{ExpressionPos, Keyword};
@@ -20,7 +22,7 @@ where
     P: Parser<RcStringView>,
     F: Fn(&P::Output) -> bool,
 {
-    first_parser.chain(
+    first_parser.then_with(
         move |first| {
             let is_paren = is_first_wrapped_in_parenthesis(&first);
             parse_second(keyword, is_paren).to_option()

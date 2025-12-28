@@ -111,7 +111,7 @@ where
     T: Clone + Default + VarType + CreateArray<ArrayDimensions = A> + 'static,
     P: Parser<RcStringView, Output = T> + 'static,
 {
-    Seq2::new(name_with_dots(), array_p).chain(
+    Seq2::new(name_with_dots(), array_p).then_with(
         move |(name, _)| name_chain(name, built_in_extended_factory),
         |(name, array), var_type| {
             let bare_name: BareName = name.to_bare_name();

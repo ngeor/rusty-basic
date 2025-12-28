@@ -1,28 +1,32 @@
 use crate::error::ParseError;
 use crate::pc::{ParseResult, ParseResultTrait, Parser};
 
-pub trait Chain<I>: Parser<I>
+/// Similar to `and_without_undo`, but the right parser is created dynamically
+/// based on the result of the first parser.
+pub trait ThenWith<I>: Parser<I>
 where
     Self: Sized,
 {
-    fn chain<RF, R, F, O>(self, right_factory: RF, combiner: F) -> impl Parser<I, Output = O>
+    /// Similar to `and_without_undo`, but the right parser is created dynamically
+    /// based on the result of the first parser.
+    fn then_with<RF, R, F, O>(self, right_factory: RF, combiner: F) -> impl Parser<I, Output = O>
     where
         RF: Fn(&Self::Output) -> R,
         R: Parser<I>,
         F: Fn(Self::Output, R::Output) -> O,
     {
-        ChainParser::new(self, right_factory, combiner)
+        ThenWithParser::new(self, right_factory, combiner)
     }
 }
 
-impl<I, P> Chain<I> for P where P: Parser<I> {}
+impl<I, P> ThenWith<I> for P where P: Parser<I> {}
 
-struct ChainParser<L, R, F> {
+struct ThenWithParser<L, R, F> {
     left: L,
     right: R,
     combiner: F,
 }
-impl<L, R, F> ChainParser<L, R, F> {
+impl<L, R, F> ThenWithParser<L, R, F> {
     pub fn new(left: L, right: R, combiner: F) -> Self {
         Self {
             left,
@@ -32,7 +36,7 @@ impl<L, R, F> ChainParser<L, R, F> {
     }
 }
 
-impl<I, L, RF, R, F, O> Parser<I> for ChainParser<L, RF, F>
+impl<I, L, RF, R, F, O> Parser<I> for ThenWithParser<L, RF, F>
 where
     L: Parser<I>,
     RF: Fn(&L::Output) -> R,

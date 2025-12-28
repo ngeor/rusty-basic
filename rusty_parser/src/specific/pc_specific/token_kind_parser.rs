@@ -81,7 +81,7 @@ pub fn whitespace() -> impl Parser<RcStringView, Output = Token> {
 }
 
 /// Optional whitespace.
-fn opt_whitespace() -> impl Parser<RcStringView, Output = Option<Token>> {
+pub fn opt_whitespace() -> impl Parser<RcStringView, Output = Option<Token>> {
     whitespace().to_option()
 }
 

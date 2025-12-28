@@ -3,6 +3,7 @@ use rusty_variant::{MIN_INTEGER, MIN_LONG};
 
 use crate::lazy_parser;
 use crate::pc::*;
+use crate::specific::core::opt_second_expression::conditionally_opt_whitespace;
 use crate::specific::pc_specific::*;
 use crate::specific::{
     ExpressionType, FileHandle, HasExpressionType, Name, Operator, TypeQualifier, UnaryOperator,
@@ -544,7 +545,7 @@ fn followed_by_ws(
     parser.chain(
         |expr_pos| {
             let is_paren = expr_pos.is_parenthesis();
-            whitespace().allow_none_if(is_paren).no_incomplete()
+            conditionally_opt_whitespace(is_paren).no_incomplete()
         },
         |expr_pos, _| expr_pos,
     )

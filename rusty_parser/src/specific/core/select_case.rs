@@ -109,6 +109,7 @@ mod case_expression_parser {
     use crate::specific::core::opt_second_expression::opt_second_expression_after_keyword;
     use crate::specific::pc_specific::*;
     use crate::specific::{CaseExpression, Keyword, Operator};
+    use crate::ExpressionTrait;
     use rusty_common::Positioned;
 
     pub fn parser() -> impl Parser<RcStringView, Output = CaseExpression> {
@@ -141,12 +142,15 @@ mod case_expression_parser {
     }
 
     fn simple_or_range() -> impl Parser<RcStringView, Output = CaseExpression> {
-        opt_second_expression_after_keyword(expression_pos_p(), Keyword::To).map(
-            |(left, opt_right)| match opt_right {
-                Some(right) => CaseExpression::Range(left, right),
-                _ => CaseExpression::Simple(left),
-            },
+        opt_second_expression_after_keyword(
+            expression_pos_p(),
+            Keyword::To,
+            ExpressionTrait::is_parenthesis,
         )
+        .map(|(left, opt_right)| match opt_right {
+            Some(right) => CaseExpression::Range(left, right),
+            _ => CaseExpression::Simple(left),
+        })
     }
 }
 

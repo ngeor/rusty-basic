@@ -4,7 +4,6 @@ use crate::specific::core::expression::expr_pos_ws_p;
 use crate::specific::core::expression::property;
 use crate::specific::core::expression::ws_expr_pos_p;
 use crate::specific::core::opt_second_expression::opt_second_expression_after_keyword;
-use crate::specific::core::opt_second_expression::ExtractExpression;
 use crate::specific::core::statements::ZeroOrMoreStatements;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
@@ -42,14 +41,10 @@ fn parse_for_step_p() -> impl Parser<
         Option<ExpressionPos>,
     ),
 > {
-    opt_second_expression_after_keyword(parse_for_p(), Keyword::Step)
-        .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
-}
-
-impl ExtractExpression for (ExpressionPos, ExpressionPos, ExpressionPos) {
-    fn to_expression(&self) -> &ExpressionPos {
-        &self.2
-    }
+    opt_second_expression_after_keyword(parse_for_p(), Keyword::Step, |(_var, _low, upper)| {
+        upper.is_parenthesis()
+    })
+    .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
 }
 
 /// Parses the "FOR I = 1 TO 2" part

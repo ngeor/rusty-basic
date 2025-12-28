@@ -3,20 +3,7 @@ use crate::pc::boxed::boxed;
 use crate::pc::{And, AndWithoutUndo, Chain, Errors, Map, Parser, RcStringView, ToOption, Token};
 use crate::specific::core::expression::ws_expr_pos_p;
 use crate::specific::pc_specific::{keyword, opt_whitespace, whitespace};
-use crate::specific::{ExpressionPos, ExpressionTrait, Keyword};
-
-/// Finds the rightmost expression of a given type,
-/// so that it can be determined if it ended in parenthesis or not.
-#[deprecated]
-pub trait ExtractExpression {
-    fn to_expression(&self) -> &ExpressionPos;
-}
-
-impl ExtractExpression for ExpressionPos {
-    fn to_expression(&self) -> &ExpressionPos {
-        self
-    }
-}
+use crate::specific::{ExpressionPos, Keyword};
 
 /// Parses an optional second expression that follows the first expression
 /// and a keyword.
@@ -24,18 +11,18 @@ impl ExtractExpression for ExpressionPos {
 /// If the keyword is present, the second expression is mandatory.
 ///
 /// Example: `FOR I = 1 TO 100 [STEP 5]`
-pub fn opt_second_expression_after_keyword<P>(
-    first_expression_parser: P,
+pub fn opt_second_expression_after_keyword<P, F>(
+    first_parser: P,
     keyword: Keyword,
+    is_first_wrapped_in_parenthesis: F,
 ) -> impl Parser<RcStringView, Output = (P::Output, Option<ExpressionPos>)>
 where
     P: Parser<RcStringView>,
-    P::Output: ExtractExpression,
+    F: Fn(&P::Output) -> bool,
 {
-    first_expression_parser.chain(
+    first_parser.chain(
         move |first| {
-            let first_expr = first.to_expression();
-            let is_paren = first_expr.is_parenthesis();
+            let is_paren = is_first_wrapped_in_parenthesis(&first);
             parse_second(keyword, is_paren)
         },
         |first, opt_second| (first, opt_second),

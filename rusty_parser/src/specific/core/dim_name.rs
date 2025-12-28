@@ -137,17 +137,20 @@ mod array_dimensions {
     // expr ws+ TO ws+ expr (e.g. 1 TO 10)
     // paren_expr ws* TO ws* paren_expr
     fn array_dimension_p() -> impl Parser<RcStringView, Output = ArrayDimension> {
-        opt_second_expression_after_keyword(expression_pos_p(), Keyword::To).map(|(l, opt_r)| {
-            match opt_r {
-                Some(r) => ArrayDimension {
-                    lbound: Some(l),
-                    ubound: r,
-                },
-                None => ArrayDimension {
-                    lbound: None,
-                    ubound: l,
-                },
-            }
+        opt_second_expression_after_keyword(
+            expression_pos_p(),
+            Keyword::To,
+            ExpressionTrait::is_parenthesis,
+        )
+        .map(|(l, opt_r)| match opt_r {
+            Some(r) => ArrayDimension {
+                lbound: Some(l),
+                ubound: r,
+            },
+            None => ArrayDimension {
+                lbound: None,
+                ubound: l,
+            },
         })
     }
 }

@@ -1,6 +1,5 @@
 //! base module contains functionality that can be extracted into a library,
 //! it's generic and not specific to QBasic
-mod accumulate;
 mod allow_none_if;
 mod and;
 mod and_without_undo;
@@ -31,7 +30,6 @@ pub mod supplier;
 mod to_option;
 mod tokenizers;
 
-pub use accumulate::*;
 pub use allow_none_if::*;
 pub use and::*;
 pub use and_without_undo::AndWithoutUndo;

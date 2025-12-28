@@ -18,11 +18,18 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
 }
 
 fn file_handles() -> impl Parser<RcStringView, Output = Expressions> {
-    AccumulateParser::new(
-        guarded_file_handle_or_expression_p(),
-        comma().and_without_undo_keep_right(file_handle_or_expression_p()),
-    )
-    .or_default()
+    guarded_file_handle_or_expression_p()
+        .map(|first| vec![first])
+        .and(
+            comma()
+                .and_without_undo_keep_right(file_handle_or_expression_p())
+                .zero_or_more(),
+            |mut l, mut r| {
+                l.append(&mut r);
+                l
+            },
+        )
+        .or_default()
 }
 
 fn file_handle_or_expression_p() -> impl Parser<RcStringView, Output = ExpressionPos> {

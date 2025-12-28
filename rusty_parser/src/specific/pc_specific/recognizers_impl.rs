@@ -96,25 +96,25 @@ fn eol() -> impl Parser<RcStringView, Output = Token> {
 
 fn crlf() -> impl Parser<RcStringView, Output = Token> {
     char_parsers::specific('\r')
-        .append_char(char_parsers::specific('\n'))
+        .concat(char_parsers::specific('\n'))
         .to_token(TokenType::Eol)
 }
 
 fn greater_or_equal() -> impl Parser<RcStringView, Output = Token> {
     char_parsers::specific('>')
-        .append_char(char_parsers::specific('='))
+        .concat(char_parsers::specific('='))
         .to_token(TokenType::GreaterEquals)
 }
 
 fn less_or_equal() -> impl Parser<RcStringView, Output = Token> {
     char_parsers::specific('<')
-        .append_char(char_parsers::specific('='))
+        .concat(char_parsers::specific('='))
         .to_token(TokenType::LessEquals)
 }
 
 fn not_equal() -> impl Parser<RcStringView, Output = Token> {
     char_parsers::specific('<')
-        .append_char(char_parsers::specific('>'))
+        .concat(char_parsers::specific('>'))
         .to_token(TokenType::NotEquals)
 }
 
@@ -153,16 +153,20 @@ where
     F: Fn(&char) -> bool,
 {
     char_parsers::filter(predicate)
-        .concatenate()
+        .many_to_str()
         .to_token(token_type)
 }
 
 fn specific(token_type: TokenType, needle: char) -> impl Parser<RcStringView, Output = Token> {
-    char_parsers::specific(needle).to_str().to_token(token_type)
+    char_parsers::specific(needle)
+        .one_to_str()
+        .to_token(token_type)
 }
 
 fn unknown() -> impl Parser<RcStringView, Output = Token> {
-    char_parsers::any().to_str().to_token(TokenType::Unknown)
+    char_parsers::any()
+        .one_to_str()
+        .to_token(TokenType::Unknown)
 }
 
 fn oct_digits() -> impl Parser<RcStringView, Output = Token> {
@@ -182,19 +186,16 @@ where
     F: Fn(&char) -> bool,
 {
     char_parsers::specific('&')
-        .append_char(char_parsers::specific(radix))
+        .concat(char_parsers::specific(radix))
         .and(
-            char_parsers::specific('-').to_option().and(
-                char_parsers::filter(predicate).concatenate(),
-                |opt_minus, mut digits| {
-                    match opt_minus {
-                        Some(minus) => {
-                            // TODO prevent insert
-                            digits.insert(0, minus);
-                            digits
-                        }
-                        _ => digits,
+            char_parsers::specific('-').one_to_str().to_option().and(
+                char_parsers::filter(predicate).many_to_str(),
+                |opt_minus, digits| match opt_minus {
+                    Some(mut minus) => {
+                        minus.push_str(&digits);
+                        minus
                     }
+                    _ => digits,
                 },
             ),
             |mut left, right| {
@@ -249,14 +250,14 @@ mod string_parsers {
     use super::*;
 
     pub trait CharToStringParser<I> {
-        fn concatenate(self) -> impl Parser<I, Output = String>;
+        /// Reads as many chars possible from the underlying parser and returns them as a string.
+        fn many_to_str(self) -> impl Parser<I, Output = String>;
 
-        fn to_str(self) -> impl Parser<I, Output = String>;
+        /// Reads one char possible from the underlying parser and converts it into a string.
+        fn one_to_str(self) -> impl Parser<I, Output = String>;
 
-        fn append_char(
-            self,
-            other: impl Parser<I, Output = char>,
-        ) -> impl Parser<I, Output = String>
+        /// A parser that reads two chars together and returns them as a string.
+        fn concat(self, other: impl Parser<I, Output = char>) -> impl Parser<I, Output = String>
         where
             I: Clone;
     }
@@ -266,21 +267,18 @@ mod string_parsers {
         I: Clone,
         P: Parser<I, Output = char>,
     {
-        fn concatenate(self) -> impl Parser<I, Output = String> {
+        fn many_to_str(self) -> impl Parser<I, Output = String> {
             self.many(String::from, |mut s: String, c| {
                 s.push(c);
                 s
             })
         }
 
-        fn to_str(self) -> impl Parser<I, Output = String> {
+        fn one_to_str(self) -> impl Parser<I, Output = String> {
             self.map(String::from)
         }
 
-        fn append_char(
-            self,
-            other: impl Parser<I, Output = char>,
-        ) -> impl Parser<I, Output = String> {
+        fn concat(self, other: impl Parser<I, Output = char>) -> impl Parser<I, Output = String> {
             self.and(other, |l, r| {
                 let mut s = String::from(l);
                 s.push(r);

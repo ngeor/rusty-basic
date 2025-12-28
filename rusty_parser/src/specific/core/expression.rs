@@ -469,11 +469,16 @@ pub fn csv_expressions_non_opt(
 /// Missing expressions are not allowed.
 /// The first expression needs to be preceded by space or surrounded in parenthesis.
 pub fn csv_expressions_first_guarded() -> impl Parser<RcStringView, Output = Expressions> {
-    AccumulateParser::new(
-        ws_expr_pos_p(),
-        comma().and_without_undo_keep_right(
-            expression_pos_p().or_syntax_error("Expected: expression after comma"),
-        ),
+    ws_expr_pos_p().map(|first| vec![first]).and(
+        comma()
+            .and_without_undo_keep_right(
+                expression_pos_p().or_syntax_error("Expected: expression after comma"),
+            )
+            .zero_or_more(),
+        |mut l, mut r| {
+            l.append(&mut r);
+            l
+        },
     )
 }
 

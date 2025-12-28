@@ -24,6 +24,8 @@ pub fn on_assignment(
 }
 
 mod assignment_pre_conversion_validation_rules {
+    use rusty_parser::AsBareName;
+
     use super::*;
     use crate::core::LintError;
 
@@ -41,7 +43,10 @@ mod assignment_pre_conversion_validation_rules {
         pos: Position,
     ) -> Result<(), LintErrorPos> {
         if let Expression::Variable(var_name, _) = input {
-            if ctx.names.contains_const_recursively(var_name.bare_name()) {
+            if ctx
+                .names
+                .contains_const_recursively(var_name.as_bare_name())
+            {
                 Err(LintError::DuplicateDefinition.at_pos(pos))
             } else {
                 Ok(())

@@ -1,6 +1,6 @@
 use crate::core::{ConstLookup, LintError};
 use rusty_common::Positioned;
-use rusty_parser::{Expression, TypeQualifier};
+use rusty_parser::{AsBareName, Expression, TypeQualifier};
 use rusty_variant::{Variant, MAX_INTEGER};
 
 pub trait ValidateStringLength<E, C: ConstLookup + ?Sized> {
@@ -38,7 +38,7 @@ impl<C: ConstLookup + ?Sized> ValidateStringLength<LintError, C> for Expression 
                 }
 
                 if let Some(Variant::VInteger(i)) =
-                    const_lookup.get_resolved_constant(name.bare_name())
+                    const_lookup.get_resolved_constant(name.as_bare_name())
                 {
                     if (1..=MAX_INTEGER).contains(i) {
                         return Ok(*i as u16);

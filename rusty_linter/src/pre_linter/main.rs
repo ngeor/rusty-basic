@@ -52,7 +52,7 @@ impl Visitor<FunctionDeclaration> for MainContext {
             parameters: params,
         } = f;
         let param_types: ResolvedParamTypes = self.resolve_parameters(params)?;
-        let bare_name = name.bare_name();
+        let bare_name = name.as_bare_name();
         let q = name.qualify(&self.resolver);
         let signature = Signature::new_function(q, param_types);
         self.functions
@@ -68,7 +68,7 @@ impl Visitor<FunctionImplementation> for MainContext {
             ..
         } = f;
         let param_types: ResolvedParamTypes = self.resolve_parameters(params)?;
-        let bare_name = name.bare_name();
+        let bare_name = name.as_bare_name();
         let q = name.qualify(&self.resolver);
         let signature = Signature::new_function(q, param_types);
         self.functions
@@ -155,10 +155,10 @@ impl MainContext {
 
 impl<T> RefToValueVisitor<T, ResolvedParamType, LintError> for MainContext
 where
-    T: AsRef<BareName> + AsRef<ParamType>,
+    T: AsBareName + AsRef<ParamType>,
 {
     fn ref_to_value_visit(&mut self, element: &T) -> Result<ResolvedParamType, LintError> {
-        let bare_name: &BareName = element.as_ref();
+        let bare_name: &BareName = element.as_bare_name();
         let param_type: &ParamType = element.as_ref();
 
         match param_type {
@@ -192,8 +192,8 @@ where
 /// and the recursive (`Box`) implementation of `ParamType::Array`.
 struct RefParamName<'a>(&'a BareName, &'a ParamType);
 
-impl<'a> AsRef<BareName> for RefParamName<'a> {
-    fn as_ref(&self) -> &BareName {
+impl<'a> AsBareName for RefParamName<'a> {
+    fn as_bare_name(&self) -> &BareName {
         self.0
     }
 }

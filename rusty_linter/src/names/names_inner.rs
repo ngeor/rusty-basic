@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rusty_parser::{BareName, Name, TypeQualifier, VariableInfo};
+use rusty_parser::{AsBareName, BareName, Name, TypeQualifier, VariableInfo};
 use rusty_variant::Variant;
 
 use crate::names::{
@@ -45,7 +45,7 @@ impl NamesInner {
     }
 
     pub fn get_variable_info_by_name(&self, name: &Name) -> Option<&VariableInfo> {
-        let bare_name = name.bare_name();
+        let bare_name = name.as_bare_name();
         match name.qualifier() {
             // if it's qualified, it can be either one (e.g. A$ or A AS STRING)
             Some(qualifier) => self

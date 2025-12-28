@@ -45,7 +45,7 @@ mod while_wend;
 // export types
 
 pub use self::array_dimension::*;
-pub use self::bare_name::{BareName, BareNamePos};
+pub use self::bare_name::*;
 pub use self::built_in_style::BuiltInStyle;
 pub use self::def_type::DefType;
 pub use self::dim_name::{DimNameBuilder, DimVar, DimVarPos, DimVars};

@@ -1,5 +1,7 @@
 use rusty_common::{AtPos, Position};
-use rusty_parser::{BareName, Expression, ExpressionType, Expressions, Name, VariableInfo};
+use rusty_parser::{
+    AsBareName, BareName, Expression, ExpressionType, Expressions, Name, VariableInfo,
+};
 
 use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
@@ -40,7 +42,7 @@ fn resolve_function(
             Expression::BuiltInFunctionCall(built_in_function, converted_args)
         }
         _ => {
-            let converted_name: Name = match ctx.function_qualifier(name.bare_name()) {
+            let converted_name: Name = match ctx.function_qualifier(name.as_bare_name()) {
                 Some(function_qualifier) => {
                     try_qualify(name, function_qualifier).with_err_at(&pos)?
                 }
@@ -78,7 +80,7 @@ impl ExistingArrayWithParenthesis {
     }
 
     fn get_var_info<'a>(ctx: &'a Context, name: &Name) -> Option<&'a VariableInfo> {
-        Self::get_extended_var_info(ctx, name.bare_name())
+        Self::get_extended_var_info(ctx, name.as_bare_name())
             .or_else(|| Self::get_compact_var_info(ctx, name))
     }
 
@@ -92,7 +94,7 @@ impl ExistingArrayWithParenthesis {
     fn get_compact_var_info<'a>(ctx: &'a Context, name: &Name) -> Option<&'a VariableInfo> {
         let qualifier = name.qualify(ctx);
         ctx.names
-            .get_compact_var_recursively(name.bare_name(), qualifier)
+            .get_compact_var_recursively(name.as_bare_name(), qualifier)
     }
 }
 

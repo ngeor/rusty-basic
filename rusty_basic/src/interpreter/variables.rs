@@ -3,7 +3,9 @@ use crate::interpreter::arguments::{ArgumentInfo, Arguments};
 use crate::interpreter::byte_size::QByteSize;
 use crate::interpreter::handlers::allocation::allocate_built_in;
 use crate::interpreter::indexed_map::IndexedMap;
-use rusty_parser::{BareName, DimType, DimVar, Name, ParamType, Parameter, TypeQualifier};
+use rusty_parser::{
+    AsBareName, BareName, DimType, DimVar, Name, ParamType, Parameter, TypeQualifier,
+};
 use rusty_variant::{Variant, V_FALSE};
 
 #[derive(Debug)]
@@ -171,7 +173,7 @@ impl Variables {
     }
 
     pub fn get_by_dim_name(&self, dim_name: &DimVar) -> Option<&Variant> {
-        self.get_by_dim_name_internal(dim_name.bare_name(), dim_name.var_type())
+        self.get_by_dim_name_internal(dim_name.as_bare_name(), dim_name.var_type())
     }
 
     fn get_by_dim_name_internal(

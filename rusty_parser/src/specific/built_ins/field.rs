@@ -40,7 +40,7 @@ fn build_args(
     args.push(file_number_pos.map(Expression::from));
     for (width, Positioned { element: name, pos }) in fields {
         args.push(width);
-        let variable_name: String = name.bare_name().to_string();
+        let variable_name: String = name.as_bare_name().to_string();
         args.push(Expression::StringLiteral(variable_name).at_pos(pos));
         // to lint the variable, not used at runtime
         args.push(Expression::Variable(name, VariableInfo::unresolved()).at_pos(pos));

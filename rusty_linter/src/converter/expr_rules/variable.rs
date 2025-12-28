@@ -6,7 +6,7 @@ use crate::core::{
 use crate::core::{LintError, LintErrorPos};
 use crate::names::ManyNamesTrait;
 use rusty_common::{AtPos, Position};
-use rusty_parser::BuiltInFunction;
+use rusty_parser::{AsBareName, BuiltInFunction};
 use rusty_parser::{
     BuiltInStyle, DimType, Expression, ExpressionType, Name, TypeQualifier, VariableInfo,
 };
@@ -49,7 +49,7 @@ pub fn convert(
 }
 
 fn validate(ctx: &Context, name: &Name, pos: Position) -> Result<(), LintErrorPos> {
-    if ctx.subs().contains_key(name.bare_name()) {
+    if ctx.subs().contains_key(name.as_bare_name()) {
         return Err(LintError::DuplicateDefinition.at_pos(pos));
     }
 
@@ -59,7 +59,7 @@ fn validate(ctx: &Context, name: &Name, pos: Position) -> Result<(), LintErrorPo
 pub fn add_as_new_implicit_var(ctx: &mut Context, extra: ExprContextPos, name: Name) -> Expression {
     let resolved_name = name.to_qualified(ctx);
 
-    let bare_name = resolved_name.bare_name();
+    let bare_name = resolved_name.as_bare_name();
     let q = resolved_name.qualifier().expect("Should be resolved");
     ctx.names.insert(
         bare_name.clone(),
@@ -94,7 +94,7 @@ pub struct ExistingVar {
 
 impl VarResolve for ExistingVar {
     fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool {
-        let bare_name = name.bare_name();
+        let bare_name = name.as_bare_name();
         self.var_info = ctx.names.get_extended_var_recursively(bare_name).cloned();
         if self.var_info.is_some() {
             true
@@ -143,10 +143,13 @@ impl VarResolve for ExistingConst {
     fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool {
         self.opt_v = if self.use_recursion {
             ctx.names
-                .get_const_value_recursively(name.bare_name())
+                .get_const_value_recursively(name.as_bare_name())
                 .cloned()
         } else {
-            ctx.names.names().get_const_value(name.bare_name()).cloned()
+            ctx.names
+                .names()
+                .get_const_value(name.as_bare_name())
+                .cloned()
         };
         self.opt_v.is_some()
     }
@@ -186,7 +189,7 @@ pub struct AssignToFunction {
 
 impl VarResolve for AssignToFunction {
     fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool {
-        let bare_name = name.bare_name();
+        let bare_name = name.as_bare_name();
         match ctx.function_qualifier(bare_name) {
             Some(function_qualifier) => {
                 self.function_qualifier = Some(function_qualifier);
@@ -203,7 +206,7 @@ impl VarResolve for AssignToFunction {
         name: Name,
     ) -> Result<Expression, LintErrorPos> {
         let function_qualifier = self.function_qualifier.unwrap();
-        if ctx.names.is_in_function(name.bare_name()) {
+        if ctx.names.is_in_function(name.as_bare_name()) {
             let converted_name = try_qualify(name, function_qualifier).with_err_at(&extra.pos)?;
             let expr_type = ExpressionType::BuiltIn(function_qualifier);
             let variable_info = VariableInfo::new_local(expr_type);
@@ -212,7 +215,7 @@ impl VarResolve for AssignToFunction {
             // TODO add unit test
             // TODO what if the name already exists?
             ctx.names
-                .insert_compact(converted_name.bare_name().clone(), variable_info.clone());
+                .insert_compact(converted_name.as_bare_name().clone(), variable_info.clone());
 
             let expr = Expression::Variable(converted_name, variable_info);
 
@@ -230,7 +233,7 @@ pub struct VarAsBuiltInFunctionCall {
 
 impl VarResolve for VarAsBuiltInFunctionCall {
     fn can_handle(&mut self, _ctx: &Context, name: &Name) -> bool {
-        self.built_in_function = BuiltInFunction::try_parse(name.bare_name());
+        self.built_in_function = BuiltInFunction::try_parse(name.as_bare_name());
         self.built_in_function.is_some()
     }
 
@@ -256,7 +259,7 @@ pub struct VarAsUserDefinedFunctionCall {
 
 impl VarResolve for VarAsUserDefinedFunctionCall {
     fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool {
-        self.function_qualifier = ctx.function_qualifier(name.bare_name());
+        self.function_qualifier = ctx.function_qualifier(name.as_bare_name());
         self.function_qualifier.is_some()
     }
 

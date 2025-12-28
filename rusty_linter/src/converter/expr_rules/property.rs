@@ -1,7 +1,7 @@
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{
-    BareName, ElementType, Expression, ExpressionType, HasExpressionType, Name, UserDefinedType,
-    VariableInfo,
+    AsBareName, BareName, ElementType, Expression, ExpressionType, HasExpressionType, Name,
+    ToBareName, UserDefinedType, VariableInfo,
 };
 
 use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
@@ -177,7 +177,7 @@ fn existing_property_element_type(
     element_type: &ElementType,
     property_name: Name,
 ) -> Result<Expression, LintErrorPos> {
-    let bare_name = property_name.into();
+    let bare_name = property_name.to_bare_name();
     let property_name = Name::bare(bare_name);
     Ok(Expression::Property(
         Box::new(resolved_left_side),
@@ -190,7 +190,7 @@ fn demand_element_by_name<'a>(
     user_defined_type: &'a UserDefinedType,
     element_name: &Name,
 ) -> Result<&'a ElementType, LintError> {
-    let element_type = find_element_type(user_defined_type, element_name.bare_name())
+    let element_type = find_element_type(user_defined_type, element_name.as_bare_name())
         .ok_or(LintError::ElementNotDefined)?;
     if element_type.can_be_referenced_by_property_name(element_name) {
         Ok(element_type)

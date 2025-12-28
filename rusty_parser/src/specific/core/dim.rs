@@ -80,7 +80,7 @@ mod tests {
                             pos,
                         } = dim_list.variables.pop().unwrap();
                         assert_eq!(pos, Position::new(1, 5));
-                        assert_eq!(*dim_name.bare_name(), var_name_bare);
+                        assert_eq!(*dim_name.as_bare_name(), var_name_bare);
                         match dim_name.var_type() {
                             DimType::UserDefined(Positioned { element, .. }) => {
                                 assert_eq!(*element, var_type_bare);

@@ -86,7 +86,7 @@ fn expr_to_bare_name_args(
 
 fn demand_unqualified(name: Name) -> Result<BareName, ParseError> {
     if name.is_bare() {
-        Ok(name.into())
+        Ok(name.to_bare_name())
     } else {
         Err(ParseError::syntax_error("Sub cannot be qualified"))
     }

@@ -2,7 +2,7 @@ use super::expression_reducer::*;
 use crate::core::binary_cast;
 use crate::core::HasSubprograms;
 use crate::core::LintErrorPos;
-use rusty_parser::Expression;
+use rusty_parser::{AsBareName, Expression};
 
 /// Finds undefined functions and converts them to zeroes.
 pub struct UndefinedFunctionReducer<'a, R> {
@@ -28,7 +28,7 @@ where
                 if self
                     .linter_context
                     .functions()
-                    .contains_key(name.bare_name())
+                    .contains_key(name.as_bare_name())
                 {
                     Ok(Expression::FunctionCall(
                         name,

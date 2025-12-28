@@ -65,19 +65,19 @@ where
 
 impl NoDotNamesCheck<Parameter, LintError> for DotsLinter {
     fn ensure_no_dots(&self, x: &Parameter) -> Result<(), LintError> {
-        self.ensure_no_dots(x.bare_name())
+        self.ensure_no_dots(x.as_bare_name())
     }
 }
 
 impl NoDotNamesCheck<DimVar, LintError> for DotsLinter {
     fn ensure_no_dots(&self, x: &DimVar) -> Result<(), LintError> {
-        self.ensure_no_dots(x.bare_name())
+        self.ensure_no_dots(x.as_bare_name())
     }
 }
 
 impl NoDotNamesCheck<Name, LintError> for DotsLinter {
     fn ensure_no_dots(&self, name: &Name) -> Result<(), LintError> {
-        self.ensure_no_dots(name.bare_name())
+        self.ensure_no_dots(name.as_bare_name())
     }
 }
 
@@ -225,7 +225,8 @@ where
 {
     fn visit(&mut self, element: &TypedName<T>) -> VisitResult {
         if element.var_type().as_user_defined_recursively().is_some() {
-            self.user_defined_names.insert(element.bare_name().clone());
+            self.user_defined_names
+                .insert(element.as_bare_name().clone());
         }
         Ok(())
     }

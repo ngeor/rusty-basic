@@ -4,7 +4,7 @@ use crate::core::{HasSubprograms, HasUserDefinedTypes};
 use crate::core::{LintError, LintErrorPos};
 use crate::names::ManyNamesTrait;
 use rusty_common::{AtPos, Position, Positioned};
-use rusty_parser::{DimVar, Parameter, TypedName, VarType};
+use rusty_parser::{AsBareName, DimVar, Parameter, TypedName, VarType};
 
 pub fn validate<T: VarType>(
     var_name: &TypedName<T>,
@@ -26,7 +26,7 @@ fn cannot_clash_with_subs<T: VarType, C: HasSubprograms>(
     ctx: &C,
     pos: Position,
 ) -> Result<(), LintErrorPos> {
-    if ctx.subs().contains_key(var_name.bare_name()) {
+    if ctx.subs().contains_key(var_name.as_bare_name()) {
         Err(LintError::DuplicateDefinition.at_pos(pos))
     } else {
         Ok(())
@@ -38,7 +38,7 @@ fn cannot_clash_with_local_constants<T: VarType>(
     ctx: &Context,
     pos: Position,
 ) -> Result<(), LintErrorPos> {
-    match ctx.names.names().get_const_value(var_name.bare_name()) {
+    match ctx.names.names().get_const_value(var_name.as_bare_name()) {
         Some(_) => Err(LintError::DuplicateDefinition.at_pos(pos)),
         _ => Ok(()),
     }
@@ -55,7 +55,7 @@ impl CannotClashWithFunctions for DimVar {
         ctx: &Context,
         pos: Position,
     ) -> Result<(), LintErrorPos> {
-        if ctx.functions().contains_key(self.bare_name()) {
+        if ctx.functions().contains_key(self.as_bare_name()) {
             Err(LintError::DuplicateDefinition.at_pos(pos))
         } else {
             Ok(())
@@ -69,7 +69,7 @@ impl CannotClashWithFunctions for Parameter {
         ctx: &Context,
         pos: Position,
     ) -> Result<(), LintErrorPos> {
-        if let Some(func_qualifier) = ctx.function_qualifier(self.bare_name()) {
+        if let Some(func_qualifier) = ctx.function_qualifier(self.as_bare_name()) {
             if self.var_type().is_extended() {
                 Err(LintError::DuplicateDefinition.at_pos(pos))
             } else {
@@ -77,7 +77,7 @@ impl CannotClashWithFunctions for Parameter {
                 let q = self
                     .var_type()
                     .to_qualifier_recursively()
-                    .unwrap_or_else(|| self.bare_name().qualify(ctx));
+                    .unwrap_or_else(|| self.as_bare_name().qualify(ctx));
                 if q == func_qualifier {
                     Ok(())
                 } else {

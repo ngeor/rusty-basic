@@ -1,6 +1,6 @@
 use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
-use rusty_parser::{Expression, ExpressionPos, Operator, TypeQualifier, UnaryOperator};
+use rusty_parser::{AsBareName, Expression, ExpressionPos, Operator, TypeQualifier, UnaryOperator};
 use rusty_variant::Variant;
 use std::cmp::Ordering;
 
@@ -44,7 +44,7 @@ where
             Expression::IntegerLiteral(i) => Ok(Variant::VInteger(*i)),
             Expression::LongLiteral(l) => Ok(Variant::VLong(*l)),
             Expression::Variable(name_expr, _) => {
-                let bare_name = name_expr.bare_name();
+                let bare_name = name_expr.as_bare_name();
                 let bare_name_pos = Positioned::new(bare_name, *pos);
                 let v = self.resolve_const(&bare_name_pos)?;
                 if let Some(qualifier) = name_expr.qualifier() {

@@ -1,9 +1,9 @@
 use rusty_common::Positioned;
 
 use crate::error::ParseError;
-use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::{BareName, ExpressionType, HasExpressionType, QualifiedName, TypeQualifier};
+use crate::{pc::*, AsBareName, ToBareName};
 
 #[cfg(test)]
 use std::convert::TryFrom;
@@ -46,10 +46,6 @@ impl Name {
 
     pub fn qualified(bare_name: BareName, q: TypeQualifier) -> Self {
         Self::new(bare_name, Some(q))
-    }
-
-    pub fn bare_name(&self) -> &BareName {
-        &self.bare_name
     }
 
     pub fn qualifier(&self) -> Option<TypeQualifier> {
@@ -100,9 +96,15 @@ impl Name {
     }
 }
 
-impl From<Name> for BareName {
-    fn from(name: Name) -> Self {
-        name.bare_name
+impl AsBareName for Name {
+    fn as_bare_name(&self) -> &BareName {
+        &self.bare_name
+    }
+}
+
+impl ToBareName for Name {
+    fn to_bare_name(self) -> BareName {
+        self.bare_name
     }
 }
 

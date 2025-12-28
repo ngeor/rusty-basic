@@ -24,10 +24,6 @@ impl<T: VarType> TypedName<T> {
         }
     }
 
-    pub fn bare_name(&self) -> &BareName {
-        self.as_ref()
-    }
-
     pub fn var_type(&self) -> &T {
         self.as_ref()
     }
@@ -44,12 +40,6 @@ impl<T: VarType> TypedName<T> {
     }
 }
 
-impl<T: VarType> AsRef<BareName> for TypedName<T> {
-    fn as_ref(&self) -> &BareName {
-        &self.bare_name
-    }
-}
-
 impl<T: VarType> AsRef<T> for TypedName<T> {
     fn as_ref(&self) -> &T {
         &self.var_type
@@ -59,6 +49,18 @@ impl<T: VarType> AsRef<T> for TypedName<T> {
 impl<T: VarType> From<TypedName<T>> for (BareName, T) {
     fn from(value: TypedName<T>) -> Self {
         (value.bare_name, value.var_type)
+    }
+}
+
+impl<T: VarType> AsBareName for TypedName<T> {
+    fn as_bare_name(&self) -> &BareName {
+        &self.bare_name
+    }
+}
+
+impl<T: VarType> ToBareName for TypedName<T> {
+    fn to_bare_name(self) -> BareName {
+        self.bare_name
     }
 }
 
@@ -112,7 +114,7 @@ where
     Seq2::new(name_with_dots(), array_p).chain(
         move |(name, _)| name_chain(name, built_in_extended_factory),
         |(name, array), var_type| {
-            let bare_name: BareName = name.into();
+            let bare_name: BareName = name.to_bare_name();
             let final_type = var_type.create_array(array);
             TypedName::new(bare_name, final_type)
         },
@@ -169,7 +171,7 @@ where
         Some(q) => boxed(qualified_type(q)),
         // bare names might have an "AS" clause
         _ => {
-            let allow_user_defined = !name.bare_name().contains('.');
+            let allow_user_defined = !name.as_bare_name().contains('.');
 
             boxed(
                 as_clause()

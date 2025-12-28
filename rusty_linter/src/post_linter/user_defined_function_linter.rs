@@ -161,7 +161,7 @@ where
         args: &Expressions,
     ) -> Result<(), LintErrorPos> {
         let qualifier = name.qualifier().expect("Unresolved function!");
-        let bare_name = name.bare_name();
+        let bare_name = name.as_bare_name();
         match self.linter_context.functions().get(bare_name) {
             Some(function_signature_pos) => {
                 if function_signature_pos.element != qualifier {

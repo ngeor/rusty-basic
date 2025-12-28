@@ -21,9 +21,9 @@ fn const_cannot_clash_with_existing_names(
     } = left_side;
     if ctx
         .names
-        .contains_any_locally_or_contains_extended_recursively(const_name.bare_name())
-        || ctx.subs().contains_key(const_name.bare_name())
-        || ctx.functions().contains_key(const_name.bare_name())
+        .contains_any_locally_or_contains_extended_recursively(const_name.as_bare_name())
+        || ctx.subs().contains_key(const_name.as_bare_name())
+        || ctx.functions().contains_key(const_name.as_bare_name())
     {
         Err(LintError::DuplicateDefinition.at(const_name_pos))
     } else {
@@ -51,7 +51,7 @@ fn new_const(
     };
     ctx.names
         .names_mut()
-        .insert_const(const_name.bare_name().clone(), final_value);
+        .insert_const(const_name.as_bare_name().clone(), final_value);
 
     // here we could return the simplified resolved value of the constant
     // instead of keeping `right_side`.

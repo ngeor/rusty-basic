@@ -5,7 +5,7 @@ use crate::instruction_generator::subprogram_info::{
 use crate::RuntimeError;
 use rusty_common::{AtPos, CaseInsensitiveString, Position, Positioned};
 use rusty_linter::{Context, Names, SubprogramName};
-use rusty_parser::{Assignment, BuiltInSub};
+use rusty_parser::{Assignment, BuiltInSub, ToBareName};
 use rusty_parser::{
     BareName, DimVar, Expression, ExpressionType, FileHandle, FunctionImplementation,
     GlobalStatement, HasExpressionType, Name, Parameter, Program, QualifiedName, Statement,
@@ -376,7 +376,7 @@ impl InstructionGenerator {
         let qualifier = function_name
             .qualifier()
             .expect("Expected qualified function name");
-        let bare_name = function_name.bare_name().clone();
+        let bare_name = function_name.to_bare_name();
         let q_function_name = QualifiedName::new(bare_name, qualifier);
         self.mark_current_subprogram(SubprogramName::Function(q_function_name), pos);
         // set default value

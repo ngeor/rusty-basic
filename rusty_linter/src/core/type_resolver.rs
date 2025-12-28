@@ -2,7 +2,7 @@
 //! For bare names, the type comes from their first character, according to
 //! the `DEFINT` etc statements.
 
-use rusty_parser::{BareName, Name, TypeQualifier};
+use rusty_parser::{AsBareName, BareName, Name, ToBareName, TypeQualifier};
 
 /// Finds the [TypeQualifier] that corresponds to the given character,
 /// based on the `DEFINT` etc statements.
@@ -31,7 +31,7 @@ impl IntoTypeQualifier for Name {
     fn qualify(&self, resolver: &impl TypeResolver) -> TypeQualifier {
         match self.qualifier() {
             Some(qualifier) => qualifier,
-            _ => self.bare_name().qualify(resolver),
+            _ => self.as_bare_name().qualify(resolver),
         }
     }
 }
@@ -63,7 +63,7 @@ impl IntoQualified for Name {
 
     fn to_qualified(self, resolver: &impl TypeResolver) -> Self::Output {
         if self.is_bare() {
-            let bare_name: BareName = self.into();
+            let bare_name: BareName = self.to_bare_name();
             bare_name.to_qualified(resolver)
         } else {
             self

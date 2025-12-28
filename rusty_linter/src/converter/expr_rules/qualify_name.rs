@@ -1,6 +1,4 @@
-use rusty_parser::{
-    BuiltInFunction, {ExpressionType, Name, TypeQualifier},
-};
+use rusty_parser::{AsBareName, BuiltInFunction, ExpressionType, Name, ToBareName, TypeQualifier};
 
 use crate::LintError;
 
@@ -28,14 +26,14 @@ pub fn try_qualify(name: Name, qualifier: TypeQualifier) -> Result<Name, LintErr
     match name.qualifier() {
         Some(q) if q != qualifier => Err(LintError::DuplicateDefinition),
         Some(_) => Ok(name),
-        None => Ok(Name::qualified(name.into(), qualifier)),
+        None => Ok(Name::qualified(name.to_bare_name(), qualifier)),
     }
 }
 
 // Name -> BuiltInFunction
 
 pub fn try_built_in_function(n: &Name) -> Result<Option<BuiltInFunction>, LintError> {
-    let opt_built_in: Option<BuiltInFunction> = BuiltInFunction::try_parse(n.bare_name());
+    let opt_built_in: Option<BuiltInFunction> = BuiltInFunction::try_parse(n.as_bare_name());
     match opt_built_in {
         Some(b) => match b {
             BuiltInFunction::Cvd

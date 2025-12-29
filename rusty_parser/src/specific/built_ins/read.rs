@@ -5,9 +5,7 @@ use crate::BuiltInSub;
 
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     keyword(Keyword::Read)
-        .and_without_undo_keep_right(
-            csv_expressions_first_guarded().or_syntax_error("Expected: variable"),
-        )
+        .and_keep_right(csv_expressions_first_guarded().or_syntax_error("Expected: variable"))
         .map(|args| Statement::built_in_sub_call(BuiltInSub::Read, args))
 }
 

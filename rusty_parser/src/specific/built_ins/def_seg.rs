@@ -15,9 +15,8 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
 }
 
 fn equal_sign_and_expression() -> impl Parser<RcStringView, Output = ExpressionPos> {
-    equal_sign().and_without_undo_keep_right(
-        expression_pos_p().or_syntax_error("Expected expression after equal sign"),
-    )
+    equal_sign()
+        .and_keep_right(expression_pos_p().or_syntax_error("Expected expression after equal sign"))
 }
 
 #[cfg(test)]

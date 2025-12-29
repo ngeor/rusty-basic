@@ -5,7 +5,7 @@ use crate::BuiltInSub;
 
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     keyword_pair(Keyword::View, Keyword::Print)
-        .and_without_undo_keep_right(parse_args().or_default())
+        .and_keep_right(parse_args().or_default())
         .map(|opt_args| Statement::built_in_sub_call(BuiltInSub::ViewPrint, opt_args))
 }
 

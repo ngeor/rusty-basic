@@ -175,7 +175,7 @@ where
 
             boxed(
                 as_clause()
-                    .and_without_undo_keep_right(
+                    .and_keep_right(
                         extended(allow_user_defined, built_in_extended_factory).no_incomplete(),
                     )
                     .or(bare_type()),

@@ -54,7 +54,7 @@ fn single_line_if_else_p(
 fn single_line_else_p() -> impl Parser<RcStringView, Output = Statements> {
     whitespace()
         .and_tuple(keyword(Keyword::Else))
-        .and_without_undo_keep_right(
+        .and_keep_right(
             single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
         )
 }
@@ -91,7 +91,7 @@ fn else_if_block_p() -> impl Parser<RcStringView, Output = ConditionalBlock> {
 }
 
 fn else_block_p() -> impl Parser<RcStringView, Output = Statements> {
-    keyword(Keyword::Else).and_without_undo_keep_right(ZeroOrMoreStatements::new(Keyword::End))
+    keyword(Keyword::Else).and_keep_right(ZeroOrMoreStatements::new(Keyword::End))
 }
 
 #[cfg(test)]

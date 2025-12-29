@@ -16,7 +16,7 @@ use crate::specific::*;
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
 pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement> {
-    keyword_followed_by_whitespace_p(Keyword::Declare).and_without_undo_keep_right(
+    keyword_followed_by_whitespace_p(Keyword::Declare).and_keep_right(
         OrParser::new(vec![
             Box::new(
                 function_declaration_p().map(|(n, p)| GlobalStatement::function_declaration(n, p)),

@@ -8,7 +8,7 @@ use rusty_common::Positioned;
 
 pub fn statement_on_error_go_to_p() -> impl Parser<RcStringView, Output = Statement> {
     Seq2::new(keyword_pair(Keyword::On, Keyword::Error), whitespace())
-        .and_without_undo_keep_right(
+        .and_keep_right(
             next()
                 .or(goto())
                 .or_syntax_error("Expected: GOTO or RESUME"),
@@ -22,7 +22,7 @@ fn next() -> impl Parser<RcStringView, Output = OnErrorOption> {
 }
 
 fn goto() -> impl Parser<RcStringView, Output = OnErrorOption> {
-    keyword_followed_by_whitespace_p(Keyword::GoTo).and_without_undo_keep_right(
+    keyword_followed_by_whitespace_p(Keyword::GoTo).and_keep_right(
         goto_label()
             .or(goto_zero())
             .or_syntax_error("Expected: label or 0"),

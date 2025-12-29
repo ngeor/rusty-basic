@@ -6,7 +6,11 @@ use crate::specific::*;
 
 pub fn do_loop_p() -> impl Parser<RcStringView, Output = Statement> {
     keyword(Keyword::Do)
-        .and_without_undo_keep_right(do_condition_top().or(do_condition_bottom()))
+        .and_keep_right(
+            do_condition_top()
+                .or(do_condition_bottom())
+                .or_syntax_error("Syntax error in DO loop"),
+        )
         .map(Statement::DoLoop)
 }
 

@@ -166,7 +166,7 @@ fn next_statements() -> impl Parser<RcStringView, Output = Program> {
 
 fn next_statement() -> impl Parser<RcStringView, Output = GlobalStatementPos> {
     separator::separator()
-        .and_without_undo_keep_right(OrParser::new(vec![
+        .and_keep_right(OrParser::new(vec![
             // need to detect EOF, because the separator we detected might have been the last EOL of the file
             Box::new(detect_eof().map(|_| None)),
             // otherwise it must be a statement

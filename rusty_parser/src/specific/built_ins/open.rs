@@ -57,7 +57,7 @@ fn parse_open_access_p() -> impl Parser<RcStringView, Output = Positioned<FileAc
 // AS <ws+> expression
 // AS ( expression )
 fn parse_file_number_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
-    keyword(Keyword::As).and_without_undo_keep_right(
+    keyword(Keyword::As).and_keep_right(
         guarded_file_handle_or_expression_p().or_syntax_error("Expected: #file-number%"),
     )
 }

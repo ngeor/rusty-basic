@@ -5,7 +5,7 @@ use crate::specific::{Keyword, Statement};
 
 pub fn statement_go_sub_p() -> impl Parser<RcStringView, Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::GoSub)
-        .and_without_undo_keep_right(bare_name_with_dots().or_syntax_error("Expected: label"))
+        .and_keep_right(bare_name_with_dots().or_syntax_error("Expected: label"))
         .map(Statement::GoSub)
 }
 

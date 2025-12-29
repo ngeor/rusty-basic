@@ -472,9 +472,7 @@ pub fn csv_expressions_non_opt(
 pub fn csv_expressions_first_guarded() -> impl Parser<RcStringView, Output = Expressions> {
     ws_expr_pos_p().map(|first| vec![first]).and(
         comma()
-            .and_without_undo_keep_right(
-                expression_pos_p().or_syntax_error("Expected: expression after comma"),
-            )
+            .and_keep_right(expression_pos_p().or_syntax_error("Expected: expression after comma"))
             .zero_or_more(),
         |mut l, mut r| {
             l.append(&mut r);
@@ -576,9 +574,9 @@ mod single_or_double_literal {
             // read dot and demand digits after decimal point
             // if dot is missing, the parser returns an empty result
             // the "deal breaker" is therefore the dot
-            dot().and_without_undo_keep_right(digits().no_incomplete()),
+            dot().and_keep_right(digits().no_incomplete()),
         )
-        // and parse optinally a type qualifier such as `#`
+        // and parse optionally a type qualifier such as `#`
         .and_opt_tuple(pound())
         // done parsing, flat map everything
         .flat_map(|input, ((opt_integer_digits, frac_digits), opt_pound)| {
@@ -908,9 +906,7 @@ pub mod property {
     }
 
     fn dot_property() -> impl Parser<RcStringView, Output = (Token, Option<Token>)> {
-        dot().and_without_undo_keep_right(
-            property().or_syntax_error("Expected: property name after dot"),
-        )
+        dot().and_keep_right(property().or_syntax_error("Expected: property name after dot"))
     }
 
     // cannot be followed by dot or type qualifier if qualified
@@ -1107,7 +1103,7 @@ mod unary_expression {
         minus_sign()
             .map(|_| UnaryOperator::Minus)
             .or(keyword(Keyword::Not)
-                .and_without_undo_keep_right(guard::parser().no_incomplete())
+                .and_keep_right(guard::parser().no_incomplete())
                 .map(|_| UnaryOperator::Not))
             .with_pos()
     }

@@ -1,8 +1,6 @@
 use crate::error::ParseError;
 use crate::pc::boxed::boxed;
-use crate::pc::{
-    And, AndWithoutUndo, Errors, Map, Parser, RcStringView, ThenWith, ToOption, Token,
-};
+use crate::pc::{And, Errors, Map, Parser, RcStringView, ThenWith, ToOption, Token};
 use crate::specific::core::expression::ws_expr_pos_p;
 use crate::specific::pc_specific::{keyword, opt_whitespace, whitespace};
 use crate::specific::{ExpressionPos, Keyword};
@@ -36,7 +34,7 @@ fn parse_second(
     k: Keyword,
     is_preceded_by_paren: bool,
 ) -> impl Parser<RcStringView, Output = ExpressionPos> {
-    ws_keyword(k, is_preceded_by_paren).and_without_undo_keep_right(ws_expr_pos_p().or_fail(err(k)))
+    ws_keyword(k, is_preceded_by_paren).and_keep_right(ws_expr_pos_p().or_fail(err(k)))
 }
 
 fn ws_keyword(k: Keyword, is_preceded_by_paren: bool) -> impl Parser<RcStringView> {

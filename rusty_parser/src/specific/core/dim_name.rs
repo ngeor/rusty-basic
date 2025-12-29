@@ -192,7 +192,7 @@ mod type_definition {
 
     fn built_in_string() -> impl Parser<RcStringView, Output = DimType> {
         keyword(Keyword::String).and_opt(
-            star().and_without_undo_keep_right(
+            star().and_keep_right(
                 expression_pos_p().or_syntax_error("Expected: string length after *"),
             ),
             |_, opt_len| match opt_len {

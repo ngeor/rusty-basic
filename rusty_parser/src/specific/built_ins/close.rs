@@ -22,7 +22,9 @@ fn file_handles() -> impl Parser<RcStringView, Output = Expressions> {
         .map(|first| vec![first])
         .and(
             comma()
-                .and_without_undo_keep_right(file_handle_or_expression_p())
+                .and_keep_right(
+                    file_handle_or_expression_p().or_syntax_error("Expected: file handle"),
+                )
                 .zero_or_more(),
             |mut l, mut r| {
                 l.append(&mut r);
@@ -37,7 +39,6 @@ fn file_handle_or_expression_p() -> impl Parser<RcStringView, Output = Expressio
         Box::new(file_handle_as_expression_pos_p()),
         Box::new(expression_pos_p()),
     ])
-    .or_syntax_error("Expected: file handle")
 }
 
 #[cfg(test)]

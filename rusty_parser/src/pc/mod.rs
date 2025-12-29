@@ -1,7 +1,6 @@
 //! base module contains functionality that can be extracted into a library,
 //! it's generic and not specific to QBasic
 mod and;
-mod and_without_undo;
 mod any;
 pub mod boxed;
 mod delimited;
@@ -30,7 +29,6 @@ mod to_option;
 mod tokenizers;
 
 pub use and::*;
-pub use and_without_undo::AndWithoutUndo;
 pub use any::*;
 pub use delimited::*;
 pub use filter::Filter;

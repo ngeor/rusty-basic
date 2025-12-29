@@ -11,7 +11,7 @@ where
     I: Clone,
 {
     /// Parses both the left and the right side.
-    /// If the right side fails, parsing of the left side is undone.
+    /// If the right side fails with a non fatal error, parsing of the left side is undone.
     fn and<R, F, O>(self, right: R, combiner: F) -> impl Parser<I, Output = O>
     where
         R: Parser<I>,
@@ -39,6 +39,46 @@ where
         R: Parser<I>,
     {
         self.and(right, |_, r| r)
+    }
+
+    /// Parses the left side and optionally the right side.
+    /// The combiner function maps the left and (optional) right output to the final result.
+    fn and_opt<R, F, O>(self, right: R, combiner: F) -> impl Parser<I, Output = O>
+    where
+        R: Parser<I>,
+        F: Fn(Self::Output, Option<R::Output>) -> O,
+    {
+        self.and(right.to_option(), combiner)
+    }
+
+    /// Parses the left side and optionally the right side.
+    /// The result is a tuple of both sides.
+    fn and_opt_tuple<R>(
+        self,
+        right: R,
+    ) -> impl Parser<I, Output = (Self::Output, Option<R::Output>)>
+    where
+        R: Parser<I>,
+    {
+        self.and_opt(right, |l, r| (l, r))
+    }
+
+    /// Parses the left side and optionally the right side.
+    /// The result is only the left side's output.
+    fn and_opt_keep_left<R>(self, right: R) -> impl Parser<I, Output = Self::Output>
+    where
+        R: Parser<I>,
+    {
+        self.and_opt(right, |l, _| l)
+    }
+
+    /// Parses the left side and optionally the right side.
+    /// The result is only the right side's output.
+    fn and_opt_keep_right<R>(self, right: R) -> impl Parser<I, Output = Option<R::Output>>
+    where
+        R: Parser<I>,
+    {
+        self.and_opt(right, |_, r| r)
     }
 
     fn surround<L, R>(self, left: L, right: R) -> impl Parser<I, Output = Self::Output>
@@ -71,6 +111,10 @@ impl<L, R, F> AndParser<L, R, F> {
         }
     }
 }
+
+// TODO it would be nice to have a different implementation
+// that does not need Clone when the right parser is guaranteed
+// that it will return Ok or fatal Err
 
 impl<I, L, R, F, O> Parser<I> for AndParser<L, R, F>
 where

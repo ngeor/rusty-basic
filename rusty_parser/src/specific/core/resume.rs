@@ -10,7 +10,7 @@ use crate::specific::{Keyword, ResumeOption, Statement};
 
 pub fn statement_resume_p() -> impl Parser<RcStringView, Output = Statement> {
     keyword(Keyword::Resume)
-        .and_without_undo_keep_right(
+        .and_keep_right(
             resume_option_p().or_syntax_error("Expected: label or NEXT or end-of-statement"),
         )
         .map(Statement::Resume)

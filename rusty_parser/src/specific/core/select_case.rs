@@ -50,9 +50,8 @@ pub fn select_case_p() -> impl Parser<RcStringView, Output = Statement> {
 
 /// Parses the `SELECT CASE expression` part
 fn select_case_expr_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
-    keyword_pair(Keyword::Select, Keyword::Case).and_without_undo_keep_right(
-        ws_expr_pos_p().or_syntax_error("Expected: expression after CASE"),
-    )
+    keyword_pair(Keyword::Select, Keyword::Case)
+        .and_keep_right(ws_expr_pos_p().or_syntax_error("Expected: expression after CASE"))
 }
 
 // SELECT CASE expr
@@ -80,7 +79,7 @@ fn case_blocks() -> impl Parser<RcStringView, Output = Vec<CaseBlock>> {
 fn case_block() -> impl Parser<RcStringView, Output = CaseBlock> {
     // CASE
     // TODO is this syntax_error message even possible to happen?
-    keyword(Keyword::Case).and_without_undo_keep_right(
+    keyword(Keyword::Case).and_keep_right(
         continue_after_case().or_syntax_error("Expected: 'case expression' or ELSE after CASE"),
     )
 }

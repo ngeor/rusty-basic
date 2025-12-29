@@ -6,7 +6,7 @@ use crate::BuiltInSub;
 use rusty_common::*;
 pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     keyword_followed_by_whitespace_p(Keyword::Width)
-        .and_without_undo_keep_right(csv_allow_missing())
+        .and_keep_right(csv_allow_missing())
         .map(|opt_args| Statement::built_in_sub_call(BuiltInSub::Width, map_args(opt_args)))
 }
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use rusty_common::{AtPos, CaseInsensitiveString, Positioned};
-use rusty_parser::{AsBareName, BareName, Constant};
+use rusty_common::{AtPos, CaseInsensitiveString, HasPos};
+use rusty_parser::{AsBareName, BareName, Constant, Name};
 use rusty_variant::Variant;
 
 use crate::core::*;
@@ -19,19 +19,39 @@ impl Visitor<Constant> for ConstantMap {
     // calculate global constant values
     fn visit(&mut self, element: &Constant) -> VisitResult {
         let (name_pos, expression_pos) = element.into();
-        let Positioned { element: name, pos } = name_pos;
-        let bare_name: &BareName = name.as_bare_name();
-        (match self.0.get(bare_name) {
-            Some(_) => Err(LintError::DuplicateDefinition.at(pos)),
+        self.ensure_is_not_already_defined(name_pos)
+            .and_then(|_| self.resolve_const(expression_pos))
+            .and_then(|v| {
+                Self::cast_resolved_value_to_declared_type(v, &name_pos.element, expression_pos)
+            })
+            .map(|casted| {
+                self.store_resolved_value(name_pos, casted);
+            })
+    }
+}
+
+impl ConstantMap {
+    fn ensure_is_not_already_defined(&self, name: &(impl AsBareName + HasPos)) -> VisitResult {
+        match self.0.get(name.as_bare_name()) {
+            Some(_) => Err(LintError::DuplicateDefinition.at(name)),
             _ => Ok(()),
-        })
-        .and_then(|_| self.resolve_const(expression_pos))
-        .and_then(|v| match name.qualifier() {
-            Some(qualifier) => v.cast(qualifier).map_err(|e| e.at(expression_pos)),
-            _ => Ok(v),
-        })
-        .map(|casted| {
-            self.0.insert(bare_name.clone(), casted);
-        })
+        }
+    }
+
+    fn cast_resolved_value_to_declared_type(
+        resolved_value: Variant,
+        name: &Name,
+        expression_pos: &impl HasPos,
+    ) -> Result<Variant, LintErrorPos> {
+        match name.qualifier() {
+            Some(qualifier) => resolved_value
+                .cast(qualifier)
+                .map_err(|e| e.at(expression_pos)),
+            _ => Ok(resolved_value),
+        }
+    }
+
+    fn store_resolved_value(&mut self, name: &impl AsBareName, resolved_value: Variant) {
+        self.0.insert(name.as_bare_name().clone(), resolved_value);
     }
 }

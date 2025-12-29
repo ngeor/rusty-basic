@@ -243,7 +243,7 @@ impl Names {
 }
 
 impl ConstLookup for Names {
-    fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
+    fn get_const_value(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
         self.names().get_const_value(name).or_else(|| {
             self.global_names()
                 .and_then(|global_names| global_names.get_const_value(name))

@@ -4,35 +4,37 @@ use rusty_parser::{AsBareName, Expression, ExpressionPos, Operator, TypeQualifie
 use rusty_variant::Variant;
 use std::cmp::Ordering;
 
+/// A lookup map of resolved constant values.
 pub trait ConstLookup {
-    fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant>;
+    /// Gets the value ([Variant]) of a constant.
+    fn get_const_value(&self, name: &CaseInsensitiveString) -> Option<&Variant>;
 }
 
-/// Resolves the value ([Variant]) of a `CONST` expression.
-pub trait ConstValueResolver<T> {
-    /// Resolves the value ([Variant]) of a `CONST` expression.
-    fn resolve_const(&self, item: &T) -> Result<Variant, LintErrorPos>;
+/// Evaluates the value ([Variant]) of a `CONST` expression.
+pub trait ConstEvaluator<T> {
+    /// Evaluates the value ([Variant]) of a `CONST` expression.
+    fn eval_const(&self, item: &T) -> Result<Variant, LintErrorPos>;
 }
 
-impl<S> ConstValueResolver<Positioned<&CaseInsensitiveString>> for S
+impl<S> ConstEvaluator<Positioned<&CaseInsensitiveString>> for S
 where
     S: ConstLookup,
 {
-    fn resolve_const(
+    fn eval_const(
         &self,
         item: &Positioned<&CaseInsensitiveString>,
     ) -> Result<Variant, LintErrorPos> {
-        self.get_resolved_constant(&item.element)
+        self.get_const_value(&item.element)
             .cloned()
             .ok_or(LintError::InvalidConstant.at_pos(item.pos))
     }
 }
 
-impl<S> ConstValueResolver<ExpressionPos> for S
+impl<S> ConstEvaluator<ExpressionPos> for S
 where
     S: ConstLookup,
 {
-    fn resolve_const(&self, item: &ExpressionPos) -> Result<Variant, LintErrorPos> {
+    fn eval_const(&self, item: &ExpressionPos) -> Result<Variant, LintErrorPos> {
         let Positioned {
             element: expression,
             pos,
@@ -46,7 +48,7 @@ where
             Expression::Variable(name_expr, _) => {
                 let bare_name = name_expr.as_bare_name();
                 let bare_name_pos = Positioned::new(bare_name, *pos);
-                let v = self.resolve_const(&bare_name_pos)?;
+                let v = self.eval_const(&bare_name_pos)?;
                 if let Some(qualifier) = name_expr.qualifier() {
                     let v_q = match v {
                         Variant::VDouble(_) => TypeQualifier::HashDouble,
@@ -68,8 +70,8 @@ where
                 }
             }
             Expression::BinaryExpression(op, left, right, _) => {
-                let v_left = self.resolve_const(left)?;
-                let v_right = self.resolve_const(right)?;
+                let v_left = self.eval_const(left)?;
+                let v_right = self.eval_const(right)?;
                 (match *op {
                     Operator::Less => v_left
                         .try_cmp(&v_right)
@@ -109,7 +111,7 @@ where
                 .map_err(|e| e.at(right))
             }
             Expression::UnaryExpression(op, child) => {
-                let v = self.resolve_const(child)?;
+                let v = self.eval_const(child)?;
                 (match *op {
                     UnaryOperator::Minus => v.negate(),
                     UnaryOperator::Not => v.unary_not(),
@@ -117,7 +119,7 @@ where
                 .map_err(LintError::from)
                 .map_err(|e| e.at(child))
             }
-            Expression::Parenthesis(child) => self.resolve_const(child),
+            Expression::Parenthesis(child) => self.eval_const(child),
             Expression::Property(_, _, _)
             | Expression::FunctionCall(_, _)
             | Expression::ArrayElement(_, _, _)
@@ -126,11 +128,11 @@ where
     }
 }
 
-impl<S> ConstValueResolver<Box<ExpressionPos>> for S
+impl<S> ConstEvaluator<Box<ExpressionPos>> for S
 where
     S: ConstLookup,
 {
-    fn resolve_const(&self, item: &Box<ExpressionPos>) -> Result<Variant, LintErrorPos> {
-        self.resolve_const(item.as_ref())
+    fn eval_const(&self, item: &Box<ExpressionPos>) -> Result<Variant, LintErrorPos> {
+        self.eval_const(item.as_ref())
     }
 }

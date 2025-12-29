@@ -10,7 +10,7 @@ use crate::core::*;
 pub struct ConstantMap(HashMap<BareName, Variant>);
 
 impl ConstLookup for ConstantMap {
-    fn get_resolved_constant(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
+    fn get_const_value(&self, name: &CaseInsensitiveString) -> Option<&Variant> {
         self.0.get(name)
     }
 }
@@ -20,7 +20,7 @@ impl Visitor<Constant> for ConstantMap {
     fn visit(&mut self, element: &Constant) -> VisitResult {
         let (name_pos, expression_pos) = element.into();
         self.ensure_is_not_already_defined(name_pos)
-            .and_then(|_| self.resolve_const(expression_pos))
+            .and_then(|_| self.eval_const(expression_pos))
             .and_then(|v| {
                 Self::cast_resolved_value_to_declared_type(v, &name_pos.element, expression_pos)
             })

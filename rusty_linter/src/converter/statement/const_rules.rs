@@ -1,5 +1,5 @@
 use crate::converter::common::Context;
-use crate::core::ConstValueResolver;
+use crate::core::ConstEvaluator;
 use crate::core::{qualifier_of_const_variant, CastVariant, HasSubprograms, LintResult};
 use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
@@ -40,7 +40,7 @@ fn new_const(
         element: const_name,
         pos,
     } = left_side;
-    let value_before_casting = ctx.names.resolve_const(&right_side)?;
+    let value_before_casting = ctx.names.eval_const(&right_side)?;
     let value_qualifier = qualifier_of_const_variant(&value_before_casting);
     let final_value = if const_name.is_bare_or_of_type(value_qualifier) {
         value_before_casting

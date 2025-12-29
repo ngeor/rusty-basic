@@ -4,6 +4,7 @@ use crate::specific::core::var_name;
 use crate::specific::pc_specific::*;
 use crate::specific::Keyword;
 use crate::specific::*;
+use crate::ParseError;
 
 use rusty_common::Positioned;
 
@@ -80,15 +81,16 @@ impl HasExpressionType for ParamType {
 /// A AS UserDefinedType // not dots no qualifiers
 /// A() empty array
 /// A.B() as INTEGER
-pub fn parameter_pos_p() -> impl Parser<RcStringView, Output = ParameterPos> {
+pub fn parameter_pos_p() -> impl Parser<RcStringView, Output = ParameterPos, Error = ParseError> {
     parameter_p().with_pos()
 }
 
-fn parameter_p() -> impl Parser<RcStringView, Output = Parameter> {
+fn parameter_p() -> impl Parser<RcStringView, Output = Parameter, Error = ParseError> {
     var_name(array_indicator(), built_in_extended_type)
 }
 
-fn array_indicator() -> impl Parser<RcStringView, Output = Option<(Token, Token)>> {
+fn array_indicator(
+) -> impl Parser<RcStringView, Output = Option<(Token, Token)>, Error = ParseError> {
     Seq2::new(
         any_token_of(TokenType::LParen),
         any_token_of(TokenType::RParen),
@@ -96,7 +98,7 @@ fn array_indicator() -> impl Parser<RcStringView, Output = Option<(Token, Token)
     .to_option()
 }
 
-fn built_in_extended_type() -> impl Parser<RcStringView, Output = ParamType> {
+fn built_in_extended_type() -> impl Parser<RcStringView, Output = ParamType, Error = ParseError> {
     // TODO make a keyword_map that doesn't require Clone
     keyword_map(&[
         (

@@ -5,7 +5,7 @@ use crate::pc::ParseResult;
 use crate::{error::ParseError, pc::Parser};
 
 #[allow(dead_code)]
-pub trait Logging: Parser<RcStringView>
+pub trait Logging: Parser<RcStringView, Error = ParseError>
 where
     Self: Sized,
     Self::Output: std::fmt::Debug,
@@ -17,7 +17,7 @@ where
 
 impl<P> Logging for P
 where
-    P: Parser<RcStringView>,
+    P: Parser<RcStringView, Error = ParseError>,
     P::Output: std::fmt::Debug,
 {
 }
@@ -42,10 +42,12 @@ fn indentation() -> String {
 
 impl<P> Parser<RcStringView> for LoggingParser<P>
 where
-    P: Parser<RcStringView>,
+    P: Parser<RcStringView, Error = ParseError>,
     P::Output: std::fmt::Debug,
 {
     type Output = P::Output;
+    type Error = ParseError;
+
     fn parse(
         &self,
         tokenizer: RcStringView,

@@ -31,13 +31,13 @@ impl DefType {
 // LetterRange  ::= <Letter> | <Letter>-<Letter>
 // Letter       ::= [a-zA-Z]
 
-pub fn def_type_p() -> impl Parser<RcStringView, Output = DefType> {
+pub fn def_type_p() -> impl Parser<RcStringView, Output = DefType, Error = ParseError> {
     seq3(def_keyword_p(), whitespace(), letter_ranges(), |l, _, r| {
         DefType::new(l, r)
     })
 }
 
-fn def_keyword_p() -> impl Parser<RcStringView, Output = TypeQualifier> {
+fn def_keyword_p() -> impl Parser<RcStringView, Output = TypeQualifier, Error = ParseError> {
     keyword_map(&[
         (Keyword::DefInt, TypeQualifier::PercentInteger),
         (Keyword::DefLng, TypeQualifier::AmpersandLong),
@@ -47,11 +47,11 @@ fn def_keyword_p() -> impl Parser<RcStringView, Output = TypeQualifier> {
     ])
 }
 
-fn letter_ranges() -> impl Parser<RcStringView, Output = Vec<LetterRange>> {
+fn letter_ranges() -> impl Parser<RcStringView, Output = Vec<LetterRange>, Error = ParseError> {
     csv_non_opt(letter_range(), "Expected: letter ranges")
 }
 
-fn letter_range() -> impl Parser<RcStringView, Output = LetterRange> {
+fn letter_range() -> impl Parser<RcStringView, Output = LetterRange, Error = ParseError> {
     letter()
         .no_incomplete()
         .and_opt_tuple(minus_sign().and_tuple(letter()))
@@ -71,7 +71,7 @@ fn letter_range() -> impl Parser<RcStringView, Output = LetterRange> {
         })
 }
 
-fn letter() -> impl Parser<RcStringView, Output = char> {
+fn letter() -> impl Parser<RcStringView, Output = char, Error = ParseError> {
     any_token_of(TokenType::Identifier)
         .filter(|token| token.text.chars().count() == 1)
         .map(token_to_char)

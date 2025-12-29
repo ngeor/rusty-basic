@@ -155,7 +155,8 @@ impl HasExpressionType for ElementType {
 //
 // Type must be defined Before DECLARE SUB
 
-pub fn user_defined_type_p() -> impl Parser<RcStringView, Output = UserDefinedType> {
+pub fn user_defined_type_p(
+) -> impl Parser<RcStringView, Output = UserDefinedType, Error = ParseError> {
     seq5(
         keyword_followed_by_whitespace_p(Keyword::Type),
         bare_name_without_dots().or_syntax_error("Expected: name after TYPE"),
@@ -166,13 +167,13 @@ pub fn user_defined_type_p() -> impl Parser<RcStringView, Output = UserDefinedTy
     )
 }
 
-fn elements_p() -> impl Parser<RcStringView, Output = Vec<ElementPos>> {
+fn elements_p() -> impl Parser<RcStringView, Output = Vec<ElementPos>, Error = ParseError> {
     element_pos_p()
         .one_or_more()
         .or_fail(ParseError::ElementNotDefined)
 }
 
-fn element_pos_p() -> impl Parser<RcStringView, Output = ElementPos> {
+fn element_pos_p() -> impl Parser<RcStringView, Output = ElementPos, Error = ParseError> {
     seq6(
         bare_name_without_dots(),
         whitespace(),
@@ -185,7 +186,7 @@ fn element_pos_p() -> impl Parser<RcStringView, Output = ElementPos> {
     .with_pos()
 }
 
-fn element_type_p() -> impl Parser<RcStringView, Output = ElementType> {
+fn element_type_p() -> impl Parser<RcStringView, Output = ElementType, Error = ParseError> {
     OrParser::new(vec![
         Box::new(keyword_map(&[
             (Keyword::Integer, ElementType::Integer),
@@ -207,7 +208,8 @@ fn element_type_p() -> impl Parser<RcStringView, Output = ElementType> {
     ])
 }
 
-fn demand_string_length_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
+fn demand_string_length_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError>
+{
     expression_pos_p().or_syntax_error("Expected: string length")
 }
 

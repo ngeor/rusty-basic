@@ -7,7 +7,7 @@ use crate::specific::core::statements::ZeroOrMoreStatements;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 
-pub fn while_wend_p() -> impl Parser<RcStringView, Output = Statement> {
+pub fn while_wend_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq4(
         keyword(Keyword::While),
         ws_expr_pos_p().or_syntax_error("Expected: expression after WHILE"),

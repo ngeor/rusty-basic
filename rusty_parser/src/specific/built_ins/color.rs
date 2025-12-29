@@ -3,8 +3,9 @@ use crate::pc::*;
 use crate::specific::built_ins::common::parse_built_in_sub_with_opt_args;
 use crate::specific::*;
 use crate::BuiltInSub;
+use crate::ParseError;
 
-pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     parse_built_in_sub_with_opt_args(Keyword::Color, BuiltInSub::Color)
 }
 

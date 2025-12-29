@@ -1,11 +1,10 @@
-use crate::error::ParseError;
 use crate::pc::{ParseResult, ParseResultTrait, Parser};
 
 pub trait Map<I>: Parser<I>
 where
     Self: Sized,
 {
-    fn map<F, U>(self, mapper: F) -> impl Parser<I, Output = U>
+    fn map<F, U>(self, mapper: F) -> impl Parser<I, Output = U, Error = Self::Error>
     where
         F: Fn(Self::Output) -> U,
     {
@@ -23,7 +22,9 @@ where
     F: Fn(P::Output) -> U,
 {
     type Output = U;
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
+    type Error = P::Error;
+
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         self.0.parse(tokenizer).map_ok(&self.1)
     }
 }

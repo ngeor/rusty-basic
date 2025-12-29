@@ -13,7 +13,8 @@ use rusty_common::*;
 // SubCallArgsNoParenthesis ::= BareName<ws+>Expressions
 // SubCallArgsParenthesis   ::= BareName(Expressions)
 
-pub fn sub_call_or_assignment_p() -> impl Parser<RcStringView, Output = Statement> {
+pub fn sub_call_or_assignment_p(
+) -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     SubCallOrAssignment
 }
 
@@ -21,6 +22,7 @@ struct SubCallOrAssignment;
 
 impl Parser<RcStringView> for SubCallOrAssignment {
     type Output = Statement;
+    type Error = ParseError;
     fn parse(
         &self,
         tokenizer: RcStringView,
@@ -55,7 +57,8 @@ impl Parser<RcStringView> for SubCallOrAssignment {
 }
 
 impl SubCallOrAssignment {
-    fn name_and_opt_eq_sign() -> impl Parser<RcStringView, Output = (ExpressionPos, Option<Token>)>
+    fn name_and_opt_eq_sign(
+    ) -> impl Parser<RcStringView, Output = (ExpressionPos, Option<Token>), Error = ParseError>
     {
         property::parser().and_opt_tuple(equal_sign())
     }

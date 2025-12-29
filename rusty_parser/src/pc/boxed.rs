@@ -1,20 +1,22 @@
-use crate::error::ParseError;
 use crate::pc::Parser;
 
-pub fn boxed<I, O>(parser: impl Parser<I, Output = O> + 'static) -> BoxedParser<I, O> {
+pub fn boxed<I, O, E>(
+    parser: impl Parser<I, Output = O, Error = E> + 'static,
+) -> BoxedParser<I, O, E> {
     BoxedParser {
         parser: Box::new(parser),
     }
 }
 
-pub struct BoxedParser<I, O> {
-    parser: Box<dyn Parser<I, Output = O>>,
+pub struct BoxedParser<I, O, E> {
+    parser: Box<dyn Parser<I, Output = O, Error = E>>,
 }
 
-impl<I, O> Parser<I> for BoxedParser<I, O> {
+impl<I, O, E> Parser<I> for BoxedParser<I, O, E> {
     type Output = O;
+    type Error = E;
 
-    fn parse(&self, input: I) -> super::ParseResult<I, Self::Output, ParseError> {
+    fn parse(&self, input: I) -> super::ParseResult<I, Self::Output, Self::Error> {
         self.parser.parse(input)
     }
 }

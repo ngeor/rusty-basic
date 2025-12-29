@@ -1,19 +1,20 @@
-use crate::error::ParseError;
 use crate::pc::*;
 
-pub struct OrParser<I, O> {
-    parsers: Vec<Box<dyn Parser<I, Output = O>>>,
+pub struct OrParser<I, O, E> {
+    parsers: Vec<Box<dyn Parser<I, Output = O, Error = E>>>,
 }
 
-impl<I, O> OrParser<I, O> {
-    pub fn new(parsers: Vec<Box<dyn Parser<I, Output = O>>>) -> Self {
+impl<I, O, E> OrParser<I, O, E> {
+    pub fn new(parsers: Vec<Box<dyn Parser<I, Output = O, Error = E>>>) -> Self {
         Self { parsers }
     }
 }
 
-impl<I, O> Parser<I> for OrParser<I, O> {
+impl<I, O, E> Parser<I> for OrParser<I, O, E> {
     type Output = O;
-    fn parse(&self, mut input: I) -> ParseResult<I, O, ParseError> {
+    type Error = E;
+
+    fn parse(&self, mut input: I) -> ParseResult<I, O, Self::Error> {
         for i in 0..self.parsers.len() - 1 {
             match self.parsers[i].parse(input) {
                 Ok(x) => return Ok(x),
@@ -33,9 +34,9 @@ pub trait Or<I>: Parser<I>
 where
     Self: Sized + 'static,
 {
-    fn or<R>(self, other: R) -> impl Parser<I, Output = Self::Output>
+    fn or<R>(self, other: R) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
     where
-        R: Parser<I, Output = Self::Output> + 'static,
+        R: Parser<I, Output = Self::Output, Error = Self::Error> + 'static,
     {
         OrParser::new(vec![Box::new(self), Box::new(other)])
     }

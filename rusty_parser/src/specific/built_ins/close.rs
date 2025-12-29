@@ -1,16 +1,16 @@
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 use crate::specific::{file_handle_as_expression_pos_p, guarded_file_handle_or_expression_p};
 use crate::BuiltInSub;
+use crate::{pc::*, ParseError};
 
 // <result> ::= <CLOSE> | <CLOSE><file_handles>
 // file_handles ::= <first_file_handle> | <first_file_handle> <opt-ws> "," <opt-ws> <next_file_handles>
 // next_file_handles ::= <file_handle> | <file_handle> <opt-ws> "," <opt-ws> <next_file_handles>
 // first_file_handle ::= "(" <file_handle> ")" | <ws> <file_handle>
 // file_handle ::= "#" <digits> | <expr>
-pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq2(
         keyword(Keyword::Close),
         file_handles(),
@@ -18,7 +18,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     )
 }
 
-fn file_handles() -> impl Parser<RcStringView, Output = Expressions> {
+fn file_handles() -> impl Parser<RcStringView, Output = Expressions, Error = ParseError> {
     guarded_file_handle_or_expression_p()
         .map(|first| vec![first])
         .and(
@@ -35,7 +35,8 @@ fn file_handles() -> impl Parser<RcStringView, Output = Expressions> {
         .or_default()
 }
 
-fn file_handle_or_expression_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
+fn file_handle_or_expression_p(
+) -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     OrParser::new(vec![
         Box::new(file_handle_as_expression_pos_p()),
         Box::new(expression_pos_p()),

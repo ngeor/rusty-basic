@@ -6,6 +6,7 @@ use crate::specific::core::name::bare_name_without_dots;
 use crate::specific::core::name::name_with_dots;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
+use crate::ParseError;
 
 /// A variable name with a type.
 ///
@@ -105,12 +106,12 @@ impl<T: VarType> HasExpressionType for TypedName<T> {
 /// - `A`: The type of the array indicator
 /// - `P`: The parser that parses `T` for extended built-in types.
 pub(super) fn var_name<T, A, P>(
-    array_p: impl Parser<RcStringView, Output = A> + 'static,
+    array_p: impl Parser<RcStringView, Output = A, Error = ParseError> + 'static,
     built_in_extended_factory: fn() -> P,
-) -> impl Parser<RcStringView, Output = TypedName<T>>
+) -> impl Parser<RcStringView, Output = TypedName<T>, Error = ParseError>
 where
     T: Clone + Default + VarType + CreateArray<ArrayDimensions = A> + 'static,
-    P: Parser<RcStringView, Output = T> + 'static,
+    P: Parser<RcStringView, Output = T, Error = ParseError> + 'static,
 {
     Seq2::new(name_with_dots(), array_p).then_with(
         move |(name, _)| name_chain(name, built_in_extended_factory),
@@ -161,11 +162,11 @@ impl CreateArray for ParamType {
 fn name_chain<T, F, P>(
     name: &Name,
     built_in_extended_factory: F,
-) -> impl Parser<RcStringView, Output = T>
+) -> impl Parser<RcStringView, Output = T, Error = ParseError>
 where
     T: Clone + Default + VarType + 'static,
     F: Fn() -> P + 'static,
-    P: Parser<RcStringView, Output = T> + 'static,
+    P: Parser<RcStringView, Output = T, Error = ParseError> + 'static,
 {
     match name.qualifier() {
         // qualified name can't have an "AS" clause
@@ -185,32 +186,32 @@ where
     }
 }
 
-fn qualified_type<T>(q: TypeQualifier) -> impl Parser<RcStringView, Output = T>
+fn qualified_type<T>(q: TypeQualifier) -> impl Parser<RcStringView, Output = T, Error = ParseError>
 where
     T: VarType,
 {
     supplier(move || T::new_built_in_compact(q))
 }
 
-fn bare_type<T>() -> impl Parser<RcStringView, Output = T>
+fn bare_type<T>() -> impl Parser<RcStringView, Output = T, Error = ParseError>
 where
     T: Default,
 {
     supplier(T::default)
 }
 
-fn as_clause() -> impl Parser<RcStringView, Output = Token> {
+fn as_clause() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     keyword(Keyword::As).surround(whitespace(), whitespace())
 }
 
 fn extended<T, F, P>(
     allow_user_defined: bool,
     built_in_extended_factory: F,
-) -> impl Parser<RcStringView, Output = T>
+) -> impl Parser<RcStringView, Output = T, Error = ParseError>
 where
     T: VarType + 'static,
     F: Fn() -> P,
-    P: Parser<RcStringView, Output = T> + 'static,
+    P: Parser<RcStringView, Output = T, Error = ParseError> + 'static,
 {
     if allow_user_defined {
         boxed(any_extended(built_in_extended_factory()))
@@ -220,8 +221,8 @@ where
 }
 
 fn any_extended<T>(
-    built_in_parser: impl Parser<RcStringView, Output = T> + 'static,
-) -> impl Parser<RcStringView, Output = T>
+    built_in_parser: impl Parser<RcStringView, Output = T, Error = ParseError> + 'static,
+) -> impl Parser<RcStringView, Output = T, Error = ParseError>
 where
     T: VarType + 'static,
 {
@@ -232,7 +233,7 @@ where
     .with_expected_message("Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier")
 }
 
-fn user_defined_type<T>() -> impl Parser<RcStringView, Output = T>
+fn user_defined_type<T>() -> impl Parser<RcStringView, Output = T, Error = ParseError>
 where
     T: VarType,
 {

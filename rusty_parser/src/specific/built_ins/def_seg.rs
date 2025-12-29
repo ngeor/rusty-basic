@@ -3,9 +3,10 @@ use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 use crate::BuiltInSub;
+use crate::ParseError;
 
 // DEF SEG(=expr)?
-pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq2(
         keyword_pair(Keyword::Def, Keyword::Seg),
         equal_sign_and_expression().to_option(),
@@ -15,7 +16,8 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     )
 }
 
-fn equal_sign_and_expression() -> impl Parser<RcStringView, Output = ExpressionPos> {
+fn equal_sign_and_expression(
+) -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     equal_sign()
         .and_keep_right(expression_pos_p().or_syntax_error("Expected expression after equal sign"))
 }

@@ -1,11 +1,14 @@
-use crate::error::ParseError;
 use crate::pc::{OrDefault, ParseResult, ParseResultTrait, Parser};
 
 pub trait Many<I>: Parser<I>
 where
     Self: Sized,
 {
-    fn many<O, S, A>(self, seed: S, accumulator: A) -> impl Parser<I, Output = O>
+    fn many<O, S, A>(
+        self,
+        seed: S,
+        accumulator: A,
+    ) -> impl Parser<I, Output = O, Error = Self::Error>
     where
         S: Fn(Self::Output) -> O,
         A: Fn(O, Self::Output) -> O,
@@ -13,7 +16,7 @@ where
         ManyParser::new(self, seed, accumulator)
     }
 
-    fn one_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>> {
+    fn one_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>, Error = Self::Error> {
         self.many(
             |e| vec![e],
             |mut v: Vec<Self::Output>, e| {
@@ -23,7 +26,7 @@ where
         )
     }
 
-    fn zero_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>> {
+    fn zero_or_more(self) -> impl Parser<I, Output = Vec<Self::Output>, Error = Self::Error> {
         self.one_or_more().or_default()
     }
 }
@@ -53,8 +56,9 @@ where
     A: Fn(O, P::Output) -> O,
 {
     type Output = O;
+    type Error = P::Error;
 
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, ParseError> {
+    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         self.parser.parse(input).flat_map(|mut input, first_value| {
             let mut result = (self.seed)(first_value);
             loop {

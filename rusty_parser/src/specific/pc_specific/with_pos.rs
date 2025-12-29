@@ -1,4 +1,3 @@
-use crate::error::ParseError;
 use crate::parser_declaration;
 use crate::pc::{ParseResult, ParseResultTrait, Parser};
 use rusty_common::{AtPos, HasPos, Positioned};
@@ -10,7 +9,8 @@ where
     P: Parser<I>,
 {
     type Output = Positioned<P::Output>;
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
+    type Error = P::Error;
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         let pos = tokenizer.pos();
         self.parser.parse(tokenizer).map_ok(|x| x.at_pos(pos))
     }

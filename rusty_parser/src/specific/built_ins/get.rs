@@ -3,15 +3,16 @@ use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 use crate::BuiltInSub;
+use crate::ParseError;
 
-pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     parse_get_or_put(Keyword::Get, BuiltInSub::Get)
 }
 
 pub fn parse_get_or_put(
     k: Keyword,
     built_in_sub: BuiltInSub,
-) -> impl Parser<RcStringView, Output = Statement> {
+) -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq5(
         keyword(k),
         whitespace(),

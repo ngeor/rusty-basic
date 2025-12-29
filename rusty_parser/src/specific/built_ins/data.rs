@@ -3,8 +3,9 @@ use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 use crate::BuiltInSub;
+use crate::ParseError;
 
-pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq2(
         keyword(Keyword::Data),
         csv_expressions_first_guarded().or_default(),

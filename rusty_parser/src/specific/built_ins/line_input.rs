@@ -1,13 +1,13 @@
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::built_ins::common::{encode_opt_file_handle_arg, opt_file_handle_comma_p};
 use crate::specific::pc_specific::*;
 use crate::specific::*;
+use crate::{pc::*, ParseError};
 
 use crate::BuiltInSub;
 // LINE INPUT variable$
 // LINE INPUT #file-number%, variable$
-pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq4(
         keyword_pair(Keyword::Line, Keyword::Input),
         whitespace(),

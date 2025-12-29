@@ -1,9 +1,10 @@
 use crate::input::RcStringView;
-use crate::pc::{Errors, Map, Parser};
-use crate::specific::pc_specific::{keyword_choice, keyword_syntax_error};
+use crate::pc::{Map, Parser};
+use crate::specific::pc_specific::{keyword_choice, keyword_syntax_error, WithExpected};
 use crate::specific::Keyword;
+use crate::ParseError;
 
-pub fn keyword_map<T, K>(mappings: K) -> impl Parser<RcStringView, Output = T>
+pub fn keyword_map<T, K>(mappings: K) -> impl Parser<RcStringView, Output = T, Error = ParseError>
 where
     K: AsRef<[(Keyword, T)]>,
     T: Clone,

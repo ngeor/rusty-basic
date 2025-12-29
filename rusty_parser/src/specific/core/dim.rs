@@ -4,9 +4,10 @@ use crate::specific::core::dim_name::dim_var_pos_p;
 use crate::specific::core::dim_name::redim_var_pos_p;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
+use crate::ParseError;
 
 /// Parses DIM statement
-pub fn dim_p() -> impl Parser<RcStringView, Output = Statement> {
+pub fn dim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq4(
         keyword(Keyword::Dim),
         whitespace(),
@@ -22,7 +23,7 @@ pub fn dim_p() -> impl Parser<RcStringView, Output = Statement> {
 }
 
 /// Parses REDIM statement
-pub fn redim_p() -> impl Parser<RcStringView, Output = Statement> {
+pub fn redim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq4(
         keyword(Keyword::Redim),
         whitespace(),
@@ -37,7 +38,8 @@ pub fn redim_p() -> impl Parser<RcStringView, Output = Statement> {
     )
 }
 
-fn opt_shared_keyword() -> impl Parser<RcStringView, Output = Option<(Token, Token)>> {
+fn opt_shared_keyword(
+) -> impl Parser<RcStringView, Output = Option<(Token, Token)>, Error = ParseError> {
     Seq2::new(keyword(Keyword::Shared), whitespace()).to_option()
 }
 

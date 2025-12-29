@@ -93,7 +93,7 @@ impl PrintArg {
 }
 
 /// See [Print] for the definition.
-pub fn parse_print_p() -> impl Parser<RcStringView, Output = Statement> {
+pub fn parse_print_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword(Keyword::Print)
         .and_opt_keep_right(print_boundary().and_tuple(Seq3::new(
             opt_file_handle_comma_p(),
@@ -111,7 +111,7 @@ pub fn parse_print_p() -> impl Parser<RcStringView, Output = Statement> {
         })
 }
 
-pub fn parse_lprint_p() -> impl Parser<RcStringView, Output = Statement> {
+pub fn parse_lprint_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword(Keyword::LPrint)
         .and_opt_keep_right(print_boundary().and_tuple(Seq2::new(opt_using(), PrintArgsParser)))
         .map(|opt_args| opt_args.unwrap_or_default())
@@ -125,7 +125,7 @@ pub fn parse_lprint_p() -> impl Parser<RcStringView, Output = Statement> {
         })
 }
 
-fn opt_using() -> impl Parser<RcStringView, Output = Option<ExpressionPos>> {
+fn opt_using() -> impl Parser<RcStringView, Output = Option<ExpressionPos>, Error = ParseError> {
     seq3(
         keyword(Keyword::Using),
         ws_expr_pos_p().or_syntax_error("Expected: expression after USING"),
@@ -135,7 +135,8 @@ fn opt_using() -> impl Parser<RcStringView, Output = Option<ExpressionPos>> {
     .to_option()
 }
 
-fn opt_file_handle_comma_p() -> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>> {
+fn opt_file_handle_comma_p(
+) -> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>, Error = ParseError> {
     seq2(file_handle_p(), comma(), |file_handle, _| file_handle).to_option()
 }
 
@@ -153,13 +154,13 @@ impl PrintArgsParser {
         }
     }
 
-    fn any_print_arg() -> impl Parser<RcStringView, Output = PrintArg> {
+    fn any_print_arg() -> impl Parser<RcStringView, Output = PrintArg, Error = ParseError> {
         expression_pos_p()
             .map(PrintArg::Expression)
             .or(Self::delimiter_print_arg())
     }
 
-    fn delimiter_print_arg() -> impl Parser<RcStringView, Output = PrintArg> {
+    fn delimiter_print_arg() -> impl Parser<RcStringView, Output = PrintArg, Error = ParseError> {
         semicolon()
             .map(|_| PrintArg::Semicolon)
             .or(comma().map(|_| PrintArg::Comma))
@@ -168,6 +169,7 @@ impl PrintArgsParser {
 
 impl Parser<RcStringView> for PrintArgsParser {
     type Output = Vec<PrintArg>;
+    type Error = ParseError;
 
     fn parse(
         &self,
@@ -195,7 +197,7 @@ impl Parser<RcStringView> for PrintArgsParser {
     }
 }
 
-fn print_boundary() -> impl Parser<RcStringView, Output = Guard> {
+fn print_boundary() -> impl Parser<RcStringView, Output = Guard, Error = ParseError> {
     whitespace()
         .map(|_| Guard::Whitespace)
         .or(peek_token().flat_map(|input, token| {

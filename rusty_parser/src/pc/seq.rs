@@ -9,18 +9,18 @@ use crate::pc::*;
 macro_rules! seq_pc {
     (pub struct $name:ident<$first_type:tt, $($generic_type:tt),+ > ; fn $map_fn_name:ident) => {
         #[allow(non_snake_case)]
-        pub struct $name <_I, $first_type, $($generic_type),+> {
+        pub struct $name <_I, _E, $first_type, $($generic_type),+> {
             // holds the first parser object (might be opt-parser or non-opt parser)
-            $first_type: Box<dyn Parser<_I, Output = $first_type>>,
+            $first_type: Box<dyn Parser<_I, Output = $first_type, Error = _E>>,
             // holds the remaining parser objects (must be non-opt parsers)
-            $($generic_type: Box<dyn Parser<_I, Output = $generic_type>>),+
+            $($generic_type: Box<dyn Parser<_I, Output = $generic_type, Error = _E>>),+
         }
 
-        impl <_I, $first_type, $($generic_type),+> $name <_I, $first_type, $($generic_type),+> {
+        impl <_I, _E, $first_type, $($generic_type),+> $name <_I, _E, $first_type, $($generic_type),+> {
             #[allow(non_snake_case)]
             pub fn new(
-                $first_type: impl Parser<_I, Output = $first_type> + 'static,
-                $($generic_type: impl Parser<_I, Output = $generic_type> +'static ),+) -> Self {
+                $first_type: impl Parser<_I, Output = $first_type, Error = _E> + 'static,
+                $($generic_type: impl Parser<_I, Output = $generic_type, Error = _E> +'static ),+) -> Self {
                 Self {
                     $first_type : Box::new($first_type),
                     $($generic_type : Box::new($generic_type) ),+
@@ -28,15 +28,16 @@ macro_rules! seq_pc {
             }
         }
 
-        impl <_I, $first_type, $($generic_type),+> Parser<_I> for $name <_I, $first_type, $($generic_type),+>
+        impl <_I, _E, $first_type, $($generic_type),+> Parser<_I> for $name <_I, _E, $first_type, $($generic_type),+>
         // where
         //     $first_type: Parser<I>,
         //     $($generic_type: Parser<I>),+
         {
             type Output = ($first_type, $($generic_type),+ );
+            type Error = _E;
 
             #[allow(non_snake_case)]
-            fn parse(&self, tokenizer: _I) -> ParseResult<_I, Self::Output, $crate::error::ParseError> {
+            fn parse(&self, tokenizer: _I) -> ParseResult<_I, Self::Output, _E> {
                 // the first is allowed to return incomplete
                 let (tokenizer, $first_type) = self.$first_type.parse(tokenizer)?;
 
@@ -61,11 +62,11 @@ macro_rules! seq_pc {
         }
 
         #[allow(non_snake_case)]
-        pub fn $map_fn_name<_I, $first_type, $($generic_type),+, _F, _O>(
-            $first_type: impl Parser<_I, Output = $first_type> + 'static ,
-            $($generic_type: impl Parser<_I, Output = $generic_type> + 'static ),+,
+        pub fn $map_fn_name<_I, _E, $first_type, $($generic_type),+, _F, _O>(
+            $first_type: impl Parser<_I, Output = $first_type, Error = _E> + 'static ,
+            $($generic_type: impl Parser<_I, Output = $generic_type, Error = _E> + 'static ),+,
             mapper: _F
-        ) -> impl Parser<_I, Output = _O>
+        ) -> impl Parser<_I, Output = _O, Error = _E>
         where
             _F: Fn($first_type, $($generic_type),+) -> _O
         {

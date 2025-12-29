@@ -16,9 +16,9 @@ pub fn opt_second_expression_after_keyword<P, F>(
     first_parser: P,
     keyword: Keyword,
     is_first_wrapped_in_parenthesis: F,
-) -> impl Parser<RcStringView, Output = (P::Output, Option<ExpressionPos>)>
+) -> impl Parser<RcStringView, Output = (P::Output, Option<ExpressionPos>), Error = ParseError>
 where
-    P: Parser<RcStringView>,
+    P: Parser<RcStringView, Error = ParseError>,
     F: Fn(&P::Output) -> bool,
 {
     first_parser.then_with(
@@ -34,11 +34,14 @@ where
 fn parse_second(
     k: Keyword,
     is_preceded_by_paren: bool,
-) -> impl Parser<RcStringView, Output = ExpressionPos> {
+) -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     ws_keyword(k, is_preceded_by_paren).and_keep_right(ws_expr_pos_p().or_fail(err(k)))
 }
 
-fn ws_keyword(k: Keyword, is_preceded_by_paren: bool) -> impl Parser<RcStringView> {
+fn ws_keyword(
+    k: Keyword,
+    is_preceded_by_paren: bool,
+) -> impl Parser<RcStringView, Error = ParseError> {
     conditionally_opt_whitespace(is_preceded_by_paren).and_tuple(keyword(k))
 }
 
@@ -59,7 +62,7 @@ fn err(keyword: Keyword) -> ParseError {
 /// * `1 + 2AND` the lack of whitespace before `AND` is an error
 pub(super) fn conditionally_opt_whitespace(
     allow_none: bool,
-) -> impl Parser<RcStringView, Output = Option<Token>> {
+) -> impl Parser<RcStringView, Output = Option<Token>, Error = ParseError> {
     if allow_none {
         boxed(opt_whitespace())
     } else {

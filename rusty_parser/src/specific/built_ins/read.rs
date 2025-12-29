@@ -3,8 +3,9 @@ use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 use crate::BuiltInSub;
+use crate::ParseError;
 
-pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword(Keyword::Read)
         .and_keep_right(csv_expressions_first_guarded().or_syntax_error("Expected: variable"))
         .map(|args| Statement::built_in_sub_call(BuiltInSub::Read, args))

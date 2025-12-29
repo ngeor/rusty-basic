@@ -12,6 +12,7 @@ mod recognizers_impl;
 mod specific_trait;
 mod token_kind_parser;
 mod token_type;
+mod with_expected_message;
 mod with_pos;
 
 pub use self::any::*;
@@ -24,4 +25,5 @@ pub use self::recognizers_impl::*;
 pub use self::specific_trait::*;
 pub use self::token_kind_parser::*;
 pub use self::token_type::*;
+pub use self::with_expected_message::*;
 pub use self::with_pos::*;

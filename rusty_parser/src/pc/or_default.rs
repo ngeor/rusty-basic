@@ -1,4 +1,3 @@
-use crate::error::ParseError;
 use crate::pc::{ParseResult, Parser};
 
 pub trait OrDefault<I>: Parser<I>
@@ -6,7 +5,7 @@ where
     Self: Sized,
     Self::Output: Default,
 {
-    fn or_default(self) -> impl Parser<I, Output = Self::Output> {
+    fn or_default(self) -> impl Parser<I, Output = Self::Output, Error = Self::Error> {
         OrDefaultParser::new(self)
     }
 }
@@ -34,8 +33,9 @@ where
     P::Output: Default,
 {
     type Output = P::Output;
+    type Error = P::Error;
 
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(tokenizer) {
             Ok(x) => Ok(x),
             Err((false, tokenizer, _)) => Ok((tokenizer, P::Output::default())),

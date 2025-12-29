@@ -293,7 +293,7 @@ impl Statement {
     }
 }
 
-lazy_parser!(pub fn statement_p<I = RcStringView, Output = Statement> ; struct LazyStatementP ; OrParser::new(vec![
+lazy_parser!(pub fn statement_p<I = RcStringView, Output = Statement, Error = ParseError> ; struct LazyStatementP ; OrParser::new(vec![
     Box::new(statement_label_p()),
     Box::new(single_line_statement_p()),
     Box::new(if_block_p()),
@@ -306,7 +306,7 @@ lazy_parser!(pub fn statement_p<I = RcStringView, Output = Statement> ; struct L
 
 // Tries to read a statement that is allowed to be on a single line IF statement,
 // excluding comments.
-lazy_parser!(pub fn single_line_non_comment_statement_p<I = RcStringView, Output = Statement> ; struct SingleLineNonCommentStatement ; OrParser::new(vec![
+lazy_parser!(pub fn single_line_non_comment_statement_p<I = RcStringView, Output = Statement, Error = ParseError> ; struct SingleLineNonCommentStatement ; OrParser::new(vec![
     Box::new(dim_p()),
     Box::new(redim_p()),
     Box::new(constant_p()),
@@ -326,25 +326,27 @@ lazy_parser!(pub fn single_line_non_comment_statement_p<I = RcStringView, Output
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
-pub fn single_line_statement_p() -> impl Parser<RcStringView, Output = Statement> {
+pub fn single_line_statement_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError>
+{
     comment_p().or(single_line_non_comment_statement_p())
 }
 
-fn statement_label_p() -> impl Parser<RcStringView, Output = Statement> {
+fn statement_label_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     // labels can have dots
     identifier_with_dots().and(colon(), |tokens, _| {
         Statement::Label(token_list_to_bare_name(tokens))
     })
 }
 
-fn statement_go_to_p() -> impl Parser<RcStringView, Output = Statement> {
+fn statement_go_to_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
         .and_keep_right(bare_name_with_dots().or_syntax_error("Expected: label"))
         .map(Statement::GoTo)
 }
 
 /// A parser that fails if an illegal starting keyword is found.
-fn illegal_starting_keywords() -> impl Parser<RcStringView, Output = Statement> {
+fn illegal_starting_keywords() -> impl Parser<RcStringView, Output = Statement, Error = ParseError>
+{
     keyword_map(&[
         (Keyword::Wend, ParseError::WendWithoutWhile),
         (Keyword::Else, ParseError::ElseWithoutIf),
@@ -356,11 +358,11 @@ fn illegal_starting_keywords() -> impl Parser<RcStringView, Output = Statement> 
 
 mod end {
     use crate::input::RcStringView;
-    use crate::pc::*;
     use crate::specific::pc_specific::*;
     use crate::specific::{Keyword, Statement};
+    use crate::{pc::*, ParseError};
 
-    pub fn parse_end_p() -> impl Parser<RcStringView, Output = Statement> {
+    pub fn parse_end_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
         keyword(Keyword::End).map(|_| Statement::End)
     }
 
@@ -385,12 +387,12 @@ mod end {
 
 mod system {
     use crate::input::RcStringView;
-    use crate::pc::*;
     use crate::specific::core::statement_separator::peek_eof_or_statement_separator;
     use crate::specific::pc_specific::*;
     use crate::specific::{Keyword, Statement};
+    use crate::{pc::*, ParseError};
 
-    pub fn parse_system_p() -> impl Parser<RcStringView, Output = Statement> {
+    pub fn parse_system_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
         keyword(Keyword::System).and(
             opt_and_tuple(whitespace(), peek_eof_or_statement_separator())
                 .or_syntax_error("Expected: end-of-statement"),

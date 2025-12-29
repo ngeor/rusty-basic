@@ -1,6 +1,6 @@
 use crate::input::RcStringView;
 use crate::specific::core::var_name;
-use crate::specific::*;
+use crate::{specific::*, ParseError};
 use rusty_common::*;
 
 use crate::pc::*;
@@ -101,19 +101,20 @@ impl DimNameBuilder {
 /// A(10)
 /// A$(1 TO 2, 0 TO 10)
 /// A(1 TO 5) AS INTEGER
-pub fn dim_var_pos_p() -> impl Parser<RcStringView, Output = DimVarPos> {
+pub fn dim_var_pos_p() -> impl Parser<RcStringView, Output = DimVarPos, Error = ParseError> {
     dim_or_redim(array_dimensions::array_dimensions_p().or_default())
 }
 
-pub fn redim_var_pos_p() -> impl Parser<RcStringView, Output = DimVarPos> {
+pub fn redim_var_pos_p() -> impl Parser<RcStringView, Output = DimVarPos, Error = ParseError> {
     dim_or_redim(
         array_dimensions::array_dimensions_p().or_syntax_error("Expected: array dimensions"),
     )
 }
 
 fn dim_or_redim(
-    array_dimensions_parser: impl Parser<RcStringView, Output = ArrayDimensions> + 'static,
-) -> impl Parser<RcStringView, Output = DimVarPos> {
+    array_dimensions_parser: impl Parser<RcStringView, Output = ArrayDimensions, Error = ParseError>
+        + 'static,
+) -> impl Parser<RcStringView, Output = DimVarPos, Error = ParseError> {
     var_name(
         array_dimensions_parser,
         type_definition::built_in_extended_type,
@@ -123,12 +124,13 @@ fn dim_or_redim(
 
 mod array_dimensions {
     use crate::input::RcStringView;
-    use crate::pc::*;
     use crate::specific::core::opt_second_expression::opt_second_expression_after_keyword;
     use crate::specific::pc_specific::*;
     use crate::specific::*;
+    use crate::{pc::*, ParseError};
 
-    pub fn array_dimensions_p() -> impl Parser<RcStringView, Output = ArrayDimensions> {
+    pub fn array_dimensions_p(
+    ) -> impl Parser<RcStringView, Output = ArrayDimensions, Error = ParseError> {
         in_parenthesis(csv_non_opt(
             array_dimension_p(),
             "Expected: array dimension",
@@ -138,7 +140,8 @@ mod array_dimensions {
     // expr (e.g. 10)
     // expr ws+ TO ws+ expr (e.g. 1 TO 10)
     // paren_expr ws* TO ws* paren_expr
-    fn array_dimension_p() -> impl Parser<RcStringView, Output = ArrayDimension> {
+    fn array_dimension_p() -> impl Parser<RcStringView, Output = ArrayDimension, Error = ParseError>
+    {
         opt_second_expression_after_keyword(
             expression_pos_p(),
             Keyword::To,
@@ -159,12 +162,13 @@ mod array_dimensions {
 
 mod type_definition {
     use crate::input::RcStringView;
-    use crate::pc::*;
     use crate::specific::core::expression::expression_pos_p;
     use crate::specific::pc_specific::*;
     use crate::specific::*;
+    use crate::{pc::*, ParseError};
 
-    pub fn built_in_extended_type() -> impl Parser<RcStringView, Output = DimType> {
+    pub fn built_in_extended_type(
+    ) -> impl Parser<RcStringView, Output = DimType, Error = ParseError> {
         OrParser::new(vec![
             Box::new(built_in_numeric_type()),
             Box::new(built_in_string()),
@@ -172,7 +176,7 @@ mod type_definition {
         .with_expected_message("Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING")
     }
 
-    fn built_in_numeric_type() -> impl Parser<RcStringView, Output = DimType> {
+    fn built_in_numeric_type() -> impl Parser<RcStringView, Output = DimType, Error = ParseError> {
         keyword_map(&[
             (
                 Keyword::Single,
@@ -193,7 +197,7 @@ mod type_definition {
         ])
     }
 
-    fn built_in_string() -> impl Parser<RcStringView, Output = DimType> {
+    fn built_in_string() -> impl Parser<RcStringView, Output = DimType, Error = ParseError> {
         keyword(Keyword::String).and_opt(
             star().and_keep_right(
                 expression_pos_p().or_syntax_error("Expected: string length after *"),

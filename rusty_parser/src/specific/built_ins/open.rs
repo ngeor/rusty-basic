@@ -3,8 +3,9 @@ use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 use crate::BuiltInSub;
+use crate::ParseError;
 use rusty_common::*;
-pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq6(
         keyword(Keyword::Open),
         ws_expr_pos_ws_p().or_syntax_error("Expected: file name after OPEN"),
@@ -28,7 +29,8 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
 }
 
 // FOR <ws+> INPUT <ws+>
-fn parse_open_mode_p() -> impl Parser<RcStringView, Output = Positioned<FileMode>> {
+fn parse_open_mode_p(
+) -> impl Parser<RcStringView, Output = Positioned<FileMode>, Error = ParseError> {
     seq4(
         keyword(Keyword::For),
         whitespace(),
@@ -45,7 +47,8 @@ fn parse_open_mode_p() -> impl Parser<RcStringView, Output = Positioned<FileMode
 }
 
 // ACCESS <ws+> READ <ws+>
-fn parse_open_access_p() -> impl Parser<RcStringView, Output = Positioned<FileAccess>> {
+fn parse_open_access_p(
+) -> impl Parser<RcStringView, Output = Positioned<FileAccess>, Error = ParseError> {
     seq4(
         keyword(Keyword::Access),
         whitespace(),
@@ -57,13 +60,13 @@ fn parse_open_access_p() -> impl Parser<RcStringView, Output = Positioned<FileAc
 
 // AS <ws+> expression
 // AS ( expression )
-fn parse_file_number_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
+fn parse_file_number_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     keyword(Keyword::As).and_keep_right(
         guarded_file_handle_or_expression_p().or_syntax_error("Expected: #file-number%"),
     )
 }
 
-fn parse_len_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
+fn parse_len_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     seq3(
         whitespace().and_tuple(keyword(Keyword::Len)),
         equal_sign(),

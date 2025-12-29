@@ -139,7 +139,7 @@ pub type FunctionImplementation = SubprogramImplementation<Name>;
 // comment: ' comment
 // separator: eol|col
 
-pub fn program_parser_p() -> impl Parser<RcStringView, Output = Program> {
+pub fn program_parser_p() -> impl Parser<RcStringView, Output = Program, Error = ParseError> {
     ws_eol_col_zero_or_more()
         .and_opt_keep_right(main_program())
         .and_opt_keep_left(ws_eol_col_zero_or_more())
@@ -147,7 +147,7 @@ pub fn program_parser_p() -> impl Parser<RcStringView, Output = Program> {
         .map(|opt| opt.unwrap_or_default())
 }
 
-fn main_program() -> impl Parser<RcStringView, Output = Program> {
+fn main_program() -> impl Parser<RcStringView, Output = Program, Error = ParseError> {
     global_statement_pos_p().and_opt(next_statements(), |first, opt_next| {
         let mut program = vec![first];
         if let Some(next) = opt_next {
@@ -157,7 +157,7 @@ fn main_program() -> impl Parser<RcStringView, Output = Program> {
     })
 }
 
-fn next_statements() -> impl Parser<RcStringView, Output = Program> {
+fn next_statements() -> impl Parser<RcStringView, Output = Program, Error = ParseError> {
     opt_and_keep_right(
         whitespace(),
         next_statement().and_opt_keep_left(whitespace()),
@@ -165,7 +165,7 @@ fn next_statements() -> impl Parser<RcStringView, Output = Program> {
     .zero_or_more()
 }
 
-fn next_statement() -> impl Parser<RcStringView, Output = GlobalStatementPos> {
+fn next_statement() -> impl Parser<RcStringView, Output = GlobalStatementPos, Error = ParseError> {
     separator::separator()
         .and_keep_right(OrParser::new(vec![
             // need to detect EOF, because the separator we detected might have been the last EOL of the file
@@ -190,7 +190,7 @@ mod separator {
 
     use super::*;
 
-    pub fn separator() -> impl Parser<RcStringView, Output = ()> {
+    pub fn separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
         OrParser::new(vec![
             // EOL or colon separator
             Box::new(eol_or_colon_separator()),
@@ -201,11 +201,11 @@ mod separator {
         ])
     }
 
-    fn eol_or_colon_separator() -> impl Parser<RcStringView, Output = ()> {
+    fn eol_or_colon_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
         eol_col_one_or_more().and_opt(ws_eol_col_zero_or_more(), |_, _| ())
     }
 
-    fn raise_err() -> impl Parser<RcStringView, Output = ()> {
+    fn raise_err() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
         any_token().flat_map(|input, t| {
             Err((
                 true,
@@ -217,7 +217,7 @@ mod separator {
 }
 
 /// Parses one or more tokens that are end of line or colon.
-fn eol_col_one_or_more() -> impl Parser<RcStringView, Output = ()> {
+fn eol_col_one_or_more() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     any_token()
         .filter(|t| TokenType::Colon.matches(t) || TokenType::Eol.matches(t))
         .one_or_more()
@@ -225,7 +225,7 @@ fn eol_col_one_or_more() -> impl Parser<RcStringView, Output = ()> {
 }
 
 /// Parses zero or more tokens that are whitespace, end of line, or colon.
-fn ws_eol_col_zero_or_more() -> impl Parser<RcStringView, Output = ()> {
+fn ws_eol_col_zero_or_more() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     any_token()
         .filter(|t| {
             TokenType::Colon.matches(t)
@@ -240,7 +240,7 @@ fn ws_eol_col_zero_or_more() -> impl Parser<RcStringView, Output = ()> {
 /// If we're at EOF, the parser returns a happy empty result.
 /// Otherwise it returns a syntax error.
 /// This is a failsafe to ensure we have parsed the entire input.
-fn demand_eof() -> impl Parser<RcStringView, Output = ()> {
+fn demand_eof() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     any_token().flat_map_negate_none(|input, t| {
         Err((
             true,
@@ -253,7 +253,8 @@ fn demand_eof() -> impl Parser<RcStringView, Output = ()> {
 /// Parses a global statement.
 /// This includes regular statements, but also DEF types,
 /// declarations, implementations, and user-defined types.
-fn global_statement_pos_p() -> impl Parser<RcStringView, Output = GlobalStatementPos> {
+fn global_statement_pos_p(
+) -> impl Parser<RcStringView, Output = GlobalStatementPos, Error = ParseError> {
     OrParser::new(vec![
         Box::new(def_type_p().map(GlobalStatement::DefType)),
         Box::new(declaration_p()),

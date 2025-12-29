@@ -3,6 +3,7 @@ use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 use crate::BuiltInSub;
+use crate::ParseError;
 use rusty_common::{AtPos, Position, Positioned};
 
 /// Parses built-in subs with optional arguments.
@@ -10,7 +11,7 @@ use rusty_common::{AtPos, Position, Positioned};
 pub fn parse_built_in_sub_with_opt_args(
     k: Keyword,
     built_in_sub: BuiltInSub,
-) -> impl Parser<RcStringView, Output = Statement> {
+) -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq3(
         keyword(k),
         whitespace(),
@@ -42,14 +43,15 @@ fn map_opt_args_to_flags(args: Vec<Option<ExpressionPos>>) -> Expressions {
 }
 
 /// Comma separated list of items, allowing items to be missing between commas.
-pub fn csv_allow_missing() -> impl Parser<RcStringView, Output = Vec<Option<ExpressionPos>>> {
+pub fn csv_allow_missing(
+) -> impl Parser<RcStringView, Output = Vec<Option<ExpressionPos>>, Error = ParseError> {
     parse_delimited_to_items(opt_zip(expression_pos_p(), comma()), trailing_comma_error())
         .or_default()
 }
 
 /// Used in `INPUT` and `LINE INPUT`, parsing an optional file number.
 pub fn opt_file_handle_comma_p(
-) -> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>> {
+) -> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>, Error = ParseError> {
     seq2(file_handle_p(), comma(), |l, _| l).to_option()
 }
 

@@ -1,10 +1,10 @@
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::core::expression::ws_expr_pos_p;
 use crate::specific::core::statement_separator::comments_and_whitespace_p;
 use crate::specific::core::statements::ZeroOrMoreStatements;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
+use crate::{pc::*, ParseError};
 
 // SELECT CASE expr ' comment
 // CASE 1
@@ -18,7 +18,7 @@ use crate::specific::*;
 // CASE <ws+> IS <Operator> <expr>
 // CASE <expr>
 
-pub fn select_case_p() -> impl Parser<RcStringView, Output = Statement> {
+pub fn select_case_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq4(
         select_case_expr_p(),
         comments_and_whitespace_p(),
@@ -50,7 +50,7 @@ pub fn select_case_p() -> impl Parser<RcStringView, Output = Statement> {
 }
 
 /// Parses the `SELECT CASE expression` part
-fn select_case_expr_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
+fn select_case_expr_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     keyword_pair(Keyword::Select, Keyword::Case)
         .and_keep_right(ws_expr_pos_p().or_syntax_error("Expected: expression after CASE"))
 }
@@ -73,11 +73,11 @@ fn select_case_expr_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
 //
 // For range-expression, no space is needed before TO if the first expression is in parenthesis
 
-fn case_blocks() -> impl Parser<RcStringView, Output = Vec<CaseBlock>> {
+fn case_blocks() -> impl Parser<RcStringView, Output = Vec<CaseBlock>, Error = ParseError> {
     case_block().zero_or_more()
 }
 
-fn case_block() -> impl Parser<RcStringView, Output = CaseBlock> {
+fn case_block() -> impl Parser<RcStringView, Output = CaseBlock, Error = ParseError> {
     // CASE
     // TODO is this syntax_error message even possible to happen?
     keyword(Keyword::Case).and_keep_right(
@@ -85,7 +85,7 @@ fn case_block() -> impl Parser<RcStringView, Output = CaseBlock> {
     )
 }
 
-fn continue_after_case() -> impl Parser<RcStringView, Output = CaseBlock> {
+fn continue_after_case() -> impl Parser<RcStringView, Output = CaseBlock, Error = ParseError> {
     opt_and_keep_right(
         whitespace(),
         seq2(
@@ -99,25 +99,26 @@ fn continue_after_case() -> impl Parser<RcStringView, Output = CaseBlock> {
     )
 }
 
-fn case_expression_list() -> impl Parser<RcStringView, Output = Vec<CaseExpression>> {
+fn case_expression_list(
+) -> impl Parser<RcStringView, Output = Vec<CaseExpression>, Error = ParseError> {
     csv(case_expression_parser::parser())
 }
 
 mod case_expression_parser {
     use crate::input::RcStringView;
-    use crate::pc::*;
     use crate::specific::core::expression::expression_pos_p;
     use crate::specific::core::opt_second_expression::opt_second_expression_after_keyword;
     use crate::specific::pc_specific::*;
     use crate::specific::{CaseExpression, Keyword, Operator};
     use crate::ExpressionTrait;
+    use crate::{pc::*, ParseError};
     use rusty_common::Positioned;
 
-    pub fn parser() -> impl Parser<RcStringView, Output = CaseExpression> {
+    pub fn parser() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParseError> {
         case_is().or(simple_or_range())
     }
 
-    fn case_is() -> impl Parser<RcStringView, Output = CaseExpression> {
+    fn case_is() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParseError> {
         seq3(
             keyword(Keyword::Is),
             opt_and_keep_right(whitespace(), relational_operator_p())
@@ -128,7 +129,8 @@ mod case_expression_parser {
         )
     }
 
-    fn relational_operator_p() -> impl Parser<RcStringView, Output = Positioned<Operator>> {
+    fn relational_operator_p(
+    ) -> impl Parser<RcStringView, Output = Positioned<Operator>, Error = ParseError> {
         any_token()
             .filter_map(|token| match TokenType::from_token(token) {
                 TokenType::LessEquals => Some(Operator::LessOrEqual),
@@ -142,7 +144,7 @@ mod case_expression_parser {
             .with_pos()
     }
 
-    fn simple_or_range() -> impl Parser<RcStringView, Output = CaseExpression> {
+    fn simple_or_range() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParseError> {
         opt_second_expression_after_keyword(
             expression_pos_p(),
             Keyword::To,

@@ -1,4 +1,3 @@
-use crate::error::ParseError;
 use crate::parser_declaration;
 use crate::pc::{ParseResult, Parser};
 
@@ -6,42 +5,40 @@ pub trait Errors<I>: Parser<I>
 where
     Self: Sized,
 {
-    fn with_expected_message<F>(self, f: F) -> impl Parser<I, Output = Self::Output>
+    fn or_fail(self, err: Self::Error) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
     where
-        F: MessageProvider,
+        Self::Error: Clone,
     {
-        WithExpectedMessage::new(self, f)
-    }
-
-    fn or_fail(self, err: ParseError) -> impl Parser<I, Output = Self::Output> {
         OrFailParser::new(self, err)
     }
 
-    fn no_incomplete(self) -> impl Parser<I, Output = Self::Output> {
+    fn no_incomplete(self) -> impl Parser<I, Output = Self::Output, Error = Self::Error> {
         NoIncompleteParser::new(self)
     }
 }
 
 impl<I, P> Errors<I> for P where P: Parser<I> {}
 
-struct OrFailParser<P> {
+struct OrFailParser<P, E> {
     parser: P,
-    err: ParseError,
+    err: E,
 }
 
-impl<P> OrFailParser<P> {
-    pub fn new(parser: P, err: ParseError) -> Self {
+impl<P, E> OrFailParser<P, E> {
+    pub fn new(parser: P, err: E) -> Self {
         Self { parser, err }
     }
 }
 
-impl<I, P> Parser<I> for OrFailParser<P>
+impl<I, P, E> Parser<I> for OrFailParser<P, E>
 where
-    P: Parser<I>,
+    P: Parser<I, Error = E>,
+    E: Clone,
 {
     type Output = P::Output;
+    type Error = E;
 
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(tokenizer) {
             Ok(value) => Ok(value),
             Err((false, i, _)) => Err((true, i, self.err.clone())),
@@ -57,59 +54,12 @@ where
     P: Parser<I>,
 {
     type Output = P::Output;
+    type Error = P::Error;
 
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(tokenizer) {
             Ok(value) => Ok(value),
             Err((_, i, err)) => Err((true, i, err)),
-        }
-    }
-}
-
-struct WithExpectedMessage<P, F>(P, F);
-
-impl<P, F> WithExpectedMessage<P, F> {
-    pub fn new(parser: P, f: F) -> Self {
-        Self(parser, f)
-    }
-}
-
-pub trait MessageProvider {
-    fn to_str(&self) -> String;
-}
-
-impl MessageProvider for &str {
-    fn to_str(&self) -> String {
-        self.to_string()
-    }
-}
-
-impl MessageProvider for String {
-    fn to_str(&self) -> String {
-        self.clone()
-    }
-}
-
-impl<F> MessageProvider for F
-where
-    F: Fn() -> String,
-{
-    fn to_str(&self) -> String {
-        (self)()
-    }
-}
-
-impl<I, P, F> Parser<I> for WithExpectedMessage<P, F>
-where
-    P: Parser<I>,
-    F: MessageProvider,
-{
-    type Output = P::Output;
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
-        match self.0.parse(tokenizer) {
-            Ok(value) => Ok(value),
-            Err((false, i, _)) => Err((false, i, ParseError::SyntaxError(self.1.to_str()))),
-            Err(err) => Err(err),
         }
     }
 }

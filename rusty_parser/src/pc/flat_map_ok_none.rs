@@ -1,4 +1,3 @@
-use crate::error::ParseError;
 use crate::pc::*;
 
 pub trait FlatMapOkNone<I>: Parser<I>
@@ -12,19 +11,22 @@ where
         self,
         ok_mapper: F,
         incomplete_mapper: G,
-    ) -> impl Parser<I, Output = U>
+    ) -> impl Parser<I, Output = U, Error = Self::Error>
     where
-        F: Fn(I, Self::Output) -> ParseResult<I, U, ParseError>,
-        G: Fn(I) -> ParseResult<I, U, ParseError>,
+        F: Fn(I, Self::Output) -> ParseResult<I, U, Self::Error>,
+        G: Fn(I) -> ParseResult<I, U, Self::Error>,
     {
         FlatMapOkNoneParser::new(self, ok_mapper, incomplete_mapper)
     }
 
     /// Flat map the successful of this parser into an empty result.
     /// The Failed result is negated and mapped into an empty successful result (i.e. `None` becomes `Ok(())`).
-    fn flat_map_negate_none<F>(self, ok_mapper: F) -> impl Parser<I, Output = ()>
+    fn flat_map_negate_none<F>(
+        self,
+        ok_mapper: F,
+    ) -> impl Parser<I, Output = (), Error = Self::Error>
     where
-        F: Fn(I, Self::Output) -> ParseResult<I, (), ParseError>,
+        F: Fn(I, Self::Output) -> ParseResult<I, (), Self::Error>,
     {
         self.flat_map_ok_none(ok_mapper, |input| Ok((input, ())))
     }
@@ -50,11 +52,13 @@ impl<P, F, G> FlatMapOkNoneParser<P, F, G> {
 impl<I, P, F, G, U> Parser<I> for FlatMapOkNoneParser<P, F, G>
 where
     P: Parser<I>,
-    F: Fn(I, P::Output) -> ParseResult<I, U, ParseError>,
-    G: Fn(I) -> ParseResult<I, U, ParseError>,
+    F: Fn(I, P::Output) -> ParseResult<I, U, P::Error>,
+    G: Fn(I) -> ParseResult<I, U, P::Error>,
 {
     type Output = U;
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
+    type Error = P::Error;
+
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(tokenizer) {
             Ok((input, value)) => (self.ok_mapper)(input, value),
             Err((false, i, _)) => (self.incomplete_mapper)(i),

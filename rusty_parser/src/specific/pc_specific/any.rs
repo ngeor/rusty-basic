@@ -6,12 +6,12 @@ use crate::pc::{default_parse_error, ParseResult, Parser, Token};
 use crate::specific::token_parser;
 
 /// Parses any token.
-pub fn any_token() -> impl Parser<RcStringView, Output = Token> {
+pub fn any_token() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     token_parser()
 }
 
 /// Peeks the next token without consuming it.
-pub fn peek_token() -> impl Parser<RcStringView, Output = Token> {
+pub fn peek_token() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     PeekTokenParser
 }
 
@@ -19,6 +19,7 @@ struct PeekTokenParser;
 
 impl Parser<RcStringView> for PeekTokenParser {
     type Output = Token;
+    type Error = ParseError;
 
     fn parse(
         &self,
@@ -34,7 +35,7 @@ impl Parser<RcStringView> for PeekTokenParser {
 /// Returns Ok(()) if we're at EOF,
 /// otherwise an incomplete result,
 /// without modifying the input.
-pub fn detect_eof() -> impl Parser<RcStringView, Output = ()> {
+pub fn detect_eof() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     EofDetector
 }
 
@@ -42,6 +43,7 @@ struct EofDetector;
 
 impl Parser<RcStringView> for EofDetector {
     type Output = ();
+    type Error = ParseError;
 
     fn parse(
         &self,

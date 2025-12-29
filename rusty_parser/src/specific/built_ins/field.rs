@@ -3,14 +3,13 @@ use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 use crate::BuiltInSub;
+use crate::ParseError;
 use rusty_common::*;
 
 /// Example: FIELD #1, 10 AS FirstName$, 20 AS LastName$
-pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq5(
         keyword(Keyword::Field),
-        // TODO: create a shortcut for whitespace().no_incomplete() and simple token parsers in general
-        // they should have a different FilterParser implementation that does not require Undo capability
         whitespace(),
         file_handle_p().or_syntax_error("Expected: file-number"),
         comma(),
@@ -21,7 +20,8 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
     )
 }
 
-fn field_item_p() -> impl Parser<RcStringView, Output = (ExpressionPos, NamePos)> {
+fn field_item_p() -> impl Parser<RcStringView, Output = (ExpressionPos, NamePos), Error = ParseError>
+{
     seq4(
         expr_pos_ws_p(),
         keyword(Keyword::As),

@@ -1,7 +1,6 @@
 // Mixed type or
 
 use crate::binary_parser_declaration;
-use crate::error::ParseError;
 use crate::pc::{ParseResult, Parser};
 
 pub enum ZipValue<L, R> {
@@ -51,10 +50,12 @@ pub fn opt_zip<L, R>(left: L, right: R) -> OptZip<L, R> {
 impl<I, L, R> Parser<I> for OptZip<L, R>
 where
     L: Parser<I>,
-    R: Parser<I>,
+    R: Parser<I, Error = L::Error>,
 {
     type Output = ZipValue<L::Output, R::Output>;
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
+    type Error = L::Error;
+
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         let (tokenizer, opt_left) = match self.left.parse(tokenizer) {
             Ok((input, x)) => (input, Some(x)),
             Err((false, input, _)) => (input, None),

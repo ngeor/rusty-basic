@@ -1,4 +1,3 @@
-use crate::error::ParseError;
 use crate::pc::{ParseResult, Parser, ToOption};
 
 //
@@ -12,40 +11,50 @@ where
 {
     /// Parses both the left and the right side.
     /// If the right side fails with a non fatal error, parsing of the left side is undone.
-    fn and<R, F, O>(self, right: R, combiner: F) -> impl Parser<I, Output = O>
+    fn and<R, F, O>(self, right: R, combiner: F) -> impl Parser<I, Output = O, Error = Self::Error>
     where
-        R: Parser<I>,
+        R: Parser<I, Error = Self::Error>,
         F: Fn(Self::Output, R::Output) -> O,
     {
         AndParser::new(self, right, combiner)
     }
 
-    fn and_tuple<R>(self, right: R) -> impl Parser<I, Output = (Self::Output, R::Output)>
+    fn and_tuple<R>(
+        self,
+        right: R,
+    ) -> impl Parser<I, Output = (Self::Output, R::Output), Error = Self::Error>
     where
-        R: Parser<I>,
+        R: Parser<I, Error = Self::Error>,
     {
         self.and(right, |l, r| (l, r))
     }
 
-    fn and_keep_left<R>(self, right: R) -> impl Parser<I, Output = Self::Output>
+    fn and_keep_left<R>(
+        self,
+        right: R,
+    ) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
     where
-        R: Parser<I>,
+        R: Parser<I, Error = Self::Error>,
     {
         self.and(right, |l, _| l)
     }
 
-    fn and_keep_right<R>(self, right: R) -> impl Parser<I, Output = R::Output>
+    fn and_keep_right<R>(self, right: R) -> impl Parser<I, Output = R::Output, Error = Self::Error>
     where
-        R: Parser<I>,
+        R: Parser<I, Error = Self::Error>,
     {
         self.and(right, |_, r| r)
     }
 
     /// Parses the left side and optionally the right side.
     /// The combiner function maps the left and (optional) right output to the final result.
-    fn and_opt<R, F, O>(self, right: R, combiner: F) -> impl Parser<I, Output = O>
+    fn and_opt<R, F, O>(
+        self,
+        right: R,
+        combiner: F,
+    ) -> impl Parser<I, Output = O, Error = Self::Error>
     where
-        R: Parser<I>,
+        R: Parser<I, Error = Self::Error>,
         F: Fn(Self::Output, Option<R::Output>) -> O,
     {
         self.and(right.to_option(), combiner)
@@ -56,35 +65,45 @@ where
     fn and_opt_tuple<R>(
         self,
         right: R,
-    ) -> impl Parser<I, Output = (Self::Output, Option<R::Output>)>
+    ) -> impl Parser<I, Output = (Self::Output, Option<R::Output>), Error = Self::Error>
     where
-        R: Parser<I>,
+        R: Parser<I, Error = Self::Error>,
     {
         self.and_opt(right, |l, r| (l, r))
     }
 
     /// Parses the left side and optionally the right side.
     /// The result is only the left side's output.
-    fn and_opt_keep_left<R>(self, right: R) -> impl Parser<I, Output = Self::Output>
+    fn and_opt_keep_left<R>(
+        self,
+        right: R,
+    ) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
     where
-        R: Parser<I>,
+        R: Parser<I, Error = Self::Error>,
     {
         self.and_opt(right, |l, _| l)
     }
 
     /// Parses the left side and optionally the right side.
     /// The result is only the right side's output.
-    fn and_opt_keep_right<R>(self, right: R) -> impl Parser<I, Output = Option<R::Output>>
+    fn and_opt_keep_right<R>(
+        self,
+        right: R,
+    ) -> impl Parser<I, Output = Option<R::Output>, Error = Self::Error>
     where
-        R: Parser<I>,
+        R: Parser<I, Error = Self::Error>,
     {
         self.and_opt(right, |_, r| r)
     }
 
-    fn surround<L, R>(self, left: L, right: R) -> impl Parser<I, Output = Self::Output>
+    fn surround<L, R>(
+        self,
+        left: L,
+        right: R,
+    ) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
     where
-        L: Parser<I>,
-        R: Parser<I>,
+        L: Parser<I, Error = Self::Error>,
+        R: Parser<I, Error = Self::Error>,
     {
         left.and_keep_right(self).and_keep_left(right)
     }
@@ -120,11 +139,13 @@ impl<I, L, R, F, O> Parser<I> for AndParser<L, R, F>
 where
     I: Clone,
     L: Parser<I>,
-    R: Parser<I>,
+    R: Parser<I, Error = L::Error>,
     F: Fn(L::Output, R::Output) -> O,
 {
     type Output = O;
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
+    type Error = L::Error;
+
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.left.parse(tokenizer.clone()) {
             Ok((input, left)) => {
                 match self.right.parse(input) {
@@ -142,11 +163,11 @@ where
 /// Parses the left side optionally and then the right side.
 /// If the right side fails, the left side is reverted too.
 /// The combiner function is used to create the final result.
-pub fn opt_and<I, L, R, F, O>(
-    left: impl Parser<I, Output = L>,
-    right: impl Parser<I, Output = R>,
+pub fn opt_and<I, L, R, E, F, O>(
+    left: impl Parser<I, Output = L, Error = E>,
+    right: impl Parser<I, Output = R, Error = E>,
     combiner: F,
-) -> impl Parser<I, Output = O>
+) -> impl Parser<I, Output = O, Error = E>
 where
     I: Clone,
     F: Fn(Option<L>, R) -> O,
@@ -157,10 +178,10 @@ where
 /// Parses the left side optionally and then the right side.
 /// If the right side fails, the left side is reverted too.
 /// The result is a tuple of the (optional) left side and the right side.
-pub fn opt_and_tuple<I, L, R>(
-    left: impl Parser<I, Output = L>,
-    right: impl Parser<I, Output = R>,
-) -> impl Parser<I, Output = (Option<L>, R)>
+pub fn opt_and_tuple<I, L, R, E>(
+    left: impl Parser<I, Output = L, Error = E>,
+    right: impl Parser<I, Output = R, Error = E>,
+) -> impl Parser<I, Output = (Option<L>, R), Error = E>
 where
     I: Clone,
 {
@@ -170,10 +191,10 @@ where
 /// Parses the left side optionally and then the right side.
 /// If the right side fails, the left side is reverted too.
 /// The result is the right side only, the left is discarded.
-pub fn opt_and_keep_right<I, L, R>(
-    left: impl Parser<I, Output = L>,
-    right: impl Parser<I, Output = R>,
-) -> impl Parser<I, Output = R>
+pub fn opt_and_keep_right<I, L, R, E>(
+    left: impl Parser<I, Output = L, Error = E>,
+    right: impl Parser<I, Output = R, Error = E>,
+) -> impl Parser<I, Output = R, Error = E>
 where
     I: Clone,
 {

@@ -21,7 +21,7 @@ pub fn create_string_tokenizer(input: String) -> RcStringView {
     input.into()
 }
 
-pub fn token_parser() -> impl Parser<RcStringView, Output = Token> {
+pub fn token_parser() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     OrParser::new(vec![
         // Eol,
         Box::new(eol()),
@@ -91,65 +91,68 @@ pub fn token_parser() -> impl Parser<RcStringView, Output = Token> {
     ])
 }
 
-fn eol() -> impl Parser<RcStringView, Output = Token> {
+fn eol() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     OrParser::new(vec![Box::new(crlf()), Box::new(cr()), Box::new(lf())])
 }
 
-fn crlf() -> impl Parser<RcStringView, Output = Token> {
+fn crlf() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     char_parsers::specific('\r')
         .concat(char_parsers::specific('\n'))
         .to_token(TokenType::Eol)
 }
 
-fn greater_or_equal() -> impl Parser<RcStringView, Output = Token> {
+fn greater_or_equal() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     char_parsers::specific('>')
         .concat(char_parsers::specific('='))
         .to_token(TokenType::GreaterEquals)
 }
 
-fn less_or_equal() -> impl Parser<RcStringView, Output = Token> {
+fn less_or_equal() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     char_parsers::specific('<')
         .concat(char_parsers::specific('='))
         .to_token(TokenType::LessEquals)
 }
 
-fn not_equal() -> impl Parser<RcStringView, Output = Token> {
+fn not_equal() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     char_parsers::specific('<')
         .concat(char_parsers::specific('>'))
         .to_token(TokenType::NotEquals)
 }
 
-fn cr() -> impl Parser<RcStringView, Output = Token> {
+fn cr() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     specific(TokenType::Eol, '\r')
 }
 
-fn lf() -> impl Parser<RcStringView, Output = Token> {
+fn lf() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     specific(TokenType::Eol, '\n')
 }
 
-fn whitespace() -> impl Parser<RcStringView, Output = Token> {
+fn whitespace() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     many(TokenType::Whitespace, |ch| *ch == ' ' || *ch == '\t')
 }
 
-fn digits() -> impl Parser<RcStringView, Output = Token> {
+fn digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     many(TokenType::Digits, char::is_ascii_digit)
 }
 
-fn keyword() -> impl Parser<RcStringView, Output = Token> {
+fn keyword() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     // using is_ascii_alphanumeric to read e.g. Sub1 and determine it is not a keyword
     // TODO can be done in a different way e.g. read alphabetic and then ensure it's followed by something other than alphanumeric
     many(TokenType::Keyword, char::is_ascii_alphanumeric)
         .filter(|token| Keyword::try_from(token.text.as_str()).is_ok())
 }
 
-fn identifier() -> impl Parser<RcStringView, Output = Token> {
+fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     // TODO leading-remaining
     many(TokenType::Identifier, |ch| {
         *ch == '_' || ch.is_ascii_alphanumeric()
     })
 }
 
-fn many<F>(token_type: TokenType, predicate: F) -> impl Parser<RcStringView, Output = Token>
+fn many<F>(
+    token_type: TokenType,
+    predicate: F,
+) -> impl Parser<RcStringView, Output = Token, Error = ParseError>
 where
     F: Fn(&char) -> bool,
 {
@@ -158,23 +161,26 @@ where
         .to_token(token_type)
 }
 
-fn specific(token_type: TokenType, needle: char) -> impl Parser<RcStringView, Output = Token> {
+fn specific(
+    token_type: TokenType,
+    needle: char,
+) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     char_parsers::specific(needle)
         .one_to_str()
         .to_token(token_type)
 }
 
-fn unknown() -> impl Parser<RcStringView, Output = Token> {
+fn unknown() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     char_parsers::any()
         .one_to_str()
         .to_token(TokenType::Unknown)
 }
 
-fn oct_digits() -> impl Parser<RcStringView, Output = Token> {
+fn oct_digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     oct_or_hex_digits('O', |ch| *ch >= '0' && *ch <= '7', TokenType::OctDigits)
 }
 
-fn hex_digits() -> impl Parser<RcStringView, Output = Token> {
+fn hex_digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     oct_or_hex_digits('H', char::is_ascii_hexdigit, TokenType::HexDigits)
 }
 
@@ -182,7 +188,7 @@ fn oct_or_hex_digits<F>(
     radix: char,
     predicate: F,
     token_type: TokenType,
-) -> impl Parser<RcStringView, Output = Token>
+) -> impl Parser<RcStringView, Output = Token, Error = ParseError>
 where
     F: Fn(&char) -> bool,
 {
@@ -215,6 +221,7 @@ mod token_parsers {
 
     impl Parser<RcStringView> for AnyPos {
         type Output = Position;
+        type Error = ParseError;
 
         fn parse(
             &self,
@@ -230,14 +237,20 @@ mod token_parsers {
     }
 
     pub trait StringToTokenParser {
-        fn to_token(self, token_type: TokenType) -> impl Parser<RcStringView, Output = Token>;
+        fn to_token(
+            self,
+            token_type: TokenType,
+        ) -> impl Parser<RcStringView, Output = Token, Error = ParseError>;
     }
 
     impl<P> StringToTokenParser for P
     where
-        P: Parser<RcStringView, Output = String>,
+        P: Parser<RcStringView, Output = String, Error = ParseError>,
     {
-        fn to_token(self, token_type: TokenType) -> impl Parser<RcStringView, Output = Token> {
+        fn to_token(
+            self,
+            token_type: TokenType,
+        ) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
             AnyPos.and(self, move |pos, text| Token {
                 kind: token_type.into(),
                 text,
@@ -252,13 +265,16 @@ mod string_parsers {
 
     pub trait CharToStringParser<I> {
         /// Reads as many chars possible from the underlying parser and returns them as a string.
-        fn many_to_str(self) -> impl Parser<I, Output = String>;
+        fn many_to_str(self) -> impl Parser<I, Output = String, Error = ParseError>;
 
         /// Reads one char possible from the underlying parser and converts it into a string.
-        fn one_to_str(self) -> impl Parser<I, Output = String>;
+        fn one_to_str(self) -> impl Parser<I, Output = String, Error = ParseError>;
 
         /// A parser that reads two chars together and returns them as a string.
-        fn concat(self, other: impl Parser<I, Output = char>) -> impl Parser<I, Output = String>
+        fn concat(
+            self,
+            other: impl Parser<I, Output = char, Error = ParseError>,
+        ) -> impl Parser<I, Output = String, Error = ParseError>
         where
             I: Clone;
     }
@@ -266,20 +282,23 @@ mod string_parsers {
     impl<I, P> CharToStringParser<I> for P
     where
         I: Clone,
-        P: Parser<I, Output = char>,
+        P: Parser<I, Output = char, Error = ParseError>,
     {
-        fn many_to_str(self) -> impl Parser<I, Output = String> {
+        fn many_to_str(self) -> impl Parser<I, Output = String, Error = ParseError> {
             self.many(String::from, |mut s: String, c| {
                 s.push(c);
                 s
             })
         }
 
-        fn one_to_str(self) -> impl Parser<I, Output = String> {
+        fn one_to_str(self) -> impl Parser<I, Output = String, Error = ParseError> {
             self.map(String::from)
         }
 
-        fn concat(self, other: impl Parser<I, Output = char>) -> impl Parser<I, Output = String> {
+        fn concat(
+            self,
+            other: impl Parser<I, Output = char, Error = ParseError>,
+        ) -> impl Parser<I, Output = String, Error = ParseError> {
             self.and(other, |l, r| {
                 let mut s = String::from(l);
                 s.push(r);
@@ -292,18 +311,18 @@ mod string_parsers {
 mod char_parsers {
     use super::*;
 
-    pub fn any() -> impl Parser<RcStringView, Output = char> {
+    pub fn any() -> impl Parser<RcStringView, Output = char, Error = ParseError> {
         AnyChar
     }
 
-    pub fn filter<F>(predicate: F) -> impl Parser<RcStringView, Output = char>
+    pub fn filter<F>(predicate: F) -> impl Parser<RcStringView, Output = char, Error = ParseError>
     where
         F: Fn(&char) -> bool,
     {
         any().filter(predicate)
     }
 
-    pub fn specific(needle: char) -> impl Parser<RcStringView, Output = char> {
+    pub fn specific(needle: char) -> impl Parser<RcStringView, Output = char, Error = ParseError> {
         filter(move |ch| *ch == needle)
     }
 
@@ -311,6 +330,7 @@ mod char_parsers {
 
     impl Parser<RcStringView> for AnyChar {
         type Output = char;
+        type Error = ParseError;
 
         fn parse(
             &self,

@@ -1,11 +1,11 @@
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::core::expression::ws_expr_pos_p;
 use crate::specific::core::statements::ZeroOrMoreStatements;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
+use crate::{pc::*, ParseError};
 
-pub fn do_loop_p() -> impl Parser<RcStringView, Output = Statement> {
+pub fn do_loop_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword(Keyword::Do)
         .and_keep_right(
             do_condition_top()
@@ -15,7 +15,7 @@ pub fn do_loop_p() -> impl Parser<RcStringView, Output = Statement> {
         .map(Statement::DoLoop)
 }
 
-fn do_condition_top() -> impl Parser<RcStringView, Output = DoLoop> {
+fn do_condition_top() -> impl Parser<RcStringView, Output = DoLoop, Error = ParseError> {
     seq4(
         whitespace().and_tuple(keyword_choice(vec![Keyword::Until, Keyword::While])),
         ws_expr_pos_p().or_syntax_error("Expected: expression"),
@@ -34,7 +34,7 @@ fn do_condition_top() -> impl Parser<RcStringView, Output = DoLoop> {
     )
 }
 
-fn do_condition_bottom() -> impl Parser<RcStringView, Output = DoLoop> {
+fn do_condition_bottom() -> impl Parser<RcStringView, Output = DoLoop, Error = ParseError> {
     seq5(
         ZeroOrMoreStatements::new(Keyword::Loop),
         keyword(Keyword::Loop),

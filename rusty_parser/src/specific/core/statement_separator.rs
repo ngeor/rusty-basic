@@ -13,12 +13,12 @@
 /// <ws>* EOL <ws | eol>*
 /// ```
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::core::comment::comment_as_string_p;
 use crate::specific::pc_specific::*;
+use crate::{pc::*, ParseError};
 use rusty_common::*;
 
-pub fn comment_separator() -> impl Parser<RcStringView, Output = ()> {
+pub fn comment_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     opt_and_tuple(whitespace(), any_token_of(TokenType::Eol)).and_opt(
         any_token_of_two(TokenType::Eol, TokenType::Whitespace),
         |_, _| (),
@@ -49,7 +49,7 @@ pub fn comment_separator() -> impl Parser<RcStringView, Output = ()> {
 /// Together it should be:
 /// ws* (colon | eol) (ws | eol)*
 /// ws* ' ! (where `!` stands for read and undo)
-pub fn common_separator() -> impl Parser<RcStringView, Output = ()> {
+pub fn common_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     opt_and(
         whitespace(),
         OrParser::new(vec![
@@ -63,7 +63,8 @@ pub fn common_separator() -> impl Parser<RcStringView, Output = ()> {
     )
 }
 
-pub fn no_separator_needed_before_comment() -> impl Parser<RcStringView, Output = ()> {
+pub fn no_separator_needed_before_comment(
+) -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     // warning: cannot use filter_map because it will undo and we've already "undo" via "peek"
     peek_token().flat_map(|input, t| {
         if TokenType::SingleQuote.matches(&t) {
@@ -74,7 +75,8 @@ pub fn no_separator_needed_before_comment() -> impl Parser<RcStringView, Output 
     })
 }
 
-pub fn peek_eof_or_statement_separator() -> impl Parser<RcStringView, Output = ()> {
+pub fn peek_eof_or_statement_separator(
+) -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     peek_token().flat_map_negate_none(|input, token| {
         if TokenType::Colon.matches(&token)
             || TokenType::SingleQuote.matches(&token)
@@ -89,7 +91,8 @@ pub fn peek_eof_or_statement_separator() -> impl Parser<RcStringView, Output = (
 
 // TODO review all parsers that return a collection, implement some `accumulate` method
 /// Reads multiple comments and the surrounding whitespace.
-pub fn comments_and_whitespace_p() -> impl Parser<RcStringView, Output = Vec<Positioned<String>>> {
+pub fn comments_and_whitespace_p(
+) -> impl Parser<RcStringView, Output = Vec<Positioned<String>>, Error = ParseError> {
     opt_and_keep_right(
         whitespace(),
         OptZip::new(comment_separator(), comment_as_string_p().with_pos())

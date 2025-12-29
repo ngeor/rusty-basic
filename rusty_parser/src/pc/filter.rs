@@ -1,4 +1,3 @@
-use crate::error::ParseError;
 use crate::pc::{default_parse_error, ParseResult, Parser};
 
 pub trait Filter<I>: Parser<I>
@@ -6,9 +5,10 @@ where
     Self: Sized,
     I: Clone,
 {
-    fn filter<F>(self, predicate: F) -> impl Parser<I, Output = Self::Output>
+    fn filter<F>(self, predicate: F) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
     where
         F: Fn(&Self::Output) -> bool,
+        Self::Error: Default,
     {
         FilterParser(self, predicate)
     }
@@ -27,11 +27,13 @@ impl<I, P, F> Parser<I> for FilterParser<P, F>
 where
     I: Clone,
     P: Parser<I>,
+    P::Error: Default,
     F: Fn(&P::Output) -> bool,
 {
     type Output = P::Output;
+    type Error = P::Error;
 
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, ParseError> {
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.0.parse(tokenizer.clone()) {
             Ok((input, value)) => {
                 if (self.1)(&value) {

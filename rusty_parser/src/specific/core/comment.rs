@@ -1,14 +1,14 @@
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
+use crate::{pc::*, ParseError};
 
 /// Tries to read a comment.
-pub fn comment_p() -> impl Parser<RcStringView, Output = Statement> {
+pub fn comment_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     comment_as_string_p().map(Statement::Comment)
 }
 
-pub fn comment_as_string_p() -> impl Parser<RcStringView, Output = String> {
+pub fn comment_as_string_p() -> impl Parser<RcStringView, Output = String, Error = ParseError> {
     any_token_of(TokenType::SingleQuote).and(
         any_token()
             .filter(|t| !TokenType::Eol.matches(t))

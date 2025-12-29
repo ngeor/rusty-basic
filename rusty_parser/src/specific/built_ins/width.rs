@@ -4,8 +4,9 @@ use crate::specific::built_ins::common::csv_allow_missing;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 use crate::BuiltInSub;
+use crate::ParseError;
 use rusty_common::*;
-pub fn parse() -> impl Parser<RcStringView, Output = Statement> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword_followed_by_whitespace_p(Keyword::Width)
         .and_keep_right(csv_allow_missing())
         .map(|opt_args| Statement::built_in_sub_call(BuiltInSub::Width, map_args(opt_args)))

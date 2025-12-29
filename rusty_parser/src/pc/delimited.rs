@@ -1,4 +1,3 @@
-use crate::error::ParseError;
 use crate::pc::*;
 
 /// Represents a value that has is followed by optional delimiter.
@@ -34,11 +33,15 @@ impl<L, R> Delimited<L> for (L, Option<R>) {
 }
 
 /// Gets a list of items separated by a delimiter.
-pub fn delimited_by<I: Clone, P: Parser<I>, D: Parser<I>>(
+pub fn delimited_by<I, P: Parser<I>, D: Parser<I, Error = P::Error>>(
     parser: P,
     delimiter: D,
-    trailing_error: ParseError,
-) -> impl Parser<I, Output = Vec<P::Output>> {
+    trailing_error: P::Error,
+) -> impl Parser<I, Output = Vec<P::Output>, Error = P::Error>
+where
+    I: Clone,
+    P::Error: Clone + Default,
+{
     parse_delimited_to_items(parser.and_opt_tuple(delimiter), trailing_error)
 }
 
@@ -47,22 +50,19 @@ pub fn delimited_by<I: Clone, P: Parser<I>, D: Parser<I>>(
 /// Public because needed by built_ins to implement csv_allow_missing.
 pub fn parse_delimited_to_items<I: Clone, P, L>(
     parser: P,
-    trailing_error: ParseError,
-) -> impl Parser<I, Output = Vec<L>>
+    trailing_error: P::Error,
+) -> impl Parser<I, Output = Vec<L>, Error = P::Error>
 where
     P: Parser<I>,
     P::Output: Delimited<L>,
+    P::Error: Clone + Default,
 {
     parser
         .loop_while(Delimited::has_delimiter)
         .flat_map(move |input, items| map_items(input, items, trailing_error.clone()))
 }
 
-fn map_items<I, P, T>(
-    input: I,
-    items: Vec<P>,
-    trailing_error: ParseError,
-) -> ParseResult<I, Vec<T>, ParseError>
+fn map_items<I, P, T, E>(input: I, items: Vec<P>, trailing_error: E) -> ParseResult<I, Vec<T>, E>
 where
     P: Delimited<T>,
 {

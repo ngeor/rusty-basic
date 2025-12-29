@@ -1,12 +1,12 @@
 use crate::input::RcStringView;
-use crate::pc::*;
-use crate::specific::pc_specific::{any_token_of, TokenType};
+use crate::specific::pc_specific::{any_token_of, TokenType, WithExpected};
 use crate::specific::Keyword;
+use crate::{pc::*, ParseError};
 
 /// Matches one of the given keywords.
 pub fn keyword_choice(
     keywords: Vec<Keyword>,
-) -> impl Parser<RcStringView, Output = (Keyword, Token)> {
+) -> impl Parser<RcStringView, Output = (Keyword, Token), Error = ParseError> {
     // TODO error message should be lazily evaluated
     let err_msg = keyword_syntax_error(&keywords);
     any_token_of(TokenType::Keyword)

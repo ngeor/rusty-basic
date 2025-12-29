@@ -5,15 +5,18 @@ use crate::specific::core::declaration::sub_declaration_p;
 use crate::specific::core::statements::ZeroOrMoreStatements;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
+use crate::ParseError;
 
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
 
-pub fn implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement> {
+pub fn implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParseError>
+{
     function_implementation_p().or(sub_implementation_p())
 }
 
-fn function_implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement> {
+fn function_implementation_p(
+) -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParseError> {
     seq3(
         static_declaration_p(function_declaration_p()),
         ZeroOrMoreStatements::new(Keyword::End),
@@ -29,7 +32,8 @@ fn function_implementation_p() -> impl Parser<RcStringView, Output = GlobalState
     )
 }
 
-fn sub_implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement> {
+fn sub_implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParseError>
+{
     seq3(
         static_declaration_p(sub_declaration_p()),
         ZeroOrMoreStatements::new(Keyword::End),
@@ -45,9 +49,11 @@ fn sub_implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement>
     )
 }
 
-fn static_declaration_p<P, T>(parser: P) -> impl Parser<RcStringView, Output = (T, bool)>
+fn static_declaration_p<P, T>(
+    parser: P,
+) -> impl Parser<RcStringView, Output = (T, bool), Error = ParseError>
 where
-    P: Parser<RcStringView, Output = T>,
+    P: Parser<RcStringView, Output = T, Error = ParseError>,
 {
     parser.and_opt(
         opt_and_tuple(whitespace(), keyword(Keyword::Static)),

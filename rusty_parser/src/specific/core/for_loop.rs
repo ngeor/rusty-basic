@@ -13,7 +13,7 @@ use crate::specific::*;
 // statements
 // NEXT (I)
 
-pub fn for_loop_p() -> impl Parser<RcStringView, Output = Statement> {
+pub fn for_loop_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq4(
         parse_for_step_p(),
         ZeroOrMoreStatements::new(Keyword::Next),
@@ -41,6 +41,7 @@ fn parse_for_step_p() -> impl Parser<
         ExpressionPos,
         Option<ExpressionPos>,
     ),
+    Error = ParseError,
 > {
     opt_second_expression_after_keyword(parse_for_p(), Keyword::Step, |(_var, _low, upper)| {
         upper.is_parenthesis()
@@ -49,7 +50,8 @@ fn parse_for_step_p() -> impl Parser<
 }
 
 /// Parses the "FOR I = 1 TO 2" part
-fn parse_for_p() -> impl Parser<RcStringView, Output = (ExpressionPos, ExpressionPos, ExpressionPos)>
+fn parse_for_p(
+) -> impl Parser<RcStringView, Output = (ExpressionPos, ExpressionPos, ExpressionPos), Error = ParseError>
 {
     seq6(
         keyword_followed_by_whitespace_p(Keyword::For),
@@ -62,7 +64,7 @@ fn parse_for_p() -> impl Parser<RcStringView, Output = (ExpressionPos, Expressio
     )
 }
 
-fn next_counter_p() -> impl Parser<RcStringView, Output = ExpressionPos> {
+fn next_counter_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     whitespace().and_keep_right(property::parser())
 }
 

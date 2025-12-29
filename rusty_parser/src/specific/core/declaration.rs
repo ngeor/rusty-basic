@@ -1,9 +1,9 @@
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::core::name::{bare_name_with_dots, name_with_dots};
 use crate::specific::core::param_name::parameter_pos_p;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
+use crate::{pc::*, ParseError};
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)
 // FunctionDeclaration   ::= FUNCTION<ws+><Name><ws*><DeclarationParameters>
@@ -16,7 +16,7 @@ use crate::specific::*;
 // ExtendedBuiltIn       ::= <BareName><ws+>AS<ws+>(SINGLE|DOUBLE|STRING|INTEGER|LONG)
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
-pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement> {
+pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParseError> {
     keyword_followed_by_whitespace_p(Keyword::Declare).and_keep_right(
         OrParser::new(vec![
             Box::new(
@@ -28,7 +28,8 @@ pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement> {
     )
 }
 
-pub fn function_declaration_p() -> impl Parser<RcStringView, Output = (NamePos, Parameters)> {
+pub fn function_declaration_p(
+) -> impl Parser<RcStringView, Output = (NamePos, Parameters), Error = ParseError> {
     seq4(
         keyword(Keyword::Function),
         whitespace(),
@@ -42,7 +43,8 @@ pub fn function_declaration_p() -> impl Parser<RcStringView, Output = (NamePos, 
     )
 }
 
-pub fn sub_declaration_p() -> impl Parser<RcStringView, Output = (BareNamePos, Parameters)> {
+pub fn sub_declaration_p(
+) -> impl Parser<RcStringView, Output = (BareNamePos, Parameters), Error = ParseError> {
     seq4(
         keyword(Keyword::Sub),
         whitespace(),
@@ -55,7 +57,8 @@ pub fn sub_declaration_p() -> impl Parser<RcStringView, Output = (BareNamePos, P
 }
 
 // result ::= "" | "(" ")" | "(" parameter (,parameter)* ")"
-fn declaration_parameters_p() -> impl Parser<RcStringView, Output = Parameters> {
+fn declaration_parameters_p() -> impl Parser<RcStringView, Output = Parameters, Error = ParseError>
+{
     // TODO remove the need for the double .or_default()
     opt_and_keep_right(
         whitespace(),

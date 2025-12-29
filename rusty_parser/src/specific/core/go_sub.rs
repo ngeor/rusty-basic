@@ -1,16 +1,16 @@
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::core::name::bare_name_with_dots;
 use crate::specific::pc_specific::*;
 use crate::specific::{Keyword, Statement};
+use crate::{pc::*, ParseError};
 
-pub fn statement_go_sub_p() -> impl Parser<RcStringView, Output = Statement> {
+pub fn statement_go_sub_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword_followed_by_whitespace_p(Keyword::GoSub)
         .and_keep_right(bare_name_with_dots().or_syntax_error("Expected: label"))
         .map(Statement::GoSub)
 }
 
-pub fn statement_return_p() -> impl Parser<RcStringView, Output = Statement> {
+pub fn statement_return_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq2(
         keyword(Keyword::Return),
         whitespace()

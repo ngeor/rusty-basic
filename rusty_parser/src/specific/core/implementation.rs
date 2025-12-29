@@ -1,3 +1,4 @@
+use crate::input::RcStringView;
 use crate::pc::*;
 use crate::specific::core::declaration::function_declaration_p;
 use crate::specific::core::declaration::sub_declaration_p;

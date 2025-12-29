@@ -12,6 +12,7 @@
 /// <ws>* ':' <ws*>
 /// <ws>* EOL <ws | eol>*
 /// ```
+use crate::input::RcStringView;
 use crate::pc::*;
 use crate::specific::core::comment::comment_as_string_p;
 use crate::specific::pc_specific::*;

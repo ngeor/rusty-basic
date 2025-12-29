@@ -1,5 +1,8 @@
+use crate::input::RcStringView;
 use crate::pc::*;
-use crate::specific::pc_specific::{any_token_of, dollar_sign, whitespace, TokenType};
+use crate::specific::pc_specific::{
+    any_token, any_token_of, dollar_sign, peek_token, whitespace, TokenType,
+};
 use crate::specific::Keyword;
 
 // TODO review usages of TokenType::Keyword

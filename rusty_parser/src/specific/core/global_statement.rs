@@ -1,6 +1,7 @@
 use rusty_common::*;
 
 use crate::error::ParseError;
+use crate::input::RcStringView;
 use crate::pc::*;
 use crate::specific::core::declaration::declaration_p;
 use crate::specific::core::def_type::def_type_p;

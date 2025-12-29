@@ -2,8 +2,9 @@
 // TokenKindParser
 //
 
-use crate::pc::{any_token, And, Errors, Filter, Parser, RcStringView, ToOption, Token};
-use crate::specific::pc_specific::TokenType;
+use crate::input::RcStringView;
+use crate::pc::{And, Errors, Filter, Parser, ToOption, Token};
+use crate::specific::pc_specific::{any_token, TokenType};
 
 /// Equal sign, surrounded by optional whitespace.
 ///

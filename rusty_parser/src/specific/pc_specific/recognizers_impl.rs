@@ -1,6 +1,7 @@
 use rusty_common::Position;
 
 use crate::error::ParseError;
+use crate::input::RcStringView;
 use crate::pc::*;
 use crate::specific::pc_specific::recognizers_impl::string_parsers::CharToStringParser;
 use crate::specific::pc_specific::recognizers_impl::token_parsers::StringToTokenParser;

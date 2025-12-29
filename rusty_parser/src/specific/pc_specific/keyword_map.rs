@@ -1,4 +1,5 @@
-use crate::pc::{Errors, Map, Parser, RcStringView};
+use crate::input::RcStringView;
+use crate::pc::{Errors, Map, Parser};
 use crate::specific::pc_specific::{keyword_choice, keyword_syntax_error};
 use crate::specific::Keyword;
 

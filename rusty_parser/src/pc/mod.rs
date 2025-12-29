@@ -1,15 +1,13 @@
 //! base module contains functionality that can be extracted into a library,
 //! it's generic and not specific to QBasic
 mod and;
-mod any;
 pub mod boxed;
 mod delimited;
 mod filter;
 mod filter_map;
 mod flat_map;
 mod flat_map_ok_none;
-#[cfg(debug_assertions)]
-pub mod logging;
+
 mod loop_while;
 mod macros;
 mod many;
@@ -20,16 +18,13 @@ mod or;
 mod or_default;
 mod parse_result;
 mod parsers;
-mod row_col_view;
 mod seq;
-mod string_view;
 pub mod supplier;
 mod then_with;
 mod to_option;
 mod tokenizers;
 
 pub use and::*;
-pub use any::*;
 pub use delimited::*;
 pub use filter::Filter;
 pub use filter_map::FilterMap;
@@ -45,7 +40,6 @@ pub use or_default::OrDefault;
 pub use parse_result::*;
 pub use parsers::*;
 pub use seq::*;
-pub use string_view::RcStringView;
 pub use then_with::*;
 pub use to_option::ToOption;
 pub use tokenizers::*;

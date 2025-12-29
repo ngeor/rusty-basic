@@ -1,6 +1,7 @@
 use rusty_common::*;
 use rusty_variant::{MIN_INTEGER, MIN_LONG};
 
+use crate::input::RcStringView;
 use crate::lazy_parser;
 use crate::pc::*;
 use crate::specific::core::opt_second_expression::conditionally_opt_whitespace;
@@ -555,6 +556,7 @@ fn eager_expression_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos>
 }
 
 mod single_or_double_literal {
+    use crate::input::RcStringView;
     use crate::pc::*;
     use crate::specific::pc_specific::{digits, dot, pound, SpecificTrait};
     use crate::specific::*;
@@ -601,6 +603,7 @@ mod single_or_double_literal {
 }
 
 mod string_literal {
+    use crate::input::RcStringView;
     use crate::pc::*;
     use crate::specific::pc_specific::*;
     use crate::specific::*;
@@ -630,8 +633,9 @@ mod string_literal {
 
 mod integer_or_long_literal {
     use crate::error::ParseError;
+    use crate::input::RcStringView;
     use crate::pc::*;
-    use crate::specific::pc_specific::{SpecificTrait, TokenType};
+    use crate::specific::pc_specific::{any_token, SpecificTrait, TokenType};
     use crate::specific::*;
     use rusty_variant::{BitVec, BitVecIntOrLong, MAX_INTEGER, MAX_LONG};
 
@@ -750,6 +754,7 @@ mod integer_or_long_literal {
 
 // TODO consider nesting variable/function_call modules inside property as they are only used there
 mod variable {
+    use crate::input::RcStringView;
     use crate::pc::*;
     use crate::specific::core::name::{name_with_dots_as_tokens, token_to_type_qualifier};
     use crate::specific::pc_specific::{SpecificTrait, TokenType};
@@ -828,6 +833,7 @@ mod variable {
 }
 
 mod function_call_or_array_element {
+    use crate::input::RcStringView;
     use crate::pc::*;
     use crate::specific::core::expression::expression_pos_p;
     use crate::specific::core::name::name_with_dots_as_tokens;
@@ -858,6 +864,7 @@ mod function_call_or_array_element {
 
 pub mod property {
     use crate::error::ParseError;
+    use crate::input::RcStringView;
     use crate::pc::*;
     use crate::specific::core::name::{identifier, token_to_type_qualifier, type_qualifier};
     use crate::specific::pc_specific::{dot, SpecificTrait};
@@ -934,7 +941,8 @@ pub mod property {
 }
 
 mod built_in_function_call {
-    use crate::pc::{Parser, RcStringView};
+    use crate::input::RcStringView;
+    use crate::pc::Parser;
     use crate::specific::built_ins::built_in_function_call_p;
     use crate::specific::pc_specific::SpecificTrait;
     use crate::specific::*;
@@ -950,8 +958,9 @@ mod binary_expression {
         property, single_or_double_literal, string_literal, unary_expression,
     };
     use crate::error::ParseError;
+    use crate::input::RcStringView;
     use crate::pc::*;
-    use crate::specific::pc_specific::{whitespace, SpecificTrait, TokenType};
+    use crate::specific::pc_specific::{any_token, whitespace, SpecificTrait, TokenType};
     use crate::specific::*;
     use rusty_common::Positioned;
 
@@ -1085,6 +1094,7 @@ mod binary_expression {
 }
 
 mod unary_expression {
+    use crate::input::RcStringView;
     use crate::pc::*;
     use crate::specific::core::expression::{expression_pos_p, guard};
     use crate::specific::pc_specific::{keyword, minus_sign, SpecificTrait};
@@ -1110,6 +1120,7 @@ mod unary_expression {
 }
 
 mod parenthesis {
+    use crate::input::RcStringView;
     use crate::pc::*;
     use crate::specific::core::expression::expression_pos_p;
     use crate::specific::pc_specific::{in_parenthesis, SpecificTrait};
@@ -1128,6 +1139,7 @@ pub mod file_handle {
     //! Used by PRINT and built-ins
 
     use crate::error::ParseError;
+    use crate::input::RcStringView;
     use crate::pc::*;
     use crate::specific::core::expression::ws_expr_pos_p;
     use crate::specific::pc_specific::*;
@@ -1162,8 +1174,9 @@ pub mod file_handle {
 }
 
 pub mod guard {
+    use crate::input::RcStringView;
     use crate::pc::*;
-    use crate::specific::pc_specific::{whitespace, TokenType};
+    use crate::specific::pc_specific::{peek_token, whitespace, TokenType};
 
     #[derive(Default)]
     pub enum Guard {

@@ -3,9 +3,12 @@ use std::collections::HashMap;
 use rusty_parser::{AsBareName, BareName, Name, TypeQualifier, VariableInfo};
 use rusty_variant::Variant;
 
-use crate::names::{
-    name_info::NameInfo,
-    traits::{ManyNamesTrait, SingleNameTrait},
+use crate::{
+    core::ConstLookup,
+    names::{
+        name_info::NameInfo,
+        traits::{ManyNamesTrait, SingleNameTrait},
+    },
 };
 
 /// Stores information about multiple constants or variable names.
@@ -57,6 +60,14 @@ impl NamesInner {
     }
 }
 
+impl ConstLookup for NamesInner {
+    fn get_const_value(&self, bare_name: &BareName) -> Option<&rusty_variant::Variant> {
+        self.0
+            .get(bare_name)
+            .and_then(|name_info| name_info.get_const_value())
+    }
+}
+
 impl ManyNamesTrait for NamesInner {
     fn get_compact(&self, bare_name: &BareName, qualifier: TypeQualifier) -> Option<&VariableInfo> {
         self.0
@@ -68,12 +79,6 @@ impl ManyNamesTrait for NamesInner {
         self.0
             .get(bare_name)
             .and_then(|name_info| name_info.get_extended())
-    }
-
-    fn get_const_value(&self, bare_name: &BareName) -> Option<&rusty_variant::Variant> {
-        self.0
-            .get(bare_name)
-            .and_then(|name_info| name_info.get_const_value())
     }
 
     fn collect_var_info(

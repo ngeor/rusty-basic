@@ -1,4 +1,5 @@
-use crate::pc::{ParseResult, Parser};
+use rusty_pc::{ParseResult, Parser};
+
 use crate::ParseError;
 
 pub trait WithExpected<I>: Parser<I, Error = ParseError>

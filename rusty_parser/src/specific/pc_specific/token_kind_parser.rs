@@ -2,8 +2,9 @@
 // TokenKindParser
 //
 
+use rusty_pc::{And, Filter, Parser, ToOption, Token};
+
 use crate::input::RcStringView;
-use crate::pc::{And, Filter, Parser, ToOption, Token};
 use crate::specific::pc_specific::{any_token, TokenType, WithExpected};
 use crate::ParseError;
 

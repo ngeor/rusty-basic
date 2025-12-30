@@ -1,4 +1,4 @@
-use crate::pc::{ParseResult, Parser};
+use crate::{ParseResult, Parser};
 
 pub trait OrDefault<I>: Parser<I>
 where

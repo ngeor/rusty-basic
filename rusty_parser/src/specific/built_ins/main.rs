@@ -1,7 +1,8 @@
+use rusty_pc::*;
+
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::*;
-use crate::{lazy_parser, ParseError};
+use crate::ParseError;
 
 // Parses built-in subs which have a special syntax.
 lazy_parser!(pub fn built_in_sub_call_p<I=RcStringView, Output=Statement, Error=ParseError> ; struct LazyParser ; OrParser::new(vec![

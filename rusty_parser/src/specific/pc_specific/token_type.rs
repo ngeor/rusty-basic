@@ -1,4 +1,4 @@
-use crate::pc::Token;
+use rusty_pc::Token;
 
 macro_rules! enum_with_index {
     ($vis:vis enum $name:tt $all_members:tt { $($member:tt $(: $friendly:literal)?),+$(,)? }) => {

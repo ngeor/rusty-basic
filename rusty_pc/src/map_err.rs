@@ -1,5 +1,4 @@
-use crate::parser_declaration;
-use crate::pc::{ParseResult, Parser};
+use crate::{ParseResult, Parser, parser_declaration};
 
 pub trait Errors<I>: Parser<I>
 where

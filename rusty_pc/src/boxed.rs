@@ -1,4 +1,4 @@
-use crate::pc::Parser;
+use crate::Parser;
 
 pub fn boxed<I, O, E>(
     parser: impl Parser<I, Output = O, Error = E> + 'static,

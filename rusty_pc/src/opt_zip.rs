@@ -1,7 +1,6 @@
 // Mixed type or
 
-use crate::binary_parser_declaration;
-use crate::pc::{ParseResult, Parser};
+use crate::{ParseResult, Parser, binary_parser_declaration};
 
 pub enum ZipValue<L, R> {
     Left(L),

@@ -1,7 +1,8 @@
+use rusty_pc::boxed::boxed;
+use rusty_pc::supplier::supplier;
+use rusty_pc::*;
+
 use crate::input::RcStringView;
-use crate::pc::boxed::boxed;
-use crate::pc::supplier::supplier;
-use crate::pc::*;
 use crate::specific::core::name::{bare_name_without_dots, name_with_dots};
 use crate::specific::pc_specific::*;
 use crate::specific::*;

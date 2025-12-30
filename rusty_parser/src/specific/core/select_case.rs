@@ -1,5 +1,6 @@
+use rusty_pc::*;
+
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::core::expression::ws_expr_pos_p;
 use crate::specific::core::statement_separator::comments_and_whitespace_p;
 use crate::specific::core::statements::ZeroOrMoreStatements;
@@ -107,9 +108,9 @@ fn case_expression_list(
 
 mod case_expression_parser {
     use rusty_common::Positioned;
+    use rusty_pc::*;
 
     use crate::input::RcStringView;
-    use crate::pc::*;
     use crate::specific::core::expression::expression_pos_p;
     use crate::specific::core::opt_second_expression::opt_second_expression_after_keyword;
     use crate::specific::pc_specific::*;

@@ -1,5 +1,6 @@
+use rusty_pc::*;
+
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::core::declaration::{function_declaration_p, sub_declaration_p};
 use crate::specific::core::statements::ZeroOrMoreStatements;
 use crate::specific::pc_specific::*;

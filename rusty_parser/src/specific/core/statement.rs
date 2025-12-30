@@ -1,8 +1,8 @@
 use rusty_common::*;
+use rusty_pc::*;
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::built_ins::built_in_sub_call_p;
 use crate::specific::core::comment::comment_p;
 use crate::specific::core::constant::constant_p;
@@ -26,7 +26,7 @@ use crate::specific::pc_specific::*;
 use crate::specific::{
     BareName, DimVars, Expression, ExpressionPos, Expressions, Keyword, NamePos, Operator, Print
 };
-use crate::{lazy_parser, BuiltInSub};
+use crate::BuiltInSub;
 
 pub type StatementPos = Positioned<Statement>;
 pub type Statements = Vec<StatementPos>;
@@ -357,8 +357,9 @@ fn illegal_starting_keywords() -> impl Parser<RcStringView, Output = Statement, 
 }
 
 mod end {
+    use rusty_pc::*;
+
     use crate::input::RcStringView;
-    use crate::pc::*;
     use crate::specific::pc_specific::*;
     use crate::specific::{Keyword, Statement};
     use crate::ParseError;
@@ -387,8 +388,9 @@ mod end {
 }
 
 mod system {
+    use rusty_pc::*;
+
     use crate::input::RcStringView;
-    use crate::pc::*;
     use crate::specific::core::statement_separator::peek_eof_or_statement_separator;
     use crate::specific::pc_specific::*;
     use crate::specific::{Keyword, Statement};

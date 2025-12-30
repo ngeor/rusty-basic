@@ -1,4 +1,4 @@
-use crate::pc::{ParseResult, Parser, ToOption};
+use crate::{ParseResult, Parser, ToOption};
 
 //
 // And (with undo)

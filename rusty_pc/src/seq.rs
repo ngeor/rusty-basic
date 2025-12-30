@@ -1,7 +1,7 @@
 //! Contains parser combinators where given an initial optional parser,
 //! the rest must succeed.
 
-use crate::pc::*;
+use crate::*;
 
 // When in opt-parser: if the first succeeds, all the rest must succeed.
 // When in non-opt-parser: all parts must succeed.

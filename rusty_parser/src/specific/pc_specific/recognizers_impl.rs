@@ -1,8 +1,9 @@
 use std::fs::File;
 
+use rusty_pc::*;
+
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::pc_specific::recognizers_impl::string_parsers::CharToStringParser;
 use crate::specific::pc_specific::recognizers_impl::token_parsers::StringToTokenParser;
 use crate::specific::pc_specific::TokenType;

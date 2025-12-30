@@ -1,5 +1,6 @@
+use rusty_pc::{Map, Parser};
+
 use crate::input::RcStringView;
-use crate::pc::{Map, Parser};
 use crate::specific::pc_specific::{keyword_choice, keyword_syntax_error, WithExpected};
 use crate::specific::Keyword;
 use crate::ParseError;

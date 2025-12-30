@@ -1,14 +1,45 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! base module contains functionality that can be extracted into a library,
+//! it's generic and not specific to QBasic
+mod and;
+pub mod boxed;
+mod delimited;
+mod filter;
+mod filter_map;
+mod flat_map;
+mod flat_map_ok_none;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod loop_while;
+mod macros;
+mod many;
+mod map;
+mod map_err;
+mod opt_zip;
+mod or;
+mod or_default;
+mod parse_result;
+mod parsers;
+mod seq;
+pub mod supplier;
+mod then_with;
+mod to_option;
+mod tokenizers;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use and::*;
+pub use delimited::*;
+pub use filter::Filter;
+pub use filter_map::FilterMap;
+pub use flat_map::FlatMap;
+pub use flat_map_ok_none::FlatMapOkNone;
+pub use loop_while::*;
+pub use many::Many;
+pub use map::Map;
+pub use map_err::*;
+pub use opt_zip::*;
+pub use or::*;
+pub use or_default::OrDefault;
+pub use parse_result::*;
+pub use parsers::*;
+pub use seq::*;
+pub use then_with::*;
+pub use to_option::ToOption;
+pub use tokenizers::*;

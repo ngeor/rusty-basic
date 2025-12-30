@@ -1,5 +1,6 @@
+use rusty_pc::Parser;
+
 use crate::input::RcStringView;
-use crate::pc::Parser;
 use crate::specific::built_ins::get::parse_get_or_put;
 use crate::specific::*;
 use crate::{BuiltInSub, ParseError};

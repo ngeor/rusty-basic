@@ -1,5 +1,6 @@
+use rusty_pc::*;
+
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::pc_specific::{
     any_token, any_token_of, dollar_sign, peek_token, whitespace, TokenType, WithExpected
 };

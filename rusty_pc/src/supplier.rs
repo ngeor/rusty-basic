@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::pc::{ParseResult, Parser};
+use crate::{ParseResult, Parser};
 
 pub fn supplier<I, F, O, E>(f: F) -> impl Parser<I, Output = O, Error = E>
 where

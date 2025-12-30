@@ -1,4 +1,4 @@
-use crate::pc::{default_parse_error, ParseResult, ParseResultTrait, Parser};
+use crate::{ParseResult, ParseResultTrait, Parser, default_parse_error};
 
 pub trait FilterMap<I>: Parser<I>
 where

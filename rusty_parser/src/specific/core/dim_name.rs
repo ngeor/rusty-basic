@@ -1,7 +1,7 @@
 use rusty_common::*;
+use rusty_pc::*;
 
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::core::var_name;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
@@ -124,8 +124,9 @@ fn dim_or_redim(
 }
 
 mod array_dimensions {
+    use rusty_pc::*;
+
     use crate::input::RcStringView;
-    use crate::pc::*;
     use crate::specific::core::opt_second_expression::opt_second_expression_after_keyword;
     use crate::specific::pc_specific::*;
     use crate::specific::*;
@@ -163,8 +164,9 @@ mod array_dimensions {
 }
 
 mod type_definition {
+    use rusty_pc::*;
+
     use crate::input::RcStringView;
-    use crate::pc::*;
     use crate::specific::core::expression::expression_pos_p;
     use crate::specific::pc_specific::*;
     use crate::specific::*;

@@ -1,4 +1,4 @@
-use crate::pc::{ParseResult, ParseResultTrait, Parser};
+use crate::{ParseResult, ParseResultTrait, Parser};
 
 /// Similar to `and_without_undo`, but the right parser is created dynamically
 /// based on the result of the first parser.

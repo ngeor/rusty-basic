@@ -1,9 +1,9 @@
+#[cfg(debug_assertions)]
+use rusty_pc::ParseResult;
+use rusty_pc::{parser_declaration, Parser};
+
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::parser_declaration;
-#[cfg(debug_assertions)]
-use crate::pc::ParseResult;
-use crate::pc::Parser;
 
 #[allow(dead_code)]
 pub trait Logging: Parser<RcStringView, Error = ParseError>

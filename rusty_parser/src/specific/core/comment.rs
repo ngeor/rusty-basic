@@ -1,5 +1,6 @@
+use rusty_pc::*;
+
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 use crate::ParseError;

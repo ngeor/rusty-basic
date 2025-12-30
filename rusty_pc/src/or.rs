@@ -1,4 +1,4 @@
-use crate::pc::*;
+use crate::*;
 
 pub struct OrParser<I, O, E> {
     parsers: Vec<Box<dyn Parser<I, Output = O, Error = E>>>,

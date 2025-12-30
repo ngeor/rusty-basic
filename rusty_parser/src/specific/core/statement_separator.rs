@@ -1,4 +1,5 @@
 use rusty_common::*;
+use rusty_pc::*;
 
 /// Separator between statements.
 /// There are two cases, after a comment, or after a different kind of statement.
@@ -15,7 +16,6 @@ use rusty_common::*;
 /// <ws>* EOL <ws | eol>*
 /// ```
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::core::comment::comment_as_string_p;
 use crate::specific::pc_specific::*;
 use crate::ParseError;

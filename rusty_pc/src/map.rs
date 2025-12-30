@@ -1,4 +1,4 @@
-use crate::pc::{ParseResult, ParseResultTrait, Parser};
+use crate::{ParseResult, ParseResultTrait, Parser};
 
 pub trait Map<I>: Parser<I>
 where

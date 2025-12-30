@@ -1,8 +1,8 @@
 use rusty_common::Positioned;
+use rusty_pc::*;
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::{AsBareName, BareName, ExpressionType, HasExpressionType, ToBareName, TypeQualifier};
 
@@ -383,9 +383,10 @@ pub fn token_list_to_bare_name(tokens: TokenList) -> BareName {
 
 #[cfg(test)]
 mod parse_tests {
+    use rusty_pc::Parser;
+
     use super::*;
     use crate::parametric_test;
-    use crate::pc::Parser;
     use crate::specific::pc_specific::create_string_tokenizer;
 
     fn assert_fully_parsed<T, E>(result: &ParseResult<RcStringView, T, E>, input: &str) {

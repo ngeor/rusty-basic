@@ -1,6 +1,6 @@
 use rusty_common::cmp_str;
+use rusty_pc::Token;
 
-use crate::pc::Token;
 use crate::specific::pc_specific::TokenType;
 
 // From the internets:

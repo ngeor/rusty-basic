@@ -1,10 +1,10 @@
 use std::fs::File;
 
 use rusty_common::AtPos;
+use rusty_pc::*;
 
 use crate::error::ParseErrorPos;
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::{create_file_tokenizer, create_string_tokenizer, program_parser_p, Program};
 
 /// Parses a QBasic file.

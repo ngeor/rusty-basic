@@ -1,5 +1,6 @@
+use rusty_pc::*;
+
 use crate::input::RcStringView;
-use crate::pc::*;
 use crate::specific::core::name::bare_name_with_dots;
 use crate::specific::core::statement_separator::peek_eof_or_statement_separator;
 use crate::specific::pc_specific::*;

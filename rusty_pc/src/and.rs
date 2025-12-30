@@ -129,7 +129,7 @@ impl<L, R, F> AndParser<L, R, F> {
             left,
             right,
             combiner,
-            allow_incomplete: true
+            allow_incomplete: true,
         }
     }
 }
@@ -160,7 +160,7 @@ where
                         } else {
                             Err((true, i, err))
                         }
-                    },
+                    }
                     Err(err) => Err(err),
                 }
             }

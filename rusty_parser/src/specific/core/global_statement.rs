@@ -209,7 +209,7 @@ mod separator {
             Err((
                 true,
                 input,
-                ParseError::SyntaxError(format!("No separator: {}", t.text)),
+                ParseError::SyntaxError(format!("No separator: {}", t.as_str())),
             ))
         })
     }

@@ -50,7 +50,9 @@ impl ForNextCounterMatch {
                 ExpressionType::BuiltIn(_) => Ok(()),
                 _ => Err(LintError::TypeMismatch.at_pos(*pos)),
             },
-            _ => panic!("It should not be possible for the FOR variable to be something othe than a variable"),
+            _ => panic!(
+                "It should not be possible for the FOR variable to be something othe than a variable"
+            ),
         }
     }
 

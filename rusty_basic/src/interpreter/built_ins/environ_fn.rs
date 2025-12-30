@@ -1,9 +1,9 @@
 use rusty_parser::BuiltInFunction;
 
+use crate::RuntimeError;
+use crate::interpreter::Stdlib;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
-use crate::interpreter::Stdlib;
-use crate::RuntimeError;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let env_var_name: &str = interpreter.context()[0].to_str_unchecked();

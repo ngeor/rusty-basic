@@ -2,8 +2,8 @@ use std::cmp::Ordering;
 use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
 
-use crate::case_insensitive_utils::{cmp_str, hash_str};
 use crate::CaseInsensitiveString;
+use crate::case_insensitive_utils::{cmp_str, hash_str};
 
 #[derive(Debug)]
 pub struct CaseInsensitiveStr(str);

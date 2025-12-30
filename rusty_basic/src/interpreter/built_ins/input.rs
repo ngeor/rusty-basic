@@ -4,9 +4,9 @@ use rusty_linter::qualifier_of_variant;
 use rusty_parser::{FileHandle, TypeQualifier};
 use rusty_variant::Variant;
 
+use crate::RuntimeError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Input;
-use crate::RuntimeError;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let mut file_handle: FileHandle = FileHandle::default();

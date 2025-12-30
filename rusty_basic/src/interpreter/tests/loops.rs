@@ -3,7 +3,7 @@ use rusty_common::*;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::test_utils::*;
 use crate::{
-    assert_has_variable, assert_prints, assert_prints_exact, assert_prints_nothing, ErrorEnvelope, RuntimeError
+    ErrorEnvelope, RuntimeError, assert_has_variable, assert_prints, assert_prints_exact, assert_prints_nothing
 };
 
 #[test]

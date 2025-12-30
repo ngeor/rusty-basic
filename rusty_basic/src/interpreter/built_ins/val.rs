@@ -1,9 +1,9 @@
 use rusty_parser::BuiltInFunction;
-use rusty_variant::{Variant, VariantError, MAX_INTEGER, MAX_LONG};
+use rusty_variant::{MAX_INTEGER, MAX_LONG, Variant, VariantError};
 
+use crate::RuntimeError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
-use crate::RuntimeError;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let v: &str = interpreter.context()[0].to_str_unchecked();
@@ -84,19 +84,11 @@ fn val(s: &str) -> Result<Variant, VariantError> {
             Ok(Variant::VLong(-value as i64))
         } else {
             let x = Variant::VDouble(value);
-            if is_positive {
-                Ok(x)
-            } else {
-                x.negate()
-            }
+            if is_positive { Ok(x) } else { x.negate() }
         }
     } else {
         let x = Variant::VDouble(value);
-        if is_positive {
-            Ok(x)
-        } else {
-            x.negate()
-        }
+        if is_positive { Ok(x) } else { x.negate() }
     }
 }
 

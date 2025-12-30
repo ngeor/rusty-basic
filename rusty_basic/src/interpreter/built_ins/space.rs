@@ -1,8 +1,8 @@
 use rusty_linter::QBNumberCast;
 use rusty_parser::BuiltInFunction;
 
-use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::RuntimeError;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let len: i32 = interpreter.context()[0].try_cast()?;

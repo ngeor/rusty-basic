@@ -1,7 +1,7 @@
 use rusty_variant::{Variant, VariantError};
 
-use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::RuntimeError;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 
 pub fn plus<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), RuntimeError> {
     reduce_a_b_into_a(interpreter, |a, b| a.plus(b))

@@ -1,10 +1,10 @@
 use rusty_linter::QBNumberCast;
 
 use super::peek::INDICATOR_KEYS_ADDRESS;
+use crate::RuntimeError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::keyboard::set_indicator_keys;
 use crate::interpreter::variant_casts::VariantCasts;
-use crate::RuntimeError;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let address: usize = interpreter.context()[0].to_non_negative_int()?;

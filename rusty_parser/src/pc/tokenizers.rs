@@ -1,8 +1,5 @@
-use rusty_common::Position;
-
 pub type TokenKind = u8;
 
-// TODO make fields private
 // TODO remove the Clone trait
 /// Represents a recognized token.
 ///
@@ -10,9 +7,26 @@ pub type TokenKind = u8;
 /// propagating the type in the [Tokenizer] and eventually also to the parsers.
 #[derive(Clone, Debug)]
 pub struct Token {
-    pub kind: TokenKind,
-    pub text: String,
-    pub pos: Position,
+    kind: TokenKind,
+    text: String,
+}
+
+impl Token {
+    pub fn new(kind: TokenKind, text: String) -> Self {
+        Self { kind, text }
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.text
+    }
+
+    pub fn to_str(self) -> String {
+        self.text
+    }
+
+    pub fn kind(&self) -> TokenKind {
+        self.kind
+    }
 }
 
 pub type TokenList = Vec<Token>;

@@ -4,9 +4,9 @@ use std::io::{BufReader, Read, Seek, SeekFrom, Write};
 
 use rusty_parser::{FileAccess, FileHandle, FileMode};
 
+use crate::RuntimeError;
 use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::write_printer::WritePrinter;
-use crate::RuntimeError;
 
 pub trait Input {
     fn eof(&mut self) -> std::io::Result<bool>;

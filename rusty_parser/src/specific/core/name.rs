@@ -178,7 +178,7 @@ mod type_tests {
 /// Use case: user defined type elements or types.
 pub fn bare_name_without_dots() -> impl Parser<RcStringView, Output = BareName, Error = ParseError>
 {
-    ensure_no_trailing_dot_or_qualifier(identifier()).map(|token| BareName::new(token.text))
+    ensure_no_trailing_dot_or_qualifier(identifier()).map(|token| BareName::new(token.to_str()))
 }
 
 /// Parses an identifier token.
@@ -204,7 +204,7 @@ fn ensure_token_length(
     input: RcStringView,
     token: Token,
 ) -> ParseResult<RcStringView, Token, ParseError> {
-    if token.text.chars().count() > MAX_LENGTH {
+    if token.as_str().chars().count() > MAX_LENGTH {
         Err((true, input, ParseError::IdentifierTooLong))
     } else {
         Ok((input, token))
@@ -274,7 +274,7 @@ fn ensure_token_list_length(
 ) -> ParseResult<RcStringView, TokenList, ParseError> {
     if tokens
         .iter()
-        .map(|token| token.text.chars().count())
+        .map(|token| token.as_str().chars().count())
         .sum::<usize>()
         > MAX_LENGTH
     {
@@ -484,7 +484,7 @@ mod parse_tests {
         fn can_parse_identifier() {
             let token = parse_something_completely("Hello");
             assert!(TokenType::Identifier.matches(&token));
-            assert_eq!(token.text, "Hello");
+            assert_eq!(token.as_str(), "Hello");
         }
 
         #[test]

@@ -4,8 +4,8 @@ use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 
-use crate::case_insensitive_utils::{cmp_str, hash_str};
 use crate::CaseInsensitiveStr;
+use crate::case_insensitive_utils::{cmp_str, hash_str};
 
 /// A string that is case insensitive when comparing or checking for equality.
 #[derive(Clone, Debug)]

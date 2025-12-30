@@ -7,9 +7,9 @@ use rusty_parser::{
 use rusty_variant::Variant;
 
 use crate::core::{ConstLookup, NameContext, SubprogramName};
+use crate::names::ImplicitVars;
 use crate::names::names_inner::NamesInner;
 use crate::names::traits::ManyNamesTrait;
-use crate::names::ImplicitVars;
 
 /*
 

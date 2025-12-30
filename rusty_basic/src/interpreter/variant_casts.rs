@@ -50,11 +50,7 @@ impl VariantCasts for Variant {
 
     fn to_positive_int_or(&self, err: RuntimeError) -> Result<usize, RuntimeError> {
         let i: i32 = self.try_cast()?;
-        if i > 0 {
-            Ok(i as usize)
-        } else {
-            Err(err)
-        }
+        if i > 0 { Ok(i as usize) } else { Err(err) }
     }
 
     /// Gets a `str` reference from this Variant.

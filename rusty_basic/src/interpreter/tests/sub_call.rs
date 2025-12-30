@@ -1,9 +1,9 @@
 use rusty_common::*;
 
+use crate::interpreter::Stdlib;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::test_utils::*;
-use crate::interpreter::Stdlib;
-use crate::{assert_prints, ErrorEnvelope, RuntimeError};
+use crate::{ErrorEnvelope, RuntimeError, assert_prints};
 
 #[test]
 fn test_interpret_sub_call_user_defined_no_args() {

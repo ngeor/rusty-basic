@@ -5,7 +5,7 @@ use rusty_parser::{
 
 use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::variable::{
-    add_as_new_implicit_var, AssignToFunction, ExistingConst, ExistingVar, VarAsUserDefinedFunctionCall, VarResolve
+    AssignToFunction, ExistingConst, ExistingVar, VarAsUserDefinedFunctionCall, VarResolve, add_as_new_implicit_var
 };
 use crate::core::{HasUserDefinedTypes, LintError, LintErrorPos};
 

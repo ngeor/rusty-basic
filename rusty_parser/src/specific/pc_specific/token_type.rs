@@ -84,11 +84,11 @@ enum_with_index!(
 
 impl TokenType {
     pub fn matches(&self, token: &Token) -> bool {
-        self.to_index() == token.kind as usize
+        self.to_index() == token.kind() as usize
     }
 
     pub fn from_token(token: &Token) -> Self {
-        Self::from_index(token.kind as usize)
+        Self::from_index(token.kind() as usize)
     }
 
     pub fn to_error_message(&self) -> String {

@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::fmt::Display;
 
 use crate::fit::FitToType;
-use crate::{qb_and, qb_or, UserDefinedTypeValue, VArray, MIN_INTEGER, MIN_LONG};
+use crate::{MIN_INTEGER, MIN_LONG, UserDefinedTypeValue, VArray, qb_and, qb_or};
 
 #[derive(Clone, Debug)]
 pub enum Variant {
@@ -439,11 +439,7 @@ impl From<i64> for Variant {
 
 impl From<bool> for Variant {
     fn from(b: bool) -> Self {
-        if b {
-            V_TRUE
-        } else {
-            V_FALSE
-        }
+        if b { V_TRUE } else { V_FALSE }
     }
 }
 

@@ -8,6 +8,7 @@ use rusty_variant::Variant;
 use super::handlers::{cast, comparison, logical, math, registers, subprogram, var_path};
 use crate::error_envelope::WithErrAt;
 use crate::instruction_generator::{Instruction, InstructionGeneratorResult, Path, PrinterType};
+use crate::interpreter::Stdlib;
 use crate::interpreter::arguments::ArgumentInfo;
 use crate::interpreter::context::*;
 use crate::interpreter::data_segment::DataSegment;
@@ -23,7 +24,6 @@ use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::screen::{CrossTermScreen, Screen};
 use crate::interpreter::write_printer::WritePrinter;
-use crate::interpreter::Stdlib;
 use crate::{RuntimeError, RuntimeErrorPos, WithStacktrace};
 
 pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> {

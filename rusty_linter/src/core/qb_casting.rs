@@ -1,5 +1,5 @@
 use rusty_parser::TypeQualifier;
-use rusty_variant::{Variant, MAX_INTEGER, MAX_LONG, MIN_INTEGER, MIN_LONG};
+use rusty_variant::{MAX_INTEGER, MAX_LONG, MIN_INTEGER, MIN_LONG, Variant};
 
 use crate::core::LintError;
 

@@ -47,8 +47,8 @@ mod width;
 
 use rusty_parser::{BuiltInFunction, BuiltInSub};
 
-use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::RuntimeError;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 
 pub fn run_sub<S: InterpreterTrait>(
     s: &BuiltInSub,

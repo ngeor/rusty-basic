@@ -138,11 +138,7 @@ macro_rules! bits_to_integer_type {
                 }
                 index += 1;
             }
-            if sign {
-                -x - 1
-            } else {
-                x
-            }
+            if sign { -x - 1 } else { x }
         }
     };
 }
@@ -449,11 +445,7 @@ pub fn bytes_to_f64(bytes: &[u8]) -> f64 {
     }
 
     result *= 2.0_f64.powi(exponent_with_bias - DOUBLE_BIAS);
-    if sign {
-        -result
-    } else {
-        result
-    }
+    if sign { -result } else { result }
 }
 
 /// Converts the given bit array into a byte.

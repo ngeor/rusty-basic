@@ -46,7 +46,7 @@ fn cannot_clash_with_local_constants<T: VarType>(
 
 pub trait CannotClashWithFunctions {
     fn cannot_clash_with_functions(&self, ctx: &Context, pos: Position)
-        -> Result<(), LintErrorPos>;
+    -> Result<(), LintErrorPos>;
 }
 
 impl CannotClashWithFunctions for DimVar {

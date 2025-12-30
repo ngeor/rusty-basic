@@ -1,7 +1,7 @@
 use rusty_parser::UserDefinedTypes;
 
-use crate::core::{HasSubprograms, SignatureMap};
 use crate::HasUserDefinedTypes;
+use crate::core::{HasSubprograms, SignatureMap};
 
 /// Stores the result of the pre-linter.
 pub struct PreLinterResult {

@@ -1,7 +1,7 @@
 use rusty_parser::{
     AsBareName, BareName, DimType, DimVar, Name, ParamType, Parameter, TypeQualifier
 };
-use rusty_variant::{Variant, V_FALSE};
+use rusty_variant::{V_FALSE, Variant};
 
 use crate::instruction_generator::Path;
 use crate::interpreter::arguments::{ArgumentInfo, Arguments};

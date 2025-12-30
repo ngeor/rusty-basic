@@ -7,7 +7,7 @@ use rusty_variant::Variant;
 use crate::converter::common::{Context, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
 use crate::core::{
-    qualifier_of_const_variant, ConstLookup, HasSubprograms, IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult
+    ConstLookup, HasSubprograms, IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult, qualifier_of_const_variant
 };
 
 pub fn convert(

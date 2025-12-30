@@ -3,10 +3,10 @@ use std::fmt::Display;
 use rusty_parser::FileHandle;
 use rusty_variant::Variant;
 
+use crate::RuntimeError;
 use crate::instruction_generator::PrinterType;
 use crate::interpreter::io::Printer;
 use crate::interpreter::string_utils::fix_length;
-use crate::RuntimeError;
 
 /// Handles the PRINT and LPRINT statements.
 #[derive(Debug)]
@@ -548,8 +548,8 @@ mod tests {
     }
 
     #[test]
-    fn test_print_using_numeric_types_with_two_integer_digits_and_two_fraction_digits_format_string(
-    ) {
+    fn test_print_using_numeric_types_with_two_integer_digits_and_two_fraction_digits_format_string()
+     {
         let input = [
             "42", "2", "-1", "3.0", "3.14#", "3.9", "61.9", "&HFFFFFF", "1.2345", "1.9876",
             "2.134#", "2.199#",

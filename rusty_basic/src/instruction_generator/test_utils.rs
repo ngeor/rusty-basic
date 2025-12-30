@@ -1,9 +1,9 @@
 use rusty_common::NoPosContainer;
 use rusty_linter::lint;
-use rusty_parser::{parse, UserDefinedTypes};
+use rusty_parser::{UserDefinedTypes, parse};
 
 use crate::instruction_generator::{
-    generate_instructions, unwrap_linter_context, Instruction, InstructionGeneratorResult, InstructionPos
+    Instruction, InstructionGeneratorResult, InstructionPos, generate_instructions, unwrap_linter_context
 };
 
 pub fn generate_instructions_str_with_types(

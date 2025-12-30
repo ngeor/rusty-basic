@@ -27,7 +27,7 @@ mod windows_impl {
     extern crate winapi;
 
     use winapi::um::winuser::{
-        GetKeyboardState, SendInput, INPUT, INPUT_KEYBOARD, KEYEVENTF_KEYUP, VK_CAPITAL, VK_NUMLOCK, VK_SCROLL
+        GetKeyboardState, INPUT, INPUT_KEYBOARD, KEYEVENTF_KEYUP, SendInput, VK_CAPITAL, VK_NUMLOCK, VK_SCROLL
     };
 
     use crate::RuntimeError;

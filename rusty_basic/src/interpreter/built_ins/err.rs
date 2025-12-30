@@ -1,7 +1,7 @@
 use rusty_parser::BuiltInFunction;
 
-use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::RuntimeError;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let error_code: i32 = interpreter.get_last_error_code().unwrap_or_default();

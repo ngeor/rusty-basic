@@ -73,13 +73,13 @@ fn letter_range() -> impl Parser<RcStringView, Output = LetterRange, Error = Par
 
 fn letter() -> impl Parser<RcStringView, Output = char, Error = ParseError> {
     any_token_of(TokenType::Identifier)
-        .filter(|token| token.text.chars().count() == 1)
+        .filter(|token| token.as_str().chars().count() == 1)
         .map(token_to_char)
         .with_expected_message("Expected: letter")
 }
 
 fn token_to_char(token: Token) -> char {
-    token.text.chars().next().unwrap()
+    token.as_str().chars().next().unwrap()
 }
 
 #[cfg(test)]

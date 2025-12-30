@@ -1,5 +1,5 @@
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::{assert_interpreter_err, assert_prints, assert_prints_exact, RuntimeError};
+use crate::{RuntimeError, assert_interpreter_err, assert_prints, assert_prints_exact};
 
 #[test]
 fn go_sub() {

@@ -5,11 +5,11 @@ use rusty_parser::{
 };
 use rusty_variant::Variant;
 
+use crate::RuntimeError;
 use crate::instruction_generator::label_resolver::LabelResolver;
 use crate::instruction_generator::subprogram_info::{
     SubprogramInfoCollector, SubprogramInfoRepository
 };
-use crate::RuntimeError;
 
 pub fn unwrap_linter_context(linter_context: Context) -> (Names, UserDefinedTypes) {
     let (pre_linter_result, linter_names) = linter_context.into();

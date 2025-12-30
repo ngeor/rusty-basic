@@ -3,14 +3,14 @@ use std::collections::VecDeque;
 use rusty_linter::HasUserDefinedTypes;
 use rusty_variant::Variant;
 
+use crate::RuntimeErrorPos;
 use crate::instruction_generator::{InstructionGeneratorResult, Path};
+use crate::interpreter::Stdlib;
 use crate::interpreter::context::{Context, VAR_SEG_BASE};
 use crate::interpreter::data_segment::DataSegment;
 use crate::interpreter::io::{FileManager, Input, Printer};
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::screen::Screen;
-use crate::interpreter::Stdlib;
-use crate::RuntimeErrorPos;
 
 pub trait InterpreterTrait: HasUserDefinedTypes {
     type TStdlib: Stdlib;

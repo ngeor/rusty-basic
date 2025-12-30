@@ -1,7 +1,7 @@
-use rusty_linter::{qualifier_of_variant, CastVariant};
+use rusty_linter::{CastVariant, qualifier_of_variant};
 
-use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::RuntimeError;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     // variables are passed by ref, so we can assign to them

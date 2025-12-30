@@ -1,7 +1,7 @@
+use crate::RuntimeError;
+use crate::interpreter::Stdlib;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
-use crate::interpreter::Stdlib;
-use crate::RuntimeError;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let s: &str = interpreter.context()[0].to_str_unchecked();
@@ -20,9 +20,9 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError>
 
 #[cfg(test)]
 mod tests {
+    use crate::interpreter::Stdlib;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::test_utils::interpret;
-    use crate::interpreter::Stdlib;
 
     #[test]
     fn test_sub_call_environ() {

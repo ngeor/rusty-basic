@@ -27,23 +27,25 @@ fn test_dim_array() {
 
     assert_eq!(
         linter_ok(input),
-        vec![GlobalStatement::Statement(Statement::Dim(
-            DimVar::new(
-                "choice".into(),
-                DimType::Array(
-                    vec![ArrayDimension {
-                        lbound: Some(Expression::IntegerLiteral(1).at_rc(2, 17)),
-                        ubound: Expression::IntegerLiteral(3).at_rc(2, 22)
-                    }],
-                    Box::new(DimType::BuiltIn(
-                        TypeQualifier::DollarString,
-                        BuiltInStyle::Compact
-                    ))
-                ),
-            )
-            .into_list_rc(2, 9)
-        ))
-        .at_rc(2, 5),]
+        vec![
+            GlobalStatement::Statement(Statement::Dim(
+                DimVar::new(
+                    "choice".into(),
+                    DimType::Array(
+                        vec![ArrayDimension {
+                            lbound: Some(Expression::IntegerLiteral(1).at_rc(2, 17)),
+                            ubound: Expression::IntegerLiteral(3).at_rc(2, 22)
+                        }],
+                        Box::new(DimType::BuiltIn(
+                            TypeQualifier::DollarString,
+                            BuiltInStyle::Compact
+                        ))
+                    ),
+                )
+                .into_list_rc(2, 9)
+            ))
+            .at_rc(2, 5),
+        ]
     );
 }
 
@@ -56,20 +58,24 @@ fn test_sub_with_array_parameter() {
 
     assert_eq!(
         linter_ok(input),
-        vec![GlobalStatement::SubImplementation(SubImplementation {
-            name: BareName::from("Menu").at_rc(2, 9),
-            params: vec![Parameter::new(
-                "choice".into(),
-                ParamType::Array(Box::new(ParamType::BuiltIn(
-                    TypeQualifier::DollarString,
-                    BuiltInStyle::Compact
-                )))
-            )
-            .at_rc(2, 14)],
-            body: vec![],
-            is_static: false
-        })
-        .at_rc(2, 5)]
+        vec![
+            GlobalStatement::SubImplementation(SubImplementation {
+                name: BareName::from("Menu").at_rc(2, 9),
+                params: vec![
+                    Parameter::new(
+                        "choice".into(),
+                        ParamType::Array(Box::new(ParamType::BuiltIn(
+                            TypeQualifier::DollarString,
+                            BuiltInStyle::Compact
+                        )))
+                    )
+                    .at_rc(2, 14)
+                ],
+                body: vec![],
+                is_static: false
+            })
+            .at_rc(2, 5)
+        ]
     );
 }
 
@@ -106,28 +112,32 @@ fn test_passing_array_parameter_with_parenthesis() {
             .at_rc(2, 5),
             GlobalStatement::Statement(Statement::sub_call(
                 "Menu".into(),
-                vec![Expression::ArrayElement(
-                    "choice$".into(),
-                    vec![],
-                    VariableInfo {
-                        expression_type: ExpressionType::BuiltIn(TypeQualifier::DollarString),
-                        shared: false,
-                        redim_info: None
-                    }
-                )
-                .at_rc(4, 10)]
+                vec![
+                    Expression::ArrayElement(
+                        "choice$".into(),
+                        vec![],
+                        VariableInfo {
+                            expression_type: ExpressionType::BuiltIn(TypeQualifier::DollarString),
+                            shared: false,
+                            redim_info: None
+                        }
+                    )
+                    .at_rc(4, 10)
+                ]
             ))
             .at_rc(4, 5),
             GlobalStatement::SubImplementation(SubImplementation {
                 name: BareName::from("Menu").at_rc(6, 9),
-                params: vec![Parameter::new(
-                    "choice".into(),
-                    ParamType::Array(Box::new(ParamType::BuiltIn(
-                        TypeQualifier::DollarString,
-                        BuiltInStyle::Compact
-                    )))
-                )
-                .at_rc(6, 14)],
+                params: vec![
+                    Parameter::new(
+                        "choice".into(),
+                        ParamType::Array(Box::new(ParamType::BuiltIn(
+                            TypeQualifier::DollarString,
+                            BuiltInStyle::Compact
+                        )))
+                    )
+                    .at_rc(6, 14)
+                ],
                 body: vec![
                     Statement::Dim(
                         DimVar::new_compact_local("X", TypeQualifier::DollarString)
@@ -196,13 +206,15 @@ fn test_passing_array_without_parenthesis() {
                 ),
                 Expression::BuiltInFunctionCall(
                     BuiltInFunction::LBound,
-                    vec![Expression::Variable(
-                        "choice$".into(),
-                        VariableInfo::new_local(ExpressionType::Array(Box::new(
-                            ExpressionType::BuiltIn(TypeQualifier::DollarString)
-                        )))
-                    )
-                    .at_rc(3, 16)]
+                    vec![
+                        Expression::Variable(
+                            "choice$".into(),
+                            VariableInfo::new_local(ExpressionType::Array(Box::new(
+                                ExpressionType::BuiltIn(TypeQualifier::DollarString)
+                            )))
+                        )
+                        .at_rc(3, 16)
+                    ]
                 )
                 .at_rc(3, 9)
             ))

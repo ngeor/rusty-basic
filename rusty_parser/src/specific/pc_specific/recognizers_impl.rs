@@ -1,7 +1,5 @@
 use std::fs::File;
 
-use rusty_common::Position;
-
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc::*;
@@ -140,7 +138,7 @@ fn keyword() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     // using is_ascii_alphanumeric to read e.g. Sub1 and determine it is not a keyword
     // TODO can be done in a different way e.g. read alphabetic and then ensure it's followed by something other than alphanumeric
     many(TokenType::Keyword, char::is_ascii_alphanumeric)
-        .filter(|token| Keyword::try_from(token.text.as_str()).is_ok())
+        .filter(|token| Keyword::try_from(token.as_str()).is_ok())
 }
 
 fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
@@ -218,25 +216,6 @@ where
 mod token_parsers {
     use super::*;
 
-    struct AnyPos;
-
-    impl Parser<RcStringView> for AnyPos {
-        type Output = Position;
-        type Error = ParseError;
-
-        fn parse(
-            &self,
-            input: RcStringView,
-        ) -> ParseResult<RcStringView, Self::Output, ParseError> {
-            if input.is_eof() {
-                default_parse_error(input)
-            } else {
-                let pos = input.position();
-                Ok((input, pos))
-            }
-        }
-    }
-
     pub trait StringToTokenParser {
         fn to_token(
             self,
@@ -252,11 +231,7 @@ mod token_parsers {
             self,
             token_type: TokenType,
         ) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-            AnyPos.and(self, move |pos, text| Token {
-                kind: token_type.into(),
-                text,
-                pos,
-            })
+            self.map(move |text| Token::new(token_type.into(), text))
         }
     }
 }

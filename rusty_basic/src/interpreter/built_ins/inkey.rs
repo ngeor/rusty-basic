@@ -1,10 +1,10 @@
 use std::time::Duration;
 
-use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, poll, read};
 use rusty_parser::BuiltInFunction;
 
-use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::RuntimeError;
+use crate::interpreter::interpreter_trait::InterpreterTrait;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let s: String = poll_one()?;

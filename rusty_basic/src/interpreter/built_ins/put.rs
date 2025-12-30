@@ -1,10 +1,10 @@
 use rusty_parser::{BareName, FileHandle, TypeQualifier};
 
+use crate::RuntimeError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Field;
 use crate::interpreter::string_utils::to_ascii_bytes;
 use crate::interpreter::variant_casts::VariantCasts;
-use crate::RuntimeError;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let handle: FileHandle = interpreter.context()[0].to_file_handle()?;
@@ -16,7 +16,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError>
         .get_current_field_list()
         .ok_or(RuntimeError::BadFileMode)?
         .clone(); // TODO fighting the borrow checker
-                  // convert the variables into a string
+    // convert the variables into a string
     for Field { width, name } in field_list {
         let bare_name: BareName = BareName::from(name.as_str());
         let v = interpreter

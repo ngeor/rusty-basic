@@ -2,9 +2,9 @@ use rusty_linter::QBNumberCast;
 use rusty_parser::{FileAccess, FileHandle, FileMode};
 use rusty_variant::Variant;
 
+use crate::RuntimeError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
-use crate::RuntimeError;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let file_name: String = interpreter.context()[0].to_str_unchecked().to_owned(); // TODO fighting borrow checker

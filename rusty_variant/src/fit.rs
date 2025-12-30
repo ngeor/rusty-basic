@@ -1,4 +1,4 @@
-use crate::{Variant, MAX_INTEGER, MAX_LONG, MIN_INTEGER, MIN_LONG};
+use crate::{MAX_INTEGER, MAX_LONG, MIN_INTEGER, MIN_LONG, Variant};
 
 trait IsInRange {
     fn is_in_integer_range(self) -> bool;

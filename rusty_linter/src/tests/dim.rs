@@ -148,10 +148,12 @@ fn test_dim_extended_inside_function_name_clashing_other_function_name() {
 fn test_dim_bare() {
     assert_eq!(
         linter_ok("DIM A"),
-        vec![GlobalStatement::Statement(Statement::Dim(
-            DimVar::new_compact_local("A", TypeQualifier::BangSingle).into_list_rc(1, 5)
-        ))
-        .at_rc(1, 1)]
+        vec![
+            GlobalStatement::Statement(Statement::Dim(
+                DimVar::new_compact_local("A", TypeQualifier::BangSingle).into_list_rc(1, 5)
+            ))
+            .at_rc(1, 1)
+        ]
     );
 }
 
@@ -159,10 +161,12 @@ fn test_dim_bare() {
 fn test_dim_qualified() {
     assert_eq!(
         linter_ok("DIM A$"),
-        vec![GlobalStatement::Statement(Statement::Dim(
-            DimVar::new_compact_local("A", TypeQualifier::DollarString).into_list_rc(1, 5)
-        ))
-        .at_rc(1, 1)]
+        vec![
+            GlobalStatement::Statement(Statement::Dim(
+                DimVar::new_compact_local("A", TypeQualifier::DollarString).into_list_rc(1, 5)
+            ))
+            .at_rc(1, 1)
+        ]
     );
 }
 
@@ -170,16 +174,18 @@ fn test_dim_qualified() {
 fn test_dim_extended_built_in() {
     assert_eq!(
         linter_ok("DIM A AS LONG"),
-        vec![GlobalStatement::Statement(Statement::Dim(
-            DimNameBuilder::new()
-                .bare_name("A")
-                .dim_type(DimType::BuiltIn(
-                    TypeQualifier::AmpersandLong,
-                    BuiltInStyle::Extended
-                ))
-                .build_list_rc(1, 5)
-        ))
-        .at_rc(1, 1)]
+        vec![
+            GlobalStatement::Statement(Statement::Dim(
+                DimNameBuilder::new()
+                    .bare_name("A")
+                    .dim_type(DimType::BuiltIn(
+                        TypeQualifier::AmpersandLong,
+                        BuiltInStyle::Extended
+                    ))
+                    .build_list_rc(1, 5)
+            ))
+            .at_rc(1, 1)
+        ]
     );
 }
 
@@ -187,16 +193,18 @@ fn test_dim_extended_built_in() {
 fn test_dim_extended_fixed_length_string() {
     assert_eq!(
         linter_ok("DIM A AS STRING * 5"),
-        vec![GlobalStatement::Statement(Statement::Dim(
-            DimNameBuilder::new()
-                .bare_name("A")
-                .dim_type(DimType::FixedLengthString(
-                    Expression::IntegerLiteral(5).at_rc(1, 19),
-                    5
-                ))
-                .build_list_rc(1, 5)
-        ))
-        .at_rc(1, 1)]
+        vec![
+            GlobalStatement::Statement(Statement::Dim(
+                DimNameBuilder::new()
+                    .bare_name("A")
+                    .dim_type(DimType::FixedLengthString(
+                        Expression::IntegerLiteral(5).at_rc(1, 19),
+                        5
+                    ))
+                    .build_list_rc(1, 5)
+            ))
+            .at_rc(1, 1)
+        ]
     );
 }
 
@@ -210,13 +218,15 @@ fn test_dim_extended_user_defined() {
     "#;
     assert_eq!(
         linter_ok(input),
-        vec![GlobalStatement::Statement(Statement::Dim(
-            DimNameBuilder::new()
-                .bare_name("A")
-                .dim_type(DimType::UserDefined(BareName::from("Card").at_rc(5, 14)))
-                .build_list_rc(5, 9)
-        ))
-        .at_rc(5, 5)]
+        vec![
+            GlobalStatement::Statement(Statement::Dim(
+                DimNameBuilder::new()
+                    .bare_name("A")
+                    .dim_type(DimType::UserDefined(BareName::from("Card").at_rc(5, 14)))
+                    .build_list_rc(5, 9)
+            ))
+            .at_rc(5, 5)
+        ]
     );
 }
 
@@ -224,22 +234,24 @@ fn test_dim_extended_user_defined() {
 fn test_dim_array_bare() {
     assert_eq!(
         linter_ok("DIM A(2)"),
-        vec![GlobalStatement::Statement(Statement::Dim(
-            DimNameBuilder::new()
-                .bare_name("A")
-                .dim_type(DimType::Array(
-                    vec![ArrayDimension {
-                        lbound: None,
-                        ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
-                    }],
-                    Box::new(DimType::BuiltIn(
-                        TypeQualifier::BangSingle,
-                        BuiltInStyle::Compact
+        vec![
+            GlobalStatement::Statement(Statement::Dim(
+                DimNameBuilder::new()
+                    .bare_name("A")
+                    .dim_type(DimType::Array(
+                        vec![ArrayDimension {
+                            lbound: None,
+                            ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
+                        }],
+                        Box::new(DimType::BuiltIn(
+                            TypeQualifier::BangSingle,
+                            BuiltInStyle::Compact
+                        ))
                     ))
-                ))
-                .build_list_rc(1, 5)
-        ))
-        .at_rc(1, 1)]
+                    .build_list_rc(1, 5)
+            ))
+            .at_rc(1, 1)
+        ]
     );
 }
 
@@ -247,22 +259,24 @@ fn test_dim_array_bare() {
 fn test_dim_array_qualified() {
     assert_eq!(
         linter_ok("DIM A$(2)"),
-        vec![GlobalStatement::Statement(Statement::Dim(
-            DimNameBuilder::new()
-                .bare_name("A")
-                .dim_type(DimType::Array(
-                    vec![ArrayDimension {
-                        lbound: None,
-                        ubound: Expression::IntegerLiteral(2).at_rc(1, 8)
-                    }],
-                    Box::new(DimType::BuiltIn(
-                        TypeQualifier::DollarString,
-                        BuiltInStyle::Compact
+        vec![
+            GlobalStatement::Statement(Statement::Dim(
+                DimNameBuilder::new()
+                    .bare_name("A")
+                    .dim_type(DimType::Array(
+                        vec![ArrayDimension {
+                            lbound: None,
+                            ubound: Expression::IntegerLiteral(2).at_rc(1, 8)
+                        }],
+                        Box::new(DimType::BuiltIn(
+                            TypeQualifier::DollarString,
+                            BuiltInStyle::Compact
+                        ))
                     ))
-                ))
-                .build_list_rc(1, 5)
-        ))
-        .at_rc(1, 1)]
+                    .build_list_rc(1, 5)
+            ))
+            .at_rc(1, 1)
+        ]
     );
 }
 
@@ -270,22 +284,24 @@ fn test_dim_array_qualified() {
 fn test_dim_array_extended_built_in() {
     assert_eq!(
         linter_ok("DIM A(2) AS INTEGER"),
-        vec![GlobalStatement::Statement(Statement::Dim(
-            DimNameBuilder::new()
-                .bare_name("A")
-                .dim_type(DimType::Array(
-                    vec![ArrayDimension {
-                        lbound: None,
-                        ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
-                    }],
-                    Box::new(DimType::BuiltIn(
-                        TypeQualifier::PercentInteger,
-                        BuiltInStyle::Extended
+        vec![
+            GlobalStatement::Statement(Statement::Dim(
+                DimNameBuilder::new()
+                    .bare_name("A")
+                    .dim_type(DimType::Array(
+                        vec![ArrayDimension {
+                            lbound: None,
+                            ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
+                        }],
+                        Box::new(DimType::BuiltIn(
+                            TypeQualifier::PercentInteger,
+                            BuiltInStyle::Extended
+                        ))
                     ))
-                ))
-                .build_list_rc(1, 5)
-        ))
-        .at_rc(1, 1)]
+                    .build_list_rc(1, 5)
+            ))
+            .at_rc(1, 1)
+        ]
     );
 }
 
@@ -293,22 +309,24 @@ fn test_dim_array_extended_built_in() {
 fn test_dim_array_extended_fixed_length_string() {
     assert_eq!(
         linter_ok("DIM A(2) AS STRING * 3"),
-        vec![GlobalStatement::Statement(Statement::Dim(
-            DimNameBuilder::new()
-                .bare_name("A")
-                .dim_type(DimType::Array(
-                    vec![ArrayDimension {
-                        lbound: None,
-                        ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
-                    }],
-                    Box::new(DimType::FixedLengthString(
-                        Expression::IntegerLiteral(3).at_rc(1, 22),
-                        3
+        vec![
+            GlobalStatement::Statement(Statement::Dim(
+                DimNameBuilder::new()
+                    .bare_name("A")
+                    .dim_type(DimType::Array(
+                        vec![ArrayDimension {
+                            lbound: None,
+                            ubound: Expression::IntegerLiteral(2).at_rc(1, 7)
+                        }],
+                        Box::new(DimType::FixedLengthString(
+                            Expression::IntegerLiteral(3).at_rc(1, 22),
+                            3
+                        ))
                     ))
-                ))
-                .build_list_rc(1, 5)
-        ))
-        .at_rc(1, 1)]
+                    .build_list_rc(1, 5)
+            ))
+            .at_rc(1, 1)
+        ]
     );
 }
 
@@ -322,19 +340,21 @@ fn test_dim_array_extended_user_defined() {
     "#;
     assert_eq!(
         linter_ok(input),
-        vec![GlobalStatement::Statement(Statement::Dim(
-            DimNameBuilder::new()
-                .bare_name("A")
-                .dim_type(DimType::Array(
-                    vec![ArrayDimension {
-                        lbound: None,
-                        ubound: Expression::IntegerLiteral(2).at_rc(5, 11)
-                    }],
-                    Box::new(DimType::UserDefined(BareName::from("Card").at_rc(5, 17)))
-                ))
-                .build_list_rc(5, 9)
-        ))
-        .at_rc(5, 5)]
+        vec![
+            GlobalStatement::Statement(Statement::Dim(
+                DimNameBuilder::new()
+                    .bare_name("A")
+                    .dim_type(DimType::Array(
+                        vec![ArrayDimension {
+                            lbound: None,
+                            ubound: Expression::IntegerLiteral(2).at_rc(5, 11)
+                        }],
+                        Box::new(DimType::UserDefined(BareName::from("Card").at_rc(5, 17)))
+                    ))
+                    .build_list_rc(5, 9)
+            ))
+            .at_rc(5, 5)
+        ]
     );
 }
 

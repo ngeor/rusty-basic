@@ -210,21 +210,19 @@ keyword_enum!(pub enum Keyword SORTED_KEYWORDS SORTED_KEYWORDS_STR {
 
 impl PartialEq<Token> for Keyword {
     fn eq(&self, other: &Token) -> bool {
-        TokenType::Keyword.matches(other) && other.text.eq_ignore_ascii_case(self.as_ref())
+        TokenType::Keyword.matches(other) && other.as_str().eq_ignore_ascii_case(self.as_ref())
     }
 }
 
 impl From<&Token> for Keyword {
     fn from(token: &Token) -> Self {
-        debug_assert_eq!(token.kind, TokenType::Keyword.into());
-        Self::try_from(token.text.as_str()).expect("Token keyword not found in keywords!")
+        debug_assert_eq!(token.kind(), TokenType::Keyword.into());
+        Self::try_from(token.as_str()).expect("Token keyword not found in keywords!")
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use rusty_common::Position;
-
     use super::*;
 
     #[test]
@@ -238,18 +236,16 @@ mod tests {
                 SORTED_KEYWORDS_STR[i].to_uppercase()
             );
             // can parse string to keyword
-            let token = Token {
-                kind: TokenType::Keyword.into(),
-                text: SORTED_KEYWORDS_STR[i].to_string(),
-                pos: Position::start(),
-            };
+            let token = Token::new(
+                TokenType::Keyword.into(),
+                SORTED_KEYWORDS_STR[i].to_string(),
+            );
             assert_eq!(Keyword::from(&token), SORTED_KEYWORDS[i],);
             // can parse lowercase string to keyword
-            let token = Token {
-                kind: TokenType::Keyword.into(),
-                text: SORTED_KEYWORDS_STR[i].to_lowercase().to_string(),
-                pos: Position::start(),
-            };
+            let token = Token::new(
+                TokenType::Keyword.into(),
+                SORTED_KEYWORDS_STR[i].to_lowercase().to_string(),
+            );
             assert_eq!(Keyword::from(&token), SORTED_KEYWORDS[i],);
         }
         // sort order is correct

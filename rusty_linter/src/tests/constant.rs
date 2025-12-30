@@ -140,11 +140,13 @@ fn test_constant_definition_and_usage_in_sub_call_arg() {
             .at_rc(3, 5),
             GlobalStatement::SubImplementation(SubImplementation {
                 name: BareName::from("MySub").at_rc(5, 9),
-                params: vec![Parameter::new(
-                    "A".into(),
-                    ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
-                )
-                .at_rc(5, 15)],
+                params: vec![
+                    Parameter::new(
+                        "A".into(),
+                        ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
+                    )
+                    .at_rc(5, 15)
+                ],
                 body: vec![],
                 is_static: false
             })

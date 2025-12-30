@@ -2,9 +2,9 @@ use std::env;
 use std::fs::File;
 
 use rusty_basic::instruction_generator::{generate_instructions, unwrap_linter_context};
-use rusty_basic::interpreter::{new_default_interpreter, InterpreterTrait};
-use rusty_linter::{lint, Context};
-use rusty_parser::{parse_main_file, Program};
+use rusty_basic::interpreter::{InterpreterTrait, new_default_interpreter};
+use rusty_linter::{Context, lint};
+use rusty_parser::{Program, parse_main_file};
 
 fn main() {
     let is_running_in_apache = is_running_in_apache();

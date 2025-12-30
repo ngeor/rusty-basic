@@ -1,4 +1,4 @@
-use rusty_parser::{parse, Program};
+use rusty_parser::{Program, parse};
 
 use crate::core::{HasUserDefinedTypes, LintErrorPos};
 use crate::lint;

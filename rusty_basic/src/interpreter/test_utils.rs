@@ -3,19 +3,19 @@ use std::fs::File;
 use std::io::Read;
 
 use rusty_linter::lint;
-use rusty_parser::{parse_main_file, UserDefinedTypes};
+use rusty_parser::{UserDefinedTypes, parse_main_file};
 
+use crate::RuntimeErrorPos;
 use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
 use crate::instruction_generator::{
-    generate_instructions, unwrap_linter_context, InstructionGeneratorResult
+    InstructionGeneratorResult, generate_instructions, unwrap_linter_context
 };
+use crate::interpreter::Stdlib;
 use crate::interpreter::interpreter::Interpreter;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::screen::{CrossTermScreen, HeadlessScreen};
 use crate::interpreter::write_printer::WritePrinter;
-use crate::interpreter::Stdlib;
-use crate::RuntimeErrorPos;
 
 type MockStdout = WritePrinter<Vec<u8>>;
 
@@ -26,10 +26,10 @@ pub trait MockInterpreterTrait:
 
 impl<S> MockInterpreterTrait for S where
     S: InterpreterTrait<
-        TStdOut = MockStdout,
-        TStdIn = ReadInputSource<MockStdin>,
-        TLpt1 = MockStdout,
-    >
+            TStdOut = MockStdout,
+            TStdIn = ReadInputSource<MockStdin>,
+            TLpt1 = MockStdout,
+        >
 {
 }
 

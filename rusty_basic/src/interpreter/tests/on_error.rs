@@ -2,7 +2,7 @@ use rusty_common::Position;
 
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::test_utils::mock_interpreter_for_input;
-use crate::{assert_prints, RuntimeError, RuntimeErrorPos};
+use crate::{RuntimeError, RuntimeErrorPos, assert_prints};
 
 #[test]
 fn on_error_go_to_label() {

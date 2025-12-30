@@ -2,9 +2,9 @@ use rusty_linter::CastVariant;
 use rusty_parser::TypeQualifier;
 use rusty_variant::Variant;
 
+use crate::RuntimeError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::string_utils::fix_length;
-use crate::RuntimeError;
 
 pub fn cast<T: InterpreterTrait>(
     interpreter: &mut T,

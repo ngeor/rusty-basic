@@ -2,8 +2,8 @@ use rusty_pc::*;
 
 use crate::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::*;
 use crate::specific::core::dim_name::{dim_var_pos_p, redim_var_pos_p};
-use crate::specific::pc_specific::*;
 use crate::specific::*;
 
 /// Parses DIM statement

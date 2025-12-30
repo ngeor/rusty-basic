@@ -17,8 +17,8 @@ use crate::ParseError;
 /// <ws>* EOL <ws | eol>*
 /// ```
 use crate::input::RcStringView;
+use crate::pc_specific::*;
 use crate::specific::core::comment::comment_as_string_p;
-use crate::specific::pc_specific::*;
 
 pub fn comment_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     opt_and_tuple(whitespace(), any_token_of(TokenType::Eol)).and_opt(

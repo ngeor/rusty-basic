@@ -2,7 +2,7 @@ use rusty_pc::*;
 
 use crate::ParseError;
 use crate::input::RcStringView;
-use crate::specific::pc_specific::*;
+use crate::pc_specific::*;
 use crate::specific::*;
 
 /// Tries to read a comment.

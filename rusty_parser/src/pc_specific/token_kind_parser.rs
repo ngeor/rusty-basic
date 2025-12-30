@@ -6,7 +6,7 @@ use rusty_pc::{And, Filter, Parser, ToOption, Token};
 
 use crate::ParseError;
 use crate::input::RcStringView;
-use crate::specific::pc_specific::{TokenType, WithExpected, any_token};
+use crate::pc_specific::{TokenType, WithExpected, any_token};
 
 /// Equal sign, surrounded by optional whitespace.
 ///

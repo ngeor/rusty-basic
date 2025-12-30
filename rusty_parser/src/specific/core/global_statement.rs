@@ -3,11 +3,11 @@ use rusty_pc::*;
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::*;
 use crate::specific::core::declaration::declaration_p;
 use crate::specific::core::def_type::def_type_p;
 use crate::specific::core::implementation::implementation_p;
 use crate::specific::core::{statement, user_defined_type};
-use crate::specific::pc_specific::*;
 use crate::specific::*;
 
 pub type Program = Vec<GlobalStatementPos>;

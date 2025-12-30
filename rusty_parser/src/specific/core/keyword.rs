@@ -1,7 +1,7 @@
 use rusty_common::cmp_str;
 use rusty_pc::Token;
 
-use crate::specific::pc_specific::TokenType;
+use crate::pc_specific::TokenType;
 
 // From the internets:
 // Doc comments are secretly just attributes,

@@ -3,8 +3,8 @@ use rusty_pc::*;
 
 use crate::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::*;
 use crate::specific::core::var_name;
-use crate::specific::pc_specific::*;
 use crate::specific::*;
 
 pub type DimVar = TypedName<DimType>;
@@ -127,8 +127,8 @@ mod array_dimensions {
 
     use crate::ParseError;
     use crate::input::RcStringView;
+    use crate::pc_specific::*;
     use crate::specific::core::opt_second_expression::opt_second_expression_after_keyword;
-    use crate::specific::pc_specific::*;
     use crate::specific::*;
 
     pub fn array_dimensions_p()
@@ -167,8 +167,8 @@ mod type_definition {
 
     use crate::ParseError;
     use crate::input::RcStringView;
+    use crate::pc_specific::*;
     use crate::specific::core::expression::expression_pos_p;
-    use crate::specific::pc_specific::*;
     use crate::specific::*;
 
     pub fn extended_type(

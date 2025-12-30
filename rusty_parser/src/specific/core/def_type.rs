@@ -2,7 +2,7 @@ use rusty_pc::*;
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::specific::pc_specific::*;
+use crate::pc_specific::*;
 use crate::specific::{Keyword, LetterRange, TypeQualifier};
 
 /// Represents a definition of default type, such as DEFINT A-Z.

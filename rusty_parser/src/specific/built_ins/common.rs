@@ -2,7 +2,7 @@ use rusty_common::{AtPos, Position, Positioned};
 use rusty_pc::*;
 
 use crate::input::RcStringView;
-use crate::specific::pc_specific::*;
+use crate::pc_specific::*;
 use crate::specific::*;
 use crate::{BuiltInSub, ParseError};
 

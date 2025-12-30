@@ -2,10 +2,10 @@ use rusty_pc::*;
 
 use crate::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::*;
 use crate::specific::core::expression::ws_expr_pos_p;
 use crate::specific::core::statement_separator::comments_and_whitespace_p;
 use crate::specific::core::statements::ZeroOrMoreStatements;
-use crate::specific::pc_specific::*;
 use crate::specific::*;
 
 // SELECT CASE expr ' comment
@@ -111,9 +111,9 @@ mod case_expression_parser {
     use rusty_pc::*;
 
     use crate::input::RcStringView;
+    use crate::pc_specific::*;
     use crate::specific::core::expression::expression_pos_p;
     use crate::specific::core::opt_second_expression::opt_second_expression_after_keyword;
-    use crate::specific::pc_specific::*;
     use crate::specific::{CaseExpression, Keyword, Operator};
     use crate::{ExpressionTrait, ParseError};
 

@@ -3,8 +3,8 @@ use rusty_pc::{And, Errors, Map, Parser, ThenWith, ToOption, Token};
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::{keyword, opt_whitespace, whitespace};
 use crate::specific::core::expression::ws_expr_pos_p;
-use crate::specific::pc_specific::{keyword, opt_whitespace, whitespace};
 use crate::specific::{ExpressionPos, Keyword};
 
 /// Parses an optional second expression that follows the first expression

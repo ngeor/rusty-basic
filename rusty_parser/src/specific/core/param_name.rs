@@ -4,8 +4,8 @@ use rusty_pc::*;
 
 use crate::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::*;
 use crate::specific::core::var_name;
-use crate::specific::pc_specific::*;
 use crate::specific::{Keyword, *};
 
 pub type Parameter = TypedName<ParamType>;

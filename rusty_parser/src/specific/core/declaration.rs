@@ -2,9 +2,9 @@ use rusty_pc::*;
 
 use crate::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::*;
 use crate::specific::core::name::{bare_name_with_dots, name_with_dots};
 use crate::specific::core::param_name::parameter_pos_p;
-use crate::specific::pc_specific::*;
 use crate::specific::*;
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)

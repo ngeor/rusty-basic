@@ -3,10 +3,10 @@ use rusty_pc::*;
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::*;
 use crate::specific::core::expression::file_handle::file_handle_p;
 use crate::specific::core::expression::guard::Guard;
 use crate::specific::core::expression::{expression_pos_p, ws_expr_pos_p};
-use crate::specific::pc_specific::*;
 use crate::specific::*;
 
 /// A call to the PRINT sub.

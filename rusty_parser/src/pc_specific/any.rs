@@ -2,8 +2,7 @@ use rusty_pc::{ParseResult, Parser, Token, default_parse_error};
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
-// TODO: fix this
-use crate::specific::token_parser;
+use crate::pc_specific::token_parser;
 
 /// Parses any token.
 pub fn any_token() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {

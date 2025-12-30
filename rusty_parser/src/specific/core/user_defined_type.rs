@@ -6,10 +6,10 @@ use rusty_pc::*;
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::*;
 use crate::specific::core::expression::expression_pos_p;
 use crate::specific::core::name::bare_name_without_dots;
 use crate::specific::core::statement_separator::comments_and_whitespace_p;
-use crate::specific::pc_specific::*;
 use crate::specific::*;
 
 #[derive(Clone, Debug, PartialEq)]

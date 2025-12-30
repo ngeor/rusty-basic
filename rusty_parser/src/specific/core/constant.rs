@@ -2,9 +2,9 @@ use rusty_pc::*;
 
 use crate::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::*;
 use crate::specific::core::expression::expression_pos_p;
 use crate::specific::core::name::name_with_dots;
-use crate::specific::pc_specific::*;
 use crate::specific::{Keyword, Statement};
 
 pub fn constant_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {

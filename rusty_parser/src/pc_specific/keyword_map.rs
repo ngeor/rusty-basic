@@ -2,8 +2,8 @@ use rusty_pc::{Map, Parser};
 
 use crate::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::{WithExpected, keyword_choice, keyword_syntax_error};
 use crate::specific::Keyword;
-use crate::specific::pc_specific::{WithExpected, keyword_choice, keyword_syntax_error};
 
 pub fn keyword_map<T, K>(mappings: K) -> impl Parser<RcStringView, Output = T, Error = ParseError>
 where

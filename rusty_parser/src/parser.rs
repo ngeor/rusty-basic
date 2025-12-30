@@ -5,7 +5,8 @@ use rusty_pc::*;
 
 use crate::error::ParseErrorPos;
 use crate::input::RcStringView;
-use crate::specific::{Program, create_file_tokenizer, create_string_tokenizer, program_parser_p};
+use crate::pc_specific::{create_file_tokenizer, create_string_tokenizer};
+use crate::specific::{Program, program_parser_p};
 
 /// Parses a QBasic file.
 ///

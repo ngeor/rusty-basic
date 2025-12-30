@@ -4,6 +4,7 @@ use rusty_pc::*;
 use crate::BuiltInSub;
 use crate::error::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::*;
 use crate::specific::built_ins::built_in_sub_call_p;
 use crate::specific::core::comment::comment_p;
 use crate::specific::core::constant::constant_p;
@@ -23,7 +24,6 @@ use crate::specific::core::resume::statement_resume_p;
 use crate::specific::core::select_case::select_case_p;
 use crate::specific::core::sub_call::sub_call_or_assignment_p;
 use crate::specific::core::while_wend::while_wend_p;
-use crate::specific::pc_specific::*;
 use crate::specific::{
     BareName, DimVars, Expression, ExpressionPos, Expressions, Keyword, NamePos, Operator, Print
 };
@@ -361,7 +361,7 @@ mod end {
 
     use crate::ParseError;
     use crate::input::RcStringView;
-    use crate::specific::pc_specific::*;
+    use crate::pc_specific::*;
     use crate::specific::{Keyword, Statement};
 
     pub fn parse_end_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
@@ -392,8 +392,8 @@ mod system {
 
     use crate::ParseError;
     use crate::input::RcStringView;
+    use crate::pc_specific::*;
     use crate::specific::core::statement_separator::peek_eof_or_statement_separator;
-    use crate::specific::pc_specific::*;
     use crate::specific::{Keyword, Statement};
 
     pub fn parse_system_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {

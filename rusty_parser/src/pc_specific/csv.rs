@@ -2,7 +2,7 @@ use rusty_pc::*;
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::specific::pc_specific::*;
+use crate::pc_specific::{SpecificTrait, comma};
 
 /// Comma separated list of items.
 pub fn csv<L: Parser<RcStringView, Error = ParseError>>(

@@ -2,9 +2,9 @@ use rusty_pc::*;
 
 use crate::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::*;
 use crate::specific::core::declaration::{function_declaration_p, sub_declaration_p};
 use crate::specific::core::statements::ZeroOrMoreStatements;
-use crate::specific::pc_specific::*;
 use crate::specific::*;
 
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION

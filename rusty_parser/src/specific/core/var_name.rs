@@ -4,8 +4,8 @@ use rusty_pc::*;
 
 use crate::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::*;
 use crate::specific::core::name::{bare_name_without_dots, name_with_dots};
-use crate::specific::pc_specific::*;
 use crate::specific::*;
 
 /// A variable name with a type.

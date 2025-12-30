@@ -1,10 +1,10 @@
-use crate::instruction_generator::{
-    generate_instructions, unwrap_linter_context, Instruction, InstructionGeneratorResult,
-    InstructionPos,
-};
 use rusty_common::NoPosContainer;
 use rusty_linter::lint;
 use rusty_parser::{parse, UserDefinedTypes};
+
+use crate::instruction_generator::{
+    generate_instructions, unwrap_linter_context, Instruction, InstructionGeneratorResult, InstructionPos
+};
 
 pub fn generate_instructions_str_with_types(
     input: &str,

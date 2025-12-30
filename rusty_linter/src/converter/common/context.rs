@@ -1,7 +1,8 @@
+use rusty_parser::*;
+
 use crate::core::*;
 use crate::names::Names;
 use crate::pre_linter::PreLinterResult;
-use rusty_parser::*;
 
 pub struct Context {
     pre_linter_result: PreLinterResult,

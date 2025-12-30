@@ -1,6 +1,7 @@
+use rusty_common::*;
+
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::lazy_parser;
 use crate::pc::*;
 use crate::specific::built_ins::built_in_sub_call_p;
 use crate::specific::core::comment::comment_p;
@@ -13,7 +14,7 @@ use crate::specific::core::go_sub::{statement_go_sub_p, statement_return_p};
 use crate::specific::core::if_block::if_block_p;
 use crate::specific::core::macros::bi_tuple;
 use crate::specific::core::name::{
-    bare_name_with_dots, identifier_with_dots, token_list_to_bare_name,
+    bare_name_with_dots, identifier_with_dots, token_list_to_bare_name
 };
 use crate::specific::core::on_error::statement_on_error_go_to_p;
 use crate::specific::core::print::{parse_lprint_p, parse_print_p};
@@ -23,10 +24,9 @@ use crate::specific::core::sub_call::sub_call_or_assignment_p;
 use crate::specific::core::while_wend::while_wend_p;
 use crate::specific::pc_specific::*;
 use crate::specific::{
-    BareName, DimVars, Expression, ExpressionPos, Expressions, Keyword, NamePos, Operator, Print,
+    BareName, DimVars, Expression, ExpressionPos, Expressions, Keyword, NamePos, Operator, Print
 };
-use crate::BuiltInSub;
-use rusty_common::*;
+use crate::{lazy_parser, BuiltInSub};
 
 pub type StatementPos = Positioned<Statement>;
 pub type Statements = Vec<StatementPos>;
@@ -358,9 +358,10 @@ fn illegal_starting_keywords() -> impl Parser<RcStringView, Output = Statement, 
 
 mod end {
     use crate::input::RcStringView;
+    use crate::pc::*;
     use crate::specific::pc_specific::*;
     use crate::specific::{Keyword, Statement};
-    use crate::{pc::*, ParseError};
+    use crate::ParseError;
 
     pub fn parse_end_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
         keyword(Keyword::End).map(|_| Statement::End)
@@ -387,10 +388,11 @@ mod end {
 
 mod system {
     use crate::input::RcStringView;
+    use crate::pc::*;
     use crate::specific::core::statement_separator::peek_eof_or_statement_separator;
     use crate::specific::pc_specific::*;
     use crate::specific::{Keyword, Statement};
-    use crate::{pc::*, ParseError};
+    use crate::ParseError;
 
     pub fn parse_system_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
         keyword(Keyword::System).and(
@@ -419,10 +421,11 @@ mod system {
 
 #[cfg(test)]
 mod tests {
+    use rusty_common::*;
+
     use crate::specific::*;
     use crate::test_utils::*;
     use crate::*;
-    use rusty_common::*;
 
     #[test]
     fn test_global_comment() {

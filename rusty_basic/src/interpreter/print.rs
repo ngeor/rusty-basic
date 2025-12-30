@@ -1,10 +1,12 @@
+use std::fmt::Display;
+
+use rusty_parser::FileHandle;
+use rusty_variant::Variant;
+
 use crate::instruction_generator::PrinterType;
 use crate::interpreter::io::Printer;
 use crate::interpreter::string_utils::fix_length;
 use crate::RuntimeError;
-use rusty_parser::FileHandle;
-use rusty_variant::Variant;
-use std::fmt::Display;
 
 /// Handles the PRINT and LPRINT statements.
 #[derive(Debug)]
@@ -185,8 +187,9 @@ fn print_formatting_chars(
 mod numeric_formatting {
     //! Handles formatting of numbers.
 
-    use crate::RuntimeError;
     use rusty_variant::Variant;
+
+    use crate::RuntimeError;
 
     pub fn print_digit_formatting_chars(
         format_string_chars: &[char],
@@ -400,11 +403,8 @@ impl<T: Printer + ?Sized> PrintHelper for T {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assert_interpreter_err;
-    use crate::assert_lprints_exact;
-    use crate::assert_prints;
-    use crate::assert_prints_exact;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
+    use crate::{assert_interpreter_err, assert_lprints_exact, assert_prints, assert_prints_exact};
 
     #[test]
     fn test_print_no_args() {

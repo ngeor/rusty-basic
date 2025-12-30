@@ -1,7 +1,6 @@
 use crate::input::RcStringView;
 use crate::pc::*;
-use crate::specific::core::dim_name::dim_var_pos_p;
-use crate::specific::core::dim_name::redim_var_pos_p;
+use crate::specific::core::dim_name::{dim_var_pos_p, redim_var_pos_p};
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 use crate::ParseError;
@@ -45,12 +44,14 @@ fn opt_shared_keyword(
 
 #[cfg(test)]
 mod tests {
+    use rusty_common::*;
+
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::*;
-    use crate::{assert_parse_dim_compact, assert_parse_dim_extended_built_in, assert_parser_err};
-    use rusty_common::*;
+    use crate::{
+        assert_parse_dim_compact, assert_parse_dim_extended_built_in, assert_parser_err, *
+    };
     #[test]
     fn test_parse_dim_extended_built_in() {
         assert_parse_dim_extended_built_in!("A", "SINGLE", BangSingle);

@@ -1,9 +1,10 @@
-use super::post_conversion_linter::PostConversionLinter;
+use std::collections::HashSet;
+
 use rusty_common::*;
 use rusty_parser::*;
 
+use super::post_conversion_linter::PostConversionLinter;
 use crate::core::*;
-use std::collections::HashSet;
 
 /// In QBasic, if you have anywhere in the program a variable of user defined type,
 /// e.g. `DIM A AS Person`,

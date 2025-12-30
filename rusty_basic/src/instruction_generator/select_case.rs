@@ -1,6 +1,7 @@
-use super::{Instruction, InstructionGenerator, Visitor};
 use rusty_common::*;
 use rusty_parser::{CaseBlock, CaseExpression, ExpressionPos, Operator, SelectCase, Statements};
+
+use super::{Instruction, InstructionGenerator, Visitor};
 
 impl InstructionGenerator {
     pub fn generate_select_case_instructions(&mut self, s: SelectCase, pos: Position) {

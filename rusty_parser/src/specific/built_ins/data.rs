@@ -2,8 +2,7 @@ use crate::input::RcStringView;
 use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::BuiltInSub;
-use crate::ParseError;
+use crate::{BuiltInSub, ParseError};
 
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq2(
@@ -17,8 +16,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
 mod tests {
     use crate::specific::Statement;
     use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
-    use crate::BuiltInSub;
-    use crate::*;
+    use crate::{BuiltInSub, *};
 
     #[test]
     fn parse_no_items_is_allowed() {

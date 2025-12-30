@@ -1,8 +1,10 @@
-use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::RuntimeError;
+use std::time::Duration;
+
 use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
 use rusty_parser::BuiltInFunction;
-use std::time::Duration;
+
+use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::RuntimeError;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let s: String = poll_one()?;
@@ -70,8 +72,9 @@ fn handle_key(code: KeyCode, modifiers: KeyModifiers) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::handle_key;
     use crossterm::event::{KeyCode, KeyModifiers};
+
+    use super::handle_key;
 
     #[test]
     fn test_mapping_lowercase_letters() {

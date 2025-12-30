@@ -1,10 +1,11 @@
-use crate::input::RcStringView;
-use crate::specific::core::var_name;
-use crate::{specific::*, ParseError};
 use rusty_common::*;
 
+use crate::input::RcStringView;
 use crate::pc::*;
+use crate::specific::core::var_name;
 use crate::specific::pc_specific::*;
+use crate::specific::*;
+use crate::ParseError;
 
 pub type DimVar = TypedName<DimType>;
 pub type DimVarPos = Positioned<DimVar>;
@@ -124,10 +125,11 @@ fn dim_or_redim(
 
 mod array_dimensions {
     use crate::input::RcStringView;
+    use crate::pc::*;
     use crate::specific::core::opt_second_expression::opt_second_expression_after_keyword;
     use crate::specific::pc_specific::*;
     use crate::specific::*;
-    use crate::{pc::*, ParseError};
+    use crate::ParseError;
 
     pub fn array_dimensions_p(
     ) -> impl Parser<RcStringView, Output = ArrayDimensions, Error = ParseError> {
@@ -162,10 +164,11 @@ mod array_dimensions {
 
 mod type_definition {
     use crate::input::RcStringView;
+    use crate::pc::*;
     use crate::specific::core::expression::expression_pos_p;
     use crate::specific::pc_specific::*;
     use crate::specific::*;
-    use crate::{pc::*, ParseError};
+    use crate::ParseError;
 
     pub fn built_in_extended_type(
     ) -> impl Parser<RcStringView, Output = DimType, Error = ParseError> {

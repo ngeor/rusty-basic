@@ -1,10 +1,11 @@
-use crate::core::LintError;
-use crate::core::{ConstLookup, ValidateStringLength, VisitResult, Visitor};
+use std::collections::HashMap;
+
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{
-    BareName, Element, ElementPos, ElementType, Expression, UserDefinedType, UserDefinedTypes,
+    BareName, Element, ElementPos, ElementType, Expression, UserDefinedType, UserDefinedTypes
 };
-use std::collections::HashMap;
+
+use crate::core::{ConstLookup, LintError, ValidateStringLength, VisitResult, Visitor};
 
 pub struct UserDefinedTypeVisitor<'a> {
     user_defined_types: &'a mut UserDefinedTypes,

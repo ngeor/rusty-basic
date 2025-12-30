@@ -9,9 +9,10 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError>
 
 #[cfg(test)]
 mod tests {
+    use rusty_common::*;
+
     use crate::interpreter::test_utils::*;
     use crate::{ErrorEnvelope, RuntimeError};
-    use rusty_common::*;
 
     #[test]
     fn test_kill_happy_flow() {

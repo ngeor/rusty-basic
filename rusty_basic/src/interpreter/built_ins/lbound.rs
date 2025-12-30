@@ -1,8 +1,9 @@
+use rusty_parser::BuiltInFunction;
+use rusty_variant::Variant;
+
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::variant_casts::VariantCasts;
 use crate::RuntimeError;
-use rusty_parser::BuiltInFunction;
-use rusty_variant::Variant;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let v: Variant = interpreter.context()[0].clone();
@@ -28,9 +29,8 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assert_interpreter_err;
-    use crate::assert_prints;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
+    use crate::{assert_interpreter_err, assert_prints};
 
     #[test]
     fn test_explicit_lbound() {

@@ -26,11 +26,11 @@ pub unsafe fn set_indicator_keys(_flags: u8) -> Result<(), RuntimeError> {
 mod windows_impl {
     extern crate winapi;
 
-    use crate::RuntimeError;
     use winapi::um::winuser::{
-        GetKeyboardState, SendInput, INPUT, INPUT_KEYBOARD, KEYEVENTF_KEYUP, VK_CAPITAL,
-        VK_NUMLOCK, VK_SCROLL,
+        GetKeyboardState, SendInput, INPUT, INPUT_KEYBOARD, KEYEVENTF_KEYUP, VK_CAPITAL, VK_NUMLOCK, VK_SCROLL
     };
+
+    use crate::RuntimeError;
 
     const KEYS_FLAGS: [(i32, u8); 3] = [(VK_NUMLOCK, 1), (VK_CAPITAL, 2), (VK_SCROLL, 4)];
 

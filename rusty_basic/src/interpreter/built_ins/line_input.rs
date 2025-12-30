@@ -1,9 +1,11 @@
+use std::convert::TryFrom;
+
+use rusty_parser::FileHandle;
+use rusty_variant::Variant;
+
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::Input;
 use crate::RuntimeError;
-use rusty_parser::FileHandle;
-use rusty_variant::Variant;
-use std::convert::TryFrom;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let mut file_handle: FileHandle = FileHandle::default();
@@ -73,9 +75,8 @@ fn line_input_one_stdin<S: InterpreterTrait>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assert_interpreter_err;
-    use crate::assert_prints;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
+    use crate::{assert_interpreter_err, assert_prints};
 
     #[test]
     fn test_line_input_string_from_file_eof() {

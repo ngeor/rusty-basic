@@ -1,6 +1,7 @@
-use super::{InstructionGenerator, Visitor};
 use rusty_common::*;
 use rusty_parser::IfBlock;
+
+use super::{InstructionGenerator, Visitor};
 
 impl InstructionGenerator {
     pub fn generate_if_block_instructions(&mut self, if_block_statement: IfBlock, pos: Position) {

@@ -1,9 +1,6 @@
-use crate::assert_has_variable;
-use crate::assert_interpreter_err;
-use crate::assert_prints;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::test_utils::*;
-use crate::RuntimeError;
+use crate::{assert_has_variable, assert_interpreter_err, assert_prints, RuntimeError};
 
 macro_rules! assert_assign_ok {
     ($program:expr, $expected_variable_name:expr, $expected_value:expr) => {

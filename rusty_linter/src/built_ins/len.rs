@@ -1,9 +1,9 @@
-use crate::core::CanCastTo;
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::{AtPos, Position};
 use rusty_parser::{
-    ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType, TypeQualifier,
+    ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType, TypeQualifier
 };
+
+use crate::core::{CanCastTo, LintError, LintErrorPos};
 
 pub fn lint(args: &Expressions, pos: Position) -> Result<(), LintErrorPos> {
     if args.len() != 1 {

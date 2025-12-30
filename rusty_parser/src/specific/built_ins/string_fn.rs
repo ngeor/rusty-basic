@@ -2,8 +2,7 @@ use crate::input::RcStringView;
 use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::BuiltInFunction;
-use crate::ParseError;
+use crate::{BuiltInFunction, ParseError};
 
 pub fn parse() -> impl Parser<RcStringView, Output = Expression, Error = ParseError> {
     seq2(

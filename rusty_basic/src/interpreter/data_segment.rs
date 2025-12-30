@@ -1,5 +1,6 @@
-use crate::RuntimeError;
 use rusty_variant::Variant;
+
+use crate::RuntimeError;
 
 #[derive(Default)]
 pub struct DataSegment {

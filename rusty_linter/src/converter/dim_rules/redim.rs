@@ -1,11 +1,8 @@
-use crate::converter::common::Context;
-use crate::converter::common::Convertible;
-use crate::converter::common::DimNameState;
-use crate::core::IntoTypeQualifier;
-use crate::core::ValidateStringLength;
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::*;
+
+use crate::converter::common::{Context, Convertible, DimNameState};
+use crate::core::{IntoTypeQualifier, LintError, LintErrorPos, ValidateStringLength};
 
 pub fn on_redim_type(
     var_type: DimType,

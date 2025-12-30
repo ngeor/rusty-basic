@@ -275,6 +275,4 @@ macro_rules! delegate_visitor {
     };
 }
 
-pub(crate) use delegate_visitor;
-pub(crate) use no_op_visitor;
-pub(crate) use no_pos_visitor;
+pub(crate) use {delegate_visitor, no_op_visitor, no_pos_visitor};

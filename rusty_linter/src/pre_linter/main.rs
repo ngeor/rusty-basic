@@ -1,8 +1,9 @@
+use rusty_common::*;
+use rusty_parser::*;
+
 use crate::core::*;
 use crate::pre_linter::sub_program_context::SubprogramContext;
 use crate::pre_linter::{ConstantMap, PreLinterResult};
-use rusty_common::*;
-use rusty_parser::*;
 
 // CONST -> stored in global_constants
 // DEFINT -> stored in resolver

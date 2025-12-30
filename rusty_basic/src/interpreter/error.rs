@@ -1,6 +1,7 @@
-use crate::error_envelope::ErrorEnvelope;
 use rusty_linter::LintError;
 use rusty_variant::{SubscriptOutOfRangeError, VariantError};
+
+use crate::error_envelope::ErrorEnvelope;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum RuntimeError {

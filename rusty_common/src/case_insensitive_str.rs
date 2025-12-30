@@ -1,8 +1,9 @@
-use crate::case_insensitive_utils::{cmp_str, hash_str};
-use crate::CaseInsensitiveString;
 use std::cmp::Ordering;
 use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
+
+use crate::case_insensitive_utils::{cmp_str, hash_str};
+use crate::CaseInsensitiveString;
 
 #[derive(Debug)]
 pub struct CaseInsensitiveStr(str);
@@ -73,8 +74,9 @@ impl AsRef<str> for CaseInsensitiveStr {
 
 #[cfg(test)]
 mod tests {
-    use crate::CaseInsensitiveStr;
     use std::cmp::Ordering;
+
+    use crate::CaseInsensitiveStr;
 
     #[test]
     fn test_cmp_ignore_ascii_case() {

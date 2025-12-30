@@ -1,9 +1,9 @@
-use crate::assert_linter_err;
-use crate::assert_linter_ok_global_statements;
-use crate::core::LintError;
-use crate::tests::test_utils::linter_ok;
 use rusty_common::*;
 use rusty_parser::*;
+
+use crate::core::LintError;
+use crate::tests::test_utils::linter_ok;
+use crate::{assert_linter_err, assert_linter_ok_global_statements};
 
 #[test]
 fn function_call_not_allowed() {

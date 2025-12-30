@@ -1,10 +1,8 @@
-use crate::converter::common::DimNameState;
-use crate::converter::common::*;
-use crate::core::IntoTypeQualifier;
-use crate::core::ValidateStringLength;
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::*;
+
+use crate::converter::common::{DimNameState, *};
+use crate::core::{IntoTypeQualifier, LintError, LintErrorPos, ValidateStringLength};
 
 pub fn on_dim_type(
     dim_type: DimType,

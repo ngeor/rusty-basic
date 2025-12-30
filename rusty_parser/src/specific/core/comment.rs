@@ -1,7 +1,8 @@
 use crate::input::RcStringView;
+use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::{pc::*, ParseError};
+use crate::ParseError;
 
 /// Tries to read a comment.
 pub fn comment_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {

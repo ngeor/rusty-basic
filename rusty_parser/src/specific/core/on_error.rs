@@ -1,3 +1,5 @@
+use rusty_common::Positioned;
+
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc::*;
@@ -5,7 +7,6 @@ use crate::specific::core::expression::expression_pos_p;
 use crate::specific::core::name::bare_name_with_dots;
 use crate::specific::pc_specific::*;
 use crate::specific::{Expression, Keyword, OnErrorOption, Statement};
-use rusty_common::Positioned;
 
 pub fn statement_on_error_go_to_p(
 ) -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {

@@ -2,9 +2,9 @@ use crate::input::RcStringView;
 use crate::pc::*;
 use crate::specific::core::comment::comment_p;
 use crate::specific::core::expression::ws_expr_pos_ws_p;
-use crate::specific::core::statements::single_line_non_comment_statements_p;
-use crate::specific::core::statements::single_line_statements_p;
-use crate::specific::core::statements::ZeroOrMoreStatements;
+use crate::specific::core::statements::{
+    single_line_non_comment_statements_p, single_line_statements_p, ZeroOrMoreStatements
+};
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 use crate::ParseError;
@@ -104,12 +104,12 @@ fn else_block_p() -> impl Parser<RcStringView, Output = Statements, Error = Pars
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
+    use rusty_common::*;
+
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::*;
-    use rusty_common::*;
+    use crate::{assert_parser_err, *};
     #[test]
     fn test_if() {
         let input = "IF X THEN\r\nFlint X\r\nEND IF";

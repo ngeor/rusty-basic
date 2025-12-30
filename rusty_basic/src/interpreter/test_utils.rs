@@ -1,6 +1,13 @@
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::Read;
+
+use rusty_linter::lint;
+use rusty_parser::{parse_main_file, UserDefinedTypes};
+
 use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
 use crate::instruction_generator::{
-    generate_instructions, unwrap_linter_context, InstructionGeneratorResult,
+    generate_instructions, unwrap_linter_context, InstructionGeneratorResult
 };
 use crate::interpreter::interpreter::Interpreter;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
@@ -9,11 +16,6 @@ use crate::interpreter::screen::{CrossTermScreen, HeadlessScreen};
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
 use crate::RuntimeErrorPos;
-use rusty_linter::lint;
-use rusty_parser::{parse_main_file, UserDefinedTypes};
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::Read;
 
 type MockStdout = WritePrinter<Vec<u8>>;
 

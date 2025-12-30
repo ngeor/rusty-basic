@@ -1,8 +1,10 @@
-use crate::RuntimeError;
+use std::convert::TryFrom;
+
 use rusty_linter::QBNumberCast;
 use rusty_parser::FileHandle;
 use rusty_variant::Variant;
-use std::convert::TryFrom;
+
+use crate::RuntimeError;
 
 pub trait VariantCasts {
     fn to_file_handle(&self) -> Result<FileHandle, RuntimeError>;

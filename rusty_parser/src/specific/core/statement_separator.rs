@@ -1,3 +1,5 @@
+use rusty_common::*;
+
 /// Separator between statements.
 /// There are two cases, after a comment, or after a different kind of statement.
 ///
@@ -13,10 +15,10 @@
 /// <ws>* EOL <ws | eol>*
 /// ```
 use crate::input::RcStringView;
+use crate::pc::*;
 use crate::specific::core::comment::comment_as_string_p;
 use crate::specific::pc_specific::*;
-use crate::{pc::*, ParseError};
-use rusty_common::*;
+use crate::ParseError;
 
 pub fn comment_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     opt_and_tuple(whitespace(), any_token_of(TokenType::Eol)).and_opt(

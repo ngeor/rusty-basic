@@ -1,9 +1,10 @@
 use std::fs::File;
 
+use rusty_common::*;
+
 use crate::error::{ParseError, ParseErrorPos};
 use crate::specific::*;
 use crate::{parse, parse_main_file, parse_main_str};
-use rusty_common::*;
 
 pub fn parse_str_no_pos(input: &str) -> Vec<GlobalStatement> {
     parse(input).no_pos()

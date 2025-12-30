@@ -1,9 +1,10 @@
-use crate::converter::common::Context;
-use crate::core::ConstEvaluator;
-use crate::core::{qualifier_of_const_variant, CastVariant, HasSubprograms, LintResult};
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::*;
+
+use crate::converter::common::Context;
+use crate::core::{
+    qualifier_of_const_variant, CastVariant, ConstEvaluator, HasSubprograms, LintError, LintErrorPos, LintResult
+};
 
 pub fn on_const(ctx: &mut Context, c: Constant) -> Result<Statement, LintErrorPos> {
     let (left_side, right_side) = c.into();

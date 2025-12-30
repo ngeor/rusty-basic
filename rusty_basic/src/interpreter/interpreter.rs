@@ -1,3 +1,10 @@
+use std::collections::VecDeque;
+
+use rusty_common::*;
+use rusty_linter::{HasUserDefinedTypes, QBNumberCast};
+use rusty_parser::UserDefinedTypes;
+use rusty_variant::Variant;
+
 use super::handlers::{cast, comparison, logical, math, registers, subprogram, var_path};
 use crate::error_envelope::WithErrAt;
 use crate::instruction_generator::{Instruction, InstructionGeneratorResult, Path, PrinterType};
@@ -6,7 +13,7 @@ use crate::interpreter::context::*;
 use crate::interpreter::data_segment::DataSegment;
 use crate::interpreter::default_stdlib::DefaultStdlib;
 use crate::interpreter::handlers::allocation::{
-    allocate_array, allocate_built_in, allocate_fixed_length_string, allocate_user_defined_type,
+    allocate_array, allocate_built_in, allocate_fixed_length_string, allocate_user_defined_type
 };
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::{FileManager, Input, Printer};
@@ -18,11 +25,6 @@ use crate::interpreter::screen::{CrossTermScreen, Screen};
 use crate::interpreter::write_printer::WritePrinter;
 use crate::interpreter::Stdlib;
 use crate::{RuntimeError, RuntimeErrorPos, WithStacktrace};
-use rusty_common::*;
-use rusty_linter::{HasUserDefinedTypes, QBNumberCast};
-use rusty_parser::UserDefinedTypes;
-use rusty_variant::Variant;
-use std::collections::VecDeque;
 
 pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> {
     /// Offers system calls

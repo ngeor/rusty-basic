@@ -1,7 +1,8 @@
-use crate::fit::FitToType;
-use crate::{qb_and, qb_or, UserDefinedTypeValue, VArray, MIN_INTEGER, MIN_LONG};
 use std::cmp::Ordering;
 use std::fmt::Display;
+
+use crate::fit::FitToType;
+use crate::{qb_and, qb_or, UserDefinedTypeValue, VArray, MIN_INTEGER, MIN_LONG};
 
 #[derive(Clone, Debug)]
 pub enum Variant {

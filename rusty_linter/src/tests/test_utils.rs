@@ -1,7 +1,7 @@
+use rusty_parser::{parse, Program};
+
 use crate::core::{HasUserDefinedTypes, LintErrorPos};
 use crate::lint;
-use rusty_parser::parse;
-use rusty_parser::Program;
 
 /// Lints the given string and returns the results.
 ///

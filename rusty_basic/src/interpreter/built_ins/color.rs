@@ -1,6 +1,7 @@
+use rusty_linter::QBNumberCast;
+
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::RuntimeError;
-use rusty_linter::QBNumberCast;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let flags: i32 = interpreter.context()[0].try_cast()?;

@@ -1,6 +1,7 @@
-use crate::core::*;
 use rusty_common::*;
 use rusty_parser::BareName;
+
+use crate::core::*;
 
 #[derive(Default)]
 pub struct SubprogramContext {

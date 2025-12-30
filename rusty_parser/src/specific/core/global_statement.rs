@@ -186,9 +186,8 @@ fn next_statement() -> impl Parser<RcStringView, Output = GlobalStatementPos, Er
 }
 
 mod separator {
-    use crate::specific::core::statement_separator::no_separator_needed_before_comment;
-
     use super::*;
+    use crate::specific::core::statement_separator::no_separator_needed_before_comment;
 
     pub fn separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
         OrParser::new(vec![

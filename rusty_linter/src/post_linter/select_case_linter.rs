@@ -1,8 +1,8 @@
-use super::post_conversion_linter::PostConversionLinter;
-use crate::core::CanCastTo;
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::AtPos;
 use rusty_parser::{CaseExpression, ExpressionPos};
+
+use super::post_conversion_linter::PostConversionLinter;
+use crate::core::{CanCastTo, LintError, LintErrorPos};
 
 pub struct SelectCaseLinter;
 

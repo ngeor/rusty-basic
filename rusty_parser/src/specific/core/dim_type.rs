@@ -1,8 +1,8 @@
-use crate::specific::{
-    ArrayDimensions, BareNamePos, BuiltInStyle, Expression, ExpressionPos, ExpressionType,
-    HasExpressionType, TypeQualifier, VarType,
-};
 use rusty_common::{AtPos, Position};
+
+use crate::specific::{
+    ArrayDimensions, BareNamePos, BuiltInStyle, Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, VarType
+};
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum DimType {

@@ -1,7 +1,8 @@
-use crate::built_ins::arg_validation::ArgValidation;
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::{AtPos, Position};
 use rusty_parser::Expressions;
+
+use crate::built_ins::arg_validation::ArgValidation;
+use crate::core::{LintError, LintErrorPos};
 
 pub fn lint(args: &Expressions, pos: Position) -> Result<(), LintErrorPos> {
     // needs to be 1 + N*3 args, N >= 1

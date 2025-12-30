@@ -1,6 +1,7 @@
-use crate::core::*;
 use rusty_common::*;
 use rusty_parser::*;
+
+use crate::core::*;
 
 pub struct PrintLinter;
 

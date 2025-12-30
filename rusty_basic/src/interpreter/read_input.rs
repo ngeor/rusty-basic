@@ -1,5 +1,6 @@
-use crate::interpreter::io::Input;
 use std::io::{ErrorKind, Read};
+
+use crate::interpreter::io::Input;
 
 pub struct ReadInputSource<T: Read> {
     read: T,

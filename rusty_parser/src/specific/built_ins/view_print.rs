@@ -2,8 +2,7 @@ use crate::input::RcStringView;
 use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::BuiltInSub;
-use crate::ParseError;
+use crate::{BuiltInSub, ParseError};
 
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword_pair(Keyword::View, Keyword::Print)
@@ -22,10 +21,9 @@ fn parse_args() -> impl Parser<RcStringView, Output = Expressions, Error = Parse
 
 #[cfg(test)]
 mod tests {
-    use crate::parse;
     use crate::specific::*;
     use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
-    use crate::BuiltInSub;
+    use crate::{parse, BuiltInSub};
     #[test]
     fn parse_no_args() {
         let input = "VIEW PRINT";

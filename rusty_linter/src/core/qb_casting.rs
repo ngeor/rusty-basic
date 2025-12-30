@@ -1,6 +1,7 @@
-use crate::core::LintError;
 use rusty_parser::TypeQualifier;
 use rusty_variant::{Variant, MAX_INTEGER, MAX_LONG, MIN_INTEGER, MIN_LONG};
+
+use crate::core::LintError;
 
 pub trait QBNumberCast<T> {
     fn try_cast(&self) -> Result<T, LintError>;
@@ -458,8 +459,9 @@ mod tests {
     }
 
     mod try_from {
-        use super::*;
         use rusty_variant::{V_FALSE, V_TRUE};
+
+        use super::*;
 
         #[test]
         fn test_bool_try_from() {

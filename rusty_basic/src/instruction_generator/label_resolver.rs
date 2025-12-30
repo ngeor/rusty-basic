@@ -1,6 +1,8 @@
-use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionPos};
-use rusty_common::{CaseInsensitiveString, Positioned};
 use std::collections::HashMap;
+
+use rusty_common::{CaseInsensitiveString, Positioned};
+
+use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionPos};
 
 pub struct LabelResolver {
     pub instructions: Vec<InstructionPos>,

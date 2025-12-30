@@ -1,8 +1,9 @@
+use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::parser_declaration;
 #[cfg(debug_assertions)]
 use crate::pc::ParseResult;
-use crate::{error::ParseError, pc::Parser};
+use crate::pc::Parser;
 
 #[allow(dead_code)]
 pub trait Logging: Parser<RcStringView, Error = ParseError>

@@ -1,6 +1,7 @@
-use crate::core::LintErrorPos;
 use rusty_common::*;
 use rusty_parser::*;
+
+use crate::core::LintErrorPos;
 
 /// Visits the converted program and transforms it into a different program.
 ///

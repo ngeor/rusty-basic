@@ -1,18 +1,15 @@
-use crate::instruction_generator::label_resolver::LabelResolver;
-use crate::instruction_generator::subprogram_info::{
-    SubprogramInfoCollector, SubprogramInfoRepository,
-};
-use crate::RuntimeError;
 use rusty_common::{AtPos, CaseInsensitiveString, Position, Positioned};
 use rusty_linter::{Context, Names, SubprogramName};
-use rusty_parser::{Assignment, BuiltInSub};
 use rusty_parser::{
-    BareName, DimVar, Expression, ExpressionType, FileHandle, FunctionImplementation,
-    GlobalStatement, HasExpressionType, Name, Parameter, Program, Statement, Statements,
-    SubImplementation, TypeQualifier,
+    Assignment, BareName, BuiltInFunction, BuiltInSub, DimVar, Expression, ExpressionType, FileHandle, FunctionImplementation, GlobalStatement, HasExpressionType, Name, Parameter, Program, Statement, Statements, SubImplementation, TypeQualifier, UserDefinedTypes
 };
-use rusty_parser::{BuiltInFunction, UserDefinedTypes};
 use rusty_variant::Variant;
+
+use crate::instruction_generator::label_resolver::LabelResolver;
+use crate::instruction_generator::subprogram_info::{
+    SubprogramInfoCollector, SubprogramInfoRepository
+};
+use crate::RuntimeError;
 
 pub fn unwrap_linter_context(linter_context: Context) -> (Names, UserDefinedTypes) {
     let (pre_linter_result, linter_names) = linter_context.into();

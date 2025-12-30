@@ -1,3 +1,5 @@
+use std::fs::File;
+
 use rusty_common::Position;
 
 use crate::error::ParseError;
@@ -7,7 +9,6 @@ use crate::specific::pc_specific::recognizers_impl::string_parsers::CharToString
 use crate::specific::pc_specific::recognizers_impl::token_parsers::StringToTokenParser;
 use crate::specific::pc_specific::TokenType;
 use crate::Keyword;
-use std::fs::File;
 
 // TODO keyword --> ensure not followed by dollar sign
 // TODO make identifier recognizer without dot

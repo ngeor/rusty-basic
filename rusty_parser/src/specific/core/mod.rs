@@ -49,38 +49,29 @@ pub use self::built_in_style::BuiltInStyle;
 pub use self::def_type::DefType;
 pub use self::dim_name::{DimNameBuilder, DimVar, DimVarPos, DimVars};
 pub use self::dim_type::*;
+// export some parsers needed by `built_ins` which are in a different module
+pub use self::expression::file_handle::*;
 pub use self::expression::{
-    Expression, ExpressionPos, ExpressionPosTrait, ExpressionTrait, Expressions,
+    csv_expressions_first_guarded, csv_expressions_non_opt, expr_pos_ws_p, expression_pos_p, in_parenthesis_csv_expressions_non_opt, ws_expr_pos_p, ws_expr_pos_ws_p, Expression, ExpressionPos, ExpressionPosTrait, ExpressionTrait, Expressions
 };
 pub use self::expression_type::{ExpressionType, HasExpressionType};
 pub use self::file_constants::*;
 pub use self::global_statement::{
-    program_parser_p, FunctionDeclaration, FunctionImplementation, GlobalStatement,
-    GlobalStatementPos, Program, SubDeclaration, SubImplementation, SubprogramImplementation,
+    program_parser_p, FunctionDeclaration, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, SubDeclaration, SubImplementation, SubprogramImplementation
 };
 pub use self::keyword::Keyword;
 pub use self::letter_range::LetterRange;
-pub use self::name::{Name, NameAsTokens, NamePos};
+pub use self::name::{name_with_dots, Name, NameAsTokens, NamePos};
 pub use self::operator::Operator;
 pub use self::param_name::{ParamType, Parameter, ParameterPos, Parameters};
 pub use self::print::{Print, PrintArg};
 pub use self::statement::{
-    Assignment, BuiltInSubCall, CaseBlock, CaseExpression, ConditionalBlock, Constant, DimList,
-    DoLoop, DoLoopConditionKind, DoLoopConditionPosition, ExitObject, ForLoop, IfBlock,
-    OnErrorOption, ResumeOption, SelectCase, Statement, StatementPos, Statements, SubCall,
+    Assignment, BuiltInSubCall, CaseBlock, CaseExpression, ConditionalBlock, Constant, DimList, DoLoop, DoLoopConditionKind, DoLoopConditionPosition, ExitObject, ForLoop, IfBlock, OnErrorOption, ResumeOption, SelectCase, Statement, StatementPos, Statements, SubCall
 };
 pub use self::type_qualifier::TypeQualifier;
 pub use self::unary_operator::UnaryOperator;
 pub use self::user_defined_type::{
-    Element, ElementPos, ElementType, UserDefinedType, UserDefinedTypes,
+    Element, ElementPos, ElementType, UserDefinedType, UserDefinedTypes
 };
 pub use self::var_name::*;
 pub use self::variable_info::{RedimInfo, VariableInfo};
-
-// export some parsers needed by `built_ins` which are in a different module
-pub use self::expression::file_handle::*;
-pub use self::expression::{
-    csv_expressions_first_guarded, csv_expressions_non_opt, expr_pos_ws_p, expression_pos_p,
-    in_parenthesis_csv_expressions_non_opt, ws_expr_pos_p, ws_expr_pos_ws_p,
-};
-pub use self::name::name_with_dots;

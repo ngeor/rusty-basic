@@ -1,11 +1,10 @@
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc::*;
-use crate::specific::core::statement::single_line_non_comment_statement_p;
-use crate::specific::core::statement::single_line_statement_p;
-use crate::specific::core::statement::statement_p;
-use crate::specific::core::statement_separator::comment_separator;
-use crate::specific::core::statement_separator::common_separator;
+use crate::specific::core::statement::{
+    single_line_non_comment_statement_p, single_line_statement_p, statement_p
+};
+use crate::specific::core::statement_separator::{comment_separator, common_separator};
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 

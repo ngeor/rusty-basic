@@ -1,5 +1,6 @@
-use crate::core::TypeResolver;
 use rusty_parser::{DefType, LetterRange, TypeQualifier};
+
+use crate::core::TypeResolver;
 
 const LETTER_COUNT: usize = 26;
 

@@ -17,9 +17,8 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assert_interpreter_err;
-    use crate::assert_prints;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
+    use crate::{assert_interpreter_err, assert_prints};
 
     #[test]
     fn test_happy_flow() {

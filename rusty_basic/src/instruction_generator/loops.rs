@@ -1,11 +1,11 @@
-use super::{Instruction, InstructionGenerator, Visitor};
-use crate::RuntimeError;
 use rusty_common::*;
 use rusty_parser::{
-    ConditionalBlock, DoLoop, DoLoopConditionKind, DoLoopConditionPosition, Expression,
-    ExpressionPos, ForLoop, HasExpressionType, Statements,
+    ConditionalBlock, DoLoop, DoLoopConditionKind, DoLoopConditionPosition, Expression, ExpressionPos, ForLoop, HasExpressionType, Statements
 };
 use rusty_variant::Variant;
+
+use super::{Instruction, InstructionGenerator, Visitor};
+use crate::RuntimeError;
 
 impl InstructionGenerator {
     pub fn generate_while_instructions(&mut self, w: ConditionalBlock, pos: Position) {

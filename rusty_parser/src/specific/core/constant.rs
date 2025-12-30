@@ -1,9 +1,10 @@
 use crate::input::RcStringView;
+use crate::pc::*;
 use crate::specific::core::expression::expression_pos_p;
 use crate::specific::core::name::name_with_dots;
 use crate::specific::pc_specific::*;
 use crate::specific::{Keyword, Statement};
-use crate::{pc::*, ParseError};
+use crate::ParseError;
 
 pub fn constant_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq5(
@@ -20,10 +21,11 @@ pub fn constant_p() -> impl Parser<RcStringView, Output = Statement, Error = Par
 
 #[cfg(test)]
 mod tests {
+    use rusty_common::*;
+
     use crate::specific::*;
     use crate::test_utils::*;
     use crate::*;
-    use rusty_common::*;
 
     #[test]
     fn parse_const() {

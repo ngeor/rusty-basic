@@ -1,7 +1,5 @@
-use crate::{
-    pc::{ParseResult, Parser},
-    ParseError,
-};
+use crate::pc::{ParseResult, Parser};
+use crate::ParseError;
 
 pub trait WithExpected<I>: Parser<I, Error = ParseError>
 where

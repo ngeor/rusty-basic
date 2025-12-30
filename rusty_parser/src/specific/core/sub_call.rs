@@ -1,12 +1,13 @@
+use rusty_common::*;
+
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc::*;
-use crate::specific::core::expression::csv_expressions_first_guarded;
-use crate::specific::core::expression::expression_pos_p;
-use crate::specific::core::expression::property;
+use crate::specific::core::expression::{
+    csv_expressions_first_guarded, expression_pos_p, property
+};
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use rusty_common::*;
 
 // SubCall                  ::= SubCallNoArgs | SubCallArgsNoParenthesis | SubCallArgsParenthesis
 // SubCallNoArgs            ::= BareName [eof | eol | ' | <ws+>: ]
@@ -110,12 +111,11 @@ fn fold_to_bare_name(expr: Expression) -> Result<BareName, ParseError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_sub_call;
+    use rusty_common::*;
+
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::BuiltInSub;
-    use crate::*;
-    use rusty_common::*;
+    use crate::{assert_sub_call, BuiltInSub, *};
 
     #[test]
     fn test_parse_sub_call_no_args() {

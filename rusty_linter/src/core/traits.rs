@@ -1,7 +1,8 @@
-use crate::core::{ResolvedParamType, SignatureMap};
 use rusty_parser::{
-    Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UserDefinedTypes,
+    Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UserDefinedTypes
 };
+
+use crate::core::{ResolvedParamType, SignatureMap};
 
 pub trait HasSubprograms {
     fn functions(&self) -> &SignatureMap;

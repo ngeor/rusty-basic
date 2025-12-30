@@ -1,7 +1,8 @@
-use crate::RuntimeError;
 use rusty_common::{CaseInsensitiveString, NoPosIterTrait, Positioned};
 use rusty_parser::{BareName, ElementType, ExpressionType, TypeQualifier, UserDefinedTypes};
 use rusty_variant::{UserDefinedTypeValue, VArray, Variant};
+
+use crate::RuntimeError;
 
 /// TODO add unit tests
 

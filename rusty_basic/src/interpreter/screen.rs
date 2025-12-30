@@ -1,12 +1,13 @@
 //! For text mode applications.
 
-use crate::RuntimeError;
+use std::io::stdout;
+
 use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::style::{Color, SetBackgroundColor, SetForegroundColor};
 use crossterm::terminal::{Clear, ClearType};
-use crossterm::Command;
-use crossterm::ExecutableCommand;
-use std::io::stdout;
+use crossterm::{Command, ExecutableCommand};
+
+use crate::RuntimeError;
 
 pub trait Screen {
     fn cls(&self) -> Result<(), RuntimeError>;

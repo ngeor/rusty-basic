@@ -1,7 +1,8 @@
-use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::RuntimeError;
 use rusty_linter::CastVariant;
 use rusty_parser::TypeQualifier;
+
+use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::RuntimeError;
 
 pub fn and<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), RuntimeError> {
     let a = interpreter

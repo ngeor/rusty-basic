@@ -1,6 +1,7 @@
+use rusty_linter::{qualifier_of_variant, CastVariant};
+
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::RuntimeError;
-use rusty_linter::{qualifier_of_variant, CastVariant};
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     // variables are passed by ref, so we can assign to them
@@ -17,9 +18,8 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assert_interpreter_err;
-    use crate::assert_prints;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
+    use crate::{assert_interpreter_err, assert_prints};
 
     #[test]
     fn data_read_print() {

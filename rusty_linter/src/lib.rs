@@ -7,18 +7,17 @@ mod pre_linter;
 #[cfg(test)]
 mod tests;
 
-pub use self::core::{
-    qualifier_of_variant, CastVariant, HasUserDefinedTypes, LintError, QBNumberCast, SubprogramName,
-};
+use rusty_parser::Program;
 
 pub use self::converter::Context;
+pub use self::core::{
+    qualifier_of_variant, CastVariant, HasUserDefinedTypes, LintError, QBNumberCast, SubprogramName
+};
 pub use self::names::Names;
-
 use crate::converter::convert;
 use crate::core::LintErrorPos;
 use crate::post_linter::post_linter;
 use crate::pre_linter::pre_lint_program;
-use rusty_parser::Program;
 
 pub fn lint(program: Program) -> Result<(Program, Context), LintErrorPos> {
     // first pass, get user defined types and functions/subs

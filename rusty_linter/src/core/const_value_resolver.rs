@@ -1,8 +1,10 @@
-use crate::core::{LintError, LintErrorPos};
+use std::cmp::Ordering;
+
 use rusty_common::*;
 use rusty_parser::{AsBareName, Expression, ExpressionPos, Operator, TypeQualifier, UnaryOperator};
 use rusty_variant::Variant;
-use std::cmp::Ordering;
+
+use crate::core::{LintError, LintErrorPos};
 
 /// A lookup map of resolved constant values.
 pub trait ConstLookup {

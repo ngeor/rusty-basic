@@ -1,7 +1,6 @@
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc::{default_parse_error, ParseResult, Parser, Token};
-
 // TODO: fix this
 use crate::specific::token_parser;
 

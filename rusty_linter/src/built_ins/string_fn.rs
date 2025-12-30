@@ -1,8 +1,8 @@
-use crate::built_ins::arg_validation::ArgValidation;
-use crate::core::CanCastTo;
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::{AtPos, Position};
 use rusty_parser::{Expressions, TypeQualifier};
+
+use crate::built_ins::arg_validation::ArgValidation;
+use crate::core::{CanCastTo, LintError, LintErrorPos};
 
 pub fn lint(args: &Expressions, pos: Position) -> Result<(), LintErrorPos> {
     if args.len() != 2 {

@@ -1,9 +1,9 @@
-use crate::core::CanCastTo;
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::AtPos;
 use rusty_parser::{
-    Expression, ExpressionPos, ExpressionType, HasExpressionType, Operator, TypeQualifier,
+    Expression, ExpressionPos, ExpressionType, HasExpressionType, Operator, TypeQualifier
 };
+
+use crate::core::{CanCastTo, LintError, LintErrorPos};
 
 pub fn binary_cast(
     left: ExpressionPos,

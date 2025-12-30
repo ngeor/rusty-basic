@@ -1,10 +1,10 @@
+use rusty_common::{AtPos, Position, Positioned};
+
 use crate::input::RcStringView;
 use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::BuiltInSub;
-use crate::ParseError;
-use rusty_common::{AtPos, Position, Positioned};
+use crate::{BuiltInSub, ParseError};
 
 /// Parses built-in subs with optional arguments.
 /// Used only by `COLOR` and `LOCATE`.

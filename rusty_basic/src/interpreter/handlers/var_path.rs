@@ -1,9 +1,10 @@
-use crate::instruction_generator::{Path, RootPath};
-use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::RuntimeError;
 use rusty_linter::QBNumberCast;
 use rusty_parser::BareName;
 use rusty_variant::Variant;
+
+use crate::instruction_generator::{Path, RootPath};
+use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::RuntimeError;
 
 pub fn var_path_name<T: InterpreterTrait>(interpreter: &mut T, root_path: RootPath) {
     interpreter

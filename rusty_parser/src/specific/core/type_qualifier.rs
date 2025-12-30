@@ -1,6 +1,7 @@
-use crate::error::ParseError;
 use std::convert::TryFrom;
 use std::fmt::Display;
+
+use crate::error::ParseError;
 
 /// The optional character postfix that specifies the type of a name.
 /// Example: A$ denotes a string variable

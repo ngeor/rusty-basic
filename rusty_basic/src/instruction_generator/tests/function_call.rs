@@ -1,8 +1,8 @@
+use rusty_common::AtPos;
+use rusty_parser::{BuiltInFunction, Name, TypeQualifier};
+
 use crate::instruction_generator::test_utils::*;
 use crate::instruction_generator::{Instruction, RootPath};
-use rusty_common::AtPos;
-use rusty_parser::TypeQualifier;
-use rusty_parser::{BuiltInFunction, Name};
 
 #[test]
 fn test_built_in_len_with_string_variable_parameter() {

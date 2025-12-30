@@ -1,8 +1,9 @@
+use rusty_common::*;
+use rusty_parser::*;
+
 use crate::assert_linter_err;
 use crate::core::LintError;
 use crate::tests::test_utils::linter_ok;
-use rusty_common::*;
-use rusty_parser::*;
 
 #[test]
 fn test_dim_duplicate_definition_same_builtin_type() {

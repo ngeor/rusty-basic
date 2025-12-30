@@ -1,7 +1,8 @@
-use super::{Instruction, InstructionGenerator, RootPath};
 use rusty_common::*;
 use rusty_parser::*;
 use rusty_variant::Variant;
+
+use super::{Instruction, InstructionGenerator, RootPath};
 
 impl InstructionGenerator {
     pub fn generate_expression_instructions_casting(

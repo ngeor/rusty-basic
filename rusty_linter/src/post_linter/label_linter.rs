@@ -1,9 +1,10 @@
-use super::post_conversion_linter::*;
-use crate::core::LintResult;
-use crate::core::{LintError, LintErrorPos};
+use std::collections::{HashMap, HashSet};
+
 use rusty_common::*;
 use rusty_parser::*;
-use std::collections::{HashMap, HashSet};
+
+use super::post_conversion_linter::*;
+use crate::core::{LintError, LintErrorPos, LintResult};
 
 #[derive(Default)]
 pub struct LabelLinter {

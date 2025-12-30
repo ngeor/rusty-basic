@@ -1,12 +1,11 @@
+use rusty_common::Positioned;
+
 use crate::input::RcStringView;
 use crate::pc::*;
 use crate::specific::core::var_name;
 use crate::specific::pc_specific::*;
-use crate::specific::Keyword;
-use crate::specific::*;
+use crate::specific::{Keyword, *};
 use crate::ParseError;
-
-use rusty_common::Positioned;
 
 pub type Parameter = TypedName<ParamType>;
 pub type ParameterPos = Positioned<Parameter>;

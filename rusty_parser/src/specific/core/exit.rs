@@ -1,7 +1,8 @@
 use crate::input::RcStringView;
+use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::{ExitObject, Keyword, Statement};
-use crate::{pc::*, ParseError};
+use crate::ParseError;
 
 pub fn statement_exit_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq3(

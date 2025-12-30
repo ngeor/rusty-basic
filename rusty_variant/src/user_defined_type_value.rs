@@ -1,8 +1,10 @@
-use crate::Variant;
-use rusty_common::{CaseInsensitiveStr, CaseInsensitiveString};
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::Hash;
+
+use rusty_common::{CaseInsensitiveStr, CaseInsensitiveString};
+
+use crate::Variant;
 
 /// Holds a value of a user defined type.
 #[derive(Clone, Debug)]

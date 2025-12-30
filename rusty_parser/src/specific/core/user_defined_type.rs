@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::slice::Iter;
 
+use rusty_common::Positioned;
+
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc::*;
@@ -9,7 +11,6 @@ use crate::specific::core::name::bare_name_without_dots;
 use crate::specific::core::statement_separator::comments_and_whitespace_p;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use rusty_common::Positioned;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UserDefinedType {
@@ -215,12 +216,12 @@ fn demand_string_length_p() -> impl Parser<RcStringView, Output = ExpressionPos,
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
+    use rusty_common::AtPos;
+
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::*;
-    use rusty_common::AtPos;
+    use crate::{assert_parser_err, *};
 
     #[test]
     fn parse_type() {

@@ -18,8 +18,7 @@ pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError>
 mod tests {
     use crate::assert_has_variable;
     use crate::interpreter::test_utils::*;
-    use crate::interpreter::InterpreterTrait;
-    use crate::interpreter::Stdlib;
+    use crate::interpreter::{InterpreterTrait, Stdlib};
 
     #[test]
     fn test_function_call_environ() {

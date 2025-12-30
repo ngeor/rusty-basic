@@ -1,16 +1,11 @@
-use crate::converter::common::Context;
-use crate::converter::common::Convertible;
-use crate::converter::common::ConvertibleIn;
-use crate::core::IntoQualified;
-use crate::core::LintErrorPos;
-use crate::core::SubprogramName;
-use crate::names::ImplicitVars;
-use rusty_common::Position;
-use rusty_common::{AtPos, Positioned};
+use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{
-    DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement,
-    Statements, SubImplementation,
+    DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement, Statements, SubImplementation
 };
+
+use crate::converter::common::{Context, Convertible, ConvertibleIn};
+use crate::core::{IntoQualified, LintErrorPos, SubprogramName};
+use crate::names::ImplicitVars;
 
 impl Convertible for Program {
     fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {

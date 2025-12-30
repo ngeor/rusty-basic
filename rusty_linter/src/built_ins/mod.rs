@@ -46,12 +46,10 @@ mod varseg;
 mod view_print;
 mod width;
 
-use crate::core::LintErrorPos;
-use crate::core::NameContext;
 use rusty_common::Position;
-use rusty_parser::BuiltInFunction;
-use rusty_parser::BuiltInSub;
-use rusty_parser::Expressions;
+use rusty_parser::{BuiltInFunction, BuiltInSub, Expressions};
+
+use crate::core::{LintErrorPos, NameContext};
 
 pub fn lint_sub_call(
     built_in_sub: &BuiltInSub,

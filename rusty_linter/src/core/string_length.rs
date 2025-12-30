@@ -1,7 +1,8 @@
-use crate::core::{ConstLookup, LintError};
 use rusty_common::Positioned;
 use rusty_parser::{AsBareName, Expression, TypeQualifier};
 use rusty_variant::{Variant, MAX_INTEGER};
+
+use crate::core::{ConstLookup, LintError};
 
 pub trait ValidateStringLength<E, C: ConstLookup + ?Sized> {
     fn validate_string_length(&self, const_lookup: &C) -> Result<u16, E>;

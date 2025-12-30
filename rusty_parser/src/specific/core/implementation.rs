@@ -1,7 +1,6 @@
 use crate::input::RcStringView;
 use crate::pc::*;
-use crate::specific::core::declaration::function_declaration_p;
-use crate::specific::core::declaration::sub_declaration_p;
+use crate::specific::core::declaration::{function_declaration_p, sub_declaration_p};
 use crate::specific::core::statements::ZeroOrMoreStatements;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
@@ -63,12 +62,12 @@ where
 
 #[cfg(test)]
 mod tests {
+    use rusty_common::*;
+
     use super::*;
-    use crate::assert_parser_err;
     use crate::error::ParseError;
     use crate::test_utils::*;
-    use crate::*;
-    use rusty_common::*;
+    use crate::{assert_parser_err, *};
 
     #[test]
     fn test_function_implementation() {

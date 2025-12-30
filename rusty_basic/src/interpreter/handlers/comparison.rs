@@ -1,6 +1,7 @@
+use std::cmp::Ordering;
+
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::RuntimeError;
-use std::cmp::Ordering;
 
 pub fn equal<T: InterpreterTrait>(interpreter: &mut T) -> Result<(), RuntimeError> {
     cmp(interpreter, |order| order == Ordering::Equal)

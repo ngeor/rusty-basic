@@ -1,5 +1,6 @@
-use crate::interpreter::io::Printer;
 use std::io::Write;
+
+use crate::interpreter::io::Printer;
 
 pub struct WritePrinter<T: Write> {
     writer: T,

@@ -1,9 +1,10 @@
 use crate::input::RcStringView;
+use crate::pc::*;
 use crate::specific::pc_specific::{
-    any_token, any_token_of, dollar_sign, peek_token, whitespace, TokenType, WithExpected,
+    any_token, any_token_of, dollar_sign, peek_token, whitespace, TokenType, WithExpected
 };
 use crate::specific::Keyword;
-use crate::{pc::*, ParseError};
+use crate::ParseError;
 
 // TODO review usages of TokenType::Keyword
 

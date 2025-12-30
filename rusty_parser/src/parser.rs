@@ -1,11 +1,11 @@
-use rusty_common::AtPos;
 use std::fs::File;
+
+use rusty_common::AtPos;
 
 use crate::error::ParseErrorPos;
 use crate::input::RcStringView;
 use crate::pc::*;
-use crate::specific::{create_file_tokenizer, create_string_tokenizer};
-use crate::specific::{program_parser_p, Program};
+use crate::specific::{create_file_tokenizer, create_string_tokenizer, program_parser_p, Program};
 
 /// Parses a QBasic file.
 ///
@@ -51,10 +51,11 @@ pub fn parse_main_str(input: String) -> Result<Program, ParseErrorPos> {
 
 #[cfg(test)]
 mod tests {
+    use rusty_common::*;
+
     use crate::specific::*;
     use crate::test_utils::*;
     use crate::BuiltInSub;
-    use rusty_common::*;
 
     #[test]
     fn test_parse_fixture_fib() {

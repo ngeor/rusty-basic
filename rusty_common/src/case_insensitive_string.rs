@@ -1,10 +1,11 @@
-use crate::case_insensitive_utils::{cmp_str, hash_str};
-use crate::CaseInsensitiveStr;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
+
+use crate::case_insensitive_utils::{cmp_str, hash_str};
+use crate::CaseInsensitiveStr;
 
 /// A string that is case insensitive when comparing or checking for equality.
 #[derive(Clone, Debug)]
@@ -112,9 +113,10 @@ impl From<&str> for CaseInsensitiveString {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
+
+    use super::*;
 
     #[test]
     fn test_case_insensitive_string() {

@@ -1,7 +1,7 @@
+use rusty_common::cmp_str;
+
 use crate::pc::Token;
 use crate::specific::pc_specific::TokenType;
-
-use rusty_common::cmp_str;
 
 // From the internets:
 // Doc comments are secretly just attributes,
@@ -223,8 +223,9 @@ impl From<&Token> for Keyword {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rusty_common::Position;
+
+    use super::*;
 
     #[test]
     fn keyword_sanity_checks() {

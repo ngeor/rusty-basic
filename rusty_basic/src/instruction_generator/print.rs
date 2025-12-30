@@ -1,7 +1,8 @@
-use crate::instruction_generator::{Instruction, InstructionGenerator, PrinterType};
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{Print, PrintArg};
 use rusty_variant::V_FALSE;
+
+use crate::instruction_generator::{Instruction, InstructionGenerator, PrinterType};
 
 impl InstructionGenerator {
     pub fn generate_print_instructions(&mut self, print: Print, pos: Position) {

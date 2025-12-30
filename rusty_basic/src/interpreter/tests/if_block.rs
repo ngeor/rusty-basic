@@ -1,6 +1,5 @@
-use crate::assert_prints;
-use crate::assert_prints_nothing;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::{assert_prints, assert_prints_nothing};
 
 #[test]
 fn test_if_block_true() {

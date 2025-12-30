@@ -36,9 +36,8 @@ fn do_mid(s: &str, start: usize, opt_length: Option<usize>) -> Result<String, Ru
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assert_interpreter_err;
-    use crate::assert_prints;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
+    use crate::{assert_interpreter_err, assert_prints};
 
     #[test]
     fn test_mid_happy_flow() {

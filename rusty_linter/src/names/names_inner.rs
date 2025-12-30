@@ -3,13 +3,9 @@ use std::collections::HashMap;
 use rusty_parser::{AsBareName, BareName, Name, TypeQualifier, VariableInfo};
 use rusty_variant::Variant;
 
-use crate::{
-    core::ConstLookup,
-    names::{
-        name_info::NameInfo,
-        traits::{ManyNamesTrait, SingleNameTrait},
-    },
-};
+use crate::core::ConstLookup;
+use crate::names::name_info::NameInfo;
+use crate::names::traits::{ManyNamesTrait, SingleNameTrait};
 
 /// Stores information about multiple constants or variable names.
 /// This struct does not support multiple levels (e.g. `FUNCTION` or `SUB`).

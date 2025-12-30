@@ -1,7 +1,6 @@
-use crate::assert_has_variable;
-use crate::assert_prints;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::test_utils::*;
+use crate::{assert_has_variable, assert_prints};
 
 mod binary_plus {
     use super::*;

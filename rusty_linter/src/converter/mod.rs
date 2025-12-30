@@ -5,11 +5,12 @@ mod dim_rules;
 mod expr_rules;
 mod statement;
 
+use rusty_parser::Program;
+
 pub use self::common::Context;
 use crate::converter::common::Convertible;
 use crate::core::LintErrorPos;
 use crate::pre_linter::PreLinterResult;
-use rusty_parser::Program;
 
 pub fn convert(
     program: Program,

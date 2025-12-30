@@ -1,9 +1,10 @@
 use crate::input::RcStringView;
+use crate::pc::*;
 use crate::specific::core::name::bare_name_with_dots;
 use crate::specific::core::statement_separator::peek_eof_or_statement_separator;
 use crate::specific::pc_specific::*;
 use crate::specific::{Keyword, ResumeOption, Statement};
-use crate::{pc::*, ParseError};
+use crate::ParseError;
 
 // RESUME
 // RESUME NEXT

@@ -89,8 +89,7 @@ mod tests {
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::*;
-    use crate::{assert_def_type, assert_parser_err};
+    use crate::{assert_def_type, assert_parser_err, *};
 
     #[test]
     fn test_parse_def_int_a_z() {

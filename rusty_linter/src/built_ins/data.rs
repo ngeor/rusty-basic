@@ -1,7 +1,7 @@
-use crate::core::NameContext;
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::{AtPos, Position};
 use rusty_parser::{Expression, ExpressionPos, Expressions};
+
+use crate::core::{LintError, LintErrorPos, NameContext};
 
 pub fn lint(
     args: &Expressions,

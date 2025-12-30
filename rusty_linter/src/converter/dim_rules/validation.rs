@@ -1,9 +1,10 @@
-use crate::converter::common::Context;
-use crate::core::{ConstLookup, IntoTypeQualifier};
-use crate::core::{HasSubprograms, HasUserDefinedTypes};
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{AsBareName, DimVar, Parameter, TypedName, VarType};
+
+use crate::converter::common::Context;
+use crate::core::{
+    ConstLookup, HasSubprograms, HasUserDefinedTypes, IntoTypeQualifier, LintError, LintErrorPos
+};
 
 pub fn validate<T: VarType>(
     var_name: &TypedName<T>,

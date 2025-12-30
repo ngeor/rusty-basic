@@ -1,11 +1,10 @@
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::rc::Rc;
+
 use rusty_common::{HasPos, Position};
 
 use super::row_col_view::*;
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    rc::Rc,
-};
 
 pub struct StringView {
     chars: Vec<char>,

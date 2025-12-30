@@ -1,7 +1,8 @@
-use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionGenerator};
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_linter::SubprogramName;
 use rusty_parser::*;
+
+use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionGenerator};
 
 impl InstructionGenerator {
     pub fn generate_built_in_function_call_instructions(

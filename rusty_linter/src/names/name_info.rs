@@ -1,7 +1,8 @@
 use rusty_parser::{BuiltInStyle, TypeQualifier, VariableInfo};
 use rusty_variant::Variant;
 
-use crate::names::{compacts::Compacts, traits::SingleNameTrait};
+use crate::names::compacts::Compacts;
+use crate::names::traits::SingleNameTrait;
 
 /// Stores information about a constant or variable name.
 /// The name itself isn't stored here.

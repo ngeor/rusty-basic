@@ -1,12 +1,11 @@
 use rusty_common::{AtPos, Position};
 use rusty_parser::{
-    AsBareName, BareName, Expression, ExpressionType, Expressions, Name, VariableInfo,
+    AsBareName, BareName, Expression, ExpressionType, Expressions, Name, VariableInfo
 };
 
 use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
-use crate::core::{IntoQualified, IntoTypeQualifier, LintResult};
-use crate::core::{LintError, LintErrorPos};
+use crate::core::{IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult};
 
 pub fn convert(
     ctx: &mut Context,

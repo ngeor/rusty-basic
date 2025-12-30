@@ -1,10 +1,9 @@
-use crate::core::CanCastTo;
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::{AtPos, Position};
 use rusty_parser::{
-    Expression, ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType,
-    TypeQualifier, VariableInfo,
+    Expression, ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType, TypeQualifier, VariableInfo
 };
+
+use crate::core::{CanCastTo, LintError, LintErrorPos};
 
 pub trait ArgValidation {
     fn require_integer_argument(&self, index: usize) -> Result<(), LintErrorPos>;

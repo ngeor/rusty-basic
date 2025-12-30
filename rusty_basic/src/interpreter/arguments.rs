@@ -1,8 +1,10 @@
-use crate::instruction_generator::Path;
-use rusty_parser::Parameter;
-use rusty_variant::Variant;
 use std::slice::Iter;
 use std::vec::IntoIter;
+
+use rusty_parser::Parameter;
+use rusty_variant::Variant;
+
+use crate::instruction_generator::Path;
 
 #[derive(Debug, Default)]
 pub struct Arguments {

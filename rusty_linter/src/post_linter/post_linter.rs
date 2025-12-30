@@ -1,14 +1,11 @@
-use crate::core::HasSubprograms;
-use crate::core::LintErrorPos;
-use crate::core::Visitor;
+use rusty_parser::Program;
+
+use crate::core::{HasSubprograms, LintErrorPos, Visitor};
 use crate::post_linter::expression_reducer::ExpressionReducer;
 use crate::post_linter::post_conversion_linter::PostConversionLinter;
 use crate::post_linter::{
-    built_in_linter, condition_type_linter, dots_linter, for_next_counter_match_linter,
-    label_linter, print_linter, select_case_linter, undefined_function_reducer,
-    user_defined_function_linter, user_defined_sub_linter,
+    built_in_linter, condition_type_linter, dots_linter, for_next_counter_match_linter, label_linter, print_linter, select_case_linter, undefined_function_reducer, user_defined_function_linter, user_defined_sub_linter
 };
-use rusty_parser::Program;
 
 pub fn post_linter(
     result: Program,

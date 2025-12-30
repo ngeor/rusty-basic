@@ -24,12 +24,12 @@ pub fn while_wend_p() -> impl Parser<RcStringView, Output = Statement, Error = P
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
+    use rusty_common::*;
+
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::*;
-    use rusty_common::*;
+    use crate::{assert_parser_err, *};
     #[test]
     fn test_while_wend_leading_whitespace() {
         let input = "

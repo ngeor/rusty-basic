@@ -1,12 +1,9 @@
-use crate::converter::common::Context;
-use crate::converter::common::Convertible;
-use crate::converter::common::ConvertibleIn;
-use crate::converter::common::{DimContext, ExprContext};
-use crate::converter::statement::{assignment, const_rules};
-use crate::core::NameContext;
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::{ExitObject, Statement};
+
+use crate::converter::common::{Context, Convertible, ConvertibleIn, DimContext, ExprContext};
+use crate::converter::statement::{assignment, const_rules};
+use crate::core::{LintError, LintErrorPos, NameContext};
 
 impl ConvertibleIn<Position> for Statement {
     fn convert_in(self, ctx: &mut Context, pos: Position) -> Result<Self, LintErrorPos> {

@@ -1,7 +1,8 @@
 use crate::input::RcStringView;
+use crate::pc::*;
 use crate::specific::pc_specific::{any_token_of, TokenType, WithExpected};
 use crate::specific::Keyword;
-use crate::{pc::*, ParseError};
+use crate::ParseError;
 
 /// Matches one of the given keywords.
 pub fn keyword_choice(

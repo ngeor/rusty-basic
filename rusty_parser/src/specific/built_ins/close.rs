@@ -1,9 +1,8 @@
 use crate::input::RcStringView;
+use crate::pc::*;
 use crate::specific::pc_specific::*;
-use crate::specific::*;
-use crate::specific::{file_handle_as_expression_pos_p, guarded_file_handle_or_expression_p};
-use crate::BuiltInSub;
-use crate::{pc::*, ParseError};
+use crate::specific::{file_handle_as_expression_pos_p, guarded_file_handle_or_expression_p, *};
+use crate::{BuiltInSub, ParseError};
 
 // <result> ::= <CLOSE> | <CLOSE><file_handles>
 // file_handles ::= <first_file_handle> | <first_file_handle> <opt-ws> "," <opt-ws> <next_file_handles>
@@ -45,13 +44,12 @@ fn file_handle_or_expression_p(
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
+    use rusty_common::*;
+
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::BuiltInSub;
-    use crate::*;
-    use rusty_common::*;
+    use crate::{assert_parser_err, BuiltInSub, *};
 
     #[test]
     fn test_no_args() {

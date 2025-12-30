@@ -1,9 +1,7 @@
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc::*;
-use crate::specific::core::expression::expr_pos_ws_p;
-use crate::specific::core::expression::property;
-use crate::specific::core::expression::ws_expr_pos_p;
+use crate::specific::core::expression::{expr_pos_ws_p, property, ws_expr_pos_p};
 use crate::specific::core::opt_second_expression::opt_second_expression_after_keyword;
 use crate::specific::core::statements::ZeroOrMoreStatements;
 use crate::specific::pc_specific::*;
@@ -70,12 +68,12 @@ fn next_counter_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error =
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
+    use rusty_common::*;
+
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::*;
-    use rusty_common::*;
+    use crate::{assert_parser_err, *};
     #[test]
     fn test_for_loop() {
         let input = "FOR I = 1 TO 10\r\nFlint I\r\nNEXT";

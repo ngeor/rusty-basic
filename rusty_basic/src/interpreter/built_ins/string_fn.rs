@@ -1,9 +1,10 @@
-use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::interpreter::variant_casts::VariantCasts;
-use crate::RuntimeError;
 use rusty_linter::QBNumberCast;
 use rusty_parser::BuiltInFunction;
 use rusty_variant::Variant;
+
+use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::interpreter::variant_casts::VariantCasts;
+use crate::RuntimeError;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let count: usize = interpreter.context()[0].to_non_negative_int()?;
@@ -45,9 +46,8 @@ fn run_with_char(count: usize, ch: char) -> Result<String, RuntimeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assert_interpreter_err;
-    use crate::assert_prints;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
+    use crate::{assert_interpreter_err, assert_prints};
 
     #[test]
     fn string_with_ascii_code() {

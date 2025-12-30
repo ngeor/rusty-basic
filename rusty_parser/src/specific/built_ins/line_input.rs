@@ -1,10 +1,9 @@
 use crate::input::RcStringView;
+use crate::pc::*;
 use crate::specific::built_ins::common::{encode_opt_file_handle_arg, opt_file_handle_comma_p};
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::{pc::*, ParseError};
-
-use crate::BuiltInSub;
+use crate::{BuiltInSub, ParseError};
 // LINE INPUT variable$
 // LINE INPUT #file-number%, variable$
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
@@ -24,13 +23,10 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_built_in_sub_call;
-    use crate::assert_parser_err;
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::BuiltInSub;
-    use crate::*;
+    use crate::{assert_built_in_sub_call, assert_parser_err, BuiltInSub, *};
     #[test]
     fn test_parse_one_variable() {
         let input = "LINE INPUT A$";

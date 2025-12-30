@@ -1,7 +1,5 @@
-use crate::assert_interpreter_err;
-use crate::assert_prints;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::RuntimeError;
+use crate::{assert_interpreter_err, assert_prints, RuntimeError};
 
 #[test]
 fn test_assign_one_element_bare() {

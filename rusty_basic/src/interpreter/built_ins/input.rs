@@ -1,10 +1,12 @@
-use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::interpreter::io::Input;
-use crate::RuntimeError;
+use std::convert::TryFrom;
+
 use rusty_linter::qualifier_of_variant;
 use rusty_parser::{FileHandle, TypeQualifier};
 use rusty_variant::Variant;
-use std::convert::TryFrom;
+
+use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::interpreter::io::Input;
+use crate::RuntimeError;
 
 pub fn run<S: InterpreterTrait>(interpreter: &mut S) -> Result<(), RuntimeError> {
     let mut file_handle: FileHandle = FileHandle::default();
@@ -94,12 +96,12 @@ fn parse_int_input(s: String) -> Result<i32, RuntimeError> {
 
 #[cfg(test)]
 mod tests {
+    use rusty_variant::Variant;
+
     use super::*;
-    use crate::assert_has_variable;
-    use crate::assert_interpreter_err;
     use crate::interpreter::interpreter_trait::InterpreterTrait;
     use crate::interpreter::test_utils::{interpret, interpret_with_raw_input};
-    use rusty_variant::Variant;
+    use crate::{assert_has_variable, assert_interpreter_err};
 
     fn assert_input<T>(
         raw_input: &str,

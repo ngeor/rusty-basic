@@ -2,16 +2,13 @@ use rusty_common::*;
 use rusty_variant::{MIN_INTEGER, MIN_LONG};
 
 use crate::input::RcStringView;
-use crate::lazy_parser;
 use crate::pc::*;
 use crate::specific::core::opt_second_expression::conditionally_opt_whitespace;
 use crate::specific::pc_specific::*;
 use crate::specific::{
-    ExpressionType, FileHandle, HasExpressionType, Name, Operator, TypeQualifier, UnaryOperator,
-    VariableInfo,
+    ExpressionType, FileHandle, HasExpressionType, Name, Operator, TypeQualifier, UnaryOperator, VariableInfo
 };
-use crate::BuiltInFunction;
-use crate::ParseError;
+use crate::{lazy_parser, BuiltInFunction, ParseError};
 
 // TODO move traits and logic that is linter specific to linter (including CanCastTo from common)
 
@@ -560,9 +557,10 @@ fn eager_expression_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos,
 
 mod single_or_double_literal {
     use crate::input::RcStringView;
+    use crate::pc::*;
     use crate::specific::pc_specific::{digits, dot, pound, SpecificTrait};
     use crate::specific::*;
-    use crate::{pc::*, ParseError};
+    use crate::ParseError;
 
     // single ::= <digits> . <digits>
     // single ::= . <digits> (without leading zero)
@@ -607,9 +605,10 @@ mod single_or_double_literal {
 
 mod string_literal {
     use crate::input::RcStringView;
+    use crate::pc::*;
     use crate::specific::pc_specific::*;
     use crate::specific::*;
-    use crate::{pc::*, ParseError};
+    use crate::ParseError;
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
         seq3(
@@ -635,12 +634,13 @@ mod string_literal {
 }
 
 mod integer_or_long_literal {
+    use rusty_variant::{BitVec, BitVecIntOrLong, MAX_INTEGER, MAX_LONG};
+
     use crate::error::ParseError;
     use crate::input::RcStringView;
     use crate::pc::*;
     use crate::specific::pc_specific::{any_token, SpecificTrait, TokenType};
     use crate::specific::*;
-    use rusty_variant::{BitVec, BitVecIntOrLong, MAX_INTEGER, MAX_LONG};
 
     // result ::= <digits> | <hex-digits> | <oct-digits>
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
@@ -757,12 +757,14 @@ mod integer_or_long_literal {
 
 // TODO consider nesting variable/function_call modules inside property as they are only used there
 mod variable {
+    use std::collections::VecDeque;
+
     use crate::input::RcStringView;
+    use crate::pc::*;
     use crate::specific::core::name::{name_with_dots_as_tokens, token_to_type_qualifier};
     use crate::specific::pc_specific::{SpecificTrait, TokenType};
     use crate::specific::*;
-    use crate::{pc::*, ParseError};
-    use std::collections::VecDeque;
+    use crate::ParseError;
 
     // variable ::= <identifier-with-dots>
     //           |  <identifier-with-dots> <type-qualifier>
@@ -837,11 +839,12 @@ mod variable {
 
 mod function_call_or_array_element {
     use crate::input::RcStringView;
+    use crate::pc::*;
     use crate::specific::core::expression::expression_pos_p;
     use crate::specific::core::name::name_with_dots_as_tokens;
     use crate::specific::pc_specific::{csv, in_parenthesis, SpecificTrait};
     use crate::specific::*;
-    use crate::{pc::*, ParseError};
+    use crate::ParseError;
 
     // function_call ::= <function-name> "(" <expr>* ")"
     // function-name ::= <identifier-with-dots>
@@ -951,7 +954,8 @@ mod built_in_function_call {
     use crate::pc::Parser;
     use crate::specific::built_ins::built_in_function_call_p;
     use crate::specific::pc_specific::SpecificTrait;
-    use crate::{specific::*, ParseError};
+    use crate::specific::*;
+    use crate::ParseError;
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
         built_in_function_call_p().with_pos()
@@ -959,16 +963,16 @@ mod built_in_function_call {
 }
 
 mod binary_expression {
+    use rusty_common::Positioned;
+
     use super::{
-        built_in_function_call, expression_pos_p, guard, integer_or_long_literal, parenthesis,
-        property, single_or_double_literal, string_literal, unary_expression,
+        built_in_function_call, expression_pos_p, guard, integer_or_long_literal, parenthesis, property, single_or_double_literal, string_literal, unary_expression
     };
     use crate::error::ParseError;
     use crate::input::RcStringView;
     use crate::pc::*;
     use crate::specific::pc_specific::{any_token, whitespace, SpecificTrait, TokenType};
     use crate::specific::*;
-    use rusty_common::Positioned;
 
     // result ::= <non-bin-expr> <operator> <expr>
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
@@ -1103,12 +1107,14 @@ mod binary_expression {
 }
 
 mod unary_expression {
+    use rusty_common::Positioned;
+
     use crate::input::RcStringView;
+    use crate::pc::*;
     use crate::specific::core::expression::{expression_pos_p, guard};
     use crate::specific::pc_specific::{keyword, minus_sign, SpecificTrait};
     use crate::specific::*;
-    use crate::{pc::*, ParseError};
-    use rusty_common::Positioned;
+    use crate::ParseError;
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
         seq2(
@@ -1131,10 +1137,11 @@ mod unary_expression {
 
 mod parenthesis {
     use crate::input::RcStringView;
+    use crate::pc::*;
     use crate::specific::core::expression::expression_pos_p;
     use crate::specific::pc_specific::{in_parenthesis, SpecificTrait};
     use crate::specific::*;
-    use crate::{pc::*, ParseError};
+    use crate::ParseError;
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
         in_parenthesis(
@@ -1148,13 +1155,14 @@ mod parenthesis {
 pub mod file_handle {
     //! Used by PRINT and built-ins
 
+    use rusty_common::*;
+
     use crate::error::ParseError;
     use crate::input::RcStringView;
     use crate::pc::*;
     use crate::specific::core::expression::ws_expr_pos_p;
     use crate::specific::pc_specific::*;
     use crate::specific::*;
-    use rusty_common::*;
 
     pub fn file_handle_p(
     ) -> impl Parser<RcStringView, Output = Positioned<FileHandle>, Error = ParseError> {
@@ -1187,8 +1195,9 @@ pub mod file_handle {
 
 pub mod guard {
     use crate::input::RcStringView;
+    use crate::pc::*;
     use crate::specific::pc_specific::{peek_token, whitespace, TokenType};
-    use crate::{pc::*, ParseError};
+    use crate::ParseError;
 
     #[derive(Default)]
     pub enum Guard {
@@ -1221,12 +1230,12 @@ pub mod guard {
 
 #[cfg(test)]
 mod tests {
+    use rusty_common::*;
+
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::*;
-    use crate::{assert_expression, assert_literal_expression, assert_parser_err, expr};
-    use rusty_common::*;
+    use crate::{assert_expression, assert_literal_expression, assert_parser_err, expr, *};
 
     #[test]
     fn test_parse_literals() {

@@ -1,12 +1,13 @@
+use rusty_parser::{
+    AsBareName, BareName, DimType, DimVar, Name, ParamType, Parameter, TypeQualifier
+};
+use rusty_variant::{Variant, V_FALSE};
+
 use crate::instruction_generator::Path;
 use crate::interpreter::arguments::{ArgumentInfo, Arguments};
 use crate::interpreter::byte_size::QByteSize;
 use crate::interpreter::handlers::allocation::allocate_built_in;
 use crate::interpreter::indexed_map::IndexedMap;
-use rusty_parser::{
-    AsBareName, BareName, DimType, DimVar, Name, ParamType, Parameter, TypeQualifier,
-};
-use rusty_variant::{Variant, V_FALSE};
 
 #[derive(Debug)]
 pub struct Variables {

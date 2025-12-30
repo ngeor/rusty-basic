@@ -1,7 +1,8 @@
-use crate::interpreter::interpreter_trait::InterpreterTrait;
-use crate::RuntimeError;
 use rusty_parser::BuiltInFunction;
 use rusty_variant::Variant;
+
+use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::RuntimeError;
 
 macro_rules! str_fmt {
         ($e: expr, $zero: expr) => {

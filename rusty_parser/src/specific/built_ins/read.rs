@@ -2,8 +2,7 @@ use crate::input::RcStringView;
 use crate::pc::*;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::BuiltInSub;
-use crate::ParseError;
+use crate::{BuiltInSub, ParseError};
 
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword(Keyword::Read)

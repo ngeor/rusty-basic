@@ -1,9 +1,9 @@
-use super::post_conversion_linter::PostConversionLinter;
-use super::user_defined_function_linter::lint_call_args;
-use crate::core::HasSubprograms;
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::SubCall;
+
+use super::post_conversion_linter::PostConversionLinter;
+use super::user_defined_function_linter::lint_call_args;
+use crate::core::{HasSubprograms, LintError, LintErrorPos};
 
 pub struct UserDefinedSubLinter<'a, R> {
     pub linter_context: &'a R,

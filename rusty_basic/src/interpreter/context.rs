@@ -1,15 +1,16 @@
+use std::borrow::Borrow;
+use std::collections::HashMap;
+
+use rusty_common::*;
+use rusty_linter::{QBNumberCast, SubprogramName};
+use rusty_parser::{BareName, BuiltInFunction, TypeQualifier};
+use rusty_variant::{bytes_to_i32, i32_to_bytes, UserDefinedTypeValue, VArray, Variant};
+
 use crate::instruction_generator::{Path, RootPath};
 use crate::interpreter::arguments::Arguments;
 use crate::interpreter::byte_size::QByteSize;
 use crate::interpreter::variables::Variables;
 use crate::RuntimeError;
-use rusty_common::*;
-use rusty_linter::{QBNumberCast, SubprogramName};
-use rusty_parser::BuiltInFunction;
-use rusty_parser::{BareName, TypeQualifier};
-use rusty_variant::{bytes_to_i32, i32_to_bytes, UserDefinedTypeValue, VArray, Variant};
-use std::borrow::Borrow;
-use std::collections::HashMap;
 
 // This is an arbitrary value, not what QBasic is doing
 pub const VAR_SEG_BASE: usize = 4_096;

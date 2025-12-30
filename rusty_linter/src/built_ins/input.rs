@@ -1,7 +1,8 @@
-use crate::built_ins::arg_validation::ArgValidation;
-use crate::core::{LintError, LintErrorPos};
 use rusty_common::*;
 use rusty_parser::{Expression, Expressions};
+
+use crate::built_ins::arg_validation::ArgValidation;
+use crate::core::{LintError, LintErrorPos};
 
 pub fn lint(args: &Expressions, pos: Position) -> Result<(), LintErrorPos> {
     // the first one or two arguments stand for the file number

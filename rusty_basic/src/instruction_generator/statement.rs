@@ -1,6 +1,7 @@
-use super::{AddressOrLabel, Instruction, InstructionGenerator, Visitor};
 use rusty_common::*;
 use rusty_parser::{OnErrorOption, ResumeOption, Statement, StatementPos, Statements};
+
+use super::{AddressOrLabel, Instruction, InstructionGenerator, Visitor};
 
 impl Visitor<Statements> for InstructionGenerator {
     fn visit(&mut self, block: Statements) {

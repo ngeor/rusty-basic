@@ -1,8 +1,9 @@
 //! In Parenthesis
 
 use crate::input::RcStringView;
+use crate::pc::*;
 use crate::specific::pc_specific::{any_token_of, whitespace, TokenType};
-use crate::{pc::*, ParseError};
+use crate::ParseError;
 
 /// In parser mode, returns Some if the opening parenthesis is present
 /// AND the decorated parser has a value.

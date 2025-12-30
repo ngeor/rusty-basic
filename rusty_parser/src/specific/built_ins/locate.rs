@@ -2,8 +2,7 @@ use crate::input::RcStringView;
 use crate::pc::*;
 use crate::specific::built_ins::common::parse_built_in_sub_with_opt_args;
 use crate::specific::*;
-use crate::BuiltInSub;
-use crate::ParseError;
+use crate::{BuiltInSub, ParseError};
 
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     // TODO limit to 2 args here so linter can be removed
@@ -12,12 +11,10 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
     use crate::error::ParseError;
-    use crate::parse;
     use crate::specific::*;
     use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
-    use crate::BuiltInSub;
+    use crate::{assert_parser_err, parse, BuiltInSub};
     #[test]
     fn parse_row() {
         let input = "LOCATE 11";

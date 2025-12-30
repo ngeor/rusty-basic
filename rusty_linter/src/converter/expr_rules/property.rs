@@ -1,13 +1,11 @@
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{
-    AsBareName, BareName, ElementType, Expression, ExpressionType, HasExpressionType, Name,
-    ToBareName, UserDefinedType, VariableInfo,
+    AsBareName, BareName, ElementType, Expression, ExpressionType, HasExpressionType, Name, ToBareName, UserDefinedType, VariableInfo
 };
 
 use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::variable::{
-    add_as_new_implicit_var, AssignToFunction, ExistingConst, ExistingVar,
-    VarAsUserDefinedFunctionCall, VarResolve,
+    add_as_new_implicit_var, AssignToFunction, ExistingConst, ExistingVar, VarAsUserDefinedFunctionCall, VarResolve
 };
 use crate::core::{HasUserDefinedTypes, LintError, LintErrorPos};
 

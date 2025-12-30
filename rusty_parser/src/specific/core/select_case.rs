@@ -1,10 +1,11 @@
 use crate::input::RcStringView;
+use crate::pc::*;
 use crate::specific::core::expression::ws_expr_pos_p;
 use crate::specific::core::statement_separator::comments_and_whitespace_p;
 use crate::specific::core::statements::ZeroOrMoreStatements;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::{pc::*, ParseError};
+use crate::ParseError;
 
 // SELECT CASE expr ' comment
 // CASE 1
@@ -105,14 +106,15 @@ fn case_expression_list(
 }
 
 mod case_expression_parser {
+    use rusty_common::Positioned;
+
     use crate::input::RcStringView;
+    use crate::pc::*;
     use crate::specific::core::expression::expression_pos_p;
     use crate::specific::core::opt_second_expression::opt_second_expression_after_keyword;
     use crate::specific::pc_specific::*;
     use crate::specific::{CaseExpression, Keyword, Operator};
-    use crate::ExpressionTrait;
-    use crate::{pc::*, ParseError};
-    use rusty_common::Positioned;
+    use crate::{ExpressionTrait, ParseError};
 
     pub fn parser() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParseError> {
         case_is().or(simple_or_range())
@@ -159,12 +161,12 @@ mod case_expression_parser {
 
 #[cfg(test)]
 mod tests {
+    use rusty_common::*;
+
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::*;
-    use crate::{assert_parser_err, bin_exp, int_lit, paren_exp};
-    use rusty_common::*;
+    use crate::{assert_parser_err, bin_exp, int_lit, paren_exp, *};
     #[test]
     fn test_select_case_inline_comment() {
         let input = r#"

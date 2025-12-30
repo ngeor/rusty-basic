@@ -1,5 +1,22 @@
 use crate::{ParseResult, Parser, parser_declaration};
 
+parser_declaration!(pub(crate)struct NoIncompleteParser);
+
+impl<I, P> Parser<I> for NoIncompleteParser<P>
+where
+    P: Parser<I>,
+{
+    type Output = P::Output;
+    type Error = P::Error;
+
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
+        match self.parser.parse(tokenizer) {
+            Ok(value) => Ok(value),
+            Err((_, i, err)) => Err((true, i, err)),
+        }
+    }
+}
+
 pub trait Errors<I>: Parser<I>
 where
     Self: Sized,
@@ -9,10 +26,6 @@ where
         Self::Error: Clone,
     {
         OrFailParser::new(self, err)
-    }
-
-    fn no_incomplete(self) -> impl Parser<I, Output = Self::Output, Error = Self::Error> {
-        NoIncompleteParser::new(self)
     }
 }
 
@@ -42,23 +55,6 @@ where
             Ok(value) => Ok(value),
             Err((false, i, _)) => Err((true, i, self.err.clone())),
             Err(err) => Err(err),
-        }
-    }
-}
-
-parser_declaration!(struct NoIncompleteParser);
-
-impl<I, P> Parser<I> for NoIncompleteParser<P>
-where
-    P: Parser<I>,
-{
-    type Output = P::Output;
-    type Error = P::Error;
-
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
-        match self.parser.parse(tokenizer) {
-            Ok(value) => Ok(value),
-            Err((_, i, err)) => Err((true, i, err)),
         }
     }
 }

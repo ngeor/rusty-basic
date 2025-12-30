@@ -2,7 +2,7 @@
 name = "rusty_basic"
 version = "0.8.0"
 authors = ["Nikolaos Georgiou <nikolaos.georgiou@gmail.com>"]
-edition = "2018"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

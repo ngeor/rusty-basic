@@ -113,6 +113,7 @@ where
     P: Parser<RcStringView, Output = T, Error = ParseError> + 'static,
 {
     Seq2::new(name_with_dots(), array_p).then_with(
+        // TODO the name_chain prevents upgrading to `edition = 2024`
         move |(name, _)| name_chain(name, built_in_extended_factory),
         |(name, array), var_type| {
             let bare_name: BareName = name.to_bare_name();

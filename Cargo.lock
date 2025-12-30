@@ -228,8 +228,13 @@ name = "rusty_parser"
 version = "0.1.0"
 dependencies = [
  "rusty_common",
+ "rusty_pc",
  "rusty_variant",
 ]
+
+[[package]]
+name = "rusty_pc"
+version = "0.1.0"
 
 [[package]]
 name = "rusty_variant"

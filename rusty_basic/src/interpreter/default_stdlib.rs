@@ -15,6 +15,8 @@ impl Stdlib for DefaultStdlib {
     }
 
     fn set_env_var(&mut self, name: String, value: String) {
-        std::env::set_var(name, value);
+        unsafe {
+            std::env::set_var(name, value);
+        }
     }
 }

@@ -21,3 +21,10 @@ coverage:
 
 clean:
 	cargo clean
+
+# prints the size of the types
+#
+# perl -e 'print sort { length($b) <=> length($a) } <>' sorts by line length in descending order
+# escaping $ in Makefile by doubling it
+print-type-size:
+	cargo clean && RUSTFLAGS="-Zprint-type-sizes" cargo build -p rusty_parser | perl -e 'print sort { length($$b) <=> length($$a) } <>'

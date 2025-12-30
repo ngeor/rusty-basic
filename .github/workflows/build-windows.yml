@@ -6,13 +6,12 @@ jobs:
       - name: Checkout repository code
         uses: actions/checkout@v6
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly
-          target: x86_64-pc-windows-gnu
-      - name: Build Release Windows
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          use-cross: true
-          args: --release --target x86_64-pc-windows-gnu
+          targets: x86_64-pc-windows-gnu
+      - name: Build Debug
+        run: cargo build --target x86_64-pc-windows-gnu
+      - name: Test
+        run: cargo test --target x86_64-pc-windows-gnu
+      - name: Build Release
+        run: cargo build --release --target x86_64-pc-windows-gnu

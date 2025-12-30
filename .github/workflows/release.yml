@@ -3,21 +3,32 @@ on:
     tags:
       - v*
 jobs:
-  Release:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v6
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@nightly
-        with:
-          targets: x86_64-pc-windows-gnu
-      - name: Test
-        run: cargo test
       - name: Build Release
         run: cargo build --release
-      - name: Build Release Windows
-        run: cargo build --release --target x86_64-pc-windows-gnu
+      - name: Test Release
+        run: cargo test --release
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v6
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+      - name: Build Release
+        run: cargo build --release
+      - name: Test Release
+        run: cargo test --release
+  release:
+    runs-on: ubuntu-latest
+    needs: [build, build-windows]
+    steps:
       - name: Release
         uses: softprops/action-gh-release@v1
         with:

@@ -1,3 +1,4 @@
+use crate::or_default::OrDefaultParser;
 use crate::{NoIncompleteParser, ParseResult};
 
 /// A parser uses the given input in order to produce a result.
@@ -13,5 +14,13 @@ pub trait Parser<I> {
         Self: Sized,
     {
         NoIncompleteParser::new(self)
+    }
+
+    fn or_default(self) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
+    where
+        Self: Sized,
+        Self::Output: Default,
+    {
+        OrDefaultParser::new(self)
     }
 }

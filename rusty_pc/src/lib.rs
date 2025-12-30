@@ -36,7 +36,6 @@ pub use map::Map;
 pub use map_err::*;
 pub use opt_zip::*;
 pub use or::*;
-pub use or_default::OrDefault;
 pub use parse_result::*;
 pub use parsers::*;
 pub use seq::*;

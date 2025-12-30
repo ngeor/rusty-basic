@@ -30,10 +30,11 @@ impl<I, O, E> Parser<I> for OrParser<I, O, E> {
             }
         }
 
-        match self.parsers.last().unwrap().parse(input) {
-            Ok(x) => Ok(x),
-            Err((fatal, i, err)) => Err((fatal || !self.allow_incomplete, i, err)),
-        }
+        self.parsers
+            .last()
+            .unwrap()
+            .parse(input)
+            .flat_map_err(|fatal, i, err| Err((fatal || !self.allow_incomplete, i, err)))
     }
 
     fn no_incomplete(self) -> impl parsers::Parser<I, Output = O, Error = E> {

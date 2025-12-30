@@ -1,4 +1,4 @@
-use crate::{OrDefault, ParseResult, ParseResultTrait, Parser};
+use crate::{ParseResult, ParseResultTrait, Parser};
 
 pub trait Many<I>: Parser<I>
 where
@@ -12,6 +12,7 @@ where
     where
         S: Fn(Self::Output) -> O,
         A: Fn(O, Self::Output) -> O,
+        O: Default,
     {
         ManyParser::new(self, seed, accumulator)
     }
@@ -37,6 +38,7 @@ struct ManyParser<P, S, A> {
     parser: P,
     seed: S,
     accumulator: A,
+    allow_none: bool,
 }
 
 impl<P, S, A> ManyParser<P, S, A> {
@@ -45,6 +47,7 @@ impl<P, S, A> ManyParser<P, S, A> {
             parser,
             seed,
             accumulator,
+            allow_none: false,
         }
     }
 }
@@ -54,29 +57,50 @@ where
     P: Parser<I>,
     S: Fn(P::Output) -> O,
     A: Fn(O, P::Output) -> O,
+    O: Default,
 {
     type Output = O;
     type Error = P::Error;
 
     fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
-        self.parser.parse(input).flat_map(|mut input, first_value| {
-            let mut result = (self.seed)(first_value);
-            loop {
-                match self.parser.parse(input) {
-                    Ok((i, value)) => {
-                        input = i;
-                        result = (self.accumulator)(result, value);
-                    }
-                    Err((false, i, _)) => {
-                        input = i;
-                        break;
-                    }
-                    Err(e) => {
-                        return Err(e);
+        self.parser
+            .parse(input)
+            .flat_map(|mut input, first_value| {
+                let mut result = (self.seed)(first_value);
+                loop {
+                    match self.parser.parse(input) {
+                        Ok((i, value)) => {
+                            input = i;
+                            result = (self.accumulator)(result, value);
+                        }
+                        Err((false, i, _)) => {
+                            input = i;
+                            break;
+                        }
+                        Err(e) => {
+                            return Err(e);
+                        }
                     }
                 }
-            }
-            Ok((input, result))
-        })
+                Ok((input, result))
+            })
+            .flat_map_err(|fatal, i, err| {
+                if self.allow_none && !fatal {
+                    Ok((i, O::default()))
+                } else {
+                    Err((fatal, i, err))
+                }
+            })
+    }
+
+    fn or_default(self) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
+    where
+        Self: Sized,
+        Self::Output: Default,
+    {
+        Self {
+            allow_none: true,
+            ..self
+        }
     }
 }

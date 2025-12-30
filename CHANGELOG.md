@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### 🚜 Refactor
+
+- *(pc)* Implement `or_default` directly on `many` parser
+
 ## [0.9.1] - 2025-12-30
 
 ### 🐛 Bug Fixes

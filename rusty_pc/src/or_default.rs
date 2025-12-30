@@ -1,23 +1,6 @@
 use crate::{ParseResult, Parser};
 
-pub trait OrDefault<I>: Parser<I>
-where
-    Self: Sized,
-    Self::Output: Default,
-{
-    fn or_default(self) -> impl Parser<I, Output = Self::Output, Error = Self::Error> {
-        OrDefaultParser::new(self)
-    }
-}
-
-impl<I, P> OrDefault<I> for P
-where
-    P: Parser<I>,
-    P::Output: Default,
-{
-}
-
-struct OrDefaultParser<P> {
+pub(crate) struct OrDefaultParser<P> {
     parser: P,
 }
 

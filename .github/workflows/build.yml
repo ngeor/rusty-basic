@@ -14,17 +14,15 @@ jobs:
       - name: Build Release
         run: cargo build --release
   Build-Windows:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v6
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@nightly
-        with:
-          targets: x86_64-pc-windows-gnu
       - name: Build Debug
-        run: cargo build --target x86_64-pc-windows-gnu
+        run: cargo build
       - name: Test
-        run: cargo test --target x86_64-pc-windows-gnu
+        run: cargo test
       - name: Build Release
-        run: cargo build --release --target x86_64-pc-windows-gnu
+        run: cargo build --release

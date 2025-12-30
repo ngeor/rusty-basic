@@ -1,48 +1,22 @@
-use crate::{ParseResult, Parser, parser_declaration};
+use crate::{ParseResult, Parser};
 
-parser_declaration!(pub(crate)struct NoIncompleteParser);
+pub(crate) struct MapErrParser<P, E> {
+    parser: P,
+    make_all_fatal: bool,
+    override_non_fatal_error: Option<E>,
+}
 
-impl<I, P> Parser<I> for NoIncompleteParser<P>
-where
-    P: Parser<I>,
-{
-    type Output = P::Output;
-    type Error = P::Error;
-
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
-        match self.parser.parse(tokenizer) {
-            Ok(value) => Ok(value),
-            Err((_, i, err)) => Err((true, i, err)),
+impl<P, E> MapErrParser<P, E> {
+    pub fn new(parser: P) -> Self {
+        Self {
+            parser,
+            make_all_fatal: false,
+            override_non_fatal_error: None,
         }
     }
 }
 
-pub trait Errors<I>: Parser<I>
-where
-    Self: Sized,
-{
-    fn or_fail(self, err: Self::Error) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
-    where
-        Self::Error: Clone,
-    {
-        OrFailParser::new(self, err)
-    }
-}
-
-impl<I, P> Errors<I> for P where P: Parser<I> {}
-
-struct OrFailParser<P, E> {
-    parser: P,
-    err: E,
-}
-
-impl<P, E> OrFailParser<P, E> {
-    pub fn new(parser: P, err: E) -> Self {
-        Self { parser, err }
-    }
-}
-
-impl<I, P, E> Parser<I> for OrFailParser<P, E>
+impl<I, P, E> Parser<I> for MapErrParser<P, E>
 where
     P: Parser<I, Error = E>,
     E: Clone,
@@ -50,11 +24,39 @@ where
     type Output = P::Output;
     type Error = E;
 
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
-        match self.parser.parse(tokenizer) {
+    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+        match self.parser.parse(input) {
             Ok(value) => Ok(value),
-            Err((false, i, _)) => Err((true, i, self.err.clone())),
-            Err(err) => Err(err),
+            Err((false, i, err)) => {
+                let err = match &self.override_non_fatal_error {
+                    Some(e) => e.clone(),
+                    _ => err,
+                };
+                Err((self.make_all_fatal, i, err))
+            }
+            Err((true, i, err)) => Err((true, i, err)),
+        }
+    }
+
+    fn no_incomplete(self) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
+    where
+        Self: Sized,
+    {
+        Self {
+            make_all_fatal: true,
+            ..self
+        }
+    }
+
+    fn or_fail(self, err: Self::Error) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
+    where
+        Self: Sized,
+        Self::Error: Clone,
+    {
+        Self {
+            make_all_fatal: true,
+            override_non_fatal_error: Some(err),
+            ..self
         }
     }
 }

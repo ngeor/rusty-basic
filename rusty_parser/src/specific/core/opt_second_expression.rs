@@ -1,5 +1,5 @@
 use rusty_pc::boxed::boxed;
-use rusty_pc::{And, Errors, Map, Parser, ThenWith, ToOption, Token};
+use rusty_pc::{And, Map, Parser, ThenWith, ToOption, Token};
 
 use crate::error::ParseError;
 use crate::input::RcStringView;

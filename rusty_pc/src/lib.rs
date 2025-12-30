@@ -33,7 +33,6 @@ pub use flat_map_ok_none::FlatMapOkNone;
 pub use loop_while::*;
 pub use many::Many;
 pub use map::Map;
-pub use map_err::*;
 pub use opt_zip::*;
 pub use or::*;
 pub use parse_result::*;

@@ -1,5 +1,5 @@
 use rusty_common::{HasPos, Positioned};
-use rusty_pc::{Errors, Parser};
+use rusty_pc::Parser;
 
 use crate::error::ParseError;
 use crate::pc_specific::WithPosMapper;

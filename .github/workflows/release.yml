@@ -72,5 +72,5 @@ jobs:
         with:
           draft: true
           files: |
-            target/release/rusty_basic
-            target/release/rusty_basic.exe
+            rusty_basic
+            rusty_basic.exe

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.1] - 2025-12-30
+
+### 🐛 Bug Fixes
+
+- *(ci)* Do not run the build workflow for tags
+- *(ci)* Correct artifact paths for release workflow
+
 ## [0.9.0] - 2025-12-30
 
 ### 🚀 Features

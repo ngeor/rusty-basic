@@ -2,8 +2,6 @@
 
 > An interpreter for QBasic, written in Rust.
 
-
-
 ## Goals
 
 The primary goal is to have an interpreter compatible with QBasic.
@@ -21,11 +19,6 @@ Secondary goals:
 - Unit tests for QBasic programs, with code coverage
 - VS Code debugging
 
-## Development
-
-Tip: run tests continuously with `make watch` or
-`nodemon -e rs -x "cargo test"`.
-
 ## Architecture
 
 - Parsing
@@ -38,14 +31,19 @@ Tip: run tests continuously with `make watch` or
 A program is read from a file character by character.
 
 ```
-input (file or str) -> CharReader -> EolReader -> Parser
+input (file or str) -> RcStringView -> Parser
 ```
 
-- CharReader returns one character a time, working with a `BufRead` as its
-  source.
-- EolReader adds support for row-col position, handling new lines.
-- Parsing is done with parser combinators, ending up in a parse tree of
-  declarations, statements, expressions, etc.
+The parser combinator framework is agnostic of the rest of the project
+and lives in the `rusty_pc` package.
+
+The input source is the `RcStringView` which is created by a file or string,
+reading the entire contents in memory, and calculating the row/col for each
+character (taking into account line endings of various platforms,
+e.g. CRLF for Windows, LF for other platforms).
+
+Parsing is done with parser combinators, ending up in a parse tree of
+declarations, statements, expressions, etc.
 
 ### Linting
 
@@ -119,3 +117,14 @@ DIM A AS INTEGER
 A = 42 ' this is an integer because it's explicitly defined as such
 A$ = "hello" ' duplicate definition error here
 ```
+
+## Development
+
+The project uses the nightly toolchain currently,
+to take advantage of `rustfmt` features that are onyl available there.
+
+Additionally, building on a Mac might cause some linker errors on the current
+stable toolchain, which aren't occurring on the nightly.
+
+Tip: run tests continuously with `make watch` or
+`nodemon -e rs -x "cargo test"`.

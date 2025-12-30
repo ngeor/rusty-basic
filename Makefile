@@ -12,6 +12,7 @@ fmt:
 watch:
 	nodemon -e rs -x "cargo test"
 
+# identify the largest source files
 wc:
 	find . -type f -iname "*.rs" -exec wc -l \{\} \; | sort -n
 

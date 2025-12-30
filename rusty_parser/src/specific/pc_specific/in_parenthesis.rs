@@ -2,9 +2,9 @@
 
 use rusty_pc::*;
 
-use crate::input::RcStringView;
-use crate::specific::pc_specific::{any_token_of, whitespace, TokenType};
 use crate::ParseError;
+use crate::input::RcStringView;
+use crate::specific::pc_specific::{TokenType, any_token_of, whitespace};
 
 /// In parser mode, returns Some if the opening parenthesis is present
 /// AND the decorated parser has a value.

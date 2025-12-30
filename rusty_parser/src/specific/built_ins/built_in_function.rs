@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use rusty_common::*;
 
-use crate::{keyword_enum, BareName, Name, TypeQualifier};
+use crate::{BareName, Name, TypeQualifier, keyword_enum};
 
 keyword_enum!(
 pub enum BuiltInFunction SORTED_BUILT_IN_FUNCTIONS SORTED_BUILT_IN_FUNCTION_NAMES {

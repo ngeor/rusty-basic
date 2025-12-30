@@ -43,15 +43,15 @@ fn map_opt_args_to_flags(args: Vec<Option<ExpressionPos>>) -> Expressions {
 }
 
 /// Comma separated list of items, allowing items to be missing between commas.
-pub fn csv_allow_missing(
-) -> impl Parser<RcStringView, Output = Vec<Option<ExpressionPos>>, Error = ParseError> {
+pub fn csv_allow_missing()
+-> impl Parser<RcStringView, Output = Vec<Option<ExpressionPos>>, Error = ParseError> {
     parse_delimited_to_items(opt_zip(expression_pos_p(), comma()), trailing_comma_error())
         .or_default()
 }
 
 /// Used in `INPUT` and `LINE INPUT`, parsing an optional file number.
-pub fn opt_file_handle_comma_p(
-) -> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>, Error = ParseError> {
+pub fn opt_file_handle_comma_p()
+-> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>, Error = ParseError> {
     seq2(file_handle_p(), comma(), |l, _| l).to_option()
 }
 

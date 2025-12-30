@@ -49,8 +49,8 @@ fn parse_for_step_p() -> impl Parser<
 }
 
 /// Parses the "FOR I = 1 TO 2" part
-fn parse_for_p(
-) -> impl Parser<RcStringView, Output = (ExpressionPos, ExpressionPos, ExpressionPos), Error = ParseError>
+fn parse_for_p()
+-> impl Parser<RcStringView, Output = (ExpressionPos, ExpressionPos, ExpressionPos), Error = ParseError>
 {
     seq6(
         keyword_followed_by_whitespace_p(Keyword::For),
@@ -123,17 +123,19 @@ mod tests {
                 lower_bound: 1.as_lit_expr(1, 9),
                 upper_bound: 10.as_lit_expr(1, 14),
                 step: None,
-                statements: vec![Statement::Print(Print {
-                    file_number: None,
-                    lpt1: false,
-                    format_string: None,
-                    args: vec![
-                        PrintArg::Expression("Hello".as_lit_expr(2, 11)),
-                        PrintArg::Comma,
-                        PrintArg::Expression("I".as_var_expr(2, 20))
-                    ],
-                })
-                .at_rc(2, 5)],
+                statements: vec![
+                    Statement::Print(Print {
+                        file_number: None,
+                        lpt1: false,
+                        format_string: None,
+                        args: vec![
+                            PrintArg::Expression("Hello".as_lit_expr(2, 11)),
+                            PrintArg::Comma,
+                            PrintArg::Expression("I".as_var_expr(2, 20))
+                        ],
+                    })
+                    .at_rc(2, 5)
+                ],
                 next_counter: None,
             })
         );
@@ -170,19 +172,21 @@ mod tests {
                             lower_bound: 1.as_lit_expr(4, 13),
                             upper_bound: 10.as_lit_expr(4, 18),
                             step: None,
-                            statements: vec![Statement::Print(Print {
-                                file_number: None,
-                                lpt1: false,
-                                format_string: None,
-                                args: vec![
-                                    PrintArg::Expression("Inner loop".as_lit_expr(5, 15)),
-                                    PrintArg::Comma,
-                                    PrintArg::Expression("I".as_var_expr(5, 29)),
-                                    PrintArg::Comma,
-                                    PrintArg::Expression("J".as_var_expr(5, 32)),
-                                ],
-                            })
-                            .at_rc(5, 9)],
+                            statements: vec![
+                                Statement::Print(Print {
+                                    file_number: None,
+                                    lpt1: false,
+                                    format_string: None,
+                                    args: vec![
+                                        PrintArg::Expression("Inner loop".as_lit_expr(5, 15)),
+                                        PrintArg::Comma,
+                                        PrintArg::Expression("I".as_var_expr(5, 29)),
+                                        PrintArg::Comma,
+                                        PrintArg::Expression("J".as_var_expr(5, 32)),
+                                    ],
+                                })
+                                .at_rc(5, 9)
+                            ],
                             next_counter: None,
                         })
                         .at_rc(4, 5),

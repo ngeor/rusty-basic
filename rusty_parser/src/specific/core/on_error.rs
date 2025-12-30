@@ -8,8 +8,8 @@ use crate::specific::core::name::bare_name_with_dots;
 use crate::specific::pc_specific::*;
 use crate::specific::{Expression, Keyword, OnErrorOption, Statement};
 
-pub fn statement_on_error_go_to_p(
-) -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn statement_on_error_go_to_p()
+-> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     Seq2::new(keyword_pair(Keyword::On, Keyword::Error), whitespace())
         .and_keep_right(
             next()

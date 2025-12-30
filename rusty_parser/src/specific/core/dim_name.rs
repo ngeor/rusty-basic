@@ -1,11 +1,11 @@
 use rusty_common::*;
 use rusty_pc::*;
 
+use crate::ParseError;
 use crate::input::RcStringView;
 use crate::specific::core::var_name;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::ParseError;
 
 pub type DimVar = TypedName<DimType>;
 pub type DimVarPos = Positioned<DimVar>;
@@ -103,37 +103,36 @@ impl DimNameBuilder {
 /// A$(1 TO 2, 0 TO 10)
 /// A(1 TO 5) AS INTEGER
 pub fn dim_var_pos_p() -> impl Parser<RcStringView, Output = DimVarPos, Error = ParseError> {
-    dim_or_redim(array_dimensions::array_dimensions_p().or_default())
+    dim_or_redim(|| array_dimensions::array_dimensions_p().or_default())
 }
 
 pub fn redim_var_pos_p() -> impl Parser<RcStringView, Output = DimVarPos, Error = ParseError> {
-    dim_or_redim(
-        array_dimensions::array_dimensions_p().or_syntax_error("Expected: array dimensions"),
-    )
+    dim_or_redim(|| {
+        array_dimensions::array_dimensions_p().or_syntax_error("Expected: array dimensions")
+    })
 }
 
-fn dim_or_redim(
-    array_dimensions_parser: impl Parser<RcStringView, Output = ArrayDimensions, Error = ParseError>
-        + 'static,
-) -> impl Parser<RcStringView, Output = DimVarPos, Error = ParseError> {
-    var_name(
-        array_dimensions_parser,
-        type_definition::built_in_extended_type,
-    )
-    .with_pos()
+fn dim_or_redim<A, AP>(
+    array_dimensions_parser: A,
+) -> impl Parser<RcStringView, Output = DimVarPos, Error = ParseError>
+where
+    A: Fn() -> AP,
+    AP: Parser<RcStringView, Output = ArrayDimensions, Error = ParseError> + 'static,
+{
+    var_name(array_dimensions_parser, type_definition::extended_type).with_pos()
 }
 
 mod array_dimensions {
     use rusty_pc::*;
 
+    use crate::ParseError;
     use crate::input::RcStringView;
     use crate::specific::core::opt_second_expression::opt_second_expression_after_keyword;
     use crate::specific::pc_specific::*;
     use crate::specific::*;
-    use crate::ParseError;
 
-    pub fn array_dimensions_p(
-    ) -> impl Parser<RcStringView, Output = ArrayDimensions, Error = ParseError> {
+    pub fn array_dimensions_p()
+    -> impl Parser<RcStringView, Output = ArrayDimensions, Error = ParseError> {
         in_parenthesis(csv_non_opt(
             array_dimension_p(),
             "Expected: array dimension",
@@ -166,19 +165,28 @@ mod array_dimensions {
 mod type_definition {
     use rusty_pc::*;
 
+    use crate::ParseError;
     use crate::input::RcStringView;
     use crate::specific::core::expression::expression_pos_p;
     use crate::specific::pc_specific::*;
     use crate::specific::*;
-    use crate::ParseError;
 
-    pub fn built_in_extended_type(
+    pub fn extended_type(
+        allow_user_defined: bool,
     ) -> impl Parser<RcStringView, Output = DimType, Error = ParseError> {
-        OrParser::new(vec![
+        let mut parsers: Vec<Box<dyn Parser<RcStringView, Output = DimType, Error = ParseError>>> = vec![
             Box::new(built_in_numeric_type()),
             Box::new(built_in_string()),
-        ])
-        .with_expected_message("Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING")
+        ];
+        let mut expected_message = "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING";
+
+        if allow_user_defined {
+            parsers.push(Box::new(user_defined_type()));
+            expected_message =
+                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier";
+        }
+
+        OrParser::new(parsers).with_expected_message(expected_message)
     }
 
     fn built_in_numeric_type() -> impl Parser<RcStringView, Output = DimType, Error = ParseError> {

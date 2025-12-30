@@ -24,7 +24,7 @@ fn parse_args() -> impl Parser<RcStringView, Output = Expressions, Error = Parse
 mod tests {
     use crate::specific::*;
     use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
-    use crate::{parse, BuiltInSub};
+    use crate::{BuiltInSub, parse};
     #[test]
     fn parse_no_args() {
         let input = "VIEW PRINT";

@@ -343,14 +343,16 @@ macro_rules! assert_parse_dim_extended_built_in {
             p,
             $crate::specific::Statement::Dim($crate::specific::DimList {
                 shared: false,
-                variables: vec![$crate::specific::DimNameBuilder::new()
-                    .bare_name($name)
-                    .dim_type($crate::specific::DimType::BuiltIn(
-                        TypeQualifier::$qualifier,
-                        $crate::specific::BuiltInStyle::Extended
-                    ))
-                    .build()
-                    .at_rc(1, 5)]
+                variables: vec![
+                    $crate::specific::DimNameBuilder::new()
+                        .bare_name($name)
+                        .dim_type($crate::specific::DimType::BuiltIn(
+                            TypeQualifier::$qualifier,
+                            $crate::specific::BuiltInStyle::Extended
+                        ))
+                        .build()
+                        .at_rc(1, 5)
+                ]
             })
         );
     };

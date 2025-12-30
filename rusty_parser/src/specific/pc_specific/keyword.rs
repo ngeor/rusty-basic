@@ -1,11 +1,11 @@
 use rusty_pc::*;
 
-use crate::input::RcStringView;
-use crate::specific::pc_specific::{
-    any_token, any_token_of, dollar_sign, peek_token, whitespace, TokenType, WithExpected
-};
-use crate::specific::Keyword;
 use crate::ParseError;
+use crate::input::RcStringView;
+use crate::specific::Keyword;
+use crate::specific::pc_specific::{
+    TokenType, WithExpected, any_token, any_token_of, dollar_sign, peek_token, whitespace
+};
 
 // TODO review usages of TokenType::Keyword
 
@@ -48,8 +48,8 @@ pub fn keyword_pair(
     Seq3::new(keyword_unchecked(first), whitespace(), keyword(second))
 }
 
-pub fn any_keyword_with_dollar_sign(
-) -> impl Parser<RcStringView, Output = (Token, Token), Error = ParseError> {
+pub fn any_keyword_with_dollar_sign()
+-> impl Parser<RcStringView, Output = (Token, Token), Error = ParseError> {
     any_token_of(TokenType::Keyword).and_tuple(dollar_sign())
 }
 

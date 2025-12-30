@@ -1,14 +1,14 @@
 use rusty_pc::*;
 
+use crate::ParseError;
 use crate::input::RcStringView;
 use crate::specific::core::comment::comment_p;
 use crate::specific::core::expression::ws_expr_pos_ws_p;
 use crate::specific::core::statements::{
-    single_line_non_comment_statements_p, single_line_statements_p, ZeroOrMoreStatements
+    ZeroOrMoreStatements, single_line_non_comment_statements_p, single_line_statements_p
 };
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::ParseError;
 
 pub fn if_block_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq2(
@@ -120,11 +120,10 @@ mod tests {
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
-                    statements: vec![Statement::sub_call(
-                        "Flint".into(),
-                        vec!["X".as_var_expr(2, 7)]
-                    )
-                    .at_rc(2, 1)]
+                    statements: vec![
+                        Statement::sub_call("Flint".into(), vec!["X".as_var_expr(2, 7)])
+                            .at_rc(2, 1)
+                    ]
                 },
                 else_if_blocks: vec![],
                 else_block: None,
@@ -145,11 +144,10 @@ mod tests {
                 GlobalStatement::Statement(Statement::IfBlock(IfBlock {
                     if_block: ConditionalBlock {
                         condition: "X".as_var_expr(2, 12),
-                        statements: vec![Statement::sub_call(
-                            "Flint".into(),
-                            vec!["X".as_var_expr(2, 25)]
-                        )
-                        .at_rc(2, 19)]
+                        statements: vec![
+                            Statement::sub_call("Flint".into(), vec!["X".as_var_expr(2, 25)])
+                                .at_rc(2, 19)
+                        ]
                     },
                     else_if_blocks: vec![],
                     else_block: None
@@ -172,18 +170,15 @@ END IF"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
-                    statements: vec![Statement::sub_call(
-                        "Flint".into(),
-                        vec!["X".as_var_expr(2, 11)]
-                    )
-                    .at_rc(2, 5)],
+                    statements: vec![
+                        Statement::sub_call("Flint".into(), vec!["X".as_var_expr(2, 11)])
+                            .at_rc(2, 5)
+                    ],
                 },
                 else_if_blocks: vec![],
-                else_block: Some(vec![Statement::sub_call(
-                    "Flint".into(),
-                    vec!["Y".as_var_expr(4, 11)]
-                )
-                .at_rc(4, 5)]),
+                else_block: Some(vec![
+                    Statement::sub_call("Flint".into(), vec!["Y".as_var_expr(4, 11)]).at_rc(4, 5)
+                ]),
             }),
         );
     }
@@ -201,19 +196,17 @@ END IF"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
-                    statements: vec![Statement::sub_call(
-                        "Flint".into(),
-                        vec!["X".as_var_expr(2, 11)]
-                    )
-                    .at_rc(2, 5)],
+                    statements: vec![
+                        Statement::sub_call("Flint".into(), vec!["X".as_var_expr(2, 11)])
+                            .at_rc(2, 5)
+                    ],
                 },
                 else_if_blocks: vec![ConditionalBlock {
                     condition: "Y".as_var_expr(3, 8),
-                    statements: vec![Statement::sub_call(
-                        "Flint".into(),
-                        vec!["Y".as_var_expr(4, 11)]
-                    )
-                    .at_rc(4, 5)],
+                    statements: vec![
+                        Statement::sub_call("Flint".into(), vec!["Y".as_var_expr(4, 11)])
+                            .at_rc(4, 5)
+                    ],
                 }],
                 else_block: None,
             }),
@@ -235,28 +228,25 @@ END IF"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
-                    statements: vec![Statement::sub_call(
-                        "Flint".into(),
-                        vec!["X".as_var_expr(2, 11)]
-                    )
-                    .at_rc(2, 5)],
+                    statements: vec![
+                        Statement::sub_call("Flint".into(), vec!["X".as_var_expr(2, 11)])
+                            .at_rc(2, 5)
+                    ],
                 },
                 else_if_blocks: vec![
                     ConditionalBlock {
                         condition: "Y".as_var_expr(3, 8),
-                        statements: vec![Statement::sub_call(
-                            "Flint".into(),
-                            vec!["Y".as_var_expr(4, 11)]
-                        )
-                        .at_rc(4, 5)],
+                        statements: vec![
+                            Statement::sub_call("Flint".into(), vec!["Y".as_var_expr(4, 11)])
+                                .at_rc(4, 5)
+                        ],
                     },
                     ConditionalBlock {
                         condition: "Z".as_var_expr(5, 8),
-                        statements: vec![Statement::sub_call(
-                            "Flint".into(),
-                            vec!["Z".as_var_expr(6, 11)]
-                        )
-                        .at_rc(6, 5)],
+                        statements: vec![
+                            Statement::sub_call("Flint".into(), vec!["Z".as_var_expr(6, 11)])
+                                .at_rc(6, 5)
+                        ],
                     },
                 ],
                 else_block: None,
@@ -279,25 +269,21 @@ END IF"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock {
                     condition: "X".as_var_expr(1, 4),
-                    statements: vec![Statement::sub_call(
-                        "Flint".into(),
-                        vec!["X".as_var_expr(2, 11)]
-                    )
-                    .at_rc(2, 5)],
+                    statements: vec![
+                        Statement::sub_call("Flint".into(), vec!["X".as_var_expr(2, 11)])
+                            .at_rc(2, 5)
+                    ],
                 },
                 else_if_blocks: vec![ConditionalBlock {
                     condition: "Y".as_var_expr(3, 8),
-                    statements: vec![Statement::sub_call(
-                        "Flint".into(),
-                        vec!["Y".as_var_expr(4, 11)]
-                    )
-                    .at_rc(4, 5)],
+                    statements: vec![
+                        Statement::sub_call("Flint".into(), vec!["Y".as_var_expr(4, 11)])
+                            .at_rc(4, 5)
+                    ],
                 }],
-                else_block: Some(vec![Statement::sub_call(
-                    "Flint".into(),
-                    vec!["Z".as_var_expr(6, 11)]
-                )
-                .at_rc(6, 5)]),
+                else_block: Some(vec![
+                    Statement::sub_call("Flint".into(), vec!["Z".as_var_expr(6, 11)]).at_rc(6, 5)
+                ]),
             })
         );
     }
@@ -317,25 +303,21 @@ end if"#;
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock {
                     condition: "x".as_var_expr(1, 4),
-                    statements: vec![Statement::sub_call(
-                        "flint".into(),
-                        vec!["x".as_var_expr(2, 11)]
-                    )
-                    .at_rc(2, 5)],
+                    statements: vec![
+                        Statement::sub_call("flint".into(), vec!["x".as_var_expr(2, 11)])
+                            .at_rc(2, 5)
+                    ],
                 },
                 else_if_blocks: vec![ConditionalBlock {
                     condition: "y".as_var_expr(3, 8),
-                    statements: vec![Statement::sub_call(
-                        "flint".into(),
-                        vec!["y".as_var_expr(4, 11)]
-                    )
-                    .at_rc(4, 5)],
+                    statements: vec![
+                        Statement::sub_call("flint".into(), vec!["y".as_var_expr(4, 11)])
+                            .at_rc(4, 5)
+                    ],
                 }],
-                else_block: Some(vec![Statement::sub_call(
-                    "flint".into(),
-                    vec!["z".as_var_expr(6, 11)]
-                )
-                .at_rc(6, 5)]),
+                else_block: Some(vec![
+                    Statement::sub_call("flint".into(), vec!["z".as_var_expr(6, 11)]).at_rc(6, 5)
+                ]),
             })
         );
     }
@@ -355,18 +337,22 @@ end if"#;
                         ExpressionType::Unresolved
                     )
                     .at_rc(1, 7),
-                    statements: vec![Statement::assignment(
-                        Expression::var_unresolved("A$"),
-                        "B$".as_var_expr(1, 21)
-                    )
-                    .at_rc(1, 16)]
+                    statements: vec![
+                        Statement::assignment(
+                            Expression::var_unresolved("A$"),
+                            "B$".as_var_expr(1, 21)
+                        )
+                        .at_rc(1, 16)
+                    ]
                 },
                 else_if_blocks: vec![],
-                else_block: Some(vec![Statement::assignment(
-                    Expression::var_unresolved("A$"),
-                    "C$".as_var_expr(1, 34)
-                )
-                .at_rc(1, 29)])
+                else_block: Some(vec![
+                    Statement::assignment(
+                        Expression::var_unresolved("A$"),
+                        "C$".as_var_expr(1, 34)
+                    )
+                    .at_rc(1, 29)
+                ])
             })
         )
     }
@@ -438,48 +424,53 @@ end if"#;
         let program = parse(input);
         assert_eq!(
             program,
-            vec![GlobalStatement::Statement(Statement::IfBlock(IfBlock {
-                if_block: ConditionalBlock {
-                    condition: Expression::Parenthesis(Box::new(
-                        Expression::BinaryExpression(
-                            Operator::Greater,
-                            Box::new("X".as_var_expr(2, 12)),
-                            Box::new(0.as_lit_expr(2, 14)),
-                            ExpressionType::Unresolved
-                        )
-                        .at_rc(2, 13)
-                    ))
-                    .at_rc(2, 11),
-                    statements: vec![Statement::sub_call(
-                        "Flint".into(),
-                        vec!["positive".as_lit_expr(3, 19)]
-                    )
-                    .at_rc(3, 13),],
-                },
-                else_if_blocks: vec![ConditionalBlock {
-                    condition: Expression::Parenthesis(Box::new(
-                        Expression::BinaryExpression(
-                            Operator::Less,
-                            Box::new("X".as_var_expr(4, 16)),
-                            Box::new(0.as_lit_expr(4, 18)),
-                            ExpressionType::Unresolved
-                        )
-                        .at_rc(4, 17)
-                    ))
-                    .at_rc(4, 15),
-                    statements: vec![Statement::sub_call(
-                        "Flint".into(),
-                        vec!["negative".as_lit_expr(5, 19)]
-                    )
-                    .at_rc(5, 13),],
-                }],
-                else_block: Some(vec![Statement::sub_call(
-                    "Flint".into(),
-                    vec!["zero".as_lit_expr(7, 19)]
-                )
-                .at_rc(7, 13),])
-            }))
-            .at_rc(2, 9),]
+            vec![
+                GlobalStatement::Statement(Statement::IfBlock(IfBlock {
+                    if_block: ConditionalBlock {
+                        condition: Expression::Parenthesis(Box::new(
+                            Expression::BinaryExpression(
+                                Operator::Greater,
+                                Box::new("X".as_var_expr(2, 12)),
+                                Box::new(0.as_lit_expr(2, 14)),
+                                ExpressionType::Unresolved
+                            )
+                            .at_rc(2, 13)
+                        ))
+                        .at_rc(2, 11),
+                        statements: vec![
+                            Statement::sub_call(
+                                "Flint".into(),
+                                vec!["positive".as_lit_expr(3, 19)]
+                            )
+                            .at_rc(3, 13),
+                        ],
+                    },
+                    else_if_blocks: vec![ConditionalBlock {
+                        condition: Expression::Parenthesis(Box::new(
+                            Expression::BinaryExpression(
+                                Operator::Less,
+                                Box::new("X".as_var_expr(4, 16)),
+                                Box::new(0.as_lit_expr(4, 18)),
+                                ExpressionType::Unresolved
+                            )
+                            .at_rc(4, 17)
+                        ))
+                        .at_rc(4, 15),
+                        statements: vec![
+                            Statement::sub_call(
+                                "Flint".into(),
+                                vec!["negative".as_lit_expr(5, 19)]
+                            )
+                            .at_rc(5, 13),
+                        ],
+                    }],
+                    else_block: Some(vec![
+                        Statement::sub_call("Flint".into(), vec!["zero".as_lit_expr(7, 19)])
+                            .at_rc(7, 13),
+                    ])
+                }))
+                .at_rc(2, 9),
+            ]
         );
     }
 

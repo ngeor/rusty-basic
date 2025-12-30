@@ -14,8 +14,8 @@ use crate::specific::*;
 // SubCallArgsNoParenthesis ::= BareName<ws+>Expressions
 // SubCallArgsParenthesis   ::= BareName(Expressions)
 
-pub fn sub_call_or_assignment_p(
-) -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn sub_call_or_assignment_p()
+-> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     SubCallOrAssignment
 }
 
@@ -58,9 +58,8 @@ impl Parser<RcStringView> for SubCallOrAssignment {
 }
 
 impl SubCallOrAssignment {
-    fn name_and_opt_eq_sign(
-    ) -> impl Parser<RcStringView, Output = (ExpressionPos, Option<Token>), Error = ParseError>
-    {
+    fn name_and_opt_eq_sign()
+    -> impl Parser<RcStringView, Output = (ExpressionPos, Option<Token>), Error = ParseError> {
         property::parser().and_opt_tuple(equal_sign())
     }
 }
@@ -115,7 +114,7 @@ mod tests {
 
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::{assert_sub_call, BuiltInSub, *};
+    use crate::{BuiltInSub, assert_sub_call, *};
 
     #[test]
     fn test_parse_sub_call_no_args() {
@@ -225,11 +224,10 @@ mod tests {
                 GlobalStatement::SubImplementation(SubImplementation {
                     name: "Hello".as_bare_name(4, 13),
                     params: vec![],
-                    body: vec![Statement::sub_call(
-                        "ENVIRON".into(),
-                        vec!["FOO=BAR".as_lit_expr(5, 21)]
-                    )
-                    .at_rc(5, 13)],
+                    body: vec![
+                        Statement::sub_call("ENVIRON".into(), vec!["FOO=BAR".as_lit_expr(5, 21)])
+                            .at_rc(5, 13)
+                    ],
                     is_static: false
                 })
             ]
@@ -285,25 +283,29 @@ mod tests {
                         )
                         .at_rc(4, 23)
                     ],
-                    body: vec![Statement::sub_call(
-                        "ENVIRON".into(),
-                        vec![Expression::BinaryExpression(
-                            Operator::Plus,
-                            Box::new(
+                    body: vec![
+                        Statement::sub_call(
+                            "ENVIRON".into(),
+                            vec![
                                 Expression::BinaryExpression(
                                     Operator::Plus,
-                                    Box::new("N$".as_var_expr(5, 21)),
-                                    Box::new("=".as_lit_expr(5, 26)),
+                                    Box::new(
+                                        Expression::BinaryExpression(
+                                            Operator::Plus,
+                                            Box::new("N$".as_var_expr(5, 21)),
+                                            Box::new("=".as_lit_expr(5, 26)),
+                                            ExpressionType::Unresolved
+                                        )
+                                        .at_rc(5, 24)
+                                    ),
+                                    Box::new("V$".as_var_expr(5, 32)),
                                     ExpressionType::Unresolved
                                 )
-                                .at_rc(5, 24)
-                            ),
-                            Box::new("V$".as_var_expr(5, 32)),
-                            ExpressionType::Unresolved
+                                .at_rc(5, 30)
+                            ]
                         )
-                        .at_rc(5, 30)]
-                    )
-                    .at_rc(5, 13)],
+                        .at_rc(5, 13)
+                    ],
                     is_static: false
                 })
             ]

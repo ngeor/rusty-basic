@@ -156,8 +156,8 @@ impl HasExpressionType for ElementType {
 //
 // Type must be defined Before DECLARE SUB
 
-pub fn user_defined_type_p(
-) -> impl Parser<RcStringView, Output = UserDefinedType, Error = ParseError> {
+pub fn user_defined_type_p()
+-> impl Parser<RcStringView, Output = UserDefinedType, Error = ParseError> {
     seq5(
         keyword_followed_by_whitespace_p(Keyword::Type),
         bare_name_without_dots().or_syntax_error("Expected: name after TYPE"),

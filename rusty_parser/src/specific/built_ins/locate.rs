@@ -15,7 +15,7 @@ mod tests {
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
-    use crate::{assert_parser_err, parse, BuiltInSub};
+    use crate::{BuiltInSub, assert_parser_err, parse};
     #[test]
     fn parse_row() {
         let input = "LOCATE 11";

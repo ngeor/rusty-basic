@@ -252,8 +252,8 @@ fn demand_eof() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
 /// Parses a global statement.
 /// This includes regular statements, but also DEF types,
 /// declarations, implementations, and user-defined types.
-fn global_statement_pos_p(
-) -> impl Parser<RcStringView, Output = GlobalStatementPos, Error = ParseError> {
+fn global_statement_pos_p()
+-> impl Parser<RcStringView, Output = GlobalStatementPos, Error = ParseError> {
     OrParser::new(vec![
         Box::new(def_type_p().map(GlobalStatement::DefType)),
         Box::new(declaration_p()),

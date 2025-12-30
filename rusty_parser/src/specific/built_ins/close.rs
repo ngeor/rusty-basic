@@ -35,8 +35,8 @@ fn file_handles() -> impl Parser<RcStringView, Output = Expressions, Error = Par
         .or_default()
 }
 
-fn file_handle_or_expression_p(
-) -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+fn file_handle_or_expression_p()
+-> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     OrParser::new(vec![
         Box::new(file_handle_as_expression_pos_p()),
         Box::new(expression_pos_p()),
@@ -50,7 +50,7 @@ mod tests {
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::{assert_parser_err, BuiltInSub, *};
+    use crate::{BuiltInSub, assert_parser_err, *};
 
     #[test]
     fn test_no_args() {

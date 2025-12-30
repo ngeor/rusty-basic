@@ -293,8 +293,8 @@ pub fn name_with_dots() -> impl Parser<RcStringView, Output = Name, Error = Pars
     name_with_dots_as_tokens().map(Name::from)
 }
 
-pub fn name_with_dots_as_tokens(
-) -> impl Parser<RcStringView, Output = NameAsTokens, Error = ParseError> {
+pub fn name_with_dots_as_tokens()
+-> impl Parser<RcStringView, Output = NameAsTokens, Error = ParseError> {
     OrParser::new(vec![
         Box::new(identifier_with_dots().and_opt_tuple(type_qualifier())),
         Box::new(

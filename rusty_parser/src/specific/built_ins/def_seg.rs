@@ -16,8 +16,8 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
     )
 }
 
-fn equal_sign_and_expression(
-) -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+fn equal_sign_and_expression()
+-> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     equal_sign()
         .and_keep_right(expression_pos_p().or_syntax_error("Expected expression after equal sign"))
 }

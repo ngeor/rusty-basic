@@ -1,5 +1,5 @@
 use rusty_common::{AtPos, HasPos, Positioned};
-use rusty_pc::{parser_declaration, ParseResult, ParseResultTrait, Parser};
+use rusty_pc::{ParseResult, ParseResultTrait, Parser, parser_declaration};
 
 parser_declaration!(pub struct WithPosMapper);
 

@@ -468,8 +468,8 @@ pub fn csv_expressions_non_opt(
 /// Trailing commas are not allowed.
 /// Missing expressions are not allowed.
 /// The first expression needs to be preceded by space or surrounded in parenthesis.
-pub fn csv_expressions_first_guarded(
-) -> impl Parser<RcStringView, Output = Expressions, Error = ParseError> {
+pub fn csv_expressions_first_guarded()
+-> impl Parser<RcStringView, Output = Expressions, Error = ParseError> {
     ws_expr_pos_p().map(|first| vec![first]).and(
         comma()
             .and_keep_right(expression_pos_p().or_syntax_error("Expected: expression after comma"))
@@ -558,10 +558,10 @@ fn eager_expression_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos,
 mod single_or_double_literal {
     use rusty_pc::*;
 
-    use crate::input::RcStringView;
-    use crate::specific::pc_specific::{digits, dot, pound, SpecificTrait};
-    use crate::specific::*;
     use crate::ParseError;
+    use crate::input::RcStringView;
+    use crate::specific::pc_specific::{SpecificTrait, digits, dot, pound};
+    use crate::specific::*;
 
     // single ::= <digits> . <digits>
     // single ::= . <digits> (without leading zero)
@@ -607,10 +607,10 @@ mod single_or_double_literal {
 mod string_literal {
     use rusty_pc::*;
 
+    use crate::ParseError;
     use crate::input::RcStringView;
     use crate::specific::pc_specific::*;
     use crate::specific::*;
-    use crate::ParseError;
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
         seq3(
@@ -641,7 +641,7 @@ mod integer_or_long_literal {
 
     use crate::error::ParseError;
     use crate::input::RcStringView;
-    use crate::specific::pc_specific::{any_token, SpecificTrait, TokenType};
+    use crate::specific::pc_specific::{SpecificTrait, TokenType, any_token};
     use crate::specific::*;
 
     // result ::= <digits> | <hex-digits> | <oct-digits>
@@ -763,11 +763,11 @@ mod variable {
 
     use rusty_pc::*;
 
+    use crate::ParseError;
     use crate::input::RcStringView;
     use crate::specific::core::name::{name_with_dots_as_tokens, token_to_type_qualifier};
     use crate::specific::pc_specific::{SpecificTrait, TokenType};
     use crate::specific::*;
-    use crate::ParseError;
 
     // variable ::= <identifier-with-dots>
     //           |  <identifier-with-dots> <type-qualifier>
@@ -843,12 +843,12 @@ mod variable {
 mod function_call_or_array_element {
     use rusty_pc::*;
 
+    use crate::ParseError;
     use crate::input::RcStringView;
     use crate::specific::core::expression::expression_pos_p;
     use crate::specific::core::name::name_with_dots_as_tokens;
-    use crate::specific::pc_specific::{csv, in_parenthesis, SpecificTrait};
+    use crate::specific::pc_specific::{SpecificTrait, csv, in_parenthesis};
     use crate::specific::*;
-    use crate::ParseError;
 
     // function_call ::= <function-name> "(" <expr>* ")"
     // function-name ::= <identifier-with-dots>
@@ -878,7 +878,7 @@ pub mod property {
     use crate::error::ParseError;
     use crate::input::RcStringView;
     use crate::specific::core::name::{identifier, token_to_type_qualifier, type_qualifier};
-    use crate::specific::pc_specific::{dot, SpecificTrait};
+    use crate::specific::pc_specific::{SpecificTrait, dot};
     use crate::specific::*;
 
     // property ::= <expr> "." <property-name>
@@ -919,13 +919,13 @@ pub mod property {
         )
     }
 
-    fn dot_properties(
-    ) -> impl Parser<RcStringView, Output = Vec<(Token, Option<Token>)>, Error = ParseError> {
+    fn dot_properties()
+    -> impl Parser<RcStringView, Output = Vec<(Token, Option<Token>)>, Error = ParseError> {
         dot_property().zero_or_more()
     }
 
-    fn dot_property(
-    ) -> impl Parser<RcStringView, Output = (Token, Option<Token>), Error = ParseError> {
+    fn dot_property()
+    -> impl Parser<RcStringView, Output = (Token, Option<Token>), Error = ParseError> {
         dot().and_keep_right(property().or_syntax_error("Expected: property name after dot"))
     }
 
@@ -957,11 +957,11 @@ pub mod property {
 mod built_in_function_call {
     use rusty_pc::Parser;
 
+    use crate::ParseError;
     use crate::input::RcStringView;
     use crate::specific::built_ins::built_in_function_call_p;
     use crate::specific::pc_specific::SpecificTrait;
     use crate::specific::*;
-    use crate::ParseError;
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
         built_in_function_call_p().with_pos()
@@ -977,7 +977,7 @@ mod binary_expression {
     };
     use crate::error::ParseError;
     use crate::input::RcStringView;
-    use crate::specific::pc_specific::{any_token, whitespace, SpecificTrait, TokenType};
+    use crate::specific::pc_specific::{SpecificTrait, TokenType, any_token, whitespace};
     use crate::specific::*;
 
     // result ::= <non-bin-expr> <operator> <expr>
@@ -1116,11 +1116,11 @@ mod unary_expression {
     use rusty_common::Positioned;
     use rusty_pc::*;
 
+    use crate::ParseError;
     use crate::input::RcStringView;
     use crate::specific::core::expression::{expression_pos_p, guard};
-    use crate::specific::pc_specific::{keyword, minus_sign, SpecificTrait};
+    use crate::specific::pc_specific::{SpecificTrait, keyword, minus_sign};
     use crate::specific::*;
-    use crate::ParseError;
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
         seq2(
@@ -1130,8 +1130,8 @@ mod unary_expression {
         )
     }
 
-    fn unary_op(
-    ) -> impl Parser<RcStringView, Output = Positioned<UnaryOperator>, Error = ParseError> {
+    fn unary_op()
+    -> impl Parser<RcStringView, Output = Positioned<UnaryOperator>, Error = ParseError> {
         minus_sign()
             .map(|_| UnaryOperator::Minus)
             .or(keyword(Keyword::Not)
@@ -1144,11 +1144,11 @@ mod unary_expression {
 mod parenthesis {
     use rusty_pc::*;
 
+    use crate::ParseError;
     use crate::input::RcStringView;
     use crate::specific::core::expression::expression_pos_p;
-    use crate::specific::pc_specific::{in_parenthesis, SpecificTrait};
+    use crate::specific::pc_specific::{SpecificTrait, in_parenthesis};
     use crate::specific::*;
-    use crate::ParseError;
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
         in_parenthesis(
@@ -1171,8 +1171,8 @@ pub mod file_handle {
     use crate::specific::pc_specific::*;
     use crate::specific::*;
 
-    pub fn file_handle_p(
-    ) -> impl Parser<RcStringView, Output = Positioned<FileHandle>, Error = ParseError> {
+    pub fn file_handle_p()
+    -> impl Parser<RcStringView, Output = Positioned<FileHandle>, Error = ParseError> {
         // # and digits
         // if # and 0 -> BadFileNameOrNumber
         // if # without digits -> SyntaxError (Expected: digits after #)
@@ -1188,13 +1188,13 @@ pub mod file_handle {
     }
 
     /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
-    pub fn file_handle_as_expression_pos_p(
-    ) -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    pub fn file_handle_as_expression_pos_p()
+    -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
         file_handle_p().map(|file_handle_pos| file_handle_pos.map(Expression::from))
     }
 
-    pub fn guarded_file_handle_or_expression_p(
-    ) -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    pub fn guarded_file_handle_or_expression_p()
+    -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
         ws_file_handle().or(ws_expr_pos_p())
     }
 
@@ -1206,9 +1206,9 @@ pub mod file_handle {
 pub mod guard {
     use rusty_pc::*;
 
-    use crate::input::RcStringView;
-    use crate::specific::pc_specific::{peek_token, whitespace, TokenType};
     use crate::ParseError;
+    use crate::input::RcStringView;
+    use crate::specific::pc_specific::{TokenType, peek_token, whitespace};
 
     #[derive(Default)]
     pub enum Guard {
@@ -1330,16 +1330,18 @@ mod tests {
                 Expression::Property(
                     Box::new(Expression::func(
                         "cards",
-                        vec![Expression::BinaryExpression(
-                            Operator::Plus,
-                            Box::new(
-                                Expression::func("lbound", vec!["cards".as_var_expr(1, 20)])
-                                    .at_rc(1, 13)
-                            ),
-                            Box::new(1.as_lit_expr(1, 29)),
-                            ExpressionType::Unresolved
-                        )
-                        .at_rc(1, 27)]
+                        vec![
+                            Expression::BinaryExpression(
+                                Operator::Plus,
+                                Box::new(
+                                    Expression::func("lbound", vec!["cards".as_var_expr(1, 20)])
+                                        .at_rc(1, 13)
+                                ),
+                                Box::new(1.as_lit_expr(1, 29)),
+                                ExpressionType::Unresolved
+                            )
+                            .at_rc(1, 27)
+                        ]
                     )),
                     "Value".into(),
                     ExpressionType::Unresolved
@@ -1791,26 +1793,30 @@ mod tests {
                 Box::new(
                     Expression::func(
                         "Fib",
-                        vec![Expression::BinaryExpression(
-                            Operator::Minus,
-                            Box::new("N".as_var_expr(1, 11)),
-                            Box::new(1.as_lit_expr(1, 15)),
-                            ExpressionType::Unresolved
-                        )
-                        .at_rc(1, 13)],
+                        vec![
+                            Expression::BinaryExpression(
+                                Operator::Minus,
+                                Box::new("N".as_var_expr(1, 11)),
+                                Box::new(1.as_lit_expr(1, 15)),
+                                ExpressionType::Unresolved
+                            )
+                            .at_rc(1, 13)
+                        ],
                     )
                     .at_rc(1, 7)
                 ),
                 Box::new(
                     Expression::func(
                         "Fib",
-                        vec![Expression::BinaryExpression(
-                            Operator::Minus,
-                            Box::new("N".as_var_expr(1, 24)),
-                            Box::new(2.as_lit_expr(1, 28)),
-                            ExpressionType::Unresolved
-                        )
-                        .at_rc(1, 26)],
+                        vec![
+                            Expression::BinaryExpression(
+                                Operator::Minus,
+                                Box::new("N".as_var_expr(1, 24)),
+                                Box::new(2.as_lit_expr(1, 28)),
+                                ExpressionType::Unresolved
+                            )
+                            .at_rc(1, 26)
+                        ],
                     )
                     .at_rc(1, 20)
                 ),
@@ -1828,11 +1834,13 @@ mod tests {
                 Box::new(
                     Expression::func(
                         "Fib",
-                        vec![Expression::UnaryExpression(
-                            UnaryOperator::Minus,
-                            Box::new("N".as_var_expr(1, 13)),
-                        )
-                        .at_rc(1, 12)],
+                        vec![
+                            Expression::UnaryExpression(
+                                UnaryOperator::Minus,
+                                Box::new("N".as_var_expr(1, 13)),
+                            )
+                            .at_rc(1, 12)
+                        ],
                     )
                     .at_rc(1, 8)
                 )

@@ -1,9 +1,9 @@
 use rusty_pc::*;
 
+use crate::ParseError;
 use crate::input::RcStringView;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::ParseError;
 
 /// Tries to read a comment.
 pub fn comment_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
@@ -32,10 +32,12 @@ mod tests {
         let program = parse(input);
         assert_eq!(
             program,
-            vec![GlobalStatement::Statement(Statement::Comment(
-                " just a comment . 123 AS".to_string()
-            ))
-            .at_rc(1, 1)]
+            vec![
+                GlobalStatement::Statement(Statement::Comment(
+                    " just a comment . 123 AS".to_string()
+                ))
+                .at_rc(1, 1)
+            ]
         );
     }
 

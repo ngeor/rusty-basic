@@ -1,10 +1,10 @@
 use rusty_pc::*;
 
+use crate::ParseError;
 use crate::input::RcStringView;
 use crate::specific::core::name::bare_name_with_dots;
 use crate::specific::pc_specific::*;
 use crate::specific::{Keyword, Statement};
-use crate::ParseError;
 
 pub fn statement_go_sub_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword_followed_by_whitespace_p(Keyword::GoSub)

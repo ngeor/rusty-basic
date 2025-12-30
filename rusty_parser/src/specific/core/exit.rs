@@ -1,9 +1,9 @@
 use rusty_pc::*;
 
+use crate::ParseError;
 use crate::input::RcStringView;
 use crate::specific::pc_specific::*;
 use crate::specific::{ExitObject, Keyword, Statement};
-use crate::ParseError;
 
 pub fn statement_exit_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq3(

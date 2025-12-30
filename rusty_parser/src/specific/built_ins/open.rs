@@ -29,8 +29,8 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
 }
 
 // FOR <ws+> INPUT <ws+>
-fn parse_open_mode_p(
-) -> impl Parser<RcStringView, Output = Positioned<FileMode>, Error = ParseError> {
+fn parse_open_mode_p()
+-> impl Parser<RcStringView, Output = Positioned<FileMode>, Error = ParseError> {
     seq4(
         keyword(Keyword::For),
         whitespace(),
@@ -47,8 +47,8 @@ fn parse_open_mode_p(
 }
 
 // ACCESS <ws+> READ <ws+>
-fn parse_open_access_p(
-) -> impl Parser<RcStringView, Output = Positioned<FileAccess>, Error = ParseError> {
+fn parse_open_access_p()
+-> impl Parser<RcStringView, Output = Positioned<FileAccess>, Error = ParseError> {
     seq4(
         keyword(Keyword::Access),
         whitespace(),
@@ -105,7 +105,7 @@ mod tests {
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::{assert_parser_err, BuiltInSub, *};
+    use crate::{BuiltInSub, assert_parser_err, *};
     #[test]
     fn test_open_for_input_access_read_as_file_handle_with_spaces() {
         let input = r#"OPEN "FILE.TXT" FOR INPUT ACCESS READ AS #1"#;

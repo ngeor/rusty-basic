@@ -9,15 +9,15 @@ use crate::specific::core::statement_separator::{comment_separator, common_separ
 use crate::specific::pc_specific::*;
 use crate::specific::*;
 
-pub fn single_line_non_comment_statements_p(
-) -> impl Parser<RcStringView, Output = Statements, Error = ParseError> {
+pub fn single_line_non_comment_statements_p()
+-> impl Parser<RcStringView, Output = Statements, Error = ParseError> {
     whitespace().and_keep_right(delimited_by_colon(
         single_line_non_comment_statement_p().with_pos(),
     ))
 }
 
-pub fn single_line_statements_p(
-) -> impl Parser<RcStringView, Output = Statements, Error = ParseError> {
+pub fn single_line_statements_p()
+-> impl Parser<RcStringView, Output = Statements, Error = ParseError> {
     whitespace().and_keep_right(delimited_by_colon(single_line_statement_p().with_pos()))
 }
 

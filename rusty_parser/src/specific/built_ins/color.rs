@@ -14,7 +14,7 @@ mod tests {
     use crate::error::ParseError;
     use crate::specific::Statement;
     use crate::test_utils::*;
-    use crate::{assert_parser_err, parse, BuiltInSub};
+    use crate::{BuiltInSub, assert_parser_err, parse};
 
     #[test]
     fn parse_foreground_only() {

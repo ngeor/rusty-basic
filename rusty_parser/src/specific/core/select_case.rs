@@ -1,12 +1,12 @@
 use rusty_pc::*;
 
+use crate::ParseError;
 use crate::input::RcStringView;
 use crate::specific::core::expression::ws_expr_pos_p;
 use crate::specific::core::statement_separator::comments_and_whitespace_p;
 use crate::specific::core::statements::ZeroOrMoreStatements;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::ParseError;
 
 // SELECT CASE expr ' comment
 // CASE 1
@@ -101,8 +101,8 @@ fn continue_after_case() -> impl Parser<RcStringView, Output = CaseBlock, Error 
     )
 }
 
-fn case_expression_list(
-) -> impl Parser<RcStringView, Output = Vec<CaseExpression>, Error = ParseError> {
+fn case_expression_list()
+-> impl Parser<RcStringView, Output = Vec<CaseExpression>, Error = ParseError> {
     csv(case_expression_parser::parser())
 }
 
@@ -132,8 +132,8 @@ mod case_expression_parser {
         )
     }
 
-    fn relational_operator_p(
-    ) -> impl Parser<RcStringView, Output = Positioned<Operator>, Error = ParseError> {
+    fn relational_operator_p()
+    -> impl Parser<RcStringView, Output = Positioned<Operator>, Error = ParseError> {
         any_token()
             .filter_map(|token| match TokenType::from_token(token) {
                 TokenType::LessEquals => Some(Operator::LessOrEqual),
@@ -285,26 +285,30 @@ mod tests {
                         vec![CaseExpression::Simple(
                             paren_exp!( bin_exp!( int_lit!(6 at 3:14) ; plus int_lit!(5 at 3:16) ; at 3:15 ) ; at 3:13 )
                         )],
-                        vec![Statement::Print(Print {
-                            file_number: None,
-                            lpt1: false,
-                            format_string: None,
-                            args: vec![PrintArg::Expression(11.as_lit_expr(4, 19))]
-                        })
-                        .at_rc(4, 13)]
+                        vec![
+                            Statement::Print(Print {
+                                file_number: None,
+                                lpt1: false,
+                                format_string: None,
+                                args: vec![PrintArg::Expression(11.as_lit_expr(4, 19))]
+                            })
+                            .at_rc(4, 13)
+                        ]
                     ),
                     CaseBlock::new(
                         vec![CaseExpression::Range(
                             Expression::Parenthesis(Box::new(2.as_lit_expr(5, 14))).at_rc(5, 13),
                             Expression::Parenthesis(Box::new(5.as_lit_expr(5, 19))).at_rc(5, 18)
                         )],
-                        vec![Statement::Print(Print {
-                            file_number: None,
-                            lpt1: false,
-                            format_string: None,
-                            args: vec![PrintArg::Expression(2.as_lit_expr(6, 19))]
-                        })
-                        .at_rc(6, 13)]
+                        vec![
+                            Statement::Print(Print {
+                                file_number: None,
+                                lpt1: false,
+                                format_string: None,
+                                args: vec![PrintArg::Expression(2.as_lit_expr(6, 19))]
+                            })
+                            .at_rc(6, 13)
+                        ]
                     ),
                 ],
                 else_block: None

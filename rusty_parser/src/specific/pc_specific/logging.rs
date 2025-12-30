@@ -1,6 +1,6 @@
 #[cfg(debug_assertions)]
 use rusty_pc::ParseResult;
-use rusty_pc::{parser_declaration, Parser};
+use rusty_pc::{Parser, parser_declaration};
 
 use crate::error::ParseError;
 use crate::input::RcStringView;

@@ -135,8 +135,8 @@ fn opt_using() -> impl Parser<RcStringView, Output = Option<ExpressionPos>, Erro
     .to_option()
 }
 
-fn opt_file_handle_comma_p(
-) -> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>, Error = ParseError> {
+fn opt_file_handle_comma_p()
+-> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>, Error = ParseError> {
     seq2(file_handle_p(), comma(), |file_handle, _| file_handle).to_option()
 }
 

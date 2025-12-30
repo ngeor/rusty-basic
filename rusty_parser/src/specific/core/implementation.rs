@@ -1,11 +1,11 @@
 use rusty_pc::*;
 
+use crate::ParseError;
 use crate::input::RcStringView;
 use crate::specific::core::declaration::{function_declaration_p, sub_declaration_p};
 use crate::specific::core::statements::ZeroOrMoreStatements;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::ParseError;
 
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
@@ -15,8 +15,8 @@ pub fn implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement,
     function_implementation_p().or(sub_implementation_p())
 }
 
-fn function_implementation_p(
-) -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParseError> {
+fn function_implementation_p()
+-> impl Parser<RcStringView, Output = GlobalStatement, Error = ParseError> {
     seq3(
         static_declaration_p(function_declaration_p()),
         ZeroOrMoreStatements::new(Keyword::End),
@@ -86,17 +86,19 @@ mod tests {
                     Parameter::new("A".into(), ParamType::Bare).at_rc(2, 22),
                     Parameter::new("B".into(), ParamType::Bare).at_rc(2, 25)
                 ],
-                body: vec![Statement::assignment(
-                    Expression::var_unresolved("Add"),
-                    Expression::BinaryExpression(
-                        Operator::Plus,
-                        Box::new("A".as_var_expr(3, 19)),
-                        Box::new("B".as_var_expr(3, 23)),
-                        ExpressionType::Unresolved
+                body: vec![
+                    Statement::assignment(
+                        Expression::var_unresolved("Add"),
+                        Expression::BinaryExpression(
+                            Operator::Plus,
+                            Box::new("A".as_var_expr(3, 19)),
+                            Box::new("B".as_var_expr(3, 23)),
+                            ExpressionType::Unresolved
+                        )
+                        .at_rc(3, 21)
                     )
-                    .at_rc(3, 21)
-                )
-                .at_rc(3, 13)],
+                    .at_rc(3, 13)
+                ],
                 is_static: false
             })
             .at_rc(2, 9)
@@ -119,17 +121,19 @@ mod tests {
                     Parameter::new("a".into(), ParamType::Bare).at_rc(2, 22),
                     Parameter::new("b".into(), ParamType::Bare).at_rc(2, 25)
                 ],
-                body: vec![Statement::assignment(
-                    Expression::var_unresolved("add"),
-                    Expression::BinaryExpression(
-                        Operator::Plus,
-                        Box::new("a".as_var_expr(3, 19)),
-                        Box::new("b".as_var_expr(3, 23)),
-                        ExpressionType::Unresolved
+                body: vec![
+                    Statement::assignment(
+                        Expression::var_unresolved("add"),
+                        Expression::BinaryExpression(
+                            Operator::Plus,
+                            Box::new("a".as_var_expr(3, 19)),
+                            Box::new("b".as_var_expr(3, 23)),
+                            ExpressionType::Unresolved
+                        )
+                        .at_rc(3, 21)
                     )
-                    .at_rc(3, 21)
-                )
-                .at_rc(3, 13)],
+                    .at_rc(3, 13)
+                ],
                 is_static: false
             })
             .at_rc(2, 9)

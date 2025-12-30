@@ -1,9 +1,9 @@
 use rusty_pc::{Map, Parser};
 
-use crate::input::RcStringView;
-use crate::specific::pc_specific::{keyword_choice, keyword_syntax_error, WithExpected};
-use crate::specific::Keyword;
 use crate::ParseError;
+use crate::input::RcStringView;
+use crate::specific::Keyword;
+use crate::specific::pc_specific::{WithExpected, keyword_choice, keyword_syntax_error};
 
 pub fn keyword_map<T, K>(mappings: K) -> impl Parser<RcStringView, Output = T, Error = ParseError>
 where
@@ -12,6 +12,7 @@ where
 {
     let keywords: Vec<Keyword> = mappings.as_ref().iter().map(|(k, _)| *k).collect();
     // TODO error message should be lazily evaluated
+    // TODO make a keyword_map that doesn't require Clone
     let err_msg = keyword_syntax_error(&keywords);
     keyword_choice(keywords)
         .map(move |(keyword, _)| {

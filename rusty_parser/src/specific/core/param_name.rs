@@ -1,11 +1,12 @@
 use rusty_common::Positioned;
+use rusty_pc::boxed::boxed;
 use rusty_pc::*;
 
+use crate::ParseError;
 use crate::input::RcStringView;
 use crate::specific::core::var_name;
 use crate::specific::pc_specific::*;
 use crate::specific::{Keyword, *};
-use crate::ParseError;
 
 pub type Parameter = TypedName<ParamType>;
 pub type ParameterPos = Positioned<Parameter>;
@@ -85,11 +86,11 @@ pub fn parameter_pos_p() -> impl Parser<RcStringView, Output = ParameterPos, Err
 }
 
 fn parameter_p() -> impl Parser<RcStringView, Output = Parameter, Error = ParseError> {
-    var_name(array_indicator(), built_in_extended_type)
+    var_name(array_indicator, extended_type)
 }
 
-fn array_indicator(
-) -> impl Parser<RcStringView, Output = Option<(Token, Token)>, Error = ParseError> {
+fn array_indicator()
+-> impl Parser<RcStringView, Output = Option<(Token, Token)>, Error = ParseError> {
     Seq2::new(
         any_token_of(TokenType::LParen),
         any_token_of(TokenType::RParen),
@@ -97,8 +98,23 @@ fn array_indicator(
     .to_option()
 }
 
+fn extended_type(
+    allow_user_defined: bool,
+) -> impl Parser<RcStringView, Output = ParamType, Error = ParseError> {
+    if allow_user_defined {
+        boxed(
+            built_in_extended_type()
+                .or(user_defined_type())
+                .with_expected_message(
+                    "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
+                ),
+        )
+    } else {
+        boxed(built_in_extended_type())
+    }
+}
+
 fn built_in_extended_type() -> impl Parser<RcStringView, Output = ParamType, Error = ParseError> {
-    // TODO make a keyword_map that doesn't require Clone
     keyword_map(&[
         (
             Keyword::Single,

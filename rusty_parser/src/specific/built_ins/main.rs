@@ -1,8 +1,8 @@
 use rusty_pc::*;
 
+use crate::ParseError;
 use crate::input::RcStringView;
 use crate::specific::*;
-use crate::ParseError;
 
 // Parses built-in subs which have a special syntax.
 lazy_parser!(pub fn built_in_sub_call_p<I=RcStringView, Output=Statement, Error=ParseError> ; struct LazyParser ; OrParser::new(vec![
@@ -26,8 +26,8 @@ lazy_parser!(pub fn built_in_sub_call_p<I=RcStringView, Output=Statement, Error=
 
 // needed for built-in functions that are also keywords (e.g. LEN), so they
 // cannot be parsed by the `word` module.
-pub fn built_in_function_call_p(
-) -> impl Parser<RcStringView, Output = Expression, Error = ParseError> {
+pub fn built_in_function_call_p()
+-> impl Parser<RcStringView, Output = Expression, Error = ParseError> {
     OrParser::new(vec![
         Box::new(super::len::parse()),
         Box::new(super::string_fn::parse()),

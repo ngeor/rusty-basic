@@ -1,4 +1,4 @@
-use rusty_pc::{default_parse_error, ParseResult, Parser, Token};
+use rusty_pc::{ParseResult, Parser, Token, default_parse_error};
 
 use crate::error::ParseError;
 use crate::input::RcStringView;

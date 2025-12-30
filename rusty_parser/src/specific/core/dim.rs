@@ -1,10 +1,10 @@
 use rusty_pc::*;
 
+use crate::ParseError;
 use crate::input::RcStringView;
 use crate::specific::core::dim_name::{dim_var_pos_p, redim_var_pos_p};
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::ParseError;
 
 /// Parses DIM statement
 pub fn dim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
@@ -38,8 +38,8 @@ pub fn redim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseE
     )
 }
 
-fn opt_shared_keyword(
-) -> impl Parser<RcStringView, Output = Option<(Token, Token)>, Error = ParseError> {
+fn opt_shared_keyword()
+-> impl Parser<RcStringView, Output = Option<(Token, Token)>, Error = ParseError> {
     Seq2::new(keyword(Keyword::Shared), whitespace()).to_option()
 }
 

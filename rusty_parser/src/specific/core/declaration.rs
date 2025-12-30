@@ -1,11 +1,11 @@
 use rusty_pc::*;
 
+use crate::ParseError;
 use crate::input::RcStringView;
 use crate::specific::core::name::{bare_name_with_dots, name_with_dots};
 use crate::specific::core::param_name::parameter_pos_p;
 use crate::specific::pc_specific::*;
 use crate::specific::*;
-use crate::ParseError;
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)
 // FunctionDeclaration   ::= FUNCTION<ws+><Name><ws*><DeclarationParameters>
@@ -30,8 +30,8 @@ pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement, Er
     )
 }
 
-pub fn function_declaration_p(
-) -> impl Parser<RcStringView, Output = (NamePos, Parameters), Error = ParseError> {
+pub fn function_declaration_p()
+-> impl Parser<RcStringView, Output = (NamePos, Parameters), Error = ParseError> {
     seq4(
         keyword(Keyword::Function),
         whitespace(),
@@ -45,8 +45,8 @@ pub fn function_declaration_p(
     )
 }
 
-pub fn sub_declaration_p(
-) -> impl Parser<RcStringView, Output = (BareNamePos, Parameters), Error = ParseError> {
+pub fn sub_declaration_p()
+-> impl Parser<RcStringView, Output = (BareNamePos, Parameters), Error = ParseError> {
     seq4(
         keyword(Keyword::Sub),
         whitespace(),
@@ -187,26 +187,30 @@ mod tests {
             vec![
                 GlobalStatement::function_declaration(
                     "Echo".as_name(2, 26),
-                    vec![Parameter::new(
-                        "X".into(),
-                        ParamType::Array(Box::new(ParamType::BuiltIn(
-                            TypeQualifier::DollarString,
-                            BuiltInStyle::Compact
-                        )))
-                    )
-                    .at_rc(2, 31)]
+                    vec![
+                        Parameter::new(
+                            "X".into(),
+                            ParamType::Array(Box::new(ParamType::BuiltIn(
+                                TypeQualifier::DollarString,
+                                BuiltInStyle::Compact
+                            )))
+                        )
+                        .at_rc(2, 31)
+                    ]
                 )
                 .at_rc(2, 9),
                 GlobalStatement::FunctionImplementation(FunctionImplementation {
                     name: "Echo".as_name(3, 18),
-                    params: vec![Parameter::new(
-                        "X".into(),
-                        ParamType::Array(Box::new(ParamType::BuiltIn(
-                            TypeQualifier::DollarString,
-                            BuiltInStyle::Compact
-                        )))
-                    )
-                    .at_rc(3, 23)],
+                    params: vec![
+                        Parameter::new(
+                            "X".into(),
+                            ParamType::Array(Box::new(ParamType::BuiltIn(
+                                TypeQualifier::DollarString,
+                                BuiltInStyle::Compact
+                            )))
+                        )
+                        .at_rc(3, 23)
+                    ],
                     body: vec![],
                     is_static: false
                 })
@@ -238,15 +242,19 @@ mod tests {
         let program = parse(input);
         assert_eq!(
             program,
-            vec![GlobalStatement::sub_declaration(
-                "LCenter".as_bare_name(2, 21),
-                vec![Parameter::new(
-                    "text".into(),
-                    ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
+            vec![
+                GlobalStatement::sub_declaration(
+                    "LCenter".as_bare_name(2, 21),
+                    vec![
+                        Parameter::new(
+                            "text".into(),
+                            ParamType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Compact)
+                        )
+                        .at_rc(2, 30)
+                    ]
                 )
-                .at_rc(2, 30)]
-            )
-            .at_rc(2, 9)]
+                .at_rc(2, 9)
+            ]
         );
     }
 }

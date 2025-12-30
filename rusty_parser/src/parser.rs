@@ -5,7 +5,7 @@ use rusty_pc::*;
 
 use crate::error::ParseErrorPos;
 use crate::input::RcStringView;
-use crate::specific::{create_file_tokenizer, create_string_tokenizer, program_parser_p, Program};
+use crate::specific::{Program, create_file_tokenizer, create_string_tokenizer, program_parser_p};
 
 /// Parses a QBasic file.
 ///
@@ -53,9 +53,9 @@ pub fn parse_main_str(input: String) -> Result<Program, ParseErrorPos> {
 mod tests {
     use rusty_common::*;
 
+    use crate::BuiltInSub;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::BuiltInSub;
 
     #[test]
     fn test_parse_fixture_fib() {
@@ -66,11 +66,13 @@ mod tests {
                 // DECLARE FUNCTION Fib! (N!)
                 GlobalStatement::function_declaration(
                     "Fib!".as_name(1, 18),
-                    vec![Parameter::new(
-                        "N".into(),
-                        ParamType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
-                    )
-                    .at_rc(1, 24)],
+                    vec![
+                        Parameter::new(
+                            "N".into(),
+                            ParamType::BuiltIn(TypeQualifier::BangSingle, BuiltInStyle::Compact)
+                        )
+                        .at_rc(1, 24)
+                    ],
                 ),
                 // PRINT "Enter the number of fibonacci to calculate"
                 GlobalStatement::Statement(Statement::Print(Print::one(
@@ -148,26 +150,30 @@ mod tests {
                                         Box::new(
                                             Expression::func(
                                                 "Fib",
-                                                vec![Expression::BinaryExpression(
-                                                    Operator::Minus,
-                                                    Box::new("N".as_var_expr(12, 19)),
-                                                    Box::new(1.as_lit_expr(12, 23)),
-                                                    ExpressionType::Unresolved
-                                                )
-                                                .at_rc(12, 21)]
+                                                vec![
+                                                    Expression::BinaryExpression(
+                                                        Operator::Minus,
+                                                        Box::new("N".as_var_expr(12, 19)),
+                                                        Box::new(1.as_lit_expr(12, 23)),
+                                                        ExpressionType::Unresolved
+                                                    )
+                                                    .at_rc(12, 21)
+                                                ]
                                             )
                                             .at_rc(12, 15)
                                         ),
                                         Box::new(
                                             Expression::func(
                                                 "Fib",
-                                                vec![Expression::BinaryExpression(
-                                                    Operator::Minus,
-                                                    Box::new("N".as_var_expr(12, 32)),
-                                                    Box::new(2.as_lit_expr(12, 36)),
-                                                    ExpressionType::Unresolved
-                                                )
-                                                .at_rc(12, 34)]
+                                                vec![
+                                                    Expression::BinaryExpression(
+                                                        Operator::Minus,
+                                                        Box::new("N".as_var_expr(12, 32)),
+                                                        Box::new(2.as_lit_expr(12, 36)),
+                                                        ExpressionType::Unresolved
+                                                    )
+                                                    .at_rc(12, 34)
+                                                ]
                                             )
                                             .at_rc(12, 28)
                                         ),

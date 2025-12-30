@@ -27,7 +27,7 @@ mod tests {
     use crate::error::ParseError;
     use crate::specific::*;
     use crate::test_utils::*;
-    use crate::{assert_built_in_sub_call, assert_parser_err, BuiltInSub, *};
+    use crate::{BuiltInSub, assert_built_in_sub_call, assert_parser_err, *};
     #[test]
     fn test_parse_one_variable() {
         let input = "LINE INPUT A$";

@@ -1,5 +1,5 @@
 use rusty_pc::boxed::boxed;
-use rusty_pc::{And, Map, Parser, ThenWith, ToOption, Token};
+use rusty_pc::{And, Map, OrFail, Parser, ThenWith, ToOption, Token};
 
 use crate::core::expression::ws_expr_pos_p;
 use crate::error::ParseError;

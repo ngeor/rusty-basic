@@ -1,17 +1,33 @@
 use crate::{ParseResult, Parser};
 
-pub(crate) struct MapErrParser<P, E> {
+pub trait NoIncomplete<I>: Parser<I> + Sized {
+    fn no_incomplete(self) -> MapErrParser<Self, Self::Error> {
+        MapErrParser::new(self, true, None)
+    }
+}
+
+impl<I, P> NoIncomplete<I> for P where P: Parser<I> + Sized {}
+
+pub trait OrFail<I>: Parser<I> + Sized {
+    fn or_fail(self, err: Self::Error) -> MapErrParser<Self, Self::Error> {
+        MapErrParser::new(self, true, Some(err))
+    }
+}
+
+impl<I, P> OrFail<I> for P where P: Parser<I> + Sized {}
+
+pub struct MapErrParser<P, E> {
     parser: P,
     make_all_fatal: bool,
     override_non_fatal_error: Option<E>,
 }
 
 impl<P, E> MapErrParser<P, E> {
-    pub fn new(parser: P) -> Self {
+    pub fn new(parser: P, make_all_fatal: bool, override_non_fatal_error: Option<E>) -> Self {
         Self {
             parser,
-            make_all_fatal: false,
-            override_non_fatal_error: None,
+            make_all_fatal,
+            override_non_fatal_error,
         }
     }
 }
@@ -35,28 +51,6 @@ where
                 Err((self.make_all_fatal, i, err))
             }
             Err((true, i, err)) => Err((true, i, err)),
-        }
-    }
-
-    fn no_incomplete(self) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
-    where
-        Self: Sized,
-    {
-        Self {
-            make_all_fatal: true,
-            ..self
-        }
-    }
-
-    fn or_fail(self, err: Self::Error) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
-    where
-        Self: Sized,
-        Self::Error: Clone,
-    {
-        Self {
-            make_all_fatal: true,
-            override_non_fatal_error: Some(err),
-            ..self
         }
     }
 }

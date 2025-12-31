@@ -13,17 +13,17 @@ where
     where
         F: MessageProvider,
     {
-        WithExpectedMessage::new(self, f, true)
+        WithExpectedMessage::new(self, f)
     }
 }
 
 impl<I, P> WithExpected<I> for P where P: Parser<I, Error = ParseError> {}
 
-struct WithExpectedMessage<P, F>(P, F, bool);
+struct WithExpectedMessage<P, F>(P, F);
 
 impl<P, F> WithExpectedMessage<P, F> {
-    pub fn new(parser: P, f: F, allow_incomplete: bool) -> Self {
-        Self(parser, f, allow_incomplete)
+    pub fn new(parser: P, f: F) -> Self {
+        Self(parser, f)
     }
 }
 
@@ -63,15 +63,8 @@ where
     fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.0.parse(tokenizer) {
             Ok(value) => Ok(value),
-            Err((false, i, _)) => Err((!self.2, i, ParseError::SyntaxError(self.1.to_str()))),
+            Err((false, i, _)) => Err((false, i, ParseError::SyntaxError(self.1.to_str()))),
             Err(err) => Err(err),
         }
-    }
-
-    fn no_incomplete(self) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
-    where
-        Self: Sized,
-    {
-        Self(self.0, self.1, false)
     }
 }

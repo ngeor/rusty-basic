@@ -6,7 +6,7 @@ use rusty_pc::*;
 use crate::error::ParseErrorPos;
 use crate::input::RcStringView;
 use crate::pc_specific::{create_file_tokenizer, create_string_tokenizer};
-use crate::specific::{Program, program_parser_p};
+use crate::{Program, program_parser_p};
 
 /// Parses a QBasic file.
 ///
@@ -54,9 +54,8 @@ pub fn parse_main_str(input: String) -> Result<Program, ParseErrorPos> {
 mod tests {
     use rusty_common::*;
 
-    use crate::BuiltInSub;
-    use crate::specific::*;
     use crate::test_utils::*;
+    use crate::{BuiltInSub, *};
 
     #[test]
     fn test_parse_fixture_fib() {

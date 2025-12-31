@@ -1,11 +1,10 @@
 use rusty_pc::*;
 
-use crate::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::{
     TokenType, WithExpected, any_token, any_token_of, dollar_sign, peek_token, whitespace
 };
-use crate::specific::Keyword;
+use crate::{Keyword, ParseError};
 
 // TODO review usages of TokenType::Keyword
 

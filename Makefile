@@ -14,17 +14,22 @@ watch:
 
 # identify the largest source files
 wc:
-	find . -type f -iname "*.rs" -exec wc -l \{\} \; | sort -n
+	@find . -type f -iname "*.rs" -exec wc -l \{\} \; | sort -n
 
 coverage:
 	docker run --security-opt seccomp=unconfined -v "${PWD}:/volume" xd009642/tarpaulin cargo tarpaulin -o Html
 
 clean:
-	cargo clean
+	@cargo clean
 
 # prints the size of the types
 #
 # perl -e 'print sort { length($b) <=> length($a) } <>' sorts by line length in descending order
 # escaping $ in Makefile by doubling it
-print-type-size:
-	cargo clean && RUSTFLAGS="-Zprint-type-sizes" cargo build -p rusty_parser | perl -e 'print sort { length($$b) <=> length($$a) } <>'
+#
+# prefixing with @ to avoid printing the command itself to stdout
+print-type-size: clean
+	@RUSTFLAGS="-Zprint-type-sizes" cargo build -p rusty_parser | perl -e 'print sort { length($$b) <=> length($$a) } <>'
+
+print-longest-type-length: clean
+	@RUSTFLAGS="-Zprint-type-sizes" cargo build -p rusty_parser | perl -e 'print sort { length($$b) <=> length($$a) } <>' | awk '{print length}' | head -n1

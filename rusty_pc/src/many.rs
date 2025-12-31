@@ -38,7 +38,6 @@ struct ManyParser<P, S, A> {
     parser: P,
     seed: S,
     accumulator: A,
-    allow_none: bool,
 }
 
 impl<P, S, A> ManyParser<P, S, A> {
@@ -47,7 +46,6 @@ impl<P, S, A> ManyParser<P, S, A> {
             parser,
             seed,
             accumulator,
-            allow_none: false,
         }
     }
 }
@@ -63,44 +61,24 @@ where
     type Error = P::Error;
 
     fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
-        self.parser
-            .parse(input)
-            .flat_map(|mut input, first_value| {
-                let mut result = (self.seed)(first_value);
-                loop {
-                    match self.parser.parse(input) {
-                        Ok((i, value)) => {
-                            input = i;
-                            result = (self.accumulator)(result, value);
-                        }
-                        Err((false, i, _)) => {
-                            input = i;
-                            break;
-                        }
-                        Err(e) => {
-                            return Err(e);
-                        }
+        self.parser.parse(input).flat_map(|mut input, first_value| {
+            let mut result = (self.seed)(first_value);
+            loop {
+                match self.parser.parse(input) {
+                    Ok((i, value)) => {
+                        input = i;
+                        result = (self.accumulator)(result, value);
+                    }
+                    Err((false, i, _)) => {
+                        input = i;
+                        break;
+                    }
+                    Err(e) => {
+                        return Err(e);
                     }
                 }
-                Ok((input, result))
-            })
-            .flat_map_err(|fatal, i, err| {
-                if self.allow_none && !fatal {
-                    Ok((i, O::default()))
-                } else {
-                    Err((fatal, i, err))
-                }
-            })
-    }
-
-    fn or_default(self) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
-    where
-        Self: Sized,
-        Self::Output: Default,
-    {
-        Self {
-            allow_none: true,
-            ..self
-        }
+            }
+            Ok((input, result))
+        })
     }
 }

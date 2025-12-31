@@ -32,10 +32,6 @@ pub trait ParseResultTrait<I, O, E> {
     fn flat_map<F, U>(self, mapper: F) -> ParseResult<I, U, E>
     where
         F: FnOnce(I, O) -> ParseResult<I, U, E>;
-
-    fn flat_map_err<F, U>(self, mapper: F) -> ParseResult<I, O, U>
-    where
-        F: FnOnce(bool, I, E) -> ParseResult<I, O, U>;
 }
 
 impl<I, O, E> ParseResultTrait<I, O, E> for ParseResult<I, O, E> {
@@ -56,16 +52,6 @@ impl<I, O, E> ParseResultTrait<I, O, E> for ParseResult<I, O, E> {
         match self {
             Ok((i, o)) => mapper(i, o),
             Err(e) => Err(e),
-        }
-    }
-
-    fn flat_map_err<F, U>(self, mapper: F) -> ParseResult<I, O, U>
-    where
-        F: FnOnce(bool, I, E) -> ParseResult<I, O, U>,
-    {
-        match self {
-            Ok(ok) => Ok(ok),
-            Err((fatal, i, e)) => mapper(fatal, i, e),
         }
     }
 }

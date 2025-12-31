@@ -120,7 +120,6 @@ struct AndParser<L, R, F> {
     left: L,
     right: R,
     combiner: F,
-    allow_incomplete: bool,
 }
 
 impl<L, R, F> AndParser<L, R, F> {
@@ -129,7 +128,6 @@ impl<L, R, F> AndParser<L, R, F> {
             left,
             right,
             combiner,
-            allow_incomplete: true,
         }
     }
 }
@@ -154,27 +152,11 @@ where
                 match self.right.parse(input) {
                     Ok((input, right)) => Ok((input, (self.combiner)(left, right))),
                     // return original input here
-                    Err((false, i, err)) => {
-                        if self.allow_incomplete {
-                            Err((false, tokenizer, err))
-                        } else {
-                            Err((true, i, err))
-                        }
-                    }
+                    Err((false, _, err)) => Err((false, tokenizer, err)),
                     Err(err) => Err(err),
                 }
             }
-            Err((fatal, i, err)) => Err((fatal || !self.allow_incomplete, i, err)),
-        }
-    }
-
-    fn no_incomplete(self) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
-    where
-        Self: Sized,
-    {
-        Self {
-            allow_incomplete: false,
-            ..self
+            Err((fatal, i, err)) => Err((fatal, i, err)),
         }
     }
 }

@@ -2,15 +2,11 @@ use crate::*;
 
 pub struct OrParser<I, O, E> {
     parsers: Vec<Box<dyn Parser<I, Output = O, Error = E>>>,
-    allow_incomplete: bool,
 }
 
 impl<I, O, E> OrParser<I, O, E> {
     pub fn new(parsers: Vec<Box<dyn Parser<I, Output = O, Error = E>>>) -> Self {
-        Self {
-            parsers,
-            allow_incomplete: true,
-        }
+        Self { parsers }
     }
 }
 
@@ -30,18 +26,7 @@ impl<I, O, E> Parser<I> for OrParser<I, O, E> {
             }
         }
 
-        self.parsers
-            .last()
-            .unwrap()
-            .parse(input)
-            .flat_map_err(|fatal, i, err| Err((fatal || !self.allow_incomplete, i, err)))
-    }
-
-    fn no_incomplete(self) -> impl parsers::Parser<I, Output = O, Error = E> {
-        Self {
-            allow_incomplete: false,
-            ..self
-        }
+        self.parsers.last().unwrap().parse(input)
     }
 }
 

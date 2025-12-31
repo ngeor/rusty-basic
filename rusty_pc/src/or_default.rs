@@ -6,9 +6,9 @@ parser1!(
     fn or_default
 );
 
-impl<I, P> Parser<I> for OrDefaultParser<P>
+impl<I, C, P> Parser<I, C> for OrDefaultParser<P>
 where
-    P: Parser<I>,
+    P: Parser<I, C>,
     P::Output: Default,
 {
     type Output = P::Output;

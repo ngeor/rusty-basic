@@ -6,9 +6,9 @@ parser1!(
     fn to_option
 );
 
-impl<I, P> Parser<I> for ToOptionParser<P>
+impl<I, C, P> Parser<I, C> for ToOptionParser<P>
 where
-    P: Parser<I>,
+    P: Parser<I, C>,
 {
     type Output = Option<P::Output>;
     type Error = P::Error;

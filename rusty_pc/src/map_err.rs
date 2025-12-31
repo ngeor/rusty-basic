@@ -1,20 +1,20 @@
 use crate::{ParseResult, Parser};
 
-pub trait NoIncomplete<I>: Parser<I> + Sized {
+pub trait NoIncomplete<I, C>: Parser<I, C> + Sized {
     fn no_incomplete(self) -> MapErrParser<Self, Self::Error> {
         MapErrParser::new(self, true, None)
     }
 }
 
-impl<I, P> NoIncomplete<I> for P where P: Parser<I> + Sized {}
+impl<I, C, P> NoIncomplete<I, C> for P where P: Parser<I, C> + Sized {}
 
-pub trait OrFail<I>: Parser<I> + Sized {
+pub trait OrFail<I, C>: Parser<I, C> + Sized {
     fn or_fail(self, err: Self::Error) -> MapErrParser<Self, Self::Error> {
         MapErrParser::new(self, true, Some(err))
     }
 }
 
-impl<I, P> OrFail<I> for P where P: Parser<I> + Sized {}
+impl<I, C, P> OrFail<I, C> for P where P: Parser<I, C> + Sized {}
 
 pub struct MapErrParser<P, E> {
     parser: P,
@@ -32,9 +32,9 @@ impl<P, E> MapErrParser<P, E> {
     }
 }
 
-impl<I, P, E> Parser<I> for MapErrParser<P, E>
+impl<I, C, P, E> Parser<I, C> for MapErrParser<P, E>
 where
-    P: Parser<I, Error = E>,
+    P: Parser<I, C, Error = E>,
     E: Clone,
 {
     type Output = P::Output;

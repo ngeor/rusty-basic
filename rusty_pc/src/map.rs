@@ -1,10 +1,10 @@
 use crate::{ParseResult, ParseResultTrait, Parser};
 
-pub trait Map<I>: Parser<I>
+pub trait Map<I, C>: Parser<I, C>
 where
     Self: Sized,
 {
-    fn map<F, U>(self, mapper: F) -> impl Parser<I, Output = U, Error = Self::Error>
+    fn map<F, U>(self, mapper: F) -> impl Parser<I, C, Output = U, Error = Self::Error>
     where
         F: Fn(Self::Output) -> U,
     {
@@ -12,13 +12,13 @@ where
     }
 }
 
-impl<I, P> Map<I> for P where P: Parser<I> {}
+impl<I, C, P> Map<I, C> for P where P: Parser<I, C> {}
 
 struct MapParser<P, F>(P, F);
 
-impl<I, P, F, U> Parser<I> for MapParser<P, F>
+impl<I, C, P, F, U> Parser<I, C> for MapParser<P, F>
 where
-    P: Parser<I>,
+    P: Parser<I, C>,
     F: Fn(P::Output) -> U,
 {
     type Output = U;

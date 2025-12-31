@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{ParseResult, Parser};
 
-pub fn supplier<I, F, O, E>(f: F) -> impl Parser<I, Output = O, Error = E>
+pub fn supplier<I, C, F, O, E>(f: F) -> impl Parser<I, C, Output = O, Error = E>
 where
     F: Fn() -> O,
 {
@@ -11,7 +11,7 @@ where
 
 struct SupplierParser<F, E>(F, PhantomData<E>);
 
-impl<I, F, O, E> Parser<I> for SupplierParser<F, E>
+impl<I, C, F, O, E> Parser<I, C> for SupplierParser<F, E>
 where
     F: Fn() -> O,
 {

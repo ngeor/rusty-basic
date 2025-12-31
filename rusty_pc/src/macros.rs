@@ -34,7 +34,7 @@ macro_rules! parser1 {
         // trait definition
 
         $(#[$($attrss)*])*
-        pub trait $trait_name<I> : Parser<I> where Self: Sized {
+        pub trait $trait_name<I, C> : Parser<I, C> where Self: Sized {
             fn $fn_name(self) -> $struct_name<Self> {
                 $struct_name::new(self)
             }
@@ -42,7 +42,7 @@ macro_rules! parser1 {
 
         // blanket implementation for any Parser
 
-        impl<I, P> $trait_name<I> for P where P: Parser<I> {}
+        impl<I, C, P> $trait_name<I, C> for P where P: Parser<I, C> {}
 
         // struct
 

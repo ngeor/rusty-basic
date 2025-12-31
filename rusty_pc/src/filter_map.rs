@@ -1,6 +1,6 @@
 use crate::{ParseResult, ParseResultTrait, Parser, default_parse_error};
 
-pub trait FilterMap<I>: Parser<I>
+pub trait FilterMap<I, C>: Parser<I, C>
 where
     Self: Sized,
     Self::Error: Default,
@@ -9,7 +9,7 @@ where
     fn filter_map<F, U>(
         self,
         predicate_mapper: F,
-    ) -> impl Parser<I, Output = U, Error = Self::Error>
+    ) -> impl Parser<I, C, Output = U, Error = Self::Error>
     where
         F: Fn(&Self::Output) -> Option<U>,
     {
@@ -17,19 +17,19 @@ where
     }
 }
 
-impl<I, P> FilterMap<I> for P
+impl<I, C, P> FilterMap<I, C> for P
 where
     I: Clone,
-    P: Parser<I>,
+    P: Parser<I, C>,
     P::Error: Default,
 {
 }
 
 struct FilterMapParser<P, F>(P, F);
 
-impl<I: Clone, P, F, U> Parser<I> for FilterMapParser<P, F>
+impl<I: Clone, C, P, F, U> Parser<I, C> for FilterMapParser<P, F>
 where
-    P: Parser<I>,
+    P: Parser<I, C>,
     P::Error: Default,
     F: Fn(&P::Output) -> Option<U>,
 {

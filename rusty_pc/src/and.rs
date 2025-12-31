@@ -4,16 +4,20 @@ use crate::{ParseResult, Parser, ToOption};
 // And (with undo)
 //
 
-pub trait And<I>: Parser<I>
+pub trait And<I, C>: Parser<I, C>
 where
     Self: Sized,
     I: Clone,
 {
     /// Parses both the left and the right side.
     /// If the right side fails with a non fatal error, parsing of the left side is undone.
-    fn and<R, F, O>(self, right: R, combiner: F) -> impl Parser<I, Output = O, Error = Self::Error>
+    fn and<R, F, O>(
+        self,
+        right: R,
+        combiner: F,
+    ) -> impl Parser<I, C, Output = O, Error = Self::Error>
     where
-        R: Parser<I, Error = Self::Error>,
+        R: Parser<I, C, Error = Self::Error>,
         F: Fn(Self::Output, R::Output) -> O,
     {
         AndParser::new(self, right, combiner)
@@ -22,9 +26,9 @@ where
     fn and_tuple<R>(
         self,
         right: R,
-    ) -> impl Parser<I, Output = (Self::Output, R::Output), Error = Self::Error>
+    ) -> impl Parser<I, C, Output = (Self::Output, R::Output), Error = Self::Error>
     where
-        R: Parser<I, Error = Self::Error>,
+        R: Parser<I, C, Error = Self::Error>,
     {
         self.and(right, |l, r| (l, r))
     }
@@ -32,16 +36,19 @@ where
     fn and_keep_left<R>(
         self,
         right: R,
-    ) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
+    ) -> impl Parser<I, C, Output = Self::Output, Error = Self::Error>
     where
-        R: Parser<I, Error = Self::Error>,
+        R: Parser<I, C, Error = Self::Error>,
     {
         self.and(right, |l, _| l)
     }
 
-    fn and_keep_right<R>(self, right: R) -> impl Parser<I, Output = R::Output, Error = Self::Error>
+    fn and_keep_right<R>(
+        self,
+        right: R,
+    ) -> impl Parser<I, C, Output = R::Output, Error = Self::Error>
     where
-        R: Parser<I, Error = Self::Error>,
+        R: Parser<I, C, Error = Self::Error>,
     {
         self.and(right, |_, r| r)
     }
@@ -52,9 +59,9 @@ where
         self,
         right: R,
         combiner: F,
-    ) -> impl Parser<I, Output = O, Error = Self::Error>
+    ) -> impl Parser<I, C, Output = O, Error = Self::Error>
     where
-        R: Parser<I, Error = Self::Error>,
+        R: Parser<I, C, Error = Self::Error>,
         F: Fn(Self::Output, Option<R::Output>) -> O,
     {
         self.and(right.to_option(), combiner)
@@ -65,9 +72,9 @@ where
     fn and_opt_tuple<R>(
         self,
         right: R,
-    ) -> impl Parser<I, Output = (Self::Output, Option<R::Output>), Error = Self::Error>
+    ) -> impl Parser<I, C, Output = (Self::Output, Option<R::Output>), Error = Self::Error>
     where
-        R: Parser<I, Error = Self::Error>,
+        R: Parser<I, C, Error = Self::Error>,
     {
         self.and_opt(right, |l, r| (l, r))
     }
@@ -77,9 +84,9 @@ where
     fn and_opt_keep_left<R>(
         self,
         right: R,
-    ) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
+    ) -> impl Parser<I, C, Output = Self::Output, Error = Self::Error>
     where
-        R: Parser<I, Error = Self::Error>,
+        R: Parser<I, C, Error = Self::Error>,
     {
         self.and_opt(right, |l, _| l)
     }
@@ -89,9 +96,9 @@ where
     fn and_opt_keep_right<R>(
         self,
         right: R,
-    ) -> impl Parser<I, Output = Option<R::Output>, Error = Self::Error>
+    ) -> impl Parser<I, C, Output = Option<R::Output>, Error = Self::Error>
     where
-        R: Parser<I, Error = Self::Error>,
+        R: Parser<I, C, Error = Self::Error>,
     {
         self.and_opt(right, |_, r| r)
     }
@@ -100,19 +107,19 @@ where
         self,
         left: L,
         right: R,
-    ) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
+    ) -> impl Parser<I, C, Output = Self::Output, Error = Self::Error>
     where
-        L: Parser<I, Error = Self::Error>,
-        R: Parser<I, Error = Self::Error>,
+        L: Parser<I, C, Error = Self::Error>,
+        R: Parser<I, C, Error = Self::Error>,
     {
         left.and_keep_right(self).and_keep_left(right)
     }
 }
 
-impl<I, L> And<I> for L
+impl<I, C, L> And<I, C> for L
 where
     I: Clone,
-    L: Parser<I>,
+    L: Parser<I, C>,
 {
 }
 
@@ -136,11 +143,11 @@ impl<L, R, F> AndParser<L, R, F> {
 // that does not need Clone when the right parser is guaranteed
 // that it will return Ok or fatal Err
 
-impl<I, L, R, F, O> Parser<I> for AndParser<L, R, F>
+impl<I, C, L, R, F, O> Parser<I, C> for AndParser<L, R, F>
 where
     I: Clone,
-    L: Parser<I>,
-    R: Parser<I, Error = L::Error>,
+    L: Parser<I, C>,
+    R: Parser<I, C, Error = L::Error>,
     F: Fn(L::Output, R::Output) -> O,
 {
     type Output = O;

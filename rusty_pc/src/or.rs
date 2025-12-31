@@ -1,16 +1,16 @@
 use crate::*;
 
-pub struct OrParser<I, O, E> {
-    parsers: Vec<Box<dyn Parser<I, Output = O, Error = E>>>,
+pub struct OrParser<I, C, O, E> {
+    parsers: Vec<Box<dyn Parser<I, C, Output = O, Error = E>>>,
 }
 
-impl<I, O, E> OrParser<I, O, E> {
-    pub fn new(parsers: Vec<Box<dyn Parser<I, Output = O, Error = E>>>) -> Self {
+impl<I, C, O, E> OrParser<I, C, O, E> {
+    pub fn new(parsers: Vec<Box<dyn Parser<I, C, Output = O, Error = E>>>) -> Self {
         Self { parsers }
     }
 }
 
-impl<I, O, E> Parser<I> for OrParser<I, O, E> {
+impl<I, C, O, E> Parser<I, C> for OrParser<I, C, O, E> {
     type Output = O;
     type Error = E;
 
@@ -30,16 +30,16 @@ impl<I, O, E> Parser<I> for OrParser<I, O, E> {
     }
 }
 
-pub trait Or<I>: Parser<I>
+pub trait Or<I, C>: Parser<I, C>
 where
     Self: Sized + 'static,
 {
-    fn or<R>(self, other: R) -> OrParser<I, Self::Output, Self::Error>
+    fn or<R>(self, other: R) -> OrParser<I, C, Self::Output, Self::Error>
     where
-        R: Parser<I, Output = Self::Output, Error = Self::Error> + 'static,
+        R: Parser<I, C, Output = Self::Output, Error = Self::Error> + 'static,
     {
         OrParser::new(vec![Box::new(self), Box::new(other)])
     }
 }
 
-impl<I, P> Or<I> for P where P: Parser<I> + 'static {}
+impl<I, C, P> Or<I, C> for P where P: Parser<I, C> + 'static {}

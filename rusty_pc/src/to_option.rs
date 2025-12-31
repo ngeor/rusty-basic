@@ -1,25 +1,10 @@
-use crate::{ParseResult, Parser};
+use crate::{ParseResult, Parser, parser1};
 
-pub trait ToOption<I>: Parser<I>
-where
-    Self: Sized,
-{
-    fn to_option(self) -> impl Parser<I, Output = Option<Self::Output>, Error = Self::Error> {
-        ToOptionParser::new(self)
-    }
-}
-
-impl<I, P> ToOption<I> for P where P: Parser<I> {}
-
-struct ToOptionParser<P> {
-    parser: P,
-}
-
-impl<P> ToOptionParser<P> {
-    pub fn new(parser: P) -> Self {
-        Self { parser }
-    }
-}
+parser1!(
+    trait ToOption;
+    struct ToOptionParser;
+    fn to_option
+);
 
 impl<I, P> Parser<I> for ToOptionParser<P>
 where

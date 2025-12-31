@@ -1,14 +1,10 @@
-use crate::{ParseResult, Parser};
+use crate::{ParseResult, Parser, parser1};
 
-pub(crate) struct OrDefaultParser<P> {
-    parser: P,
-}
-
-impl<P> OrDefaultParser<P> {
-    pub fn new(parser: P) -> Self {
-        Self { parser }
-    }
-}
+parser1!(
+    trait OrDefault;
+    struct OrDefaultParser;
+    fn or_default
+);
 
 impl<I, P> Parser<I> for OrDefaultParser<P>
 where

@@ -7,7 +7,6 @@ mod filter;
 mod filter_map;
 mod flat_map;
 mod flat_map_ok_none;
-
 mod loop_while;
 mod macros;
 mod many;
@@ -35,6 +34,7 @@ pub use many::Many;
 pub use map::Map;
 pub use opt_zip::*;
 pub use or::*;
+pub use or_default::*;
 pub use parse_result::*;
 pub use parsers::*;
 pub use seq::*;

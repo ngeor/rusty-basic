@@ -26,6 +26,39 @@ macro_rules! parser_declaration {
     };
 }
 
+#[macro_export]
+macro_rules! parser1 {
+    (
+        $(#[$($attrss:tt)*])*trait $trait_name: ident; struct $struct_name: ident; fn $fn_name: ident
+    ) => {
+        // trait definition
+
+        $(#[$($attrss)*])*
+        pub trait $trait_name<I> : Parser<I> where Self: Sized {
+            fn $fn_name(self) -> $struct_name<Self> {
+                $struct_name::new(self)
+            }
+        }
+
+        // blanket implementation for any Parser
+
+        impl<I, P> $trait_name<I> for P where P: Parser<I> {}
+
+        // struct
+
+        pub struct $struct_name<P> {
+            parser: P,
+        }
+
+        // constructor
+        impl<P> $struct_name<P> {
+            pub fn new(parser: P) -> Self {
+                Self { parser }
+            }
+        }
+    };
+}
+
 //
 // binary parser declaration, two implicit parameters:
 // left: L, right: R

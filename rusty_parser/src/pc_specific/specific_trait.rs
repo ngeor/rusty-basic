@@ -1,10 +1,8 @@
-use rusty_common::{HasPos, Positioned};
 use rusty_pc::{OrFail, Parser};
 
 use crate::error::ParseError;
-use crate::pc_specific::WithPosMapper;
 
-pub trait SpecificTrait<I: HasPos>: Parser<I, Error = ParseError>
+pub trait SpecificTrait<I>: Parser<I, Error = ParseError>
 where
     Self: Sized,
 {
@@ -14,10 +12,6 @@ where
     ) -> impl Parser<I, Output = Self::Output, Error = ParseError> {
         self.or_fail(ParseError::syntax_error(msg))
     }
-
-    fn with_pos(self) -> impl Parser<I, Output = Positioned<Self::Output>, Error = ParseError> {
-        WithPosMapper::new(self)
-    }
 }
 
-impl<I: HasPos, P> SpecificTrait<I> for P where P: Parser<I, Error = ParseError> {}
+impl<I, P> SpecificTrait<I> for P where P: Parser<I, Error = ParseError> {}

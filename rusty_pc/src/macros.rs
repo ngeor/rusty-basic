@@ -26,36 +26,96 @@ macro_rules! parser_declaration {
     };
 }
 
+/// Parser combinator declaration, including trait that implements one function,
+/// and the implementing struct with its fields and constructor.
+///
+/// Example
+///
+/// ```ignore
+/// parser1_decl!(
+///     trait FilterMap where Self::Error: Default {
+///         fn filter_map<F, U>(predicate: F)
+///         where
+///             F: Fn(&Self::Output) -> Option;
+///     }
+///
+///     struct FilterMapParser<F>;
+/// );
+/// ```
 #[macro_export]
 macro_rules! parser1_decl {
     (
-        $(#[$($attrss:tt)*])*trait $trait_name: ident $(where $($trait_constrained:ty : $trait_restriction:ident),+ )? ;
-        struct $struct_name: ident;
-        fn $fn_name: ident
+        // comments on the trait
+        $(#[$($attrss:tt)*])*
+        trait $trait_name: ident
+        // constraints on the trait (Self is the Parser)
+        $(where $($trait_constraint:ty : $trait_bound:path),+ $(,)? )? {
+            // trait function that creates a new parser
+            fn $fn_name: ident
+            // generic parameters to the function
+            $(< $($fn_generic_type:ident),+ > )?
+            (
+                // function arguments
+                $($fn_arg_name:ident: $fn_arg_type:ty),*
+            )
+            // constraints on the function
+            $(where $($fn_constraint:ty : $fn_bound:path),+ )?
+
+            ;
+        }
+
+        // implementing struct of the trait
+        struct $struct_name: ident
+        // generic parameters of the struct
+        $(< $($struct_generic_type:ident),+ > )?
+        ;
+
     ) => {
         // trait definition
 
         $(#[$($attrss)*])*
-        pub trait $trait_name<I, C> : Parser<I, C> where Self: Sized, $( $($trait_constrained : $trait_restriction),+ )? {
-            fn $fn_name(self) -> $struct_name<Self> {
-                $struct_name::new(self)
+        pub trait $trait_name<I, C> : Parser<I, C>
+        where
+            Self: Sized, $( $($trait_constraint : $trait_bound),+ )?
+        {
+            fn $fn_name
+            $(< $($fn_generic_type),* >)?
+            (
+                self
+                $(, $fn_arg_name: $fn_arg_type),*
+            )
+            ->
+            $struct_name<Self$(, $($struct_generic_type),+ )?>
+            $(where $($fn_constraint : $fn_bound),+ )? {
+                $struct_name::new(
+                    self
+                    $(, $fn_arg_name),*
+                )
             }
         }
 
         // blanket implementation for any Parser
 
-        impl<I, C, P> $trait_name<I, C> for P where P: Parser<I, C>, $( $($trait_constrained : $trait_restriction),+ )? {}
+        impl<I, C, P> $trait_name<I, C> for P
+        where
+            P: Parser<I, C>,
+            $( $($trait_constraint : $trait_bound),+ )? {}
 
         // struct
 
-        pub struct $struct_name<P> {
-            parser: P,
+        pub struct $struct_name<P $(, $($struct_generic_type),+ )?> {
+            parser: P
+            $(, $fn_arg_name: $fn_arg_type)*
         }
 
         // constructor
-        impl<P> $struct_name<P> {
-            pub fn new(parser: P) -> Self {
-                Self { parser }
+        impl<P $(, $($struct_generic_type),+ )?>
+        $struct_name<P $(, $($struct_generic_type),+ )?> {
+            pub fn new(
+                parser: P
+                $(, $fn_arg_name: $fn_arg_type)*
+            ) -> Self {
+                Self { parser $(, $fn_arg_name)* }
             }
         }
     };
@@ -63,26 +123,44 @@ macro_rules! parser1_decl {
 
 #[macro_export]
 macro_rules! parser1_impl {
-    (impl Parser for $struct_name: ident $(where $($constrained:ty : $restriction:ident),+ )? {
-        type Output = $output:ty;
+    (
+        // implementing the Parser trait for the struct created
+        // with parser1_decl
+        impl
+        // generic types due to the function,
+        // that do not exist in the struct's generic types
+        $(< $($fn_generic_type:ident),+ > )?
+        Parser
+        for
+        $struct_name: ident
+        // generic types of the struct
+        $(< $($struct_generic_type:ident),+ > )?
+        // overall constraints (use P:: instead of Self:: here)
+        $(where $($constraint:ty : $bound:path),+ )? {
 
-        $($pat: pat => $body: expr)+
+            type Output = $output:ty;
 
-    }) => {
-        impl<I, C, P> Parser<I, C> for $struct_name<P>
+            fn parse(&$self:ident, $input:ident)
+            $body:block
+        }
+    ) => {
+        impl<
+            I,
+            C,
+            P
+            $(, $($struct_generic_type),+ )?
+            $(, $($fn_generic_type),+ )?
+        > Parser<I, C> for
+        $struct_name<P$(, $($struct_generic_type),+ )?>
         where
             P: Parser<I, C>,
-            $( $($constrained : $restriction),+ )?
+            $( $($constraint : $bound),+ )?
         {
             type Output = $output;
             type Error = P::Error;
 
-            fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
-                match self.parser.parse(input) {
-                    $($pat => $body,)+
-                    Err(err) => Err(err),
-                }
-            }
+            fn parse(&$self, $input: I) -> ParseResult<I, Self::Output, Self::Error>
+                $body
         }
     };
 }

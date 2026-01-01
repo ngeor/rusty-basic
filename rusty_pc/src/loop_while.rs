@@ -1,62 +1,48 @@
-use crate::{ParseResult, Parser, default_parse_error, parser_declaration};
+use crate::{ParseResult, Parser, default_parse_error, parser1_decl, parser1_impl};
 
-pub trait LoopWhile<I>: Parser<I>
-where
-    Self: Sized,
-    Self::Error: Default,
-{
-    fn loop_while<F>(
-        self,
-        predicate: F,
-    ) -> impl Parser<I, Output = Vec<Self::Output>, Error = Self::Error>
+parser1_decl!(
+    trait LoopWhile
     where
-        F: Fn(&Self::Output) -> bool,
+        Self::Error: Default,
     {
-        LoopWhileParser::new(self, predicate)
+        fn loop_while<F>(predicate: F)
+        where
+            F: Fn(&Self::Output) -> bool;
     }
-}
 
-impl<I, P> LoopWhile<I> for P
-where
-    P: Parser<I>,
-    P::Error: Default,
-{
-}
+    struct LoopWhileParser<F>;
+);
 
-parser_declaration!(struct LoopWhileParser<predicate: F>);
+parser1_impl!(
+    impl Parser for LoopWhileParser<F> where
+            P::Error: Default,
+            F: Fn(&P::Output) -> bool {
+        type Output = Vec<P::Output>;
 
-impl<I, P, F> Parser<I> for LoopWhileParser<P, F>
-where
-    P: Parser<I>,
-    P::Error: Default,
-    F: Fn(&P::Output) -> bool,
-{
-    type Output = Vec<P::Output>;
-    type Error = P::Error;
-
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
-        let mut result: Vec<P::Output> = vec![];
-        let mut keep_going = true;
-        let mut remaining = tokenizer;
-        while keep_going {
-            match self.parser.parse(remaining) {
-                Ok((tokenizer, item)) => {
-                    keep_going = (self.predicate)(&item);
-                    // push to the list regardless
-                    result.push(item);
-                    remaining = tokenizer;
+        fn parse(&self, tokenizer) {
+            let mut result: Vec<P::Output> = vec![];
+            let mut keep_going = true;
+            let mut remaining = tokenizer;
+            while keep_going {
+                match self.parser.parse(remaining) {
+                    Ok((tokenizer, item)) => {
+                        keep_going = (self.predicate)(&item);
+                        // push to the list regardless
+                        result.push(item);
+                        remaining = tokenizer;
+                    }
+                    Err((false, i, _)) => {
+                        remaining = i;
+                        keep_going = false;
+                    }
+                    Err(err) => return Err(err),
                 }
-                Err((false, i, _)) => {
-                    remaining = i;
-                    keep_going = false;
-                }
-                Err(err) => return Err(err),
+            }
+            if result.is_empty() {
+                default_parse_error(remaining)
+            } else {
+                Ok((remaining, result))
             }
         }
-        if result.is_empty() {
-            default_parse_error(remaining)
-        } else {
-            Ok((remaining, result))
-        }
     }
-}
+);

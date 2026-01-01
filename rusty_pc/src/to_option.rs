@@ -1,23 +1,16 @@
-use crate::{ParseResult, Parser, parser1};
+use crate::{ParseResult, Parser, parser1_decl, parser1_impl};
 
-parser1!(
+parser1_decl!(
     trait ToOption;
     struct ToOptionParser;
     fn to_option
 );
 
-impl<I, C, P> Parser<I, C> for ToOptionParser<P>
-where
-    P: Parser<I, C>,
-{
-    type Output = Option<P::Output>;
-    type Error = P::Error;
+parser1_impl!(
+    impl Parser for ToOptionParser {
+        type Output = Option<P::Output>;
 
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
-        match self.parser.parse(tokenizer) {
-            Ok((input, value)) => Ok((input, Some(value))),
-            Err((false, tokenizer, _)) => Ok((tokenizer, None)),
-            Err(err) => Err(err),
-        }
+        Ok((input, value)) => Ok((input, Some(value)))
+        Err((false, input, _)) => Ok((input, None))
     }
-}
+);

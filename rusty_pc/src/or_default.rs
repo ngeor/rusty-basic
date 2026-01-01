@@ -1,24 +1,16 @@
-use crate::{ParseResult, Parser, parser1};
+use crate::{ParseResult, Parser, parser1_decl, parser1_impl};
 
-parser1!(
-    trait OrDefault;
+parser1_decl!(
+    trait OrDefault where Self::Output: Default;
     struct OrDefaultParser;
     fn or_default
 );
 
-impl<I, C, P> Parser<I, C> for OrDefaultParser<P>
-where
-    P: Parser<I, C>,
-    P::Output: Default,
-{
-    type Output = P::Output;
-    type Error = P::Error;
+parser1_impl!(
+    impl Parser for OrDefaultParser where P::Output : Default {
+        type Output = P::Output;
 
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
-        match self.parser.parse(tokenizer) {
-            Ok(x) => Ok(x),
-            Err((false, tokenizer, _)) => Ok((tokenizer, P::Output::default())),
-            Err(err) => Err(err),
-        }
+        Ok((input, value)) => Ok((input, value))
+        Err((false, input, _)) => Ok((input, P::Output::default()))
     }
-}
+);

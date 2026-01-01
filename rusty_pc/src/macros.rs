@@ -27,14 +27,16 @@ macro_rules! parser_declaration {
 }
 
 #[macro_export]
-macro_rules! parser1 {
+macro_rules! parser1_decl {
     (
-        $(#[$($attrss:tt)*])*trait $trait_name: ident; struct $struct_name: ident; fn $fn_name: ident
+        $(#[$($attrss:tt)*])*trait $trait_name: ident $(where $($trait_constrained:ty : $trait_restriction:ident),+ )? ;
+        struct $struct_name: ident;
+        fn $fn_name: ident
     ) => {
         // trait definition
 
         $(#[$($attrss)*])*
-        pub trait $trait_name<I, C> : Parser<I, C> where Self: Sized {
+        pub trait $trait_name<I, C> : Parser<I, C> where Self: Sized, $( $($trait_constrained : $trait_restriction),+ )? {
             fn $fn_name(self) -> $struct_name<Self> {
                 $struct_name::new(self)
             }
@@ -42,7 +44,7 @@ macro_rules! parser1 {
 
         // blanket implementation for any Parser
 
-        impl<I, C, P> $trait_name<I, C> for P where P: Parser<I, C> {}
+        impl<I, C, P> $trait_name<I, C> for P where P: Parser<I, C>, $( $($trait_constrained : $trait_restriction),+ )? {}
 
         // struct
 
@@ -54,6 +56,32 @@ macro_rules! parser1 {
         impl<P> $struct_name<P> {
             pub fn new(parser: P) -> Self {
                 Self { parser }
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! parser1_impl {
+    (impl Parser for $struct_name: ident $(where $($constrained:ty : $restriction:ident),+ )? {
+        type Output = $output:ty;
+
+        $($pat: pat => $body: expr)+
+
+    }) => {
+        impl<I, C, P> Parser<I, C> for $struct_name<P>
+        where
+            P: Parser<I, C>,
+            $( $($constrained : $restriction),+ )?
+        {
+            type Output = $output;
+            type Error = P::Error;
+
+            fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+                match self.parser.parse(input) {
+                    $($pat => $body,)+
+                    Err(err) => Err(err),
+                }
             }
         }
     };

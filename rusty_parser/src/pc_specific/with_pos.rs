@@ -1,7 +1,7 @@
 use rusty_common::{AtPos, HasPos, Positioned};
-use rusty_pc::{ParseResult, ParseResultTrait, Parser, parser1_decl, parser1_impl};
+use rusty_pc::{ParseResult, ParseResultTrait, Parser, parser1};
 
-parser1_decl!(
+parser1!(
     trait WithPos
     where
         I: HasPos,
@@ -9,10 +9,6 @@ parser1_decl!(
         fn with_pos();
     }
 
-    struct WithPosMapper;
-);
-
-parser1_impl!(
     impl Parser for WithPosMapper where I : HasPos {
         type Output = Positioned<P::Output>;
 

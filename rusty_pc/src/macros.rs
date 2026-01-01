@@ -43,7 +43,7 @@ macro_rules! parser_declaration {
 /// );
 /// ```
 #[macro_export]
-macro_rules! parser1_decl {
+macro_rules! parser1 {
     (
         // comments on the trait
         $(#[$($attrss:tt)*])*
@@ -53,6 +53,8 @@ macro_rules! parser1_decl {
             // trait function that creates a new parser
             fn $fn_name: ident
             // generic parameters to the function
+            // some of them might appear in the strut fields,
+            // some might not!
             $(< $($fn_generic_type:ident),+ > )?
             (
                 // function arguments
@@ -64,12 +66,22 @@ macro_rules! parser1_decl {
             ;
         }
 
-        // implementing struct of the trait
-        struct $struct_name: ident
-        // generic parameters of the struct
-        $(< $($struct_generic_type:ident),+ > )?
-        ;
+        // implementing the Parser trait for the struct created
 
+        impl
+        Parser
+        for
+        $struct_name: ident
+        // generic types of the struct
+        $(< $($struct_generic_type:ident),+ > )?
+        // overall constraints (use P:: instead of Self:: here)
+        $(where $($constraint:ty : $bound:path),+ )? {
+
+            type Output = $output:ty;
+
+            fn parse(&$self:ident, $input:ident)
+            $body:block
+        }
     ) => {
         // trait definition
 
@@ -118,37 +130,13 @@ macro_rules! parser1_decl {
                 Self { parser $(, $fn_arg_name)* }
             }
         }
-    };
-}
 
-#[macro_export]
-macro_rules! parser1_impl {
-    (
-        // implementing the Parser trait for the struct created
-        // with parser1_decl
-        impl
-        // generic types due to the function,
-        // that do not exist in the struct's generic types
-        $(< $($fn_generic_type:ident),+ > )?
-        Parser
-        for
-        $struct_name: ident
-        // generic types of the struct
-        $(< $($struct_generic_type:ident),+ > )?
-        // overall constraints (use P:: instead of Self:: here)
-        $(where $($constraint:ty : $bound:path),+ )? {
+        // implementation of the Parser trait
 
-            type Output = $output:ty;
-
-            fn parse(&$self:ident, $input:ident)
-            $body:block
-        }
-    ) => {
         impl<
             I,
             C,
             P
-            $(, $($struct_generic_type),+ )?
             $(, $($fn_generic_type),+ )?
         > Parser<I, C> for
         $struct_name<P$(, $($struct_generic_type),+ )?>

@@ -1,6 +1,6 @@
-use crate::{ParseResult, Parser, default_parse_error, parser1_decl, parser1_impl};
+use crate::{ParseResult, Parser, default_parse_error, parser1};
 
-parser1_decl!(
+parser1!(
     trait LoopWhile
     where
         Self::Error: Default,
@@ -10,10 +10,6 @@ parser1_decl!(
             F: Fn(&Self::Output) -> bool;
     }
 
-    struct LoopWhileParser<F>;
-);
-
-parser1_impl!(
     impl Parser for LoopWhileParser<F> where
             P::Error: Default,
             F: Fn(&P::Output) -> bool {

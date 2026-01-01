@@ -1,13 +1,10 @@
-use crate::{ParseResult, Parser, parser1_decl, parser1_impl};
+use crate::{ParseResult, Parser, parser1};
 
-parser1_decl!(
+parser1!(
     trait ToOption {
         fn to_option();
     }
-    struct ToOptionParser;
-);
 
-parser1_impl!(
     impl Parser for ToOptionParser {
         type Output = Option<P::Output>;
 

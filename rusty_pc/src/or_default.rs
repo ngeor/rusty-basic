@@ -1,16 +1,13 @@
-use crate::{ParseResult, Parser, parser1_decl, parser1_impl};
+use crate::{ParseResult, Parser, parser1};
 
-parser1_decl!(
+parser1!(
     trait OrDefault
     where
         Self::Output: Default,
     {
         fn or_default();
     }
-    struct OrDefaultParser;
-);
 
-parser1_impl!(
     impl Parser for OrDefaultParser where P::Output : Default {
         type Output = P::Output;
 

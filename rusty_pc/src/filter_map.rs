@@ -1,8 +1,6 @@
-use crate::{
-    ParseResult, ParseResultTrait, Parser, default_parse_error, parser1_decl, parser1_impl
-};
+use crate::{ParseResult, ParseResultTrait, Parser, default_parse_error, parser1};
 
-parser1_decl!(
+parser1!(
     trait FilterMap
     where
         Self::Error: Default,
@@ -13,11 +11,7 @@ parser1_decl!(
             F: Fn(&Self::Output) -> Option<U>;
     }
 
-    struct FilterMapParser<F>;
-);
-
-parser1_impl!(
-    impl<U> Parser for FilterMapParser<F>
+    impl Parser for FilterMapParser<F>
     where
         P::Error: Default,
         I: Clone,

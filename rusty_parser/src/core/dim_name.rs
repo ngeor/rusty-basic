@@ -163,27 +163,36 @@ mod array_dimensions {
 mod type_definition {
     use rusty_pc::*;
 
+    use crate::core::VarNameCtx;
     use crate::core::expression::expression_pos_p;
     use crate::input::RcStringView;
     use crate::pc_specific::*;
     use crate::{ParseError, *};
 
-    pub fn extended_type(
-        allow_user_defined: bool,
-    ) -> impl Parser<RcStringView, Output = DimType, Error = ParseError> {
-        let mut parsers: Vec<Box<dyn Parser<RcStringView, Output = DimType, Error = ParseError>>> = vec![
-            Box::new(built_in_numeric_type()),
-            Box::new(built_in_string()),
-        ];
-        let mut expected_message = "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING";
+    pub fn extended_type()
+    -> impl Parser<RcStringView, VarNameCtx, Output = DimType, Error = ParseError> {
+        ctx_parser::<RcStringView, VarNameCtx, ParseError>()
+            .map(|(_opt_q, allow_user_defined)| {
+                let mut parsers: Vec<
+                    Box<dyn Parser<RcStringView, Output = DimType, Error = ParseError>>,
+                > = vec![
+                    Box::new(built_in_numeric_type()),
+                    Box::new(built_in_string()),
+                ];
+                let mut expected_message =
+                    "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING";
 
-        if allow_user_defined {
-            parsers.push(Box::new(user_defined_type()));
-            expected_message =
-                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier";
-        }
+                if allow_user_defined {
+                    parsers.push(Box::new(user_defined_type()));
+                    expected_message =
+                        "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier";
+                }
 
-        OrParser::new(parsers).with_expected_message(expected_message)
+                OrParser::new(parsers)
+                    .with_expected_message(expected_message)
+                    .no_context()
+            })
+            .flatten()
     }
 
     fn built_in_numeric_type() -> impl Parser<RcStringView, Output = DimType, Error = ParseError> {

@@ -10,7 +10,10 @@ impl<I, C, O, E> OrParser<I, C, O, E> {
     }
 }
 
-impl<I, C, O, E> Parser<I, C> for OrParser<I, C, O, E> {
+impl<I, C, O, E> Parser<I, C> for OrParser<I, C, O, E>
+where
+    C: Clone,
+{
     type Output = O;
     type Error = E;
 
@@ -28,18 +31,48 @@ impl<I, C, O, E> Parser<I, C> for OrParser<I, C, O, E> {
 
         self.parsers.last().unwrap().parse(input)
     }
-}
 
-pub trait Or<I, C>: Parser<I, C>
-where
-    Self: Sized + 'static,
-{
-    fn or<R>(self, other: R) -> OrParser<I, C, Self::Output, Self::Error>
-    where
-        R: Parser<I, C, Output = Self::Output, Error = Self::Error> + 'static,
-    {
-        OrParser::new(vec![Box::new(self), Box::new(other)])
+    fn set_context(&mut self, ctx: C) {
+        for parser in &mut self.parsers {
+            parser.set_context(ctx.clone());
+        }
     }
 }
 
-impl<I, C, P> Or<I, C> for P where P: Parser<I, C> + 'static {}
+binary_parser_declaration!(pub struct OrParserNoBox);
+
+pub trait Or<I, C: Clone>: Parser<I, C>
+where
+    Self: Sized,
+{
+    fn or<R>(self, other: R) -> OrParserNoBox<Self, R>
+    where
+        R: Parser<I, C, Output = Self::Output, Error = Self::Error>,
+    {
+        OrParserNoBox::new(self, other)
+    }
+}
+
+impl<I, C: Clone, P> Or<I, C> for P where P: Parser<I, C> {}
+
+impl<I, C: Clone, L, R> Parser<I, C> for OrParserNoBox<L, R>
+where
+    L: Parser<I, C>,
+    R: Parser<I, C, Output = L::Output, Error = L::Error>,
+{
+    type Output = L::Output;
+    type Error = L::Error;
+
+    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+        match self.left.parse(input) {
+            Ok(x) => Ok(x),
+            Err((false, input, _)) => self.right.parse(input),
+            Err(err) => Err(err),
+        }
+    }
+
+    fn set_context(&mut self, ctx: C) {
+        self.left.set_context(ctx.clone());
+        self.right.set_context(ctx);
+    }
+}

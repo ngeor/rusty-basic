@@ -2,6 +2,7 @@
 //! it's generic and not specific to QBasic
 mod and;
 pub mod boxed;
+mod ctx;
 mod delimited;
 mod filter;
 mod filter_map;
@@ -25,6 +26,7 @@ mod to_option;
 mod tokenizers;
 
 pub use and::*;
+pub use ctx::*;
 pub use delimited::*;
 pub use filter::*;
 pub use filter_map::*;

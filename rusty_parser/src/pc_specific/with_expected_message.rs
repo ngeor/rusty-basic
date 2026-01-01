@@ -2,14 +2,14 @@ use rusty_pc::{ParseResult, Parser};
 
 use crate::ParseError;
 
-pub trait WithExpected<I>: Parser<I, Error = ParseError>
+pub trait WithExpected<I, C>: Parser<I, C, Error = ParseError>
 where
     Self: Sized,
 {
     fn with_expected_message<F>(
         self,
         f: F,
-    ) -> impl Parser<I, Output = Self::Output, Error = ParseError>
+    ) -> impl Parser<I, C, Output = Self::Output, Error = ParseError>
     where
         F: MessageProvider,
     {
@@ -17,7 +17,7 @@ where
     }
 }
 
-impl<I, P> WithExpected<I> for P where P: Parser<I, Error = ParseError> {}
+impl<I, C, P> WithExpected<I, C> for P where P: Parser<I, C, Error = ParseError> {}
 
 struct WithExpectedMessage<P, F>(P, F);
 
@@ -52,9 +52,9 @@ where
     }
 }
 
-impl<I, P, F> Parser<I> for WithExpectedMessage<P, F>
+impl<I, C, P, F> Parser<I, C> for WithExpectedMessage<P, F>
 where
-    P: Parser<I, Error = ParseError>,
+    P: Parser<I, C, Error = ParseError>,
     F: MessageProvider,
 {
     type Output = P::Output;
@@ -66,5 +66,9 @@ where
             Err((false, i, _)) => Err((false, i, ParseError::SyntaxError(self.1.to_str()))),
             Err(err) => Err(err),
         }
+    }
+
+    fn set_context(&mut self, ctx: C) {
+        self.0.set_context(ctx);
     }
 }

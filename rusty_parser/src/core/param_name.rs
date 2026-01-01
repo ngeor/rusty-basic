@@ -2,7 +2,7 @@ use rusty_common::Positioned;
 use rusty_pc::boxed::boxed;
 use rusty_pc::*;
 
-use crate::core::var_name;
+use crate::core::{VarNameCtx, var_name};
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::{Keyword, ParseError, *};
@@ -97,20 +97,24 @@ fn array_indicator()
     .to_option()
 }
 
-fn extended_type(
-    allow_user_defined: bool,
-) -> impl Parser<RcStringView, Output = ParamType, Error = ParseError> {
-    if allow_user_defined {
-        boxed(
-            built_in_extended_type()
-                .or(user_defined_type())
-                .with_expected_message(
-                    "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-                ),
-        )
-    } else {
-        boxed(built_in_extended_type())
-    }
+fn extended_type() -> impl Parser<RcStringView, VarNameCtx, Output = ParamType, Error = ParseError>
+{
+    ctx_parser()
+        .map(|(_, allow_user_defined)| {
+            if allow_user_defined {
+                boxed(
+                    built_in_extended_type()
+                        .or(user_defined_type())
+                        .with_expected_message(
+                            "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
+                        ),
+                )
+                .no_context()
+            } else {
+                boxed(built_in_extended_type()).no_context()
+            }
+        })
+        .flatten()
 }
 
 fn built_in_extended_type() -> impl Parser<RcStringView, Output = ParamType, Error = ParseError> {

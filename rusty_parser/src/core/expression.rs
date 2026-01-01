@@ -539,13 +539,12 @@ fn preceded_by_ws(
 fn followed_by_ws(
     parser: impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError>,
 ) -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
-    parser.then_with(
-        |expr_pos| {
-            let is_paren = expr_pos.is_parenthesis();
-            conditionally_opt_whitespace(is_paren).no_incomplete()
-        },
-        |expr_pos, _| expr_pos,
-    )
+    parser
+        .then_with_in_context(
+            |e| e.is_parenthesis(),
+            || conditionally_opt_whitespace().no_incomplete(),
+        )
+        .map(|(l, _r)| l)
 }
 
 /// Parses an expression
@@ -992,6 +991,8 @@ mod binary_expression {
             self.do_parse(tokenizer)
                 .map_ok(ExpressionPos::simplify_unary_minus_literals)
         }
+
+        fn set_context(&mut self, _ctx: ()) {}
     }
 
     impl BinaryExprParser {

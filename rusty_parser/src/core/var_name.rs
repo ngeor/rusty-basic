@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use rusty_pc::*;
 
 use crate::core::name::{bare_name_without_dots, name_with_dots};
@@ -87,6 +85,11 @@ impl<T: VarType> HasExpressionType for TypedName<T> {
 
 // Used by dim_name and param_name who have almost identical parsing rules.
 
+/// The context used by the `var_name` parser.
+/// The first part is the optional qualifier of the parser var name.
+/// The second part is whether user defined types are allowed.
+pub(super) type VarNameCtx = (Option<TypeQualifier>, bool);
+
 /// Parses a variable name (dim name or param name).
 ///
 /// Parameters:
@@ -109,64 +112,58 @@ pub(super) fn var_name<T, A, B, AP, BP>(
     extended_type_parser_factory: B,
 ) -> impl Parser<RcStringView, Output = TypedName<T>, Error = ParseError>
 where
-    T: Default + VarType + CreateArray<ArrayDimensions = AP::Output> + 'static,
+    T: Default + VarType + CreateArray<ArrayDimensions = AP::Output>,
     A: Fn() -> AP,
     AP: Parser<RcStringView, Error = ParseError> + 'static,
-    B: Fn(bool) -> BP,
-    BP: Parser<RcStringView, Output = T, Error = ParseError> + 'static,
+    B: Fn() -> BP + 'static,
+    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + 'static,
 {
-    VarNameParser {
-        opt_array_parser_factory,
-        extended_type_parser_factory,
-        _phantom: PhantomData,
-    }
+    name_with_opt_array(opt_array_parser_factory())
+        .then_with_in_context(
+            |(name, _array)| (name.qualifier(), !name.as_bare_name().contains('.')),
+            move || var_type_parser(extended_type_parser_factory()),
+        )
+        .map(|((name, array), var_type)| create_typed_name(name, array, var_type))
 }
 
-struct VarNameParser<T, A, B> {
-    opt_array_parser_factory: A,
-    extended_type_parser_factory: B,
-    _phantom: PhantomData<T>,
-}
-
-impl<T, A, B, AP, BP> Parser<RcStringView> for VarNameParser<T, A, B>
+fn var_type_parser<T, BP>(
+    extended_type_parser: BP,
+) -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>
 where
-    T: Default + VarType + CreateArray<ArrayDimensions = AP::Output> + 'static,
-    A: Fn() -> AP,
-    AP: Parser<RcStringView, Error = ParseError> + 'static,
-    B: Fn(bool) -> BP,
-    BP: Parser<RcStringView, Output = T, Error = ParseError> + 'static,
+    T: Default + VarType,
+    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + 'static,
 {
-    type Output = TypedName<T>;
-    type Error = ParseError;
+    qualified().or(extended(extended_type_parser)).or(bare())
+}
 
-    fn parse(&self, input: RcStringView) -> ParseResult<RcStringView, Self::Output, Self::Error> {
-        let (input, (name, array)) =
-            name_with_opt_array((self.opt_array_parser_factory)()).parse(input)?;
+fn qualified<T>() -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>
+where
+    T: Default + VarType,
+{
+    ctx_parser().flat_map(|i, (opt_q, _)| match opt_q {
+        Some(q) => Ok((i, T::new_built_in_compact(q))),
+        None => Err((false, i, ParseError::default())),
+    })
+}
 
-        match name.qualifier() {
-            // qualified name can't have an "AS" clause
-            Some(q) => Ok((
-                input,
-                create_typed_name(name, array, T::new_built_in_compact(q)),
-            )),
-            // bare names might have an "AS" clause
-            _ => {
-                let allow_user_defined = !name.as_bare_name().contains('.');
-                let extended_type_parser =
-                    (self.extended_type_parser_factory)(allow_user_defined).no_incomplete();
-                match as_clause()
-                    .and_keep_right(extended_type_parser)
-                    .parse(input)
-                {
-                    Ok((input, var_type)) => Ok((input, create_typed_name(name, array, var_type))),
-                    Err((false, input, _)) => {
-                        Ok((input, create_typed_name(name, array, T::default())))
-                    }
-                    Err(err) => Err(err),
-                }
-            }
-        }
-    }
+fn extended<T, BP>(
+    extended_type_parser: BP,
+) -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>
+where
+    T: Default + VarType,
+    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>,
+{
+    let extended_type_parser = extended_type_parser.no_incomplete();
+    as_clause()
+        .no_context()
+        .and_keep_right(extended_type_parser)
+}
+
+fn bare<T>() -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>
+where
+    T: Default + VarType,
+{
+    supplier::supplier(|| T::default())
 }
 
 fn name_with_opt_array<P>(

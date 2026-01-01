@@ -94,4 +94,8 @@ where
             }
         }
     }
+
+    fn set_context(&mut self, _ctx: ()) {
+        self.parser.set_context(_ctx);
+    }
 }

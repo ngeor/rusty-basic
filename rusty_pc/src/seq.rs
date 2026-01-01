@@ -9,18 +9,18 @@ use crate::*;
 macro_rules! seq_pc {
     (pub struct $name:ident<$first_type:tt, $($generic_type:tt),+ > ; fn $map_fn_name:ident) => {
         #[allow(non_snake_case)]
-        pub struct $name <_I, _E, $first_type, $($generic_type),+> {
+        pub struct $name <_I, _C, _E, $first_type, $($generic_type),+> {
             // holds the first parser object (might be opt-parser or non-opt parser)
-            $first_type: Box<dyn Parser<_I, Output = $first_type, Error = _E>>,
+            $first_type: Box<dyn Parser<_I, _C, Output = $first_type, Error = _E>>,
             // holds the remaining parser objects (must be non-opt parsers)
-            $($generic_type: Box<dyn Parser<_I, Output = $generic_type, Error = _E>>),+
+            $($generic_type: Box<dyn Parser<_I, _C, Output = $generic_type, Error = _E>>),+
         }
 
-        impl <_I, _E, $first_type, $($generic_type),+> $name <_I, _E, $first_type, $($generic_type),+> {
+        impl <_I, _C, _E, $first_type, $($generic_type),+> $name <_I, _C, _E, $first_type, $($generic_type),+> {
             #[allow(non_snake_case)]
             pub fn new(
-                $first_type: impl Parser<_I, Output = $first_type, Error = _E> + 'static,
-                $($generic_type: impl Parser<_I, Output = $generic_type, Error = _E> +'static ),+) -> Self {
+                $first_type: impl Parser<_I, _C, Output = $first_type, Error = _E> + 'static,
+                $($generic_type: impl Parser<_I, _C, Output = $generic_type, Error = _E> +'static ),+) -> Self {
                 Self {
                     $first_type : Box::new($first_type),
                     $($generic_type : Box::new($generic_type) ),+
@@ -28,10 +28,9 @@ macro_rules! seq_pc {
             }
         }
 
-        impl <_I, _E, $first_type, $($generic_type),+> Parser<_I> for $name <_I, _E, $first_type, $($generic_type),+>
-        // where
-        //     $first_type: Parser<I>,
-        //     $($generic_type: Parser<I>),+
+        impl <_I, _C, _E, $first_type, $($generic_type),+> Parser<_I, _C> for $name <_I, _C, _E, $first_type, $($generic_type),+>
+        where
+            _C: Clone
         {
             type Output = ($first_type, $($generic_type),+ );
             type Error = _E;
@@ -59,15 +58,23 @@ macro_rules! seq_pc {
                     )
                 )
             }
+
+            fn set_context(&mut self, ctx: _C) {
+                self.$first_type.set_context(ctx.clone());
+                $(
+                    self.$generic_type.set_context(ctx.clone());
+                )+
+            }
         }
 
         #[allow(non_snake_case)]
-        pub fn $map_fn_name<_I, _E, $first_type, $($generic_type),+, _F, _O>(
-            $first_type: impl Parser<_I, Output = $first_type, Error = _E> + 'static ,
-            $($generic_type: impl Parser<_I, Output = $generic_type, Error = _E> + 'static ),+,
+        pub fn $map_fn_name<_I, _C, _E, $first_type, $($generic_type),+, _F, _O>(
+            $first_type: impl Parser<_I, _C, Output = $first_type, Error = _E> + 'static ,
+            $($generic_type: impl Parser<_I, _C, Output = $generic_type, Error = _E> + 'static ),+,
             mapper: _F
-        ) -> impl Parser<_I, Output = _O, Error = _E>
+        ) -> impl Parser<_I, _C, Output = _O, Error = _E>
         where
+            _C: Clone,
             _F: Fn($first_type, $($generic_type),+) -> _O
         {
             $name::new(

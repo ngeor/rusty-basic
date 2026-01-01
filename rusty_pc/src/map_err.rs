@@ -53,4 +53,8 @@ where
             Err((true, i, err)) => Err((true, i, err)),
         }
     }
+
+    fn set_context(&mut self, ctx: C) {
+        self.parser.set_context(ctx)
+    }
 }

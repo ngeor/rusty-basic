@@ -53,6 +53,8 @@ impl Parser<RcStringView> for SubCallOrAssignment {
             },
         }
     }
+
+    fn set_context(&mut self, _ctx: ()) {}
 }
 
 impl SubCallOrAssignment {

@@ -320,5 +320,9 @@ mod char_parsers {
                 Ok((input.inc_position(), ch))
             }
         }
+
+        fn set_context(&mut self, _ctx: ()) {
+            // do nothing
+        }
     }
 }

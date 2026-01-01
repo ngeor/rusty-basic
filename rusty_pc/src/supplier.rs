@@ -21,4 +21,8 @@ where
     fn parse(&self, input: I) -> ParseResult<I, O, E> {
         Ok((input, (self.0)()))
     }
+
+    fn set_context(&mut self, _ctx: C) {
+        // do nothing
+    }
 }

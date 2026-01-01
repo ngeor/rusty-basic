@@ -8,6 +8,7 @@ pub trait And<I, C>: Parser<I, C>
 where
     Self: Sized,
     I: Clone,
+    C: Clone,
 {
     /// Parses both the left and the right side.
     /// If the right side fails with a non fatal error, parsing of the left side is undone.
@@ -119,6 +120,7 @@ where
 impl<I, C, L> And<I, C> for L
 where
     I: Clone,
+    C: Clone,
     L: Parser<I, C>,
 {
 }
@@ -146,6 +148,7 @@ impl<L, R, F> AndParser<L, R, F> {
 impl<I, C, L, R, F, O> Parser<I, C> for AndParser<L, R, F>
 where
     I: Clone,
+    C: Clone,
     L: Parser<I, C>,
     R: Parser<I, C, Error = L::Error>,
     F: Fn(L::Output, R::Output) -> O,
@@ -165,6 +168,11 @@ where
             }
             Err((fatal, i, err)) => Err((fatal, i, err)),
         }
+    }
+
+    fn set_context(&mut self, ctx: C) {
+        self.left.set_context(ctx.clone());
+        self.right.set_context(ctx);
     }
 }
 

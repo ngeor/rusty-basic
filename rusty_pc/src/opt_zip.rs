@@ -46,10 +46,11 @@ pub fn opt_zip<L, R>(left: L, right: R) -> OptZip<L, R> {
     OptZip::new(left, right)
 }
 
-impl<I, L, R> Parser<I> for OptZip<L, R>
+impl<I, C, L, R> Parser<I, C> for OptZip<L, R>
 where
-    L: Parser<I>,
-    R: Parser<I, Error = L::Error>,
+    L: Parser<I, C>,
+    R: Parser<I, C, Error = L::Error>,
+    C: Clone,
 {
     type Output = ZipValue<L::Output, R::Output>;
     type Error = L::Error;
@@ -71,5 +72,10 @@ where
             },
             Err(err) => Err(err),
         }
+    }
+
+    fn set_context(&mut self, ctx: C) {
+        self.left.set_context(ctx.clone());
+        self.right.set_context(ctx);
     }
 }

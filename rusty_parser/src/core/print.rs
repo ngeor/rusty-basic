@@ -195,6 +195,8 @@ impl Parser<RcStringView> for PrintArgsParser {
         }
         Ok((tokenizer, result))
     }
+
+    fn set_context(&mut self, _ctx: ()) {}
 }
 
 fn print_boundary() -> impl Parser<RcStringView, Output = Guard, Error = ParseError> {

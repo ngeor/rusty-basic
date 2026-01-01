@@ -44,6 +44,10 @@ macro_rules! lazy_parser {
                 let parser = Self::create_parser();
                 parser.parse(tokenizer)
             }
+
+            fn set_context(&mut self, _ctx: ()) {
+                todo!()
+            }
         }
     };
 }
@@ -215,6 +219,11 @@ macro_rules! parser_combinator {
 
             fn parse(&$self, $input: I) -> ParseResult<I, Self::Output, Self::Error>
                 $block
+
+            fn set_context(&mut self, ctx: C)
+            {
+                self.parser.set_context(ctx)
+            }
         }
     };
 }

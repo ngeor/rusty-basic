@@ -1,30 +1,39 @@
-use crate::*;
+use crate::{ParseResult, Parser, parser_combinator};
 
-pub trait FlatMapOkNone<I>: Parser<I>
+parser_combinator!(
+    trait FlatMapOkNone {
+        /// Flat map the result of this parser for successful and incomplete results.
+        /// Mapping is done by the given closures.
+        /// Other errors are never allowed to be re-mapped.
+        fn flat_map_ok_none<F, G, U>(ok_mapper: F, incomplete_mapper: G) -> U
+        where F : Fn(I, Self::Output) -> ParseResult<I, U, Self::Error>,
+              G : Fn(I) -> ParseResult<I, U, Self::Error>;
+    }
+
+    struct FlatMapOkNoneParser<F, G>;
+
+    fn parse<U>(&self, input) -> U
+    where F : Fn(I, P::Output) -> ParseResult<I, U, P::Error>,
+              G : Fn(I) -> ParseResult<I, U, P::Error>
+    {
+        match self.parser.parse(input) {
+            Ok((input, value)) => (self.ok_mapper)(input, value),
+            Err((false, i, _)) => (self.incomplete_mapper)(i),
+            Err(err) => Err(err),
+        }
+    }
+);
+
+pub trait FlatMapNegateNone<I, C>: FlatMapOkNone<I, C>
 where
     Self: Sized,
 {
-    /// Flat map the result of this parser for successful and incomplete results.
-    /// Mapping is done by the given closures.
-    /// Other errors are never allowed to be re-mapped.
-    fn flat_map_ok_none<F, G, U>(
-        self,
-        ok_mapper: F,
-        incomplete_mapper: G,
-    ) -> impl Parser<I, Output = U, Error = Self::Error>
-    where
-        F: Fn(I, Self::Output) -> ParseResult<I, U, Self::Error>,
-        G: Fn(I) -> ParseResult<I, U, Self::Error>,
-    {
-        FlatMapOkNoneParser::new(self, ok_mapper, incomplete_mapper)
-    }
-
     /// Flat map the successful of this parser into an empty result.
     /// The Failed result is negated and mapped into an empty successful result (i.e. `None` becomes `Ok(())`).
     fn flat_map_negate_none<F>(
         self,
         ok_mapper: F,
-    ) -> impl Parser<I, Output = (), Error = Self::Error>
+    ) -> impl Parser<I, C, Output = (), Error = Self::Error>
     where
         F: Fn(I, Self::Output) -> ParseResult<I, (), Self::Error>,
     {
@@ -32,37 +41,4 @@ where
     }
 }
 
-impl<I, P> FlatMapOkNone<I> for P where P: Parser<I> {}
-
-struct FlatMapOkNoneParser<P, F, G> {
-    parser: P,
-    ok_mapper: F,
-    incomplete_mapper: G,
-}
-impl<P, F, G> FlatMapOkNoneParser<P, F, G> {
-    pub fn new(parser: P, ok_mapper: F, incomplete_mapper: G) -> Self {
-        Self {
-            parser,
-            ok_mapper,
-            incomplete_mapper,
-        }
-    }
-}
-
-impl<I, P, F, G, U> Parser<I> for FlatMapOkNoneParser<P, F, G>
-where
-    P: Parser<I>,
-    F: Fn(I, P::Output) -> ParseResult<I, U, P::Error>,
-    G: Fn(I) -> ParseResult<I, U, P::Error>,
-{
-    type Output = U;
-    type Error = P::Error;
-
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
-        match self.parser.parse(tokenizer) {
-            Ok((input, value)) => (self.ok_mapper)(input, value),
-            Err((false, i, _)) => (self.incomplete_mapper)(i),
-            Err(err) => Err(err),
-        }
-    }
-}
+impl<I, C, P> FlatMapNegateNone<I, C> for P where P: FlatMapOkNone<I, C> {}

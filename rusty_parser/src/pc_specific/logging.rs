@@ -1,6 +1,6 @@
 #[cfg(debug_assertions)]
 use rusty_pc::ParseResult;
-use rusty_pc::{Parser, parser_declaration};
+use rusty_pc::Parser;
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
@@ -23,11 +23,15 @@ where
 {
 }
 
-parser_declaration!(
-    struct LoggingParser {
-        tag: String,
+struct LoggingParser<P> {
+    parser: P,
+    tag: String,
+}
+impl<P> LoggingParser<P> {
+    pub fn new(parser: P, tag: String) -> Self {
+        Self { parser, tag }
     }
-);
+}
 
 static mut INDENTATION_LEVEL: i32 = 0;
 

@@ -1,20 +1,18 @@
 use rusty_common::{AtPos, HasPos, Positioned};
-use rusty_pc::{ParseResult, ParseResultTrait, Parser, parser1};
+use rusty_pc::{ParseResult, ParseResultTrait, Parser, parser_combinator};
 
-parser1!(
+parser_combinator!(
     trait WithPos
     where
         I: HasPos,
     {
-        fn with_pos();
+        fn with_pos() -> Positioned<Self::Output>;
     }
 
-    impl Parser for WithPosMapper where I : HasPos {
-        type Output = Positioned<P::Output>;
+    struct WithPosMapper;
 
-        fn parse(&self, tokenizer) {
-            let pos = tokenizer.pos();
-            self.parser.parse(tokenizer).map_ok(|x| x.at_pos(pos))
-        }
+    fn parse(&self, tokenizer) -> Positioned<P::Output> {
+        let pos = tokenizer.pos();
+        self.parser.parse(tokenizer).map_ok(|x| x.at_pos(pos))
     }
 );

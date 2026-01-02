@@ -1,31 +1,27 @@
-use crate::{ParseResult, ParseResultTrait, Parser, default_parse_error, parser1};
+use crate::{ParseResult, ParseResultTrait, Parser, default_parse_error, parser_combinator};
 
-parser1!(
+parser_combinator!(
     trait FilterMap
     where
-        Self::Error: Default,
         I: Clone,
+        Error: Default,
     {
-        fn filter_map<F, U>(predicate: F)
+        fn filter_map<F, U>(predicate: F) -> U
         where
             F: Fn(&Self::Output) -> Option<U>;
     }
 
-    impl Parser for FilterMapParser<F>
+    struct FilterMapParser<F>;
+
+    fn parse<U>(&self, tokenizer) -> U
     where
-        P::Error: Default,
-        I: Clone,
         F: Fn(&P::Output) -> Option<U>
     {
-        type Output = U;
-
-        fn parse(&self, tokenizer) {
-            self.parser
-            .parse(tokenizer.clone())
-            .flat_map(|input, result| match (self.predicate)(&result) {
-                Some(value) => Ok((input, value)),
-                None => default_parse_error(tokenizer),
-            })
-        }
+        self.parser
+        .parse(tokenizer.clone())
+        .flat_map(|input, result| match (self.predicate)(&result) {
+            Some(value) => Ok((input, value)),
+            None => default_parse_error(tokenizer),
+        })
     }
 );

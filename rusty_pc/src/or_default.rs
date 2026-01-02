@@ -1,22 +1,17 @@
-use crate::{ParseResult, Parser, parser1};
+use crate::{ParseResult, Parser, parser_combinator};
 
-parser1!(
-    trait OrDefault
-    where
-        Self::Output: Default,
-    {
+parser_combinator!(
+    trait OrDefault where Output: Default, {
         fn or_default();
     }
 
-    impl Parser for OrDefaultParser where P::Output : Default {
-        type Output = P::Output;
+    struct OrDefaultParser;
 
-        fn parse(&self, input) {
-            match self.parser.parse(input) {
-                Ok((input, value)) => Ok((input, value)),
-                Err((false, input, _)) => Ok((input, P::Output::default())),
-                Err(err) => Err(err)
-            }
+    fn parse(&self, input) {
+        match self.parser.parse(input) {
+            Ok((input,value)) => Ok((input,value)),
+            Err((false,input,_)) => Ok((input,P::Output::default())),
+            Err(err) => Err(err)
         }
     }
 );

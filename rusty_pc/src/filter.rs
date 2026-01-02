@@ -1,42 +1,24 @@
-use crate::{ParseResult, Parser, default_parse_error};
+use crate::{ParseResult, Parser, default_parse_error, parser_combinator};
 
-pub trait Filter<I>: Parser<I>
-where
-    Self: Sized,
-    I: Clone,
-{
-    fn filter<F>(self, predicate: F) -> impl Parser<I, Output = Self::Output, Error = Self::Error>
+parser_combinator!(
+    trait Filter
     where
-        F: Fn(&Self::Output) -> bool,
-        Self::Error: Default,
+        I: Clone,
+        Error: Default,
     {
-        FilterParser(self, predicate)
+        fn filter<F>(predicate: F)
+        where
+            F: Fn(&Self::Output) -> bool;
     }
-}
 
-impl<I, P> Filter<I> for P
-where
-    I: Clone,
-    P: Parser<I>,
-{
-}
+    struct FilterParser<F>;
 
-struct FilterParser<P, F>(P, F);
-
-impl<I, P, F> Parser<I> for FilterParser<P, F>
-where
-    I: Clone,
-    P: Parser<I>,
-    P::Error: Default,
-    F: Fn(&P::Output) -> bool,
-{
-    type Output = P::Output;
-    type Error = P::Error;
-
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
-        match self.0.parse(tokenizer.clone()) {
+    fn parse(&self, tokenizer)
+    where
+        F: Fn(&P::Output) -> bool {
+        match self.parser.parse(tokenizer.clone()) {
             Ok((input, value)) => {
-                if (self.1)(&value) {
+                if (self.predicate)(&value) {
                     Ok((input, value))
                 } else {
                     // return original input here
@@ -46,4 +28,4 @@ where
             Err(err) => Err(err),
         }
     }
-}
+);

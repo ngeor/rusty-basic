@@ -290,36 +290,40 @@ impl Statement {
     }
 }
 
-lazy_parser!(pub fn statement_p<I = RcStringView, Output = Statement, Error = ParseError> ; struct LazyStatementP ; OrParser::new(vec![
-    Box::new(statement_label_p()),
-    Box::new(single_line_statement_p()),
-    Box::new(if_block_p()),
-    Box::new(for_loop_p()),
-    Box::new(select_case_p()),
-    Box::new(while_wend_p()),
-    Box::new(do_loop_p()),
-    Box::new(illegal_starting_keywords()),
-]));
+pub fn statement_p() -> OrParser<RcStringView, (), Statement, ParseError> {
+    OrParser::new(vec![
+        Box::new(statement_label_p()),
+        Box::new(single_line_statement_p()),
+        Box::new(if_block_p()),
+        Box::new(for_loop_p()),
+        Box::new(select_case_p()),
+        Box::new(while_wend_p()),
+        Box::new(do_loop_p()),
+        Box::new(illegal_starting_keywords()),
+    ])
+}
 
 // Tries to read a statement that is allowed to be on a single line IF statement,
 // excluding comments.
-lazy_parser!(pub fn single_line_non_comment_statement_p<I = RcStringView, Output = Statement, Error = ParseError> ; struct SingleLineNonCommentStatement ; OrParser::new(vec![
-    Box::new(dim_p()),
-    Box::new(redim_p()),
-    Box::new(constant_p()),
-    Box::new(built_in_sub_call_p()),
-    Box::new(parse_print_p()),
-    Box::new(parse_lprint_p()),
-    Box::new(sub_call_or_assignment_p()),
-    Box::new(statement_go_to_p()),
-    Box::new(statement_go_sub_p()),
-    Box::new(statement_return_p()),
-    Box::new(statement_exit_p()),
-    Box::new(statement_on_error_go_to_p()),
-    Box::new(statement_resume_p()),
-    Box::new(end::parse_end_p()),
-    Box::new(system::parse_system_p())
-]));
+pub fn single_line_non_comment_statement_p() -> OrParser<RcStringView, (), Statement, ParseError> {
+    OrParser::new(vec![
+        Box::new(dim_p()),
+        Box::new(redim_p()),
+        Box::new(constant_p()),
+        Box::new(built_in_sub_call_p()),
+        Box::new(parse_print_p()),
+        Box::new(parse_lprint_p()),
+        Box::new(sub_call_or_assignment_p()),
+        Box::new(statement_go_to_p()),
+        Box::new(statement_go_sub_p()),
+        Box::new(statement_return_p()),
+        Box::new(statement_exit_p()),
+        Box::new(statement_on_error_go_to_p()),
+        Box::new(statement_resume_p()),
+        Box::new(end::parse_end_p()),
+        Box::new(system::parse_system_p()),
+    ])
+}
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.

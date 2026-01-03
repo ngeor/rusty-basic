@@ -19,39 +19,6 @@ macro_rules! binary_parser_declaration {
     };
 }
 
-// lazy parser
-// TODO store the instance one it is created, don't call factory multiple times (needs inner mutability)
-#[macro_export]
-macro_rules! lazy_parser {
-    ($fn_vis:vis fn $fn_name:ident<I=$input_type:tt, Output=$output_type:tt, Error=$error_type:tt> ; $struct_vis:vis struct $struct_name:ident ; $body:expr) => {
-        $fn_vis fn $fn_name()  -> impl Parser<$input_type, Output=$output_type, Error=$error_type> {
-            $struct_name
-        }
-
-        struct $struct_name;
-
-        impl $struct_name {
-            fn create_parser() -> impl Parser<$input_type, Output=$output_type, Error=$error_type> {
-                $body
-            }
-        }
-
-        impl Parser<$input_type> for $struct_name {
-            type Output = $output_type;
-            type Error = $error_type;
-
-            fn parse(&self, tokenizer: $input_type) -> ParseResult<$input_type, $output_type, $error_type> {
-                let parser = Self::create_parser();
-                parser.parse(tokenizer)
-            }
-
-            fn set_context(&mut self, _ctx: ()) {
-                todo!()
-            }
-        }
-    };
-}
-
 #[macro_export]
 macro_rules! parser_combinator {
     (

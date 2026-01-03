@@ -480,11 +480,9 @@ pub fn csv_expressions_first_guarded()
     )
 }
 
-lazy_parser!(
-    pub fn expression_pos_p<I = RcStringView, Output = ExpressionPos, Error = ParseError> ;
-    struct LazyExprParser ;
-    eager_expression_pos_p()
-);
+pub fn expression_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    lazy(eager_expression_pos_p)
+}
 
 /// Parses an expression that is either preceded by whitespace
 /// or is a parenthesis expression.

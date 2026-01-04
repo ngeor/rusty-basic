@@ -161,9 +161,13 @@ impl PrintArgsParser {
     }
 
     fn delimiter_print_arg() -> impl Parser<RcStringView, Output = PrintArg, Error = ParseError> {
-        semicolon()
-            .map(|_| PrintArg::Semicolon)
-            .or(comma().map(|_| PrintArg::Comma))
+        any_token_of_ws!(TokenType::Semicolon, TokenType::Comma).map(
+            |t| match TokenType::from_token(&t) {
+                TokenType::Semicolon => PrintArg::Semicolon,
+                TokenType::Comma => PrintArg::Comma,
+                _ => panic!("should not happen"),
+            },
+        )
     }
 }
 

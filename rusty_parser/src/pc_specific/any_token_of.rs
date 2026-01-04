@@ -7,9 +7,20 @@ use crate::pc_specific::TokenType;
 
 macro_rules! any_token_of {
     (
+        MatchMode::$match_mode:ident,
         $($token_type:expr),+$(,)?
     ) => {
-        $crate::pc_specific::AnyTokenOf::new_multi($crate::pc_specific::token_parser(), &[ $($token_type),+ ], false)
+        $crate::pc_specific::AnyTokenOf::new_multi(
+            $crate::pc_specific::token_parser(),
+            &[ $($token_type),+ ],
+            false,
+            $crate::pc_specific::MatchMode::$match_mode
+        )
+    };
+    (
+        $($token_type:expr),+$(,)?
+    ) => {
+        any_token_of!(MatchMode::Include, $($token_type),+)
     };
 }
 
@@ -17,7 +28,7 @@ macro_rules! any_token_of_ws {
     (
         $($token_type:expr),+$(,)?
     ) => {
-        $crate::pc_specific::AnyTokenOf::new_multi($crate::pc_specific::token_parser(), &[ $($token_type),+ ], true)
+        $crate::pc_specific::AnyTokenOf::new_multi($crate::pc_specific::token_parser(), &[ $($token_type),+ ], true, $crate::pc_specific::MatchMode::Include)
     };
 }
 
@@ -39,19 +50,40 @@ pub struct AnyTokenOf<P> {
 
     /// Are leading and trailing whitespaces allowed?
     ws: bool,
+
+    match_mode: MatchMode,
+}
+
+#[derive(Default)]
+pub enum MatchMode {
+    #[default]
+    Include,
+    Exclude,
 }
 
 impl<P> AnyTokenOf<P> {
-    pub fn new(parser: P, token_kinds: HashSet<TokenKind>, err_msg: String, ws: bool) -> Self {
+    pub fn new(
+        parser: P,
+        token_kinds: HashSet<TokenKind>,
+        err_msg: String,
+        ws: bool,
+        match_mode: MatchMode,
+    ) -> Self {
         Self {
             parser,
             token_kinds,
             err_msg,
             ws,
+            match_mode,
         }
     }
 
-    pub fn new_multi(parser: P, token_types: &[TokenType], ws: bool) -> Self {
+    pub fn new_multi(
+        parser: P,
+        token_types: &[TokenType],
+        ws: bool,
+        match_mode: MatchMode,
+    ) -> Self {
         let mut token_kinds: HashSet<TokenKind> = HashSet::new();
         let mut err_msg: String = "Expected: ".to_owned();
         let mut is_first = true;
@@ -67,7 +99,7 @@ impl<P> AnyTokenOf<P> {
             err_msg.push_str(&token_type.to_string());
         }
 
-        Self::new(parser, token_kinds, err_msg, ws)
+        Self::new(parser, token_kinds, err_msg, ws, match_mode)
     }
 }
 
@@ -132,7 +164,7 @@ impl<P> AnyTokenOf<P> {
         let original_input = input.clone();
         match self.parser.parse(input) {
             Ok((input, token)) => {
-                if self.token_kinds.contains(&token.kind()) {
+                if self.accept_token(&token) {
                     // found it
                     Ok((input, token))
                 } else {
@@ -154,7 +186,7 @@ impl<P> AnyTokenOf<P> {
         let original_input = input.clone();
         match self.parser.parse(input) {
             Ok((input, token)) => {
-                if self.token_kinds.contains(&token.kind()) {
+                if self.accept_token(&token) {
                     // found it
                     Ok((input, Some(token)))
                 } else if TokenType::Whitespace.get_index() == token.kind() {
@@ -189,6 +221,13 @@ impl<P> AnyTokenOf<P> {
             }
             Err((false, _, _)) => Ok(original_input),
             Err(err) => Err(err),
+        }
+    }
+
+    fn accept_token(&self, token: &Token) -> bool {
+        match self.match_mode {
+            MatchMode::Include => self.token_kinds.contains(&token.kind()),
+            MatchMode::Exclude => !self.token_kinds.contains(&token.kind()),
         }
     }
 

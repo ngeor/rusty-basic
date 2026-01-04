@@ -621,11 +621,7 @@ mod string_literal {
     }
 
     fn inside_string() -> impl Parser<RcStringView, Output = TokenList, Error = ParseError> {
-        any_token()
-            .filter(|token| {
-                !TokenType::DoubleQuote.matches(token) && !TokenType::Eol.matches(token)
-            })
-            .zero_or_more()
+        any_token_of!(MatchMode::Exclude, TokenType::DoubleQuote, TokenType::Eol).zero_or_more()
     }
 }
 

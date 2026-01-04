@@ -1,8 +1,19 @@
 use rusty_pc::Token;
 
-macro_rules! enum_with_index {
-    ($vis:vis enum $name:tt $all_members:tt { $($member:tt $(: $friendly:literal)?),+$(,)? }) => {
-        #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+macro_rules! token_type_enum {
+    (
+        $vis:vis enum $name:ident
+        {
+            $(
+                $member:ident $( ( $friendly:literal ) )?
+            ),+
+            $(,)?
+        }
+
+        const $all_members:ident;
+    ) => {
+
+        #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
         $vis enum $name {
             $($member),+
         }
@@ -12,48 +23,44 @@ macro_rules! enum_with_index {
         ];
 
         impl $name {
-            // TODO optimize this!
-            #[allow(unused_assignments)]
-            pub fn to_index(&self) -> u8 {
-                let mut result : u8 = 0;
-                $(
-                    if let Self::$member = self {
-                        return result;
-                    }
-                    result += 1;
-                )+
-                panic!("should not happen")
+            pub fn get_index(&self) -> u8 {
+                $all_members.binary_search(self).expect("should not happen") as u8
             }
 
             pub fn from_index(needle: u8) -> Self {
                 $all_members[needle as usize]
             }
+        }
 
-            // TODO optimize this!
-            pub fn to_str(&self) -> String {
-                $(
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
                     $(
-                        if let Self::$member = self {
-                            return format!("{}", $friendly);
-                        }
-                    )?
-                )+
-                format!("Token of type {:?}", self)
+                        Self::$member => token_type_enum!( $member $(, $friendly )? ).fmt(f),
+                    )+
+                }
             }
         }
     };
+
+    // generate the text representation of the Token,
+    // favoring the friendly name.
+    ($name: ident, $friendly: literal) => { $friendly };
+
+    // generate the text representation of the Token, using the string representation of the enum.
+    ($name: ident) => { stringify!($name) };
 }
 
-enum_with_index!(
-    pub enum TokenType ALL_TOKEN_TYPES {
+token_type_enum!(
+    pub enum TokenType {
         Eol,
-        Whitespace: "whitespace",
+        Whitespace("whitespace"),
         Digits,
-        LParen: '(',
-        RParen: ')',
+        LParen('('),
+        RParen(')'),
         Colon,
-        Semicolon: ';',
-        Comma: ',',
+        Semicolon(';'),
+        Comma(','),
         SingleQuote,
         DoubleQuote,
         Dot,
@@ -82,11 +89,13 @@ enum_with_index!(
         // unknown must be last
         Unknown,
     }
+
+    const ALL_TOKEN_TYPES;
 );
 
 impl TokenType {
     pub fn matches(&self, token: &Token) -> bool {
-        self.to_index() == token.kind()
+        *self == Self::from_token(token)
     }
 
     pub fn from_token(token: &Token) -> Self {

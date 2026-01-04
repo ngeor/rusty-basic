@@ -39,7 +39,7 @@ impl<P> AnyTokenOf<P> {
         let mut err_msg: String = "Expected: ".to_owned();
         let mut is_first = true;
         for token_type in token_types {
-            token_kinds.insert(token_type.to_index());
+            token_kinds.insert(token_type.get_index());
 
             if is_first {
                 is_first = false;
@@ -47,7 +47,7 @@ impl<P> AnyTokenOf<P> {
                 err_msg.push_str(" or ");
             }
 
-            err_msg.push_str(&token_type.to_str());
+            err_msg.push_str(&token_type.to_string());
         }
 
         Self::new(parser, token_kinds, err_msg)

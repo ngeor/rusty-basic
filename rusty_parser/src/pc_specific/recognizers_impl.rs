@@ -232,7 +232,7 @@ mod token_parsers {
             self,
             token_type: TokenType,
         ) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-            self.map(move |text| Token::new(token_type.to_index(), text))
+            self.map(move |text| Token::new(token_type.get_index(), text))
         }
     }
 }

@@ -216,7 +216,7 @@ impl PartialEq<Token> for Keyword {
 
 impl From<&Token> for Keyword {
     fn from(token: &Token) -> Self {
-        debug_assert_eq!(token.kind(), TokenType::Keyword.to_index());
+        debug_assert_eq!(token.kind(), TokenType::Keyword.get_index());
         Self::try_from(token.as_str()).expect("Token keyword not found in keywords!")
     }
 }
@@ -237,13 +237,13 @@ mod tests {
             );
             // can parse string to keyword
             let token = Token::new(
-                TokenType::Keyword.to_index(),
+                TokenType::Keyword.get_index(),
                 SORTED_KEYWORDS_STR[i].to_string(),
             );
             assert_eq!(Keyword::from(&token), SORTED_KEYWORDS[i],);
             // can parse lowercase string to keyword
             let token = Token::new(
-                TokenType::Keyword.to_index(),
+                TokenType::Keyword.get_index(),
                 SORTED_KEYWORDS_STR[i].to_lowercase().to_string(),
             );
             assert_eq!(Keyword::from(&token), SORTED_KEYWORDS[i],);

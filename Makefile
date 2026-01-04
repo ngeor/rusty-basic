@@ -29,7 +29,7 @@ clean:
 #
 # prefixing with @ to avoid printing the command itself to stdout
 print-type-size: clean
-	@RUSTFLAGS="-Zprint-type-sizes" cargo build -p rusty_parser | perl -e 'print sort { length($$b) <=> length($$a) } <>'
+	@RUSTFLAGS="-Zprint-type-sizes" cargo build -p rusty_parser | perl -e 'print sort { length($$b) <=> length($$a) } <>' | grep Parser | grep -v std
 
 print-longest-type-length: clean
-	@RUSTFLAGS="-Zprint-type-sizes" cargo build -p rusty_parser | perl -e 'print sort { length($$b) <=> length($$a) } <>' | awk '{print length}' | head -n1
+	@RUSTFLAGS="-Zprint-type-sizes" cargo build -p rusty_parser | perl -e 'print sort { length($$b) <=> length($$a) } <>' | grep Parser | grep -v std | awk '{print length}' | head -n1

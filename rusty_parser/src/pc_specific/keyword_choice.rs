@@ -13,7 +13,7 @@ pub fn keyword_choice(
     let err_msg = keyword_syntax_error(&keywords);
     any_token_of!(TokenType::Keyword)
         .filter_map(move |token| {
-            let needle: Keyword = token.into();
+            let needle: Keyword = Keyword::try_from(token.as_str()).unwrap();
             // TODO use a more efficient lookup
             if keywords.contains(&needle) {
                 // TODO remove the need for cloning the token

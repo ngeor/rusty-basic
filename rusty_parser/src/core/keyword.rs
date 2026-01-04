@@ -22,23 +22,22 @@ macro_rules! keyword_enum {
             $($(#[$($attrss)*])*$member),+
         }
 
+        /// Stores all keywords.
         const $all_names : &[$name] = &[
             $($name::$member),+
         ];
 
+        /// Stores all keywords as [str].
+        /// Can't store in uppercase, which would have been the preferred option,
+        /// due to `const`.
         const $all_names_as_str : &[&str] = &[
             $(stringify!($member)),+
         ];
 
-        impl std::fmt::Display for $name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                self.as_ref().to_uppercase().fmt(f)
-            }
-        }
-
-        // TODO add as_str method and delete AsRef
-        impl AsRef<str> for $name {
-            fn as_ref(&self) -> &str {
+        impl $name {
+            /// Returns an [str] reference for this keyword.
+            /// Note that this will not be in full uppercase!
+            pub fn as_str(&self) -> &str {
                 let index = $all_names
                     .binary_search(self)
                     .expect("Should never happen");
@@ -49,12 +48,12 @@ macro_rules! keyword_enum {
         impl TryFrom<&str> for $name {
             type Error = usize;
 
+            /// Tries to find a Keyword named as the given [str], case insensitive.
             fn try_from(s: &str) -> Result<$name, usize> {
                 $all_names_as_str.binary_search_by(|probe| cmp_str(probe, s))
                     .map(|index| $all_names[index])
             }
         }
-
     };
 }
 
@@ -209,20 +208,20 @@ keyword_enum!(pub enum Keyword SORTED_KEYWORDS SORTED_KEYWORDS_STR {
     Width,
 });
 
+impl std::fmt::Display for Keyword {
+    /// Formats the keyword (in uppercase).
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_str().to_uppercase().fmt(f)
+    }
+}
+
 impl TokenMatcher for Keyword {
+    /// Matches the given token if it's of Keyword token type and contains this keyword, case insensitive.
     fn matches_token(&self, token: &Token) -> bool {
         TokenType::Keyword.matches_token(token)
-            && token.as_str().eq_ignore_ascii_case(self.as_ref())
+            && token.as_str().eq_ignore_ascii_case(self.as_str())
     }
 }
-
-impl From<&Token> for Keyword {
-    fn from(token: &Token) -> Self {
-        debug_assert_eq!(token.kind(), TokenType::Keyword.get_index());
-        Self::try_from(token.as_str()).expect("Token keyword not found in keywords!")
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -238,17 +237,14 @@ mod tests {
                 SORTED_KEYWORDS_STR[i].to_uppercase()
             );
             // can parse string to keyword
-            let token = Token::new(
-                TokenType::Keyword.get_index(),
-                SORTED_KEYWORDS_STR[i].to_string(),
-            );
-            assert_eq!(Keyword::from(&token), SORTED_KEYWORDS[i],);
+            let text = SORTED_KEYWORDS_STR[i];
+            assert_eq!(Keyword::try_from(text).unwrap(), SORTED_KEYWORDS[i],);
             // can parse lowercase string to keyword
-            let token = Token::new(
-                TokenType::Keyword.get_index(),
-                SORTED_KEYWORDS_STR[i].to_lowercase().to_string(),
+            let text = SORTED_KEYWORDS_STR[i].to_lowercase();
+            assert_eq!(
+                Keyword::try_from(text.as_str()).unwrap(),
+                SORTED_KEYWORDS[i],
             );
-            assert_eq!(Keyword::from(&token), SORTED_KEYWORDS[i],);
         }
         // sort order is correct
         for i in 1..SORTED_KEYWORDS.len() {

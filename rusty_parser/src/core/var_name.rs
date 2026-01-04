@@ -224,7 +224,7 @@ impl CreateArray for ParamType {
     }
 }
 
-fn as_clause() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn as_clause() -> impl Parser<RcStringView, Output = Keyword, Error = ParseError> {
     keyword(Keyword::As).surround(whitespace(), whitespace())
 }
 

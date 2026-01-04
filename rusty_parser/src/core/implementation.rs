@@ -57,7 +57,7 @@ where
 {
     parser.and_opt(
         opt_and_tuple(whitespace(), keyword(Keyword::Static)),
-        |l, r: Option<(Option<Token>, Token)>| (l, r.is_some()),
+        |l, r: Option<(Option<Token>, Keyword)>| (l, r.is_some()),
     )
 }
 

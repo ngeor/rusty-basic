@@ -1082,7 +1082,7 @@ mod binary_expression {
                 TokenType::LessEquals => Some(Operator::LessOrEqual),
                 TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
                 TokenType::NotEquals => Some(Operator::NotEqual),
-                TokenType::Keyword => match Keyword::from(token) {
+                TokenType::Keyword => match Keyword::try_from(token.as_str()).unwrap() {
                     Keyword::Mod => Some(Operator::Modulo),
                     Keyword::And => Some(Operator::And),
                     Keyword::Or => Some(Operator::Or),

@@ -113,7 +113,7 @@ pub enum BuiltInFunction SORTED_BUILT_IN_FUNCTIONS SORTED_BUILT_IN_FUNCTION_NAME
 
 impl From<BuiltInFunction> for CaseInsensitiveString {
     fn from(x: BuiltInFunction) -> Self {
-        Self::from(x.as_ref())
+        Self::from(x.as_str())
     }
 }
 

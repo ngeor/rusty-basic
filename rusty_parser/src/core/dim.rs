@@ -38,9 +38,8 @@ pub fn redim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseE
     )
 }
 
-fn opt_shared_keyword()
--> impl Parser<RcStringView, Output = Option<(Token, Token)>, Error = ParseError> {
-    seq2(keyword(Keyword::Shared), whitespace(), |l, r| (l, r)).to_option()
+fn opt_shared_keyword() -> impl Parser<RcStringView, Output = Option<()>, Error = ParseError> {
+    keyword_followed_by_whitespace_p(Keyword::Shared).to_option()
 }
 
 #[cfg(test)]

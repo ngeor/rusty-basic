@@ -49,7 +49,7 @@ pub fn keyword_pair(
 
 pub fn any_keyword_with_dollar_sign()
 -> impl Parser<RcStringView, Output = (Token, Token), Error = ParseError> {
-    any_token_of(TokenType::Keyword).and_tuple(dollar_sign())
+    any_token_of!(TokenType::Keyword).and_tuple(dollar_sign())
 }
 
 pub fn keyword_dollar_sign(

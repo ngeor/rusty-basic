@@ -91,8 +91,8 @@ fn parameter_p() -> impl Parser<RcStringView, Output = Parameter, Error = ParseE
 fn array_indicator()
 -> impl Parser<RcStringView, Output = Option<(Token, Token)>, Error = ParseError> {
     Seq2::new(
-        any_token_of(TokenType::LParen),
-        any_token_of(TokenType::RParen),
+        any_token_of!(TokenType::LParen),
+        any_token_of!(TokenType::RParen),
     )
     .to_option()
 }

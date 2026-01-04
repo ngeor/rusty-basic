@@ -18,12 +18,12 @@ where
 }
 
 fn left_paren() -> impl Parser<RcStringView, Output = (Token, Option<Token>), Error = ParseError> {
-    any_token_of(TokenType::LParen).and_opt_tuple(whitespace())
+    any_token_of!(TokenType::LParen).and_opt_tuple(whitespace())
 }
 
 fn right_paren() -> impl Parser<RcStringView, Output = (Option<Token>, Token), Error = ParseError> {
     opt_and_tuple(
         whitespace(),
-        any_token_of(TokenType::RParen).no_incomplete(),
+        any_token_of!(TokenType::RParen).no_incomplete(),
     )
 }

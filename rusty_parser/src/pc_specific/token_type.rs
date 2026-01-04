@@ -12,9 +12,10 @@ macro_rules! enum_with_index {
         ];
 
         impl $name {
+            // TODO optimize this!
             #[allow(unused_assignments)]
-            fn to_index(&self) -> usize {
-                let mut result : usize = 0;
+            pub fn to_index(&self) -> u8 {
+                let mut result : u8 = 0;
                 $(
                     if let Self::$member = self {
                         return result;
@@ -24,11 +25,12 @@ macro_rules! enum_with_index {
                 panic!("should not happen")
             }
 
-            fn from_index(needle: usize) -> Self {
-                $all_members[needle]
+            pub fn from_index(needle: u8) -> Self {
+                $all_members[needle as usize]
             }
 
-            fn to_str(&self) -> String {
+            // TODO optimize this!
+            pub fn to_str(&self) -> String {
                 $(
                     $(
                         if let Self::$member = self {
@@ -84,22 +86,10 @@ enum_with_index!(
 
 impl TokenType {
     pub fn matches(&self, token: &Token) -> bool {
-        self.to_index() == token.kind() as usize
+        self.to_index() == token.kind()
     }
 
     pub fn from_token(token: &Token) -> Self {
-        Self::from_index(token.kind() as usize)
-    }
-
-    pub fn to_error_message(&self) -> String {
-        format!("Expected: {}", self.to_str())
-    }
-}
-
-impl From<TokenType> for u8 {
-    fn from(token_type: TokenType) -> Self {
-        let index = token_type.to_index();
-        debug_assert!(index < Self::MAX.into());
-        index as Self
+        Self::from_index(token.kind())
     }
 }

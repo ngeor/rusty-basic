@@ -21,8 +21,8 @@ use crate::input::RcStringView;
 use crate::pc_specific::*;
 
 pub fn comment_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
-    opt_and_tuple(whitespace(), any_token_of(TokenType::Eol)).and_opt(
-        any_token_of_two(TokenType::Eol, TokenType::Whitespace),
+    opt_and_tuple(whitespace(), any_token_of!(TokenType::Eol)).and_opt(
+        any_token_of!(TokenType::Eol, TokenType::Whitespace),
         |_, _| (),
     )
 }
@@ -55,8 +55,8 @@ pub fn common_separator() -> impl Parser<RcStringView, Output = (), Error = Pars
     opt_and(
         whitespace(),
         OrParser::new(vec![
-            Box::new(any_token_of_two(TokenType::Colon, TokenType::Eol).and_opt(
-                any_token_of_two(TokenType::Eol, TokenType::Whitespace).zero_or_more(),
+            Box::new(any_token_of!(TokenType::Colon, TokenType::Eol).and_opt(
+                any_token_of!(TokenType::Eol, TokenType::Whitespace).zero_or_more(),
                 |_, _| (),
             )),
             Box::new(no_separator_needed_before_comment()),

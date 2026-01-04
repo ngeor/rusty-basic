@@ -10,7 +10,7 @@ pub fn keyword_choice(
 ) -> impl Parser<RcStringView, Output = (Keyword, Token), Error = ParseError> {
     // TODO error message should be lazily evaluated
     let err_msg = keyword_syntax_error(&keywords);
-    any_token_of(TokenType::Keyword)
+    any_token_of!(TokenType::Keyword)
         .filter_map(move |token| {
             let needle: Keyword = token.into();
             // TODO use a more efficient lookup

@@ -184,12 +184,18 @@ pub fn bare_name_without_dots() -> impl Parser<RcStringView, Output = BareName, 
 /// Parses an identifier token.
 /// Errors if it exceeds the maximum length of identifiers.
 pub fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    any_token_of(TokenType::Identifier).flat_map(ensure_token_length)
+    any_token_of!(TokenType::Identifier).flat_map(ensure_token_length)
 }
 
 /// Parses a type qualifier character.
 fn type_qualifier_unchecked() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    any_token().filter(is_type_qualifier)
+    any_token_of!(
+        TokenType::ExclamationMark,
+        TokenType::Pound,
+        TokenType::DollarSign,
+        TokenType::Percent,
+        TokenType::Ampersand,
+    )
 }
 
 fn is_type_qualifier(token: &Token) -> bool {
@@ -255,16 +261,11 @@ pub fn identifier_with_dots() -> impl Parser<RcStringView, Output = TokenList, E
 }
 
 fn identifier_or_keyword() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    any_token()
-        .filter(|token| TokenType::Identifier.matches(token) || TokenType::Keyword.matches(token))
+    any_token_of!(TokenType::Identifier, TokenType::Keyword)
 }
 
 fn identifier_or_keyword_or_dot() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    any_token().filter(|token| {
-        TokenType::Identifier.matches(token)
-            || TokenType::Dot.matches(token)
-            || TokenType::Keyword.matches(token)
-    })
+    any_token_of!(TokenType::Identifier, TokenType::Keyword, TokenType::Dot)
 }
 
 // TODO add test: max length of 40 characters applies both to parts and the full string

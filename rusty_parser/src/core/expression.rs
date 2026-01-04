@@ -617,7 +617,7 @@ mod string_literal {
     }
 
     fn string_delimiter() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-        any_token_of(TokenType::DoubleQuote)
+        any_token_of!(TokenType::DoubleQuote)
     }
 
     fn inside_string() -> impl Parser<RcStringView, Output = TokenList, Error = ParseError> {
@@ -635,21 +635,18 @@ mod integer_or_long_literal {
 
     use crate::error::ParseError;
     use crate::input::RcStringView;
-    use crate::pc_specific::{TokenType, WithPos, any_token};
+    use crate::pc_specific::{TokenType, WithPos, any_token_of};
     use crate::*;
 
     // result ::= <digits> | <hex-digits> | <oct-digits>
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
-        any_token()
-            .filter(is_allowed_token)
-            .flat_map(process_token)
-            .with_pos()
-    }
-
-    fn is_allowed_token(token: &Token) -> bool {
-        TokenType::Digits.matches(token)
-            || TokenType::HexDigits.matches(token)
-            || TokenType::OctDigits.matches(token)
+        any_token_of!(
+            TokenType::Digits,
+            TokenType::HexDigits,
+            TokenType::OctDigits
+        )
+        .flat_map(process_token)
+        .with_pos()
     }
 
     fn process_token(
@@ -1167,9 +1164,9 @@ pub mod file_handle {
         // # and digits
         // if # and 0 -> BadFileNameOrNumber
         // if # without digits -> SyntaxError (Expected: digits after #)
-        any_token_of(TokenType::Pound)
+        any_token_of!(TokenType::Pound)
             .with_pos()
-            .and_tuple(any_token_of(TokenType::Digits).or_syntax_error("Expected: digits after #"))
+            .and_tuple(any_token_of!(TokenType::Digits).or_syntax_error("Expected: digits after #"))
             .flat_map(
                 |input, (pound, digits)| match digits.to_str().parse::<u8>() {
                     Ok(d) if d > 0 => Ok((input, FileHandle::from(d).at_pos(pound.pos))),

@@ -1,4 +1,5 @@
 mod any;
+mod any_token_of;
 mod csv;
 mod in_parenthesis;
 mod keyword;
@@ -16,6 +17,7 @@ mod with_expected_message;
 mod with_pos;
 
 pub use self::any::*;
+pub use self::any_token_of::*;
 pub use self::csv::*;
 pub use self::in_parenthesis::*;
 pub use self::keyword::*;

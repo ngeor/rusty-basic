@@ -162,9 +162,10 @@ mod tests {
         FUNCTION Echo(X.Y AS Card)
         END FUNCTION
         ";
+        // TODO should also be reported as IdentifierCannotIncludePeriod
         assert_parser_err!(
             input,
-            "Expected: SINGLE or DOUBLE or STRING or INTEGER or LONG"
+            "Expected: DOUBLE or INTEGER or LONG or SINGLE or STRING"
         );
     }
 
@@ -174,9 +175,10 @@ mod tests {
         SUB Echo(X.Y AS Card)
         END SUB
         ";
+        // TODO should also be reported as IdentifierCannotIncludePeriod
         assert_parser_err!(
             input,
-            "Expected: SINGLE or DOUBLE or STRING or INTEGER or LONG"
+            "Expected: DOUBLE or INTEGER or LONG or SINGLE or STRING"
         );
     }
 }

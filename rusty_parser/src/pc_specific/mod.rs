@@ -1,7 +1,6 @@
 mod csv;
 mod in_parenthesis;
 mod keyword;
-mod keyword_choice;
 mod keyword_map;
 
 #[cfg(debug_assertions)]
@@ -14,7 +13,6 @@ mod with_pos;
 pub use self::csv::*;
 pub use self::in_parenthesis::*;
 pub use self::keyword::*;
-pub use self::keyword_choice::*;
 pub use self::keyword_map::*;
 pub use self::specific_trait::*;
 pub use self::with_expected_message::*;

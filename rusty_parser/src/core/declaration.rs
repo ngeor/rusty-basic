@@ -151,9 +151,10 @@ mod tests {
             "DECLARE SUB Echo(X.Y AS Card)",
         ];
         for input in inputs {
+            // TODO should also be reported as IdentifierCannotIncludePeriod
             assert_parser_err!(
                 input,
-                "Expected: SINGLE or DOUBLE or STRING or INTEGER or LONG"
+                "Expected: DOUBLE or INTEGER or LONG or SINGLE or STRING"
             );
         }
     }

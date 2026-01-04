@@ -179,3 +179,17 @@ impl Parser<RcStringView> for ZeroOrMoreStatements {
         Ok((tokenizer, result))
     }
 }
+
+fn keyword_syntax_error<K>(keywords: K) -> String
+where
+    K: AsRef<[Keyword]>,
+{
+    let mut s = String::new();
+    for keyword in keywords.as_ref() {
+        if !s.is_empty() {
+            s.push_str(" or ");
+        }
+        s.push_str(&keyword.to_string());
+    }
+    format!("Expected: {}", s)
+}

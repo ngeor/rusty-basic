@@ -178,7 +178,9 @@ fn name_with_opt_array<P>(
 where
     P: Parser<RcStringView, Error = ParseError> + 'static,
 {
-    Seq2::new(name_with_dots(), opt_array_parser)
+    seq2(name_with_dots(), opt_array_parser, |name, array| {
+        (name, array)
+    })
 }
 
 fn create_typed_name<T, A>(name: Name, array: A, var_type: T) -> TypedName<T>

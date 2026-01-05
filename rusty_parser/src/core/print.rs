@@ -95,10 +95,11 @@ impl PrintArg {
 /// See [Print] for the definition.
 pub fn parse_print_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword(Keyword::Print)
-        .and_opt_keep_right(print_boundary().and_tuple(Seq3::new(
+        .and_opt_keep_right(print_boundary().and_tuple(seq3(
             opt_file_handle_comma_p(),
             opt_using(),
             PrintArgsParser,
+            |a, b, c| (a, b, c),
         )))
         .map(|opt_args| opt_args.unwrap_or_default())
         .map(|(_, (opt_file_number, format_string, args))| {
@@ -113,7 +114,11 @@ pub fn parse_print_p() -> impl Parser<RcStringView, Output = Statement, Error = 
 
 pub fn parse_lprint_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword(Keyword::LPrint)
-        .and_opt_keep_right(print_boundary().and_tuple(Seq2::new(opt_using(), PrintArgsParser)))
+        .and_opt_keep_right(print_boundary().and_tuple(seq2(
+            opt_using(),
+            PrintArgsParser,
+            |l, r| (l, r),
+        )))
         .map(|opt_args| opt_args.unwrap_or_default())
         .map(|(_, (format_string, args))| {
             Statement::Print(Print {

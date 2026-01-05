@@ -870,7 +870,7 @@ pub mod property {
     // expr must not be qualified
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
-        Seq2::new(base_expr_pos_p(), dot_properties()).flat_map(
+        seq2(base_expr_pos_p(), dot_properties(), |l, r| (l, r)).flat_map(
             |input, (first_expr_pos, properties)| {
                 if !properties.is_empty() && is_qualified(&first_expr_pos.element) {
                     // TODO do this check before parsing the properties

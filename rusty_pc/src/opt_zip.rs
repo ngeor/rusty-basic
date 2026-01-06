@@ -73,9 +73,4 @@ where
             Err(err) => Err(err),
         }
     }
-
-    fn set_context(&mut self, ctx: C) {
-        self.left.set_context(ctx.clone());
-        self.right.set_context(ctx);
-    }
 }

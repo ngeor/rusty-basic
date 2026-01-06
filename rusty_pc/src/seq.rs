@@ -58,13 +58,6 @@ macro_rules! seq_pc {
                     )
                 )
             }
-
-            fn set_context(&mut self, ctx: _C) {
-                self.$first_type.set_context(ctx.clone());
-                $(
-                    self.$generic_type.set_context(ctx.clone());
-                )+
-            }
         }
 
         #[allow(non_snake_case)]

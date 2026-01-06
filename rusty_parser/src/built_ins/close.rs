@@ -28,10 +28,7 @@ fn file_handles() -> impl Parser<RcStringView, Output = Expressions, Error = Par
                     file_handle_or_expression_p().or_syntax_error("Expected: file handle"),
                 )
                 .zero_or_more(),
-            |mut l, mut r| {
-                l.append(&mut r);
-                l
-            },
+            VecCombiner,
         )
         .or_default()
 }

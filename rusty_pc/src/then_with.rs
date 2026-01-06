@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser};
+use crate::{ParseResult, Parser, SetContext};
 
 pub trait ThenWithContext<I, C>: Parser<I, C> {
     fn then_with_in_context<F, R, RP, CR>(
@@ -37,7 +37,7 @@ impl<I, C, L, R, RP, F, CR> Parser<I, C> for ThenWithContextParser<L, R, F>
 where
     L: Parser<I, C>,
     R: Fn() -> RP,
-    RP: Parser<I, CR, Error = L::Error>,
+    RP: Parser<I, CR, Error = L::Error> + SetContext<CR>,
     F: Fn(&L::Output) -> CR,
 {
     type Output = (L::Output, RP::Output);
@@ -56,9 +56,5 @@ where
             }
             Err(err) => Err(err),
         }
-    }
-
-    fn set_context(&mut self, ctx: C) {
-        self.left.set_context(ctx);
     }
 }

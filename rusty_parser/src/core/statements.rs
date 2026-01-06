@@ -185,6 +185,4 @@ impl Parser<RcStringView> for ZeroOrMoreStatements {
         }
         Ok((tokenizer, result))
     }
-
-    fn set_context(&mut self, _ctx: ()) {}
 }

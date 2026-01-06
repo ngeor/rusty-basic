@@ -19,8 +19,4 @@ impl<I, C, O, E> Parser<I, C> for BoxedParser<I, C, O, E> {
     fn parse(&self, input: I) -> super::ParseResult<I, Self::Output, Self::Error> {
         self.parser.parse(input)
     }
-
-    fn set_context(&mut self, ctx: C) {
-        self.parser.set_context(ctx);
-    }
 }

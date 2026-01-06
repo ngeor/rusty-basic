@@ -35,8 +35,4 @@ where
             self.parser.borrow().as_ref().unwrap().parse(input)
         }
     }
-
-    fn set_context(&mut self, _ctx: C) {
-        unimplemented!()
-    }
 }

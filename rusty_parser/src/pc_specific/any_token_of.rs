@@ -118,10 +118,6 @@ where
             self.parse_token(input)
         }
     }
-
-    fn set_context(&mut self, _ctx: C) {
-        // do nothing
-    }
 }
 
 impl<P> AnyTokenOf<P> {

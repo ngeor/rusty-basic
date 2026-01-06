@@ -29,8 +29,6 @@ impl Parser<RcStringView> for PeekTokenParser {
             Err(err) => Err(err),
         }
     }
-
-    fn set_context(&mut self, _ctx: ()) {}
 }
 
 /// Returns Ok(()) if we're at EOF,
@@ -56,6 +54,4 @@ impl Parser<RcStringView> for EofDetector {
             Err(err) => Err(err),
         }
     }
-
-    fn set_context(&mut self, _ctx: ()) {}
 }

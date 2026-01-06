@@ -97,7 +97,8 @@ fn array_indicator()
     .to_option()
 }
 
-fn extended_type() -> impl Parser<RcStringView, VarNameCtx, Output = ParamType, Error = ParseError>
+fn extended_type()
+-> impl Parser<RcStringView, VarNameCtx, Output = ParamType, Error = ParseError> + SetContext<VarNameCtx>
 {
     ctx_parser()
         .map(|(_, allow_user_defined)| {

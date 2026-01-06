@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser};
+use crate::{ParseResult, Parser, SetContext};
 
 pub trait NoIncomplete<I, C>: Parser<I, C> + Sized {
     fn no_incomplete(self) -> MapErrParser<Self, Self::Error> {
@@ -53,7 +53,12 @@ where
             Err((true, i, err)) => Err((true, i, err)),
         }
     }
+}
 
+impl<C, P, E> SetContext<C> for MapErrParser<P, E>
+where
+    P: SetContext<C>,
+{
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)
     }

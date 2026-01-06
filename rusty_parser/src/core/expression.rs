@@ -473,10 +473,7 @@ pub fn csv_expressions_first_guarded()
         comma()
             .and_keep_right(expression_pos_p().or_syntax_error("Expected: expression after comma"))
             .zero_or_more(),
-        |mut l, mut r| {
-            l.append(&mut r);
-            l
-        },
+        VecCombiner,
     )
 }
 
@@ -849,7 +846,7 @@ mod function_call_or_array_element {
         name_with_dots_as_tokens()
             .and(
                 in_parenthesis(csv(expression_pos_p()).or_default()),
-                |name_as_tokens, arguments| {
+                |name_as_tokens: NameAsTokens, arguments: Expressions| {
                     Expression::FunctionCall(name_as_tokens.into(), arguments)
                 },
             )
@@ -982,8 +979,6 @@ mod binary_expression {
             self.do_parse(tokenizer)
                 .map_ok(ExpressionPos::simplify_unary_minus_literals)
         }
-
-        fn set_context(&mut self, _ctx: ()) {}
     }
 
     impl BinaryExprParser {

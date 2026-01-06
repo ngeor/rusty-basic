@@ -1,4 +1,6 @@
-use crate::{ParseResult, Parser, ToOption};
+use std::marker::PhantomData;
+
+use crate::{ParseResult, Parser, SetContext, ToOption, ToOptionParser};
 
 //
 // And (with undo)
@@ -8,62 +10,44 @@ pub trait And<I, C>: Parser<I, C>
 where
     Self: Sized,
     I: Clone,
-    C: Clone,
 {
     /// Parses both the left and the right side.
     /// If the right side fails with a non fatal error, parsing of the left side is undone.
-    fn and<R, F, O>(
-        self,
-        right: R,
-        combiner: F,
-    ) -> impl Parser<I, C, Output = O, Error = Self::Error>
+    fn and<R, F, O>(self, right: R, combiner: F) -> AndParser<Self, R, F, O>
     where
         R: Parser<I, C, Error = Self::Error>,
-        F: Fn(Self::Output, R::Output) -> O,
+        F: Combiner<Self::Output, R::Output, O>,
     {
         AndParser::new(self, right, combiner)
     }
 
-    fn and_tuple<R>(
-        self,
-        right: R,
-    ) -> impl Parser<I, C, Output = (Self::Output, R::Output), Error = Self::Error>
+    fn and_tuple<R>(self, right: R) -> AndParser<Self, R, TupleCombiner, (Self::Output, R::Output)>
     where
         R: Parser<I, C, Error = Self::Error>,
     {
-        self.and(right, |l, r| (l, r))
+        self.and(right, TupleCombiner)
     }
 
-    fn and_keep_left<R>(
-        self,
-        right: R,
-    ) -> impl Parser<I, C, Output = Self::Output, Error = Self::Error>
+    fn and_keep_left<R>(self, right: R) -> AndParser<Self, R, KeepLeftCombiner, Self::Output>
     where
         R: Parser<I, C, Error = Self::Error>,
     {
-        self.and(right, |l, _| l)
+        self.and(right, KeepLeftCombiner)
     }
 
-    fn and_keep_right<R>(
-        self,
-        right: R,
-    ) -> impl Parser<I, C, Output = R::Output, Error = Self::Error>
+    fn and_keep_right<R>(self, right: R) -> AndParser<Self, R, KeepRightCombiner, R::Output>
     where
         R: Parser<I, C, Error = Self::Error>,
     {
-        self.and(right, |_, r| r)
+        self.and(right, KeepRightCombiner)
     }
 
     /// Parses the left side and optionally the right side.
     /// The combiner function maps the left and (optional) right output to the final result.
-    fn and_opt<R, F, O>(
-        self,
-        right: R,
-        combiner: F,
-    ) -> impl Parser<I, C, Output = O, Error = Self::Error>
+    fn and_opt<R, F, O>(self, right: R, combiner: F) -> AndParser<Self, ToOptionParser<R>, F, O>
     where
         R: Parser<I, C, Error = Self::Error>,
-        F: Fn(Self::Output, Option<R::Output>) -> O,
+        F: Combiner<Self::Output, Option<R::Output>, O>,
     {
         self.and(right.to_option(), combiner)
     }
@@ -73,11 +57,11 @@ where
     fn and_opt_tuple<R>(
         self,
         right: R,
-    ) -> impl Parser<I, C, Output = (Self::Output, Option<R::Output>), Error = Self::Error>
+    ) -> AndParser<Self, ToOptionParser<R>, TupleCombiner, (Self::Output, Option<R::Output>)>
     where
         R: Parser<I, C, Error = Self::Error>,
     {
-        self.and_opt(right, |l, r| (l, r))
+        self.and_opt(right, TupleCombiner)
     }
 
     /// Parses the left side and optionally the right side.
@@ -85,11 +69,11 @@ where
     fn and_opt_keep_left<R>(
         self,
         right: R,
-    ) -> impl Parser<I, C, Output = Self::Output, Error = Self::Error>
+    ) -> AndParser<Self, ToOptionParser<R>, KeepLeftCombiner, Self::Output>
     where
         R: Parser<I, C, Error = Self::Error>,
     {
-        self.and_opt(right, |l, _| l)
+        self.and_opt(right, KeepLeftCombiner)
     }
 
     /// Parses the left side and optionally the right side.
@@ -97,11 +81,11 @@ where
     fn and_opt_keep_right<R>(
         self,
         right: R,
-    ) -> impl Parser<I, C, Output = Option<R::Output>, Error = Self::Error>
+    ) -> AndParser<Self, ToOptionParser<R>, KeepRightCombiner, Option<R::Output>>
     where
         R: Parser<I, C, Error = Self::Error>,
     {
-        self.and_opt(right, |_, r| r)
+        self.and_opt(right, KeepRightCombiner)
     }
 
     fn surround<L, R>(
@@ -120,23 +104,24 @@ where
 impl<I, C, L> And<I, C> for L
 where
     I: Clone,
-    C: Clone,
     L: Parser<I, C>,
 {
 }
 
-struct AndParser<L, R, F> {
+pub struct AndParser<L, R, F, O> {
     left: L,
     right: R,
     combiner: F,
+    _marker: PhantomData<O>,
 }
 
-impl<L, R, F> AndParser<L, R, F> {
+impl<L, R, F, O> AndParser<L, R, F, O> {
     pub fn new(left: L, right: R, combiner: F) -> Self {
         Self {
             left,
             right,
             combiner,
+            _marker: PhantomData,
         }
     }
 }
@@ -145,13 +130,12 @@ impl<L, R, F> AndParser<L, R, F> {
 // that does not need Clone when the right parser is guaranteed
 // that it will return Ok or fatal Err
 
-impl<I, C, L, R, F, O> Parser<I, C> for AndParser<L, R, F>
+impl<I, C, L, R, F, O> Parser<I, C> for AndParser<L, R, F, O>
 where
     I: Clone,
-    C: Clone,
     L: Parser<I, C>,
     R: Parser<I, C, Error = L::Error>,
-    F: Fn(L::Output, R::Output) -> O,
+    F: Combiner<L::Output, R::Output, O>,
 {
     type Output = O;
     type Error = L::Error;
@@ -160,7 +144,7 @@ where
         match self.left.parse(tokenizer.clone()) {
             Ok((input, left)) => {
                 match self.right.parse(input) {
-                    Ok((input, right)) => Ok((input, (self.combiner)(left, right))),
+                    Ok((input, right)) => Ok((input, self.combiner.combine(left, right))),
                     // return original input here
                     Err((false, _, err)) => Err((false, tokenizer, err)),
                     Err(err) => Err(err),
@@ -169,10 +153,17 @@ where
             Err((fatal, i, err)) => Err((fatal, i, err)),
         }
     }
+}
 
-    fn set_context(&mut self, ctx: C) {
-        self.left.set_context(ctx.clone());
-        self.right.set_context(ctx);
+impl<C, L, R, F, O> SetContext<C> for AndParser<L, R, F, O>
+where
+    L: SetContext<C>,
+    R: SetContext<C>,
+    C: Clone,
+{
+    fn set_context(&mut self, context: C) {
+        self.left.set_context(context.clone());
+        self.right.set_context(context);
     }
 }
 
@@ -186,7 +177,7 @@ pub fn opt_and<I, L, R, E, F, O>(
 ) -> impl Parser<I, Output = O, Error = E>
 where
     I: Clone,
-    F: Fn(Option<L>, R) -> O,
+    F: Combiner<Option<L>, R, O>,
 {
     left.to_option().and(right, combiner)
 }
@@ -201,7 +192,7 @@ pub fn opt_and_tuple<I, L, R, E>(
 where
     I: Clone,
 {
-    opt_and(left, right, |l, r| (l, r))
+    opt_and(left, right, TupleCombiner)
 }
 
 /// Parses the left side optionally and then the right side.
@@ -214,5 +205,79 @@ pub fn opt_and_keep_right<I, L, R, E>(
 where
     I: Clone,
 {
-    opt_and(left, right, |_, r| r)
+    opt_and(left, right, KeepRightCombiner)
+}
+
+/// Combines two values into one.
+pub trait Combiner<L, R, O> {
+    /// Combines two values into one.
+    fn combine(&self, left: L, right: R) -> O;
+}
+
+/// Combines two values into a tuple.
+pub struct TupleCombiner;
+
+impl<L, R> Combiner<L, R, (L, R)> for TupleCombiner {
+    fn combine(&self, left: L, right: R) -> (L, R) {
+        (left, right)
+    }
+}
+
+/// Combines two values by keeping the left value.
+pub struct KeepLeftCombiner;
+
+impl<L, R> Combiner<L, R, L> for KeepLeftCombiner {
+    fn combine(&self, left: L, _right: R) -> L {
+        left
+    }
+}
+
+/// Combines two values by keeping the right value.
+pub struct KeepRightCombiner;
+
+impl<L, R> Combiner<L, R, R> for KeepRightCombiner {
+    fn combine(&self, _left: L, right: R) -> R {
+        right
+    }
+}
+
+// Combiner implementation for `Fn`.
+
+impl<L, R, O, F> Combiner<L, R, O> for F
+where
+    F: Fn(L, R) -> O,
+{
+    fn combine(&self, left: L, right: R) -> O {
+        (self)(left, right)
+    }
+}
+
+/// Combines two vectors by concatenating them into one.
+pub struct VecCombiner;
+
+impl<L> Combiner<Vec<L>, Vec<L>, Vec<L>> for VecCombiner {
+    fn combine(&self, mut left: Vec<L>, mut right: Vec<L>) -> Vec<L> {
+        left.append(&mut right);
+        left
+    }
+}
+
+/// Combines two strings into one by concatenating them.
+/// Supports also an Optional String with a String.
+pub struct StringCombiner;
+
+impl Combiner<String, String, String> for StringCombiner {
+    fn combine(&self, mut left: String, right: String) -> String {
+        left.push_str(&right);
+        left
+    }
+}
+
+impl Combiner<Option<String>, String, String> for StringCombiner {
+    fn combine(&self, left: Option<String>, right: String) -> String {
+        match left {
+            Some(left) => self.combine(left, right),
+            None => right,
+        }
+    }
 }

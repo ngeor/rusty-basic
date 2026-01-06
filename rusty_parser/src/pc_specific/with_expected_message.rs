@@ -1,4 +1,4 @@
-use rusty_pc::{ParseResult, Parser};
+use rusty_pc::{ParseResult, Parser, SetContext};
 
 use crate::ParseError;
 
@@ -67,7 +67,12 @@ where
             Err(err) => Err(err),
         }
     }
+}
 
+impl<C, P, F> SetContext<C> for WithExpectedMessage<P, F>
+where
+    P: SetContext<C>,
+{
     fn set_context(&mut self, ctx: C) {
         self.0.set_context(ctx);
     }

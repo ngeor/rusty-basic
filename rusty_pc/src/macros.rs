@@ -16,6 +16,18 @@ macro_rules! binary_parser_declaration {
                 Self { left, right }
             }
         }
+
+        impl<C, L, R> $crate::SetContext<C> for $name<L, R>
+        where
+            C: Clone,
+            L: $crate::SetContext<C>,
+            R: $crate::SetContext<C>
+        {
+            fn set_context(&mut self, ctx: C) {
+                self.left.set_context(ctx.clone());
+                self.right.set_context(ctx);
+            }
+        }
     };
 }
 
@@ -186,7 +198,17 @@ macro_rules! parser_combinator {
 
             fn parse(&$self, $input: I) -> ParseResult<I, Self::Output, Self::Error>
                 $block
+        }
 
+        impl
+        <
+            C,
+            P
+            $(, $($struct_generic_type),+)?
+        > $crate::SetContext<C> for $struct<P, $($($struct_generic_type),+)?>
+        where
+            P: $crate::SetContext<C>,
+        {
             fn set_context(&mut self, ctx: C)
             {
                 self.parser.set_context(ctx)

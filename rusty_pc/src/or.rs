@@ -31,17 +31,11 @@ where
 
         self.parsers.last().unwrap().parse(input)
     }
-
-    fn set_context(&mut self, ctx: C) {
-        for parser in &mut self.parsers {
-            parser.set_context(ctx.clone());
-        }
-    }
 }
 
 binary_parser_declaration!(pub struct OrParserNoBox);
 
-pub trait Or<I, C: Clone>: Parser<I, C>
+pub trait Or<I, C>: Parser<I, C>
 where
     Self: Sized,
 {
@@ -53,9 +47,9 @@ where
     }
 }
 
-impl<I, C: Clone, P> Or<I, C> for P where P: Parser<I, C> {}
+impl<I, C, P> Or<I, C> for P where P: Parser<I, C> {}
 
-impl<I, C: Clone, L, R> Parser<I, C> for OrParserNoBox<L, R>
+impl<I, C, L, R> Parser<I, C> for OrParserNoBox<L, R>
 where
     L: Parser<I, C>,
     R: Parser<I, C, Output = L::Output, Error = L::Error>,
@@ -69,10 +63,5 @@ where
             Err((false, input, _)) => self.right.parse(input),
             Err(err) => Err(err),
         }
-    }
-
-    fn set_context(&mut self, ctx: C) {
-        self.left.set_context(ctx.clone());
-        self.right.set_context(ctx);
     }
 }

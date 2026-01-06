@@ -1,6 +1,6 @@
 #[cfg(debug_assertions)]
 use rusty_pc::ParseResult;
-use rusty_pc::Parser;
+use rusty_pc::{Parser, SetContext};
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
@@ -94,7 +94,12 @@ where
             }
         }
     }
+}
 
+impl<P> SetContext<()> for LoggingParser<P>
+where
+    P: SetContext<()>,
+{
     fn set_context(&mut self, _ctx: ()) {
         self.parser.set_context(_ctx);
     }

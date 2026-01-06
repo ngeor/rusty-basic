@@ -116,7 +116,9 @@ where
     A: Fn() -> AP,
     AP: Parser<RcStringView, Error = ParseError> + 'static,
     B: Fn() -> BP + 'static,
-    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + 'static,
+    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>
+        + SetContext<VarNameCtx>
+        + 'static,
 {
     name_with_opt_array(opt_array_parser_factory())
         .then_with_in_context(
@@ -128,15 +130,18 @@ where
 
 fn var_type_parser<T, BP>(
     extended_type_parser: BP,
-) -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>
+) -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + SetContext<VarNameCtx>
 where
     T: Default + VarType,
-    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + 'static,
+    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>
+        + SetContext<VarNameCtx>
+        + 'static,
 {
     qualified().or(extended(extended_type_parser)).or(bare())
 }
 
-fn qualified<T>() -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>
+fn qualified<T>()
+-> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + SetContext<VarNameCtx>
 where
     T: Default + VarType,
 {
@@ -148,10 +153,10 @@ where
 
 fn extended<T, BP>(
     extended_type_parser: BP,
-) -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>
+) -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + SetContext<VarNameCtx>
 where
     T: Default + VarType,
-    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>,
+    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + SetContext<VarNameCtx>,
 {
     let extended_type_parser = extended_type_parser.no_incomplete();
     as_clause()
@@ -159,7 +164,8 @@ where
         .and_keep_right(extended_type_parser)
 }
 
-fn bare<T>() -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>
+fn bare<T>()
+-> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + SetContext<VarNameCtx>
 where
     T: Default + VarType,
 {

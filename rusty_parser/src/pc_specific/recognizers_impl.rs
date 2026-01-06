@@ -197,19 +197,9 @@ where
         .and(
             char_parsers::specific('-').one_to_str().to_option().and(
                 char_parsers::filter(predicate).many_to_str(),
-                |opt_minus, digits| match opt_minus {
-                    Some(mut minus) => {
-                        minus.push_str(&digits);
-                        minus
-                    }
-                    _ => digits,
-                },
+                StringCombiner,
             ),
-            |mut left, right| {
-                // TODO prevent push_str
-                left.push_str(&right);
-                left
-            },
+            StringCombiner,
         )
         .to_token(token_type)
 }
@@ -319,10 +309,6 @@ mod char_parsers {
                 let ch = input.char();
                 Ok((input.inc_position(), ch))
             }
-        }
-
-        fn set_context(&mut self, _ctx: ()) {
-            // do nothing
         }
     }
 }

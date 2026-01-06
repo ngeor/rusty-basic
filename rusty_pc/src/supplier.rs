@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
-use crate::{ParseResult, Parser};
+use crate::{ParseResult, Parser, SetContext};
 
-pub fn supplier<I, C, F, O, E>(f: F) -> impl Parser<I, C, Output = O, Error = E>
+pub fn supplier<I, C, F, O, E>(f: F) -> impl Parser<I, C, Output = O, Error = E> + SetContext<C>
 where
     F: Fn() -> O,
 {
@@ -21,8 +21,8 @@ where
     fn parse(&self, input: I) -> ParseResult<I, O, E> {
         Ok((input, (self.0)()))
     }
+}
 
-    fn set_context(&mut self, _ctx: C) {
-        // do nothing
-    }
+impl<C, P, F> SetContext<C> for SupplierParser<P, F> {
+    fn set_context(&mut self, _ctx: C) {}
 }

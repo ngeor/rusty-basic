@@ -1,7 +1,8 @@
 use rusty_pc::*;
 
 use crate::input::RcStringView;
-use crate::pc_specific::{TokenType, WithExpected, any_token_of};
+use crate::pc_specific::WithExpected;
+use crate::tokens::{TokenType, any_token_of};
 use crate::{Keyword, ParseError};
 
 /// Matches one of the given keywords.

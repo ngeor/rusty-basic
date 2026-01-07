@@ -5,7 +5,8 @@ use rusty_pc::{
 use crate::core::expression::ws_expr_pos_p;
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::pc_specific::{keyword, whitespace};
+use crate::pc_specific::keyword;
+use crate::tokens::whitespace;
 use crate::{ExpressionPos, Keyword};
 
 /// Parses an optional second expression that follows the first expression

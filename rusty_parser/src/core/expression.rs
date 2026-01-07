@@ -5,6 +5,7 @@ use rusty_variant::{MIN_INTEGER, MIN_LONG};
 use crate::core::opt_second_expression::conditionally_opt_whitespace;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
+use crate::tokens::comma;
 use crate::{
     BuiltInFunction, ExpressionType, FileHandle, HasExpressionType, Name, Operator, ParseError, TypeQualifier, UnaryOperator, VariableInfo
 };
@@ -552,7 +553,8 @@ mod single_or_double_literal {
     use rusty_pc::*;
 
     use crate::input::RcStringView;
-    use crate::pc_specific::{WithPos, digits, dot, pound};
+    use crate::pc_specific::WithPos;
+    use crate::tokens::{digits, dot, pound};
     use crate::{ParseError, *};
 
     // single ::= <digits> . <digits>
@@ -601,6 +603,7 @@ mod string_literal {
 
     use crate::input::RcStringView;
     use crate::pc_specific::*;
+    use crate::tokens::{TokenType, any_token_of};
     use crate::{ParseError, *};
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
@@ -628,7 +631,8 @@ mod integer_or_long_literal {
 
     use crate::error::ParseError;
     use crate::input::RcStringView;
-    use crate::pc_specific::{TokenType, WithPos, any_token_of};
+    use crate::pc_specific::WithPos;
+    use crate::tokens::{TokenType, any_token_of};
     use crate::*;
 
     // result ::= <digits> | <hex-digits> | <oct-digits>
@@ -749,7 +753,8 @@ mod variable {
 
     use crate::core::name::{name_with_dots_as_tokens, token_to_type_qualifier};
     use crate::input::RcStringView;
-    use crate::pc_specific::{TokenType, WithPos};
+    use crate::pc_specific::WithPos;
+    use crate::tokens::TokenType;
     use crate::{ParseError, *};
 
     // variable ::= <identifier-with-dots>
@@ -860,7 +865,8 @@ pub mod property {
     use crate::core::name::{identifier, token_to_type_qualifier, type_qualifier};
     use crate::error::ParseError;
     use crate::input::RcStringView;
-    use crate::pc_specific::{SpecificTrait, dot};
+    use crate::pc_specific::SpecificTrait;
+    use crate::tokens::dot;
     use crate::*;
 
     // property ::= <expr> "." <property-name>
@@ -958,7 +964,8 @@ mod binary_expression {
     };
     use crate::error::ParseError;
     use crate::input::RcStringView;
-    use crate::pc_specific::{SpecificTrait, TokenType, WithPos, any_token, whitespace};
+    use crate::pc_specific::{SpecificTrait, WithPos};
+    use crate::tokens::{TokenType, any_token, whitespace};
     use crate::*;
 
     // result ::= <non-bin-expr> <operator> <expr>
@@ -1099,7 +1106,8 @@ mod unary_expression {
 
     use crate::core::expression::{expression_pos_p, guard};
     use crate::input::RcStringView;
-    use crate::pc_specific::{SpecificTrait, WithPos, keyword, minus_sign};
+    use crate::pc_specific::{SpecificTrait, WithPos, keyword};
+    use crate::tokens::minus_sign;
     use crate::{ParseError, *};
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
@@ -1148,6 +1156,7 @@ pub mod file_handle {
     use crate::error::ParseError;
     use crate::input::RcStringView;
     use crate::pc_specific::*;
+    use crate::tokens::{TokenType, any_token_of, whitespace};
     use crate::*;
 
     pub fn file_handle_p()
@@ -1187,7 +1196,7 @@ pub mod guard {
 
     use crate::ParseError;
     use crate::input::RcStringView;
-    use crate::pc_specific::{TokenType, peek_token, whitespace};
+    use crate::tokens::{TokenType, peek_token, whitespace};
 
     #[derive(Default)]
     pub enum Guard {

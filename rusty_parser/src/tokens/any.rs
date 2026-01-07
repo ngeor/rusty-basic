@@ -2,12 +2,7 @@ use rusty_pc::{ParseResult, Parser, Token, default_parse_error};
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::pc_specific::token_parser;
-
-/// Parses any token.
-pub fn any_token() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    token_parser()
-}
+use crate::tokens::any_token;
 
 /// Peeks the next token without consuming it.
 pub fn peek_token() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
@@ -24,7 +19,7 @@ impl Parser<RcStringView> for PeekTokenParser {
         &self,
         tokenizer: RcStringView,
     ) -> ParseResult<RcStringView, Self::Output, ParseError> {
-        match token_parser().parse(tokenizer.clone()) {
+        match any_token().parse(tokenizer.clone()) {
             Ok((_, value)) => Ok((tokenizer, value)),
             Err(err) => Err(err),
         }

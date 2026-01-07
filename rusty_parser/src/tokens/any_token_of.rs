@@ -3,18 +3,18 @@ use std::collections::HashSet;
 use rusty_pc::{ParseErr, ParseResult, Parser, Token, TokenKind};
 
 use crate::ParseError;
-use crate::pc_specific::TokenType;
+use crate::tokens::TokenType;
 
 macro_rules! any_token_of {
     (
         MatchMode::$match_mode:ident,
         $($token_type:expr),+$(,)?
     ) => {
-        $crate::pc_specific::AnyTokenOf::new_multi(
-            $crate::pc_specific::token_parser(),
+        $crate::tokens::AnyTokenOf::new_multi(
+            $crate::tokens::any_token(),
             &[ $($token_type),+ ],
             false,
-            $crate::pc_specific::MatchMode::$match_mode
+            $crate::tokens::MatchMode::$match_mode
         )
     };
     (
@@ -28,7 +28,7 @@ macro_rules! any_token_of_ws {
     (
         $($token_type:expr),+$(,)?
     ) => {
-        $crate::pc_specific::AnyTokenOf::new_multi($crate::pc_specific::token_parser(), &[ $($token_type),+ ], true, $crate::pc_specific::MatchMode::Include)
+        $crate::tokens::AnyTokenOf::new_multi($crate::tokens::any_token(), &[ $($token_type),+ ], true, $crate::tokens::MatchMode::Include)
     };
 }
 

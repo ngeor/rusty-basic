@@ -5,6 +5,7 @@ use crate::core::statement_separator::comments_and_whitespace_p;
 use crate::core::statements::ZeroOrMoreStatements;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
+use crate::tokens::whitespace;
 use crate::{ParseError, *};
 
 // SELECT CASE expr ' comment
@@ -113,6 +114,7 @@ mod case_expression_parser {
     use crate::core::opt_second_expression::opt_second_expression_after_keyword;
     use crate::input::RcStringView;
     use crate::pc_specific::*;
+    use crate::tokens::{TokenType, any_token, whitespace};
     use crate::{CaseExpression, ExpressionTrait, Keyword, Operator, ParseError};
 
     pub fn parser() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParseError> {

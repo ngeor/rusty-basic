@@ -4,6 +4,7 @@ use crate::core::declaration::{function_declaration_p, sub_declaration_p};
 use crate::core::statements::ZeroOrMoreStatements;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
+use crate::tokens::whitespace;
 use crate::{ParseError, *};
 
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION

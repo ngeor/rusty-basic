@@ -6,6 +6,7 @@ use crate::core::name::bare_name_with_dots;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
+use crate::tokens::whitespace;
 use crate::{Expression, Keyword, OnErrorOption, Statement};
 
 pub fn statement_on_error_go_to_p()

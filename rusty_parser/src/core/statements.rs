@@ -7,6 +7,7 @@ use crate::core::statement_separator::{comment_separator, common_separator};
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
+use crate::tokens::{colon_ws, peek_token, whitespace};
 use crate::*;
 
 pub fn single_line_non_comment_statements_p()

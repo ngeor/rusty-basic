@@ -167,6 +167,7 @@ mod type_definition {
     use crate::core::expression::expression_pos_p;
     use crate::input::RcStringView;
     use crate::pc_specific::*;
+    use crate::tokens::star;
     use crate::{ParseError, *};
 
     pub fn extended_type()

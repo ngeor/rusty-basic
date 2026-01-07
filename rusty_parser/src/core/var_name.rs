@@ -3,6 +3,7 @@ use rusty_pc::*;
 use crate::core::name::{bare_name_without_dots, name_with_dots};
 use crate::input::RcStringView;
 use crate::pc_specific::*;
+use crate::tokens::whitespace;
 use crate::{ParseError, *};
 
 /// A variable name with a type.

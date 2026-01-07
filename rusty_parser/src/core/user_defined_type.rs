@@ -10,6 +10,7 @@ use crate::core::statement_separator::comments_and_whitespace_p;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
+use crate::tokens::{star, whitespace};
 use crate::*;
 
 #[derive(Clone, Debug, PartialEq)]

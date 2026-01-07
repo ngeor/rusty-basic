@@ -2,6 +2,7 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
+use crate::tokens::equal_sign;
 use crate::{BuiltInSub, ParseError, *};
 
 // DEF SEG(=expr)?

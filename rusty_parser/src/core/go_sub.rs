@@ -3,6 +3,7 @@ use rusty_pc::*;
 use crate::core::name::bare_name_with_dots;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
+use crate::tokens::whitespace;
 use crate::{Keyword, ParseError, Statement};
 
 pub fn statement_go_sub_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {

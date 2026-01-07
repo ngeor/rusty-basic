@@ -1,9 +1,8 @@
 use rusty_pc::*;
 
 use crate::input::RcStringView;
-use crate::pc_specific::{
-    TokenType, WithExpected, any_token, any_token_of, dollar_sign, peek_token, whitespace
-};
+use crate::pc_specific::WithExpected;
+use crate::tokens::{TokenType, any_token, any_token_of, dollar_sign, peek_token, whitespace};
 use crate::{Keyword, ParseError};
 
 // TODO review usages of TokenType::Keyword

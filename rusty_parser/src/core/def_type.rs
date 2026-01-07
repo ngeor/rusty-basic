@@ -3,6 +3,7 @@ use rusty_pc::*;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
+use crate::tokens::{TokenType, any_token_of, minus_sign, whitespace};
 use crate::{Keyword, LetterRange, TypeQualifier};
 
 /// Represents a definition of default type, such as DEFINT A-Z.

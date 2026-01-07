@@ -4,6 +4,7 @@ use crate::core::name::bare_name_with_dots;
 use crate::core::statement_separator::peek_eof_or_statement_separator;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
+use crate::tokens::whitespace;
 use crate::{Keyword, ParseError, ResumeOption, Statement};
 
 // RESUME

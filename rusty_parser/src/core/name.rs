@@ -4,6 +4,7 @@ use rusty_pc::*;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
+use crate::tokens::{TokenType, any_token_of, dot, peek_token};
 use crate::{AsBareName, BareName, ExpressionType, HasExpressionType, ToBareName, TypeQualifier};
 
 const MAX_LENGTH: usize = 40;
@@ -387,8 +388,8 @@ mod parse_tests {
     use rusty_pc::Parser;
 
     use super::*;
+    use crate::input::create_string_tokenizer;
     use crate::parametric_test;
-    use crate::pc_specific::create_string_tokenizer;
 
     fn assert_fully_parsed<T, E>(result: &ParseResult<RcStringView, T, E>, input: &str) {
         match result {

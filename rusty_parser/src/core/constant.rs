@@ -4,6 +4,7 @@ use crate::core::expression::expression_pos_p;
 use crate::core::name::name_with_dots;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
+use crate::tokens::{equal_sign, whitespace};
 use crate::{Keyword, ParseError, Statement};
 
 pub fn constant_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {

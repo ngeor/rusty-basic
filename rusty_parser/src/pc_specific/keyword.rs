@@ -1,7 +1,6 @@
 use rusty_pc::*;
 
 use crate::input::RcStringView;
-use crate::pc_specific::WithExpected;
 use crate::tokens::{TokenType, any_token, any_token_of, dollar_sign, peek_token, whitespace};
 use crate::{Keyword, ParseError};
 
@@ -26,9 +25,10 @@ pub fn keyword(k: Keyword) -> impl Parser<RcStringView, Output = Token, Error = 
 }
 
 fn keyword_unchecked(k: Keyword) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    any_token()
-        .filter(move |token| &k == token)
-        .with_expected_message(format!("Expected: {}", k))
+    any_token().filter_or_err(
+        move |token| &k == token,
+        ParseError::SyntaxError(format!("Expected: {}", k)),
+    )
 }
 
 // TODO 1. rename to keyword_ws like expressions 2. add ws_keyword and ws_keyword_ws
@@ -59,5 +59,8 @@ pub fn any_keyword_with_dollar_sign()
 pub fn keyword_dollar_sign(
     k: Keyword,
 ) -> impl Parser<RcStringView, Output = (Token, Token), Error = ParseError> {
-    any_keyword_with_dollar_sign().filter(move |(token, _)| &k == token)
+    any_keyword_with_dollar_sign().filter_or_err(
+        move |(token, _)| &k == token,
+        ParseError::SyntaxError(format!("Expected: {}", k)),
+    )
 }

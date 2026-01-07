@@ -3,22 +3,20 @@ use rusty_pc::{Filter, ParseResult, Parser, default_parse_error};
 use crate::ParseError;
 use crate::input::RcStringView;
 
-pub fn any() -> impl Parser<RcStringView, Output = char, Error = ParseError> {
-    AnyChar
-}
-
 pub fn filter<F>(predicate: F) -> impl Parser<RcStringView, Output = char, Error = ParseError>
 where
     F: Fn(&char) -> bool,
 {
-    any().filter(predicate)
+    AnyChar.filter(predicate)
 }
 
 pub fn specific(needle: char) -> impl Parser<RcStringView, Output = char, Error = ParseError> {
     filter(move |ch| *ch == needle)
 }
 
-struct AnyChar;
+/// Parses any char.
+/// Fails only on EOF, returning the default parse error (non fatal).
+pub struct AnyChar;
 
 impl Parser<RcStringView> for AnyChar {
     type Output = char;

@@ -164,7 +164,7 @@ fn specific(
 }
 
 fn unknown() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    char_parsers::any()
+    char_parsers::AnyChar
         .one_to_str()
         .to_token(TokenType::Unknown)
 }

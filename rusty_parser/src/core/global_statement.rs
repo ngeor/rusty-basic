@@ -8,7 +8,7 @@ use crate::core::{statement, user_defined_type};
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{TokenType, any_token, any_token_of, detect_eof, whitespace};
+use crate::tokens::{TokenType, any_token, any_token_of, peek_token, whitespace};
 use crate::*;
 
 pub type Program = Vec<GlobalStatementPos>;
@@ -184,6 +184,13 @@ fn next_statement() -> impl Parser<RcStringView, Output = GlobalStatementPos, Er
             // map the EOF back to an incomplete result
             None => default_parse_error(input),
         })
+}
+
+/// Returns Ok(()) if we're at EOF,
+/// otherwise an incomplete result,
+/// without modifying the input.
+fn detect_eof() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+    peek_token().flat_map_negate_none(|i, _| default_parse_error(i))
 }
 
 mod separator {

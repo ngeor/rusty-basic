@@ -134,7 +134,7 @@ pub fn parse_lprint_p() -> impl Parser<RcStringView, Output = Statement, Error =
 fn opt_using() -> impl Parser<RcStringView, Output = Option<ExpressionPos>, Error = ParseError> {
     seq3(
         keyword(Keyword::Using),
-        ws_expr_pos_p().or_syntax_error("Expected: expression after USING"),
+        ws_expr_pos_p().or_expected("expression after USING"),
         semicolon_ws(),
         |_, using_expr, _| using_expr,
     )
@@ -413,7 +413,7 @@ mod tests {
     #[test]
     fn test_print_file_no_args_no_comma() {
         let input = "PRINT #1";
-        assert_parser_err!(input, ParseError::syntax_error("Expected: ,"), 1, 9);
+        assert_parser_err!(input, ParseError::expected(","), 1, 9);
     }
 
     #[test]
@@ -449,7 +449,7 @@ mod tests {
     #[test]
     fn test_print_file_semicolon_after_file_number_err() {
         let input = "PRINT #1; 42";
-        assert_parser_err!(input, ParseError::syntax_error("Expected: ,"), 1, 9);
+        assert_parser_err!(input, ParseError::expected(","), 1, 9);
     }
 
     #[test]
@@ -544,13 +544,13 @@ mod tests {
     #[test]
     fn test_print_using_no_args_missing_semicolon() {
         let input = "PRINT USING \"#\"";
-        assert_parser_err!(input, ParseError::syntax_error("Expected: ;"), 1, 16);
+        assert_parser_err!(input, ParseError::expected(";"), 1, 16);
     }
 
     #[test]
     fn test_lprint_using_no_args_missing_semicolon() {
         let input = "LPRINT USING \"#\"";
-        assert_parser_err!(input, ParseError::syntax_error("Expected: ;"), 1, 17);
+        assert_parser_err!(input, ParseError::expected(";"), 1, 17);
     }
 
     #[test]

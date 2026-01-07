@@ -15,7 +15,7 @@ pub fn if_block_p() -> impl Parser<RcStringView, Output = Statement, Error = Par
         if_expr_then_p(),
         single_line_if_else_p()
             .or(multi_line_if_p())
-            .or_syntax_error("Expected: single line or multi line IF"),
+            .or_expected("single line or multi line IF"),
         |condition, (statements, else_if_blocks, else_block)| {
             Statement::IfBlock(IfBlock {
                 if_block: ConditionalBlock {
@@ -37,7 +37,7 @@ pub fn if_block_p() -> impl Parser<RcStringView, Output = Statement, Error = Par
 fn if_expr_then_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     seq3(
         keyword(Keyword::If),
-        ws_expr_pos_ws_p().or_syntax_error("Expected: expression after IF"),
+        ws_expr_pos_ws_p().or_expected("expression after IF"),
         keyword(Keyword::Then),
         |_, m, _| m,
     )
@@ -60,9 +60,7 @@ fn single_line_if_else_p() -> impl Parser<
 fn single_line_else_p() -> impl Parser<RcStringView, Output = Statements, Error = ParseError> {
     whitespace()
         .and_tuple(keyword(Keyword::Else))
-        .and_keep_right(
-            single_line_statements_p().or_syntax_error("Expected statements for single line ELSE"),
-        )
+        .and_keep_right(single_line_statements_p().or_expected("Statements for single line ELSE"))
 }
 
 fn multi_line_if_p() -> impl Parser<
@@ -82,7 +80,7 @@ fn multi_line_if_p() -> impl Parser<
 fn else_if_expr_then_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     seq3(
         keyword(Keyword::ElseIf),
-        ws_expr_pos_ws_p().or_syntax_error("Expected: expression after ELSEIF"),
+        ws_expr_pos_ws_p().or_expected("expression after ELSEIF"),
         keyword(Keyword::Then),
         |_, m, _| m,
     )

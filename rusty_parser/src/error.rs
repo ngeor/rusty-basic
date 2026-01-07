@@ -51,6 +51,12 @@ impl ParseError {
     pub fn syntax_error(msg: &str) -> Self {
         Self::SyntaxError(msg.to_string())
     }
+
+    /// Creates a syntax error that starts with "Expected: "
+    /// followed by the given string.
+    pub fn expected(expectation: &str) -> Self {
+        Self::SyntaxError(format!("Expected: {}", expectation))
+    }
 }
 
 pub type ParseErrorPos = Positioned<ParseError>;

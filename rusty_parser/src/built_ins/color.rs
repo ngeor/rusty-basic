@@ -60,11 +60,6 @@ mod tests {
     #[test]
     fn parse_no_args() {
         let input = "COLOR";
-        assert_parser_err!(
-            input,
-            ParseError::syntax_error("Expected: whitespace"),
-            1,
-            6
-        );
+        assert_parser_err!(input, ParseError::expected("whitespace"), 1, 6);
     }
 }

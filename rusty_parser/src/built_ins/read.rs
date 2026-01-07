@@ -6,7 +6,7 @@ use crate::{BuiltInSub, ParseError, *};
 
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword(Keyword::Read)
-        .and_keep_right(csv_expressions_first_guarded().or_syntax_error("Expected: variable"))
+        .and_keep_right(csv_expressions_first_guarded().or_expected("variable"))
         .map(|args| Statement::built_in_sub_call(BuiltInSub::Read, args))
 }
 
@@ -17,6 +17,6 @@ mod tests {
 
     #[test]
     fn parse_must_have_at_least_one_argument() {
-        assert_parser_err!("READ", ParseError::syntax_error("Expected: variable"));
+        assert_parser_err!("READ", ParseError::expected("variable"));
     }
 }

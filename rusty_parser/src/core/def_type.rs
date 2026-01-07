@@ -50,7 +50,7 @@ fn def_keyword_p() -> impl Parser<RcStringView, Output = TypeQualifier, Error = 
 }
 
 fn letter_ranges() -> impl Parser<RcStringView, Output = Vec<LetterRange>, Error = ParseError> {
-    csv_non_opt(letter_range(), "Expected: letter ranges")
+    csv_non_opt(letter_range(), "letter ranges")
 }
 
 fn letter_range() -> impl Parser<RcStringView, Output = LetterRange, Error = ParseError> {
@@ -77,7 +77,7 @@ fn letter() -> impl Parser<RcStringView, Output = char, Error = ParseError> {
     any_token_of!(TokenType::Identifier)
         .filter_or_err(
             |token| token.as_str().chars().count() == 1,
-            ParseError::syntax_error("Expected: letter"),
+            ParseError::expected("letter"),
         )
         .map(token_to_char)
 }
@@ -140,15 +140,9 @@ mod tests {
 
     #[test]
     fn test_parse_def_int_word_instead_of_letter() {
-        assert_parser_err!("DEFINT HELLO", ParseError::syntax_error("Expected: letter"));
-        assert_parser_err!(
-            "DEFINT HELLO,Z",
-            ParseError::syntax_error("Expected: letter")
-        );
-        assert_parser_err!(
-            "DEFINT A,HELLO",
-            ParseError::syntax_error("Expected: letter")
-        );
+        assert_parser_err!("DEFINT HELLO", ParseError::expected("letter"));
+        assert_parser_err!("DEFINT HELLO,Z", ParseError::expected("letter"));
+        assert_parser_err!("DEFINT A,HELLO", ParseError::expected("letter"));
     }
 
     #[test]

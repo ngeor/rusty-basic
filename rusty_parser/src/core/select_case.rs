@@ -54,7 +54,7 @@ pub fn select_case_p() -> impl Parser<RcStringView, Output = Statement, Error = 
 /// Parses the `SELECT CASE expression` part
 fn select_case_expr_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     keyword_pair(Keyword::Select, Keyword::Case)
-        .and_keep_right(ws_expr_pos_p().or_syntax_error("Expected: expression after CASE"))
+        .and_keep_right(ws_expr_pos_p().or_expected("expression after CASE"))
 }
 
 // SELECT CASE expr
@@ -82,9 +82,8 @@ fn case_blocks() -> impl Parser<RcStringView, Output = Vec<CaseBlock>, Error = P
 fn case_block() -> impl Parser<RcStringView, Output = CaseBlock, Error = ParseError> {
     // CASE
     // TODO is this syntax_error message even possible to happen?
-    keyword(Keyword::Case).and_keep_right(
-        continue_after_case().or_syntax_error("Expected: 'case expression' or ELSE after CASE"),
-    )
+    keyword(Keyword::Case)
+        .and_keep_right(continue_after_case().or_expected("'case expression' or ELSE after CASE"))
 }
 
 fn continue_after_case() -> impl Parser<RcStringView, Output = CaseBlock, Error = ParseError> {
@@ -125,9 +124,9 @@ mod case_expression_parser {
         seq3(
             keyword(Keyword::Is),
             opt_and_keep_right(whitespace(), relational_operator_p())
-                .or_syntax_error("Expected: Operator after IS"),
+                .or_expected("Operator after IS"),
             opt_and_keep_right(whitespace(), expression_pos_p())
-                .or_syntax_error("Expected: expression after IS operator"),
+                .or_expected("expression after IS operator"),
             |_, Positioned { element, .. }, r| CaseExpression::Is(element, r),
         )
     }
@@ -320,7 +319,7 @@ mod tests {
         let input = "
         SELECT CASE1
         END SELECT";
-        assert_parser_err!(input, ParseError::syntax_error("Expected: CASE"), 2, 16);
+        assert_parser_err!(input, ParseError::expected("CASE"), 2, 16);
     }
 
     #[test]
@@ -329,7 +328,7 @@ mod tests {
         SELECT CASE X
         CASE1
         END SELECT";
-        assert_parser_err!(input, ParseError::syntax_error("Expected: END"), 3, 9);
+        assert_parser_err!(input, ParseError::expected("END"), 3, 9);
     }
 
     #[test]
@@ -338,12 +337,7 @@ mod tests {
         SELECT CASE X
         CASE 1 TO
         END SELECT";
-        assert_parser_err!(
-            input,
-            ParseError::syntax_error("Expected: expression after TO"),
-            3,
-            18
-        );
+        assert_parser_err!(input, ParseError::expected("expression after TO"), 3, 18);
     }
 
     #[test]
@@ -352,12 +346,7 @@ mod tests {
         SELECT CASE X
         CASE 1TO
         END SELECT";
-        assert_parser_err!(
-            input,
-            ParseError::syntax_error("Expected: end-of-statement"),
-            3,
-            15
-        );
+        assert_parser_err!(input, ParseError::expected("end-of-statement"), 3, 15);
     }
 
     #[test]
@@ -366,12 +355,7 @@ mod tests {
         SELECT CASE X
         CASE 1TO2
         END SELECT";
-        assert_parser_err!(
-            input,
-            ParseError::syntax_error("Expected: end-of-statement"),
-            3,
-            15
-        );
+        assert_parser_err!(input, ParseError::expected("end-of-statement"), 3, 15);
     }
 
     #[test]
@@ -380,12 +364,7 @@ mod tests {
         SELECT CASE X
         CASE 1 TO2
         END SELECT";
-        assert_parser_err!(
-            input,
-            ParseError::syntax_error("Expected: end-of-statement"),
-            3,
-            15
-        );
+        assert_parser_err!(input, ParseError::expected("end-of-statement"), 3, 15);
     }
 
     #[test]
@@ -394,11 +373,6 @@ mod tests {
         SELECT CASE X
         CASE 1TO 2
         END SELECT";
-        assert_parser_err!(
-            input,
-            ParseError::syntax_error("Expected: end-of-statement"),
-            3,
-            15
-        );
+        assert_parser_err!(input, ParseError::expected("end-of-statement"), 3, 15);
     }
 }

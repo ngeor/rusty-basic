@@ -11,9 +11,9 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
         whitespace(),
         name_with_dots()
             .with_pos()
-            .or_syntax_error("Expected: variable after LSET"),
+            .or_expected("variable after LSET"),
         equal_sign_ws(),
-        expression_pos_p().or_syntax_error("Expected: expression"),
+        expression_pos_p().or_expected("expression"),
         |_, _, name_pos, _, value_expr_pos| {
             Statement::built_in_sub_call(BuiltInSub::LSet, build_args(name_pos, value_expr_pos))
         },

@@ -13,7 +13,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
         keyword(Keyword::Input),
         whitespace(),
         opt_file_handle_comma_p(),
-        csv_expressions_non_opt("Expected: #file-number or variable"),
+        csv_expressions_non_opt("#file-number or variable"),
         |_, _, opt_file_number_pos, variables| {
             let mut args: Expressions = encode_opt_file_handle_arg(opt_file_number_pos);
             args.extend(variables);
@@ -54,16 +54,13 @@ mod tests {
     #[test]
     fn test_no_whitespace_after_input() {
         let input = "INPUT";
-        assert_parser_err!(input, ParseError::syntax_error("Expected: whitespace"));
+        assert_parser_err!(input, ParseError::expected("whitespace"));
     }
 
     #[test]
     fn test_no_variable() {
         let input = "INPUT ";
-        assert_parser_err!(
-            input,
-            ParseError::syntax_error("Expected: #file-number or variable")
-        );
+        assert_parser_err!(input, ParseError::expected("#file-number or variable"));
     }
 
     #[test]

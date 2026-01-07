@@ -26,7 +26,7 @@ pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement, Er
             ),
             Box::new(sub_declaration_p().map(|(n, p)| GlobalStatement::sub_declaration(n, p))),
         ])
-        .or_syntax_error("Expected: FUNCTION or SUB after DECLARE"),
+        .or_expected("FUNCTION or SUB after DECLARE"),
     )
 }
 
@@ -35,9 +35,7 @@ pub fn function_declaration_p()
     seq4(
         keyword(Keyword::Function),
         whitespace(),
-        name_with_dots()
-            .with_pos()
-            .or_syntax_error("Expected: function name"),
+        name_with_dots().with_pos().or_expected("function name"),
         declaration_parameters_p(),
         |_, _, function_name_pos, declaration_parameters| {
             (function_name_pos, declaration_parameters)
@@ -50,9 +48,7 @@ pub fn sub_declaration_p()
     seq4(
         keyword(Keyword::Sub),
         whitespace(),
-        bare_name_with_dots()
-            .with_pos()
-            .or_syntax_error("Expected: sub name"),
+        bare_name_with_dots().with_pos().or_expected("sub name"),
         declaration_parameters_p(),
         |_, _, sub_name_pos, declaration_parameters| (sub_name_pos, declaration_parameters),
     )
@@ -139,13 +135,13 @@ mod tests {
     #[test]
     fn test_string_fixed_length_function_param_not_allowed() {
         let input = "DECLARE FUNCTION Echo(X AS STRING * 5)";
-        assert_parser_err!(input, ParseError::syntax_error("Expected: )"));
+        assert_parser_err!(input, ParseError::expected(")"));
     }
 
     #[test]
     fn test_string_fixed_length_sub_param_not_allowed() {
         let input = "DECLARE SUB Echo(X AS STRING * 5)";
-        assert_parser_err!(input, ParseError::syntax_error("Expected: )"));
+        assert_parser_err!(input, ParseError::expected(")"));
     }
 
     #[test]

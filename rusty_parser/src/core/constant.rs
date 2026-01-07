@@ -11,11 +11,9 @@ pub fn constant_p() -> impl Parser<RcStringView, Output = Statement, Error = Par
     seq5(
         keyword(Keyword::Const),
         whitespace(),
-        name_with_dots()
-            .with_pos()
-            .or_syntax_error("Expected: const name"),
+        name_with_dots().with_pos().or_expected("const name"),
         equal_sign_ws(),
-        expression_pos_p().or_syntax_error("Expected: const value"),
+        expression_pos_p().or_expected("const value"),
         |_, _, const_name, _, const_value_expr| Statement::constant(const_name, const_value_expr),
     )
 }

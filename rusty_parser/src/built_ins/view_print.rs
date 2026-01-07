@@ -14,7 +14,7 @@ fn parse_args() -> impl Parser<RcStringView, Output = Expressions, Error = Parse
     seq3(
         ws_expr_pos_ws_p(),
         keyword(Keyword::To),
-        ws_expr_pos_p().or_syntax_error("Expected: expression"),
+        ws_expr_pos_p().or_expected("expression"),
         |l, _, r| vec![l, r],
     )
 }

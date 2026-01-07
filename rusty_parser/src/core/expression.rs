@@ -451,17 +451,17 @@ impl ExpressionTrait for Box<ExpressionPos> {
 
 /// `( expr [, expr]* )`
 pub fn in_parenthesis_csv_expressions_non_opt(
-    err_msg: &str,
+    expectation: &str,
 ) -> impl Parser<RcStringView, Output = Expressions, Error = ParseError> + '_ {
-    in_parenthesis(csv_expressions_non_opt(err_msg)).no_incomplete()
+    in_parenthesis(csv_expressions_non_opt(expectation)).no_incomplete()
 }
 
 /// Parses one or more expressions separated by comma.
 /// FIXME Unlike csv_expressions, the first expression does not need a separator!
 pub fn csv_expressions_non_opt(
-    msg: &str,
+    expectation: &str,
 ) -> impl Parser<RcStringView, Output = Expressions, Error = ParseError> + use<'_> {
-    csv_non_opt(expression_pos_p(), msg)
+    csv_non_opt(expression_pos_p(), expectation)
 }
 
 /// Parses one or more expressions separated by comma.
@@ -472,7 +472,7 @@ pub fn csv_expressions_first_guarded()
 -> impl Parser<RcStringView, Output = Expressions, Error = ParseError> {
     ws_expr_pos_p().map(|first| vec![first]).and(
         comma_ws()
-            .and_keep_right(expression_pos_p().or_syntax_error("Expected: expression after comma"))
+            .and_keep_right(expression_pos_p().or_expected("expression after comma"))
             .zero_or_more(),
         VecCombiner,
     )
@@ -914,7 +914,7 @@ pub mod property {
 
     fn dot_property()
     -> impl Parser<RcStringView, Output = (Token, Option<Token>), Error = ParseError> {
-        dot().and_keep_right(property().or_syntax_error("Expected: property name after dot"))
+        dot().and_keep_right(property().or_expected("property name after dot"))
     }
 
     // cannot be followed by dot or type qualifier if qualified
@@ -1010,11 +1010,7 @@ mod binary_expression {
                         Ok((tokenizer, _)) => tokenizer,
                         Err((false, input, _)) => {
                             if is_keyword_op {
-                                return Err((
-                                    true,
-                                    input,
-                                    ParseError::syntax_error("Expected: whitespace or ("),
-                                ));
+                                return Err((true, input, ParseError::expected("whitespace or (")));
                             } else {
                                 input
                             }
@@ -1024,7 +1020,7 @@ mod binary_expression {
                         }
                     };
                     expression_pos_p()
-                        .or_syntax_error("Expected: expression after operator")
+                        .or_expected("expression after operator")
                         .parse(tokenizer)
                         .map_ok(|right| first.apply_priority_order(right, op, op_pos))
                 }
@@ -1113,7 +1109,7 @@ mod unary_expression {
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
         seq2(
             unary_op(),
-            expression_pos_p().or_syntax_error("Expected: expression after unary operator"),
+            expression_pos_p().or_expected("expression after unary operator"),
             |Positioned { element: op, pos }, expr| expr.apply_unary_priority_order(op, pos),
         )
     }
@@ -1138,11 +1134,9 @@ mod parenthesis {
     use crate::{ParseError, *};
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
-        in_parenthesis(
-            expression_pos_p().or_syntax_error("Expected: expression inside parenthesis"),
-        )
-        .map(|child| Expression::Parenthesis(Box::new(child)))
-        .with_pos()
+        in_parenthesis(expression_pos_p().or_expected("expression inside parenthesis"))
+            .map(|child| Expression::Parenthesis(Box::new(child)))
+            .with_pos()
     }
 }
 
@@ -1166,7 +1160,7 @@ pub mod file_handle {
         // if # without digits -> SyntaxError (Expected: digits after #)
         any_token_of!(TokenType::Pound)
             .with_pos()
-            .and_tuple(any_token_of!(TokenType::Digits).or_syntax_error("Expected: digits after #"))
+            .and_tuple(any_token_of!(TokenType::Digits).or_expected("digits after #"))
             .flat_map(
                 |input, (pound, digits)| match digits.to_str().parse::<u8>() {
                     Ok(d) if d > 0 => Ok((input, FileHandle::from(d).at_pos(pound.pos))),
@@ -1848,7 +1842,7 @@ mod tests {
         );
         assert_parser_err!(
             "PRINT 1AND 2",
-            ParseError::syntax_error("Expected: parenthesis before operator And")
+            ParseError::expected("parenthesis before operator And")
         );
         assert_expression!(
             "(1 OR 2)AND 3",
@@ -1881,7 +1875,7 @@ mod tests {
         );
         assert_parser_err!(
             "PRINT 1OR 2",
-            ParseError::syntax_error("Expected: parenthesis before operator Or")
+            ParseError::expected("parenthesis before operator Or")
         );
         assert_expression!(
             "(1 AND 2)OR 3",
@@ -1947,7 +1941,7 @@ mod tests {
         #[test]
         fn test_file_handle_negative() {
             let input = "CLOSE #-1";
-            assert_parser_err!(input, ParseError::syntax_error("Expected: digits after #"));
+            assert_parser_err!(input, ParseError::expected("digits after #"));
         }
     }
 
@@ -1977,13 +1971,13 @@ mod tests {
         #[test]
         fn len_in_print_must_be_unqualified() {
             let program = r#"PRINT LEN!("hello")"#;
-            assert_parser_err!(program, ParseError::syntax_error("Expected: ("), 1, 10);
+            assert_parser_err!(program, ParseError::expected("("), 1, 10);
         }
 
         #[test]
         fn len_in_assignment_must_be_unqualified() {
             let program = r#"A = LEN!("hello")"#;
-            assert_parser_err!(program, ParseError::syntax_error("Expected: ("), 1, 8);
+            assert_parser_err!(program, ParseError::expected("("), 1, 8);
         }
     }
 

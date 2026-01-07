@@ -14,9 +14,9 @@ pub fn csv<L: Parser<RcStringView, Error = ParseError>>(
 
 pub fn csv_non_opt<P: Parser<RcStringView, Error = ParseError>>(
     parser: P,
-    err: &str,
+    expectation: &str,
 ) -> impl Parser<RcStringView, Output = Vec<P::Output>, Error = ParseError> + use<'_, P> {
-    csv(parser).or_syntax_error(err)
+    csv(parser).or_expected(expectation)
 }
 
 pub fn trailing_comma_error() -> ParseError {

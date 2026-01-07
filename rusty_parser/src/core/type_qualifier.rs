@@ -37,7 +37,7 @@ impl TryFrom<char> for TypeQualifier {
         } else if ch == '&' {
             Ok(Self::AmpersandLong)
         } else {
-            Err(ParseError::syntax_error("Expected: %, &, !, # or $"))
+            Err(ParseError::expected("%, &, !, # or $"))
         }
     }
 }

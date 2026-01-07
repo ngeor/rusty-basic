@@ -172,10 +172,7 @@ mod tests {
 
     #[test]
     fn test_numeric_assignment_to_keyword_not_allowed() {
-        assert_parser_err!(
-            "FOR = 42",
-            ParseError::syntax_error("Expected: name after FOR")
-        );
+        assert_parser_err!("FOR = 42", ParseError::expected("name after FOR"));
     }
 
     #[test]

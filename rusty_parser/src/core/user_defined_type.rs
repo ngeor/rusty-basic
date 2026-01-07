@@ -161,7 +161,7 @@ pub fn user_defined_type_p()
 -> impl Parser<RcStringView, Output = UserDefinedType, Error = ParseError> {
     seq5(
         keyword_followed_by_whitespace_p(Keyword::Type),
-        bare_name_without_dots().or_syntax_error("Expected: name after TYPE"),
+        bare_name_without_dots().or_expected("name after TYPE"),
         comments_and_whitespace_p(),
         elements_p(),
         keyword_pair(Keyword::End, Keyword::Type),
@@ -181,7 +181,7 @@ fn element_pos_p() -> impl Parser<RcStringView, Output = ElementPos, Error = Par
         whitespace(),
         keyword(Keyword::As),
         whitespace(),
-        element_type_p().or_syntax_error("Expected: element type"),
+        element_type_p().or_expected("element type"),
         comments_and_whitespace_p(),
         |element, _, _, _, element_type, comments| Element::new(element, element_type, comments),
     )
@@ -212,7 +212,7 @@ fn element_type_p() -> impl Parser<RcStringView, Output = ElementType, Error = P
 
 fn demand_string_length_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError>
 {
-    expression_pos_p().or_syntax_error("Expected: string length")
+    expression_pos_p().or_expected("string length")
 }
 
 #[cfg(test)]

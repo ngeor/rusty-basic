@@ -11,7 +11,7 @@ use crate::*;
 pub fn while_wend_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq4(
         keyword(Keyword::While),
-        ws_expr_pos_p().or_syntax_error("Expected: expression after WHILE"),
+        ws_expr_pos_p().or_expected("expression after WHILE"),
         ZeroOrMoreStatements::new_with_custom_error(Keyword::Wend, ParseError::WhileWithoutWend),
         keyword(Keyword::Wend).or_fail(ParseError::WhileWithoutWend),
         |_, condition, statements, _| {
@@ -159,12 +159,7 @@ mod tests {
         WHILE X > 0
             PRINT X WEND
         "#;
-        assert_parser_err!(
-            input,
-            ParseError::syntax_error("Expected: statement separator"),
-            3,
-            20
-        );
+        assert_parser_err!(input, ParseError::expected("statement separator"), 3, 20);
     }
 
     #[test]

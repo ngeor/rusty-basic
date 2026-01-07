@@ -8,7 +8,7 @@ use crate::{Keyword, ParseError, Statement};
 
 pub fn statement_go_sub_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword_followed_by_whitespace_p(Keyword::GoSub)
-        .and_keep_right(bare_name_with_dots().or_syntax_error("Expected: label"))
+        .and_keep_right(bare_name_with_dots().or_expected("label"))
         .map(Statement::GoSub)
 }
 
@@ -29,6 +29,6 @@ mod tests {
 
     #[test]
     fn go_sub_without_label() {
-        assert_parser_err!("GOSUB ", ParseError::syntax_error("Expected: label"));
+        assert_parser_err!("GOSUB ", ParseError::expected("label"));
     }
 }

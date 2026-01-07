@@ -39,7 +39,7 @@ impl Parser<RcStringView> for SubCallOrAssignment {
 
         match opt_equal_sign {
             Some(_) => expression_pos_p()
-                .or_syntax_error("Expected: expression for assignment")
+                .or_expected("expression for assignment")
                 .parse(tokenizer)
                 .map_ok(|right_side_expr| Statement::assignment(name_expr, right_side_expr)),
             _ => match expr_to_bare_name_args(name_expr) {

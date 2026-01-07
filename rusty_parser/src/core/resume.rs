@@ -13,9 +13,7 @@ use crate::{Keyword, ParseError, ResumeOption, Statement};
 
 pub fn statement_resume_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword(Keyword::Resume)
-        .and_keep_right(
-            resume_option_p().or_syntax_error("Expected: label or NEXT or end-of-statement"),
-        )
+        .and_keep_right(resume_option_p().or_expected("label or NEXT or end-of-statement"))
         .map(Statement::Resume)
 }
 
@@ -48,7 +46,7 @@ mod tests {
     fn resume_with_invalid_option() {
         assert_parser_err!(
             "RESUME FOR",
-            ParseError::syntax_error("Expected: label or NEXT or end-of-statement")
+            ParseError::expected("label or NEXT or end-of-statement")
         );
     }
 }

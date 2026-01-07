@@ -8,10 +8,10 @@ use crate::{BuiltInSub, ParseError, *};
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq6(
         keyword(Keyword::Open),
-        ws_expr_pos_ws_p().or_syntax_error("Expected: file name after OPEN"),
+        ws_expr_pos_ws_p().or_expected("file name after OPEN"),
         parse_open_mode_p().to_option(),
         parse_open_access_p().to_option(),
-        parse_file_number_p().or_syntax_error("Expected: AS file-number"),
+        parse_file_number_p().or_expected("AS file-number"),
         parse_len_p().to_option(),
         |_, file_name, opt_file_mode, opt_file_access, file_number, opt_len| {
             Statement::built_in_sub_call(
@@ -61,16 +61,15 @@ fn parse_open_access_p()
 // AS <ws+> expression
 // AS ( expression )
 fn parse_file_number_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
-    keyword(Keyword::As).and_keep_right(
-        guarded_file_handle_or_expression_p().or_syntax_error("Expected: #file-number%"),
-    )
+    keyword(Keyword::As)
+        .and_keep_right(guarded_file_handle_or_expression_p().or_expected("#file-number%"))
 }
 
 fn parse_len_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     seq3(
         whitespace().and_tuple(keyword(Keyword::Len)),
         equal_sign_ws(),
-        expression_pos_p().or_syntax_error("Expected: expression after LEN ="),
+        expression_pos_p().or_expected("expression after LEN ="),
         |_, _, e| e,
     )
 }
@@ -241,12 +240,7 @@ mod tests {
     #[test]
     fn test_open_access_read_for_input_as_file_handle_with_spaces() {
         let input = r#"OPEN "FILE.TXT" ACCESS READ FOR INPUT AS #1"#;
-        assert_parser_err!(
-            input,
-            ParseError::syntax_error("Expected: AS file-number"),
-            1,
-            29
-        );
+        assert_parser_err!(input, ParseError::expected("AS file-number"), 1, 29);
     }
 
     #[test]

@@ -24,9 +24,6 @@ mod tests {
 
     #[test]
     fn exit_without_object() {
-        assert_parser_err!(
-            "EXIT ",
-            ParseError::syntax_error("Expected: FUNCTION or SUB")
-        );
+        assert_parser_err!("EXIT ", ParseError::expected("FUNCTION or SUB"));
     }
 }

@@ -11,9 +11,9 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
     seq5(
         keyword(Keyword::Field),
         whitespace(),
-        file_handle_p().or_syntax_error("Expected: file-number"),
+        file_handle_p().or_expected("file-number"),
         comma_ws(),
-        csv_non_opt(field_item_p(), "Expected: field width"),
+        csv_non_opt(field_item_p(), "field width"),
         |_, _, file_number, _, fields| {
             Statement::built_in_sub_call(BuiltInSub::Field, build_args(file_number, fields))
         },
@@ -26,9 +26,7 @@ fn field_item_p() -> impl Parser<RcStringView, Output = (ExpressionPos, NamePos)
         expr_pos_ws_p(),
         keyword(Keyword::As),
         whitespace(),
-        name_with_dots()
-            .with_pos()
-            .or_syntax_error("Expected: variable name"),
+        name_with_dots().with_pos().or_expected("variable name"),
         |width, _, _, name| (width, name),
     )
 }

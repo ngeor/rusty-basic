@@ -172,11 +172,7 @@ fn next_statement() -> impl Parser<RcStringView, Output = GlobalStatementPos, Er
             // need to detect EOF, because the separator we detected might have been the last EOL of the file
             Box::new(detect_eof().map(|_| None)),
             // otherwise it must be a statement
-            Box::new(
-                global_statement_pos_p()
-                    .or_syntax_error("Expected statement")
-                    .map(Some),
-            ),
+            Box::new(global_statement_pos_p().or_expected("Statement").map(Some)),
         ]))
         .flat_map(|input, opt| match opt {
             // map the statement

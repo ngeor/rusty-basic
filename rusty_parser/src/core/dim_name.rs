@@ -106,9 +106,7 @@ pub fn dim_var_pos_p() -> impl Parser<RcStringView, Output = DimVarPos, Error = 
 }
 
 pub fn redim_var_pos_p() -> impl Parser<RcStringView, Output = DimVarPos, Error = ParseError> {
-    dim_or_redim(|| {
-        array_dimensions::array_dimensions_p().or_syntax_error("Expected: array dimensions")
-    })
+    dim_or_redim(|| array_dimensions::array_dimensions_p().or_expected("array dimensions"))
 }
 
 fn dim_or_redim<A, AP>(
@@ -131,10 +129,7 @@ mod array_dimensions {
 
     pub fn array_dimensions_p()
     -> impl Parser<RcStringView, Output = ArrayDimensions, Error = ParseError> {
-        in_parenthesis(csv_non_opt(
-            array_dimension_p(),
-            "Expected: array dimension",
-        ))
+        in_parenthesis(csv_non_opt(array_dimension_p(), "array dimension"))
     }
 
     // expr (e.g. 10)
@@ -220,9 +215,7 @@ mod type_definition {
 
     fn built_in_string() -> impl Parser<RcStringView, Output = DimType, Error = ParseError> {
         keyword(Keyword::String).and_opt(
-            star_ws().and_keep_right(
-                expression_pos_p().or_syntax_error("Expected: string length after *"),
-            ),
+            star_ws().and_keep_right(expression_pos_p().or_expected("string length after *")),
             |_, opt_len| match opt_len {
                 Some(len) => DimType::FixedLengthString(len, 0),
                 _ => DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),

@@ -85,11 +85,7 @@ impl Parser<RcStringView> for ZeroOrMoreStatements {
         let mut tokenizer = match common_separator().parse(tokenizer) {
             Ok((tokenizer, _)) => tokenizer,
             Err((false, i, _)) => {
-                return Err((
-                    true,
-                    i,
-                    ParseError::syntax_error("Expected: end-of-statement"),
-                ));
+                return Err((true, i, ParseError::expected("end-of-statement")));
             }
             Err(err) => {
                 return Err(err);
@@ -130,7 +126,7 @@ impl Parser<RcStringView> for ZeroOrMoreStatements {
                             remaining,
                             match &self.1 {
                                 Some(custom_error) => custom_error.clone(),
-                                _ => ParseError::syntax_error("Expected: statement"),
+                                _ => ParseError::expected("statement"),
                             },
                         ));
                     }
@@ -174,11 +170,7 @@ impl Parser<RcStringView> for ZeroOrMoreStatements {
                 if found_separator {
                     state = 2;
                 } else {
-                    return Err((
-                        true,
-                        tokenizer,
-                        ParseError::syntax_error("Expected: statement separator"),
-                    ));
+                    return Err((true, tokenizer, ParseError::expected("statement separator")));
                 }
             } else {
                 panic!("Cannot happen")

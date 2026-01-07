@@ -55,11 +55,11 @@ fn parse_for_p()
 {
     seq6(
         keyword_followed_by_whitespace_p(Keyword::For),
-        property::parser().or_syntax_error("Expected: name after FOR"),
+        property::parser().or_expected("name after FOR"),
         equal_sign_ws(),
-        expr_pos_ws_p().or_syntax_error("Expected: lower bound of FOR loop"),
+        expr_pos_ws_p().or_expected("lower bound of FOR loop"),
         keyword(Keyword::To),
-        ws_expr_pos_p().or_syntax_error("Expected: upper bound of FOR loop"),
+        ws_expr_pos_p().or_expected("upper bound of FOR loop"),
         |_, name, _, lower_bound, _, upper_bound| (name, lower_bound, upper_bound),
     )
 }
@@ -248,11 +248,6 @@ mod tests {
         FOR I = 0 TO 2STEP 1
         NEXT I
         ";
-        assert_parser_err!(
-            input,
-            ParseError::syntax_error("Expected: end-of-statement"),
-            2,
-            23
-        );
+        assert_parser_err!(input, ParseError::expected("end-of-statement"), 2, 23);
     }
 }

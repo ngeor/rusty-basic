@@ -25,9 +25,7 @@ fn file_handles() -> impl Parser<RcStringView, Output = Expressions, Error = Par
         .map(|first| vec![first])
         .and(
             comma_ws()
-                .and_keep_right(
-                    file_handle_or_expression_p().or_syntax_error("Expected: file handle"),
-                )
+                .and_keep_right(file_handle_or_expression_p().or_expected("file handle"))
                 .zero_or_more(),
             VecCombiner,
         )
@@ -124,7 +122,7 @@ mod tests {
         let input = "CLOSE (#1)";
         assert_parser_err!(
             input,
-            ParseError::syntax_error("Expected: expression inside parenthesis"),
+            ParseError::expected("expression inside parenthesis"),
             1,
             8
         );
@@ -135,7 +133,7 @@ mod tests {
         let input = "CLOSE(#1)";
         assert_parser_err!(
             input,
-            ParseError::syntax_error("Expected: expression inside parenthesis"),
+            ParseError::expected("expression inside parenthesis"),
             1,
             7
         );

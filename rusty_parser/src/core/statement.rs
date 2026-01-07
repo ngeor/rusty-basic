@@ -342,7 +342,7 @@ fn statement_label_p() -> impl Parser<RcStringView, Output = Statement, Error = 
 
 fn statement_go_to_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
-        .and_keep_right(bare_name_with_dots().or_syntax_error("Expected: label"))
+        .and_keep_right(bare_name_with_dots().or_expected("label"))
         .map(Statement::GoTo)
 }
 
@@ -400,7 +400,7 @@ mod system {
     pub fn parse_system_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
         keyword(Keyword::System).and(
             opt_and_tuple(whitespace(), peek_eof_or_statement_separator())
-                .or_syntax_error("Expected: end-of-statement"),
+                .or_expected("end-of-statement"),
             |_, _| Statement::System,
         )
     }
@@ -412,12 +412,7 @@ mod system {
 
         #[test]
         fn test_sub_call_system_no_args_allowed() {
-            assert_parser_err!(
-                "SYSTEM 42",
-                ParseError::syntax_error("Expected: end-of-statement"),
-                1,
-                7
-            );
+            assert_parser_err!("SYSTEM 42", ParseError::expected("end-of-statement"), 1, 7);
         }
     }
 }

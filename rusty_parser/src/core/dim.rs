@@ -12,7 +12,7 @@ pub fn dim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
         keyword(Keyword::Dim),
         whitespace(),
         opt_shared_keyword(),
-        csv_non_opt(dim_var_pos_p(), "Expected: name after DIM"),
+        csv_non_opt(dim_var_pos_p(), "name after DIM"),
         |_, _, opt_shared, variables| {
             Statement::Dim(DimList {
                 shared: opt_shared.is_some(),
@@ -28,7 +28,7 @@ pub fn redim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseE
         keyword(Keyword::Redim),
         whitespace(),
         opt_shared_keyword(),
-        csv_non_opt(redim_var_pos_p(), "Expected: name after REDIM"),
+        csv_non_opt(redim_var_pos_p(), "name after REDIM"),
         |_, _, opt_shared, variables| {
             Statement::Redim(DimList {
                 shared: opt_shared.is_some(),

@@ -1,30 +1,8 @@
-use rusty_pc::{ParseResult, Parser, Token, default_parse_error};
+use rusty_pc::{ParseResult, Parser, default_parse_error};
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::tokens::any_token;
-
-/// Peeks the next token without consuming it.
-pub fn peek_token() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    PeekTokenParser
-}
-
-struct PeekTokenParser;
-
-impl Parser<RcStringView> for PeekTokenParser {
-    type Output = Token;
-    type Error = ParseError;
-
-    fn parse(
-        &self,
-        tokenizer: RcStringView,
-    ) -> ParseResult<RcStringView, Self::Output, ParseError> {
-        match any_token().parse(tokenizer.clone()) {
-            Ok((_, value)) => Ok((tokenizer, value)),
-            Err(err) => Err(err),
-        }
-    }
-}
+use crate::tokens::peek_token;
 
 /// Returns Ok(()) if we're at EOF,
 /// otherwise an incomplete result,

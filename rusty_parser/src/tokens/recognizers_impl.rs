@@ -80,6 +80,11 @@ pub fn any_token() -> impl Parser<RcStringView, Output = Token, Error = ParseErr
     ])
 }
 
+/// Peeks the next token without consuming it.
+pub fn peek_token() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+    PeekParser::new(any_token())
+}
+
 fn eol() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     OrParser::new(vec![Box::new(crlf()), Box::new(cr()), Box::new(lf())])
 }

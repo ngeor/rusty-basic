@@ -3,11 +3,14 @@ use rusty_pc::{Filter, ParseResult, Parser, default_parse_error};
 use crate::ParseError;
 use crate::input::RcStringView;
 
-pub fn filter<F>(predicate: F) -> impl Parser<RcStringView, Output = char, Error = ParseError>
+pub fn filter_or_err<F>(
+    predicate: F,
+    err: ParseError,
+) -> impl Parser<RcStringView, Output = char, Error = ParseError>
 where
     F: Fn(&char) -> bool,
 {
-    AnyChar.filter(predicate)
+    AnyChar.filter_or_err(predicate, err)
 }
 
 /// Parses the specific character.

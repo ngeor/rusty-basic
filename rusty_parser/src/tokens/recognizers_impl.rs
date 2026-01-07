@@ -149,9 +149,12 @@ fn many<F>(
 where
     F: Fn(&char) -> bool,
 {
-    char_parsers::filter(predicate)
-        .many_to_str()
-        .to_token(token_type)
+    char_parsers::filter_or_err(
+        predicate,
+        ParseError::SyntaxError(format!("Expected: {}", token_type)),
+    )
+    .many_to_str()
+    .to_token(token_type)
 }
 
 fn specific(
@@ -189,7 +192,11 @@ where
         .concat(char_parsers::specific(radix))
         .and(
             char_parsers::specific('-').one_to_str().to_option().and(
-                char_parsers::filter(predicate).many_to_str(),
+                char_parsers::filter_or_err(
+                    predicate,
+                    ParseError::SyntaxError(format!("Expected: {}", token_type)),
+                )
+                .many_to_str(),
                 StringCombiner,
             ),
             StringCombiner,

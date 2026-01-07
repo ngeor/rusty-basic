@@ -1,4 +1,5 @@
 mod any_token_of;
+mod char_parsers;
 mod recognizers_impl;
 mod token_kind_parser;
 mod token_type;

@@ -3,9 +3,9 @@ use rusty_pc::*;
 use crate::Keyword;
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::tokens::TokenType;
 use crate::tokens::recognizers_impl::string_parsers::CharToStringParser;
 use crate::tokens::recognizers_impl::token_parsers::StringToTokenParser;
+use crate::tokens::{TokenType, char_parsers};
 
 // TODO make identifier recognizer without dot
 
@@ -265,44 +265,6 @@ mod string_parsers {
                 s.push(r);
                 s
             })
-        }
-    }
-}
-
-mod char_parsers {
-    use super::*;
-
-    pub fn any() -> impl Parser<RcStringView, Output = char, Error = ParseError> {
-        AnyChar
-    }
-
-    pub fn filter<F>(predicate: F) -> impl Parser<RcStringView, Output = char, Error = ParseError>
-    where
-        F: Fn(&char) -> bool,
-    {
-        any().filter(predicate)
-    }
-
-    pub fn specific(needle: char) -> impl Parser<RcStringView, Output = char, Error = ParseError> {
-        filter(move |ch| *ch == needle)
-    }
-
-    struct AnyChar;
-
-    impl Parser<RcStringView> for AnyChar {
-        type Output = char;
-        type Error = ParseError;
-
-        fn parse(
-            &self,
-            input: RcStringView,
-        ) -> ParseResult<RcStringView, Self::Output, ParseError> {
-            if input.is_eof() {
-                default_parse_error(input)
-            } else {
-                let ch = input.char();
-                Ok((input.inc_position(), ch))
-            }
         }
     }
 }

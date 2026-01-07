@@ -3,8 +3,7 @@ use rusty_pc::*;
 use crate::Keyword;
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::tokens::recognizers_impl::string_parsers::CharToStringParser;
-use crate::tokens::recognizers_impl::token_parsers::StringToTokenParser;
+use crate::tokens::string_parsers::CharToStringParser;
 use crate::tokens::{TokenType, char_parsers};
 
 // TODO make identifier recognizer without dot
@@ -198,73 +197,21 @@ where
         .to_token(token_type)
 }
 
-mod token_parsers {
-    use super::*;
-
-    pub trait StringToTokenParser {
-        fn to_token(
-            self,
-            token_type: TokenType,
-        ) -> impl Parser<RcStringView, Output = Token, Error = ParseError>;
-    }
-
-    impl<P> StringToTokenParser for P
-    where
-        P: Parser<RcStringView, Output = String, Error = ParseError>,
-    {
-        fn to_token(
-            self,
-            token_type: TokenType,
-        ) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-            self.map(move |text| Token::new(token_type.get_index(), text))
-        }
-    }
+trait StringToTokenParser {
+    fn to_token(
+        self,
+        token_type: TokenType,
+    ) -> impl Parser<RcStringView, Output = Token, Error = ParseError>;
 }
 
-mod string_parsers {
-    use super::*;
-
-    pub trait CharToStringParser<I> {
-        /// Reads as many chars possible from the underlying parser and returns them as a string.
-        fn many_to_str(self) -> impl Parser<I, Output = String, Error = ParseError>;
-
-        /// Reads one char possible from the underlying parser and converts it into a string.
-        fn one_to_str(self) -> impl Parser<I, Output = String, Error = ParseError>;
-
-        /// A parser that reads two chars together and returns them as a string.
-        fn concat(
-            self,
-            other: impl Parser<I, Output = char, Error = ParseError>,
-        ) -> impl Parser<I, Output = String, Error = ParseError>
-        where
-            I: Clone;
-    }
-
-    impl<I, P> CharToStringParser<I> for P
-    where
-        I: Clone,
-        P: Parser<I, Output = char, Error = ParseError>,
-    {
-        fn many_to_str(self) -> impl Parser<I, Output = String, Error = ParseError> {
-            self.many(String::from, |mut s: String, c| {
-                s.push(c);
-                s
-            })
-        }
-
-        fn one_to_str(self) -> impl Parser<I, Output = String, Error = ParseError> {
-            self.map(String::from)
-        }
-
-        fn concat(
-            self,
-            other: impl Parser<I, Output = char, Error = ParseError>,
-        ) -> impl Parser<I, Output = String, Error = ParseError> {
-            self.and(other, |l, r| {
-                let mut s = String::from(l);
-                s.push(r);
-                s
-            })
-        }
+impl<P> StringToTokenParser for P
+where
+    P: Parser<RcStringView, Output = String, Error = ParseError>,
+{
+    fn to_token(
+        self,
+        token_type: TokenType,
+    ) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+        self.map(move |text| Token::new(token_type.get_index(), text))
     }
 }

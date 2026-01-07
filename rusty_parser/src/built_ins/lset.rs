@@ -3,7 +3,7 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{equal_sign, whitespace};
+use crate::tokens::{equal_sign_ws, whitespace};
 use crate::{BuiltInSub, ParseError, *};
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq5(
@@ -12,7 +12,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
         name_with_dots()
             .with_pos()
             .or_syntax_error("Expected: variable after LSET"),
-        equal_sign(),
+        equal_sign_ws(),
         expression_pos_p().or_syntax_error("Expected: expression"),
         |_, _, name_pos, _, value_expr_pos| {
             Statement::built_in_sub_call(BuiltInSub::LSet, build_args(name_pos, value_expr_pos))

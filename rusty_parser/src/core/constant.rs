@@ -4,7 +4,7 @@ use crate::core::expression::expression_pos_p;
 use crate::core::name::name_with_dots;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{equal_sign, whitespace};
+use crate::tokens::{equal_sign_ws, whitespace};
 use crate::{Keyword, ParseError, Statement};
 
 pub fn constant_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
@@ -14,7 +14,7 @@ pub fn constant_p() -> impl Parser<RcStringView, Output = Statement, Error = Par
         name_with_dots()
             .with_pos()
             .or_syntax_error("Expected: const name"),
-        equal_sign(),
+        equal_sign_ws(),
         expression_pos_p().or_syntax_error("Expected: const value"),
         |_, _, const_name, _, const_value_expr| Statement::constant(const_name, const_value_expr),
     )

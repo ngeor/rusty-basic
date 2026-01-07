@@ -3,7 +3,7 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{comma, whitespace};
+use crate::tokens::{comma_ws, whitespace};
 use crate::{BuiltInSub, ParseError, *};
 
 /// Parses built-in subs with optional arguments.
@@ -45,14 +45,17 @@ fn map_opt_args_to_flags(args: Vec<Option<ExpressionPos>>) -> Expressions {
 /// Comma separated list of items, allowing items to be missing between commas.
 pub fn csv_allow_missing()
 -> impl Parser<RcStringView, Output = Vec<Option<ExpressionPos>>, Error = ParseError> {
-    parse_delimited_to_items(opt_zip(expression_pos_p(), comma()), trailing_comma_error())
-        .or_default()
+    parse_delimited_to_items(
+        opt_zip(expression_pos_p(), comma_ws()),
+        trailing_comma_error(),
+    )
+    .or_default()
 }
 
 /// Used in `INPUT` and `LINE INPUT`, parsing an optional file number.
 pub fn opt_file_handle_comma_p()
 -> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>, Error = ParseError> {
-    seq2(file_handle_p(), comma(), |l, _| l).to_option()
+    seq2(file_handle_p(), comma_ws(), |l, _| l).to_option()
 }
 
 /// Used in `INPUT` and `LINE INPUT`, converts an optional file-number into arguments.

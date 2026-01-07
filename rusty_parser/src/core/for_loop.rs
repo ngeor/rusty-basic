@@ -6,7 +6,7 @@ use crate::core::statements::ZeroOrMoreStatements;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{equal_sign, whitespace};
+use crate::tokens::{equal_sign_ws, whitespace};
 use crate::*;
 
 // FOR I = 0 TO 5 STEP 1
@@ -56,7 +56,7 @@ fn parse_for_p()
     seq6(
         keyword_followed_by_whitespace_p(Keyword::For),
         property::parser().or_syntax_error("Expected: name after FOR"),
-        equal_sign(),
+        equal_sign_ws(),
         expr_pos_ws_p().or_syntax_error("Expected: lower bound of FOR loop"),
         keyword(Keyword::To),
         ws_expr_pos_p().or_syntax_error("Expected: upper bound of FOR loop"),

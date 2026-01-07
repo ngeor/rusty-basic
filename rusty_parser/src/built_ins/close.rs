@@ -2,7 +2,7 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::comma;
+use crate::tokens::comma_ws;
 use crate::{
     BuiltInSub, ParseError, file_handle_as_expression_pos_p, guarded_file_handle_or_expression_p, *
 };
@@ -24,7 +24,7 @@ fn file_handles() -> impl Parser<RcStringView, Output = Expressions, Error = Par
     guarded_file_handle_or_expression_p()
         .map(|first| vec![first])
         .and(
-            comma()
+            comma_ws()
                 .and_keep_right(
                     file_handle_or_expression_p().or_syntax_error("Expected: file handle"),
                 )

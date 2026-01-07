@@ -167,7 +167,7 @@ mod type_definition {
     use crate::core::expression::expression_pos_p;
     use crate::input::RcStringView;
     use crate::pc_specific::*;
-    use crate::tokens::star;
+    use crate::tokens::star_ws;
     use crate::{ParseError, *};
 
     pub fn extended_type()
@@ -220,7 +220,7 @@ mod type_definition {
 
     fn built_in_string() -> impl Parser<RcStringView, Output = DimType, Error = ParseError> {
         keyword(Keyword::String).and_opt(
-            star().and_keep_right(
+            star_ws().and_keep_right(
                 expression_pos_p().or_syntax_error("Expected: string length after *"),
             ),
             |_, opt_len| match opt_len {

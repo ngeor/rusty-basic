@@ -5,7 +5,7 @@ use rusty_variant::{MIN_INTEGER, MIN_LONG};
 use crate::core::opt_second_expression::conditionally_opt_whitespace;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::comma;
+use crate::tokens::comma_ws;
 use crate::{
     BuiltInFunction, ExpressionType, FileHandle, HasExpressionType, Name, Operator, ParseError, TypeQualifier, UnaryOperator, VariableInfo
 };
@@ -471,7 +471,7 @@ pub fn csv_expressions_non_opt(
 pub fn csv_expressions_first_guarded()
 -> impl Parser<RcStringView, Output = Expressions, Error = ParseError> {
     ws_expr_pos_p().map(|first| vec![first]).and(
-        comma()
+        comma_ws()
             .and_keep_right(expression_pos_p().or_syntax_error("Expected: expression after comma"))
             .zero_or_more(),
         VecCombiner,

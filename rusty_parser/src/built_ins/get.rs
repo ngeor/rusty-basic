@@ -2,7 +2,7 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{comma, whitespace};
+use crate::tokens::{comma_ws, whitespace};
 use crate::{BuiltInSub, ParseError, *};
 
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
@@ -17,7 +17,7 @@ pub fn parse_get_or_put(
         keyword(k),
         whitespace(),
         file_handle_p().or_syntax_error("Expected: file-number"),
-        comma(),
+        comma_ws(),
         expression_pos_p().or_syntax_error("Expected: record-number"),
         move |_, _, file_number_pos, _, record_number_expr_pos| {
             Statement::built_in_sub_call(

@@ -7,7 +7,7 @@ use crate::core::expression::{expression_pos_p, ws_expr_pos_p};
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{TokenType, any_token_of_ws, comma, peek_token, semicolon, whitespace};
+use crate::tokens::{TokenType, any_token_of_ws, comma_ws, peek_token, semicolon_ws, whitespace};
 use crate::*;
 
 /// A call to the PRINT sub.
@@ -135,7 +135,7 @@ fn opt_using() -> impl Parser<RcStringView, Output = Option<ExpressionPos>, Erro
     seq3(
         keyword(Keyword::Using),
         ws_expr_pos_p().or_syntax_error("Expected: expression after USING"),
-        semicolon(),
+        semicolon_ws(),
         |_, using_expr, _| using_expr,
     )
     .to_option()
@@ -143,7 +143,7 @@ fn opt_using() -> impl Parser<RcStringView, Output = Option<ExpressionPos>, Erro
 
 fn opt_file_handle_comma_p()
 -> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>, Error = ParseError> {
-    seq2(file_handle_p(), comma(), |file_handle, _| file_handle).to_option()
+    seq2(file_handle_p(), comma_ws(), |file_handle, _| file_handle).to_option()
 }
 
 pub struct PrintArgsParser;

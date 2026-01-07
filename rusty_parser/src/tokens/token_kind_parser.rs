@@ -11,21 +11,21 @@ use crate::tokens::{TokenType, any_token_of, any_token_of_ws};
 /// Equal sign, surrounded by optional whitespace.
 ///
 /// `<ws>? = <ws>?`
-pub fn equal_sign() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+pub fn equal_sign_ws() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     any_token_of_ws!(TokenType::Equals)
 }
 
 /// Comma, surrounded by optional whitespace.
 ///
 /// `<ws>? , <ws>?`
-pub fn comma() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+pub fn comma_ws() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     any_token_of_ws!(TokenType::Comma)
 }
 
 /// Star (*), surrounded by optional whitespace.
 ///
 /// `<ws>? * <ws>?`
-pub fn star() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+pub fn star_ws() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     any_token_of_ws!(TokenType::Star)
 }
 
@@ -74,7 +74,7 @@ pub fn dollar_sign() -> impl Parser<RcStringView, Output = Token, Error = ParseE
 /// Semicolon.
 ///
 /// `<ws>? ; <ws>?`
-pub fn semicolon() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+pub fn semicolon_ws() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     any_token_of_ws!(TokenType::Semicolon)
 }
 

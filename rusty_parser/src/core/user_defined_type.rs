@@ -10,7 +10,7 @@ use crate::core::statement_separator::comments_and_whitespace_p;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{star, whitespace};
+use crate::tokens::{star_ws, whitespace};
 use crate::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -198,7 +198,7 @@ fn element_type_p() -> impl Parser<RcStringView, Output = ElementType, Error = P
         ])),
         Box::new(seq3(
             keyword(Keyword::String),
-            star(),
+            star_ws(),
             demand_string_length_p(),
             |_, _, e| ElementType::FixedLengthString(e, 0),
         )),

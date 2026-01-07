@@ -2,7 +2,7 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::equal_sign;
+use crate::tokens::equal_sign_ws;
 use crate::{BuiltInSub, ParseError, *};
 
 // DEF SEG(=expr)?
@@ -18,7 +18,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
 
 fn equal_sign_and_expression()
 -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
-    equal_sign()
+    equal_sign_ws()
         .and_keep_right(expression_pos_p().or_syntax_error("Expected expression after equal sign"))
 }
 

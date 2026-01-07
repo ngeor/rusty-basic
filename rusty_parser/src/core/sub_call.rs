@@ -5,7 +5,7 @@ use crate::core::expression::{csv_expressions_first_guarded, expression_pos_p, p
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::equal_sign;
+use crate::tokens::equal_sign_ws;
 use crate::*;
 
 // SubCall                  ::= SubCallNoArgs | SubCallArgsNoParenthesis | SubCallArgsParenthesis
@@ -59,7 +59,7 @@ impl Parser<RcStringView> for SubCallOrAssignment {
 impl SubCallOrAssignment {
     fn name_and_opt_eq_sign()
     -> impl Parser<RcStringView, Output = (ExpressionPos, Option<Token>), Error = ParseError> {
-        property::parser().and_opt_tuple(equal_sign())
+        property::parser().and_opt_tuple(equal_sign_ws())
     }
 }
 

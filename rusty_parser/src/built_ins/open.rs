@@ -3,7 +3,7 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{equal_sign, whitespace};
+use crate::tokens::{equal_sign_ws, whitespace};
 use crate::{BuiltInSub, ParseError, *};
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq6(
@@ -69,7 +69,7 @@ fn parse_file_number_p() -> impl Parser<RcStringView, Output = ExpressionPos, Er
 fn parse_len_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     seq3(
         whitespace().and_tuple(keyword(Keyword::Len)),
-        equal_sign(),
+        equal_sign_ws(),
         expression_pos_p().or_syntax_error("Expected: expression after LEN ="),
         |_, _, e| e,
     )

@@ -1,20 +1,51 @@
-use crate::{OrDefault, ParseResult, ParseResultTrait, Parser, parser_combinator};
+use crate::{OrDefault, ParseResult, ParseResultTrait, Parser};
 
-parser_combinator!(
-    trait Many {
-        fn many<S, A, O>(seed: S, accumulator: A) -> O
-        where S : Fn(Self::Output) -> O,
-              A : Fn(O, Self::Output) -> O,
-              O : Default;
-    }
-
-    struct ManyParser<S, A>;
-
-    fn parse<O>(&self, input) -> O
-    where S : Fn(P::Output) -> O,
-          A : Fn(O, P::Output) -> O,
-          O : Default
+pub trait Many<I, C>: Parser<I, C>
+where
+    Self: Sized,
+{
+    fn many<S, A, O>(
+        self,
+        seed: S,
+        accumulator: A,
+    ) -> impl Parser<I, C, Output = O, Error = Self::Error>
+    where
+        S: Fn(Self::Output) -> O,
+        A: Fn(O, Self::Output) -> O,
+        O: Default,
     {
+        ManyParser::new(self, seed, accumulator)
+    }
+}
+
+impl<I, C, P> Many<I, C> for P where P: Parser<I, C> {}
+
+struct ManyParser<P, S, A> {
+    parser: P,
+    seed: S,
+    accumulator: A,
+}
+
+impl<P, S, A> ManyParser<P, S, A> {
+    pub fn new(parser: P, seed: S, accumulator: A) -> Self {
+        Self {
+            parser,
+            seed,
+            accumulator,
+        }
+    }
+}
+
+impl<I, C, P, S, A, O> Parser<I, C> for ManyParser<P, S, A>
+where
+    P: Parser<I, C>,
+    S: Fn(P::Output) -> O,
+    A: Fn(O, P::Output) -> O,
+    O: Default,
+{
+    type Output = O;
+    type Error = P::Error;
+    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         self.parser.parse(input).flat_map(|mut input, first_value| {
             let mut result = (self.seed)(first_value);
             loop {
@@ -35,7 +66,16 @@ parser_combinator!(
             Ok((input, result))
         })
     }
-);
+}
+
+impl<C, P, S, A> crate::SetContext<C> for ManyParser<P, S, A>
+where
+    P: crate::SetContext<C>,
+{
+    fn set_context(&mut self, ctx: C) {
+        self.parser.set_context(ctx)
+    }
+}
 
 pub trait ManyVec<I, C>: Many<I, C>
 where

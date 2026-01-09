@@ -579,7 +579,7 @@ mod single_or_double_literal {
         // done parsing, flat map everything
         .flat_map(|input, ((opt_integer_digits, frac_digits), opt_pound)| {
             let left = opt_integer_digits
-                .map(|token| token.to_str())
+                .map(|token| token.to_string())
                 .unwrap_or_else(|| "0".to_owned());
             let s = format!("{}.{}", left, frac_digits.as_str());
             if opt_pound.is_some() {
@@ -659,7 +659,7 @@ mod integer_or_long_literal {
             TokenType::Digits => process_dec(token),
             TokenType::HexDigits => process_hex(token),
             TokenType::OctDigits => process_oct(token),
-            _ => panic!("Should not have processed {}", token.as_str()),
+            _ => panic!("Should not have processed {}", token),
         };
         match res {
             Ok(expr) => Ok((input, expr)),
@@ -668,7 +668,7 @@ mod integer_or_long_literal {
     }
 
     fn process_dec(token: Token) -> Result<Expression, ParseError> {
-        match token.to_str().parse::<u32>() {
+        match token.to_string().parse::<u32>() {
             Ok(u) => {
                 if u <= MAX_INTEGER as u32 {
                     Ok(Expression::IntegerLiteral(u as i32))
@@ -684,7 +684,7 @@ mod integer_or_long_literal {
 
     fn process_hex(token: Token) -> Result<Expression, ParseError> {
         // token text is &HFFFF or &H-FFFF
-        let mut s: String = token.to_str();
+        let mut s: String = token.to_string();
         // remove &
         s.remove(0);
         // remove H
@@ -714,7 +714,7 @@ mod integer_or_long_literal {
     }
 
     fn process_oct(token: Token) -> Result<Expression, ParseError> {
-        let mut s: String = token.to_str();
+        let mut s: String = token.to_string();
         // remove &
         s.remove(0);
         // remove O
@@ -810,7 +810,7 @@ mod variable {
         let mut property_names: VecDeque<String> = names
             .into_iter()
             .filter(|token| !'.'.matches_token(token))
-            .map(|token| token.to_str())
+            .map(|token| token.to_string())
             .collect();
         let mut result = Expression::Variable(
             Name::bare(BareName::new(property_names.pop_front().unwrap())),
@@ -895,7 +895,7 @@ pub mod property {
                     first_expr_pos,
                     |prev_expr_pos, (name_token, opt_q_token)| {
                         let property_name = Name::new(
-                            BareName::new(name_token.to_str()),
+                            BareName::new(name_token.to_string()),
                             opt_q_token.as_ref().map(token_to_type_qualifier),
                         );
                         prev_expr_pos.map(|prev_expr| {
@@ -1088,8 +1088,7 @@ mod binary_expression {
                     Keyword::Or => Some(Operator::Or),
                     _ => None,
                 },
-                // TODO support char-based Tokens or make the next expression friendlier
-                TokenType::Symbol => match token.as_str().chars().next().unwrap() {
+                TokenType::Symbol => match token.as_char() {
                     '+' => Some(Operator::Plus),
                     '-' => Some(Operator::Minus),
                     '*' => Some(Operator::Multiply),
@@ -1171,7 +1170,7 @@ pub mod file_handle {
             .with_pos()
             .and_tuple(any_token_of!(TokenType::Digits).or_expected("digits after #"))
             .flat_map(
-                |input, (pound, digits)| match digits.to_str().parse::<u8>() {
+                |input, (pound, digits)| match digits.as_str().parse::<u8>() {
                     Ok(d) if d > 0 => Ok((input, FileHandle::from(d).at_pos(pound.pos))),
                     _ => Err((true, input, ParseError::BadFileNameOrNumber)),
                 },

@@ -179,7 +179,7 @@ mod type_tests {
 /// Use case: user defined type elements or types.
 pub fn bare_name_without_dots() -> impl Parser<RcStringView, Output = BareName, Error = ParseError>
 {
-    ensure_no_trailing_dot_or_qualifier(identifier()).map(|token| BareName::new(token.to_str()))
+    ensure_no_trailing_dot_or_qualifier(identifier()).map(|token| BareName::new(token.to_string()))
 }
 
 /// Parses an identifier token.
@@ -206,7 +206,7 @@ fn ensure_token_length(
     input: RcStringView,
     token: Token,
 ) -> ParseResult<RcStringView, Token, ParseError> {
-    if token.as_str().chars().count() > MAX_LENGTH {
+    if token.len() > MAX_LENGTH {
         Err((true, input, ParseError::IdentifierTooLong))
     } else {
         Ok((input, token))
@@ -269,12 +269,7 @@ fn ensure_token_list_length(
     input: RcStringView,
     tokens: TokenList,
 ) -> ParseResult<RcStringView, TokenList, ParseError> {
-    if tokens
-        .iter()
-        .map(|token| token.as_str().chars().count())
-        .sum::<usize>()
-        > MAX_LENGTH
-    {
+    if tokens.iter().map(|token| token.len()).sum::<usize>() > MAX_LENGTH {
         Err((true, input, ParseError::IdentifierTooLong))
     } else {
         Ok((input, tokens))

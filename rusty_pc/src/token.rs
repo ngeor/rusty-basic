@@ -1,14 +1,15 @@
+/// The kind of a token.
+/// Possible examples: digits, identifier, keyword, symbol, etc.
 pub type TokenKind = u8;
 
 // TODO remove the Clone trait
 /// Represents a recognized token.
 ///
 /// The [kind] field could have been a generic parameter, but that would require
-/// propagating the type in the [Tokenizer] and eventually also to the parsers.
+/// propagating the type too much.
 #[derive(Clone, Debug)]
 pub struct Token {
     kind: TokenKind,
-    // TODO char or String text
     text: String,
 }
 
@@ -17,16 +18,26 @@ impl Token {
         Self { kind, text }
     }
 
+    pub fn kind(&self) -> TokenKind {
+        self.kind
+    }
+
     pub fn as_str(&self) -> &str {
         &self.text
     }
 
-    pub fn to_str(self) -> String {
-        self.text
+    pub fn as_char(&self) -> char {
+        self.text.chars().next().unwrap()
     }
 
-    pub fn kind(&self) -> TokenKind {
-        self.kind
+    pub fn len(&self) -> usize {
+        self.text.chars().count()
+    }
+}
+
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.text.fmt(f)
     }
 }
 
@@ -34,5 +45,9 @@ pub type TokenList = Vec<Token>;
 
 // TODO move elsewhere or deprecate
 pub fn token_list_to_string(tokens: TokenList) -> String {
-    tokens.into_iter().map(|token| token.text).collect()
+    let mut result = String::new();
+    for token in tokens {
+        result.push_str(token.as_str());
+    }
+    result
 }

@@ -19,7 +19,7 @@ use crate::core::comment::comment_as_string_p;
 /// ```
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{TokenType, any_token_of, peek_token, whitespace};
+use crate::tokens::{TokenMatcher, TokenType, any_token_of, peek_token, whitespace};
 
 pub fn comment_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     opt_and_tuple(whitespace(), any_token_of!(TokenType::Eol)).and_opt(
@@ -56,7 +56,7 @@ pub fn common_separator() -> impl Parser<RcStringView, Output = (), Error = Pars
     opt_and(
         whitespace(),
         OrParser::new(vec![
-            Box::new(any_token_of!(TokenType::Colon, TokenType::Eol).and_opt(
+            Box::new(any_token_of!(TokenType::Eol ; symbols = ':').and_opt(
                 any_token_of!(TokenType::Eol, TokenType::Whitespace).zero_or_more(),
                 |_, _| (),
             )),
@@ -70,7 +70,7 @@ pub fn no_separator_needed_before_comment()
 -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     // warning: cannot use filter_map because it will undo and we've already "undo" via "peek"
     peek_token().flat_map(|input, t| {
-        if TokenType::SingleQuote.matches(&t) {
+        if '\''.matches_token(&t) {
             Ok((input, ()))
         } else {
             default_parse_error(input)
@@ -81,9 +81,9 @@ pub fn no_separator_needed_before_comment()
 pub fn peek_eof_or_statement_separator()
 -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     peek_token().flat_map_negate_none(|input, token| {
-        if TokenType::Colon.matches(&token)
-            || TokenType::SingleQuote.matches(&token)
-            || TokenType::Eol.matches(&token)
+        if ':'.matches_token(&token)
+            || '\''.matches_token(&token)
+            || TokenType::Eol.matches_token(&token)
         {
             Ok((input, ()))
         } else {

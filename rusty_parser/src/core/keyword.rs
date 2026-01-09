@@ -1,7 +1,7 @@
 use rusty_common::cmp_str;
 use rusty_pc::Token;
 
-use crate::tokens::TokenType;
+use crate::tokens::{TokenMatcher, TokenType};
 
 // From the internets:
 // Doc comments are secretly just attributes,
@@ -36,6 +36,7 @@ macro_rules! keyword_enum {
             }
         }
 
+        // TODO add as_str method and delete AsRef
         impl AsRef<str> for $name {
             fn as_ref(&self) -> &str {
                 let index = $all_names
@@ -208,9 +209,10 @@ keyword_enum!(pub enum Keyword SORTED_KEYWORDS SORTED_KEYWORDS_STR {
     Width,
 });
 
-impl PartialEq<Token> for Keyword {
-    fn eq(&self, other: &Token) -> bool {
-        TokenType::Keyword.matches(other) && other.as_str().eq_ignore_ascii_case(self.as_ref())
+impl TokenMatcher for Keyword {
+    fn matches_token(&self, token: &Token) -> bool {
+        TokenType::Keyword.matches_token(token)
+            && token.as_str().eq_ignore_ascii_case(self.as_ref())
     }
 }
 

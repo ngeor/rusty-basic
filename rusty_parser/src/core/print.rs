@@ -7,7 +7,9 @@ use crate::core::expression::{expression_pos_p, ws_expr_pos_p};
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{TokenType, any_token_of_ws, comma_ws, peek_token, semicolon_ws, whitespace};
+use crate::tokens::{
+    TokenMatcher, any_symbol_of_ws, any_token_of, comma_ws, peek_token, semicolon_ws, whitespace
+};
 use crate::*;
 
 /// A call to the PRINT sub.
@@ -167,13 +169,16 @@ impl PrintArgsParser {
     }
 
     fn delimiter_print_arg() -> impl Parser<RcStringView, Output = PrintArg, Error = ParseError> {
-        any_token_of_ws!(TokenType::Semicolon, TokenType::Comma).map(
-            |t| match TokenType::from_token(&t) {
-                TokenType::Semicolon => PrintArg::Semicolon,
-                TokenType::Comma => PrintArg::Comma,
-                _ => panic!("should not happen"),
-            },
-        )
+        // TODO support char based tokens or make the next mapping friendlier
+        any_symbol_of_ws!(';', ',').map(|t| {
+            if ';'.matches_token(&t) {
+                PrintArg::Semicolon
+            } else if ','.matches_token(&t) {
+                PrintArg::Comma
+            } else {
+                unreachable!()
+            }
+        })
     }
 }
 
@@ -211,10 +216,8 @@ fn print_boundary() -> impl Parser<RcStringView, Output = Guard, Error = ParseEr
     whitespace()
         .map(|_| Guard::Whitespace)
         .or(peek_token().flat_map(|input, token| {
-            if TokenType::Comma.matches(&token)
-                || TokenType::Semicolon.matches(&token)
-                || TokenType::LParen.matches(&token)
-            {
+            // TODO improve performance
+            if ','.matches_token(&token) || ';'.matches_token(&token) || '('.matches_token(&token) {
                 Ok((input, Guard::Peeked))
             } else {
                 default_parse_error(input)

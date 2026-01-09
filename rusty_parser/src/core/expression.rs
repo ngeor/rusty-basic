@@ -603,7 +603,7 @@ mod string_literal {
 
     use crate::input::RcStringView;
     use crate::pc_specific::*;
-    use crate::tokens::{TokenType, any_token_of};
+    use crate::tokens::{MatchMode, TokenType, any_symbol_of, any_token_of};
     use crate::{ParseError, *};
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
@@ -617,11 +617,16 @@ mod string_literal {
     }
 
     fn string_delimiter() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-        any_token_of!(TokenType::DoubleQuote)
+        // TODO support ignoring token to avoid allocation
+        any_symbol_of!('"')
     }
 
     fn inside_string() -> impl Parser<RcStringView, Output = TokenList, Error = ParseError> {
-        any_token_of!(MatchMode::Exclude, TokenType::DoubleQuote, TokenType::Eol).zero_or_more()
+        any_token_of!(
+            types = TokenType::Eol ;
+            symbols = '"' ;
+            mode = MatchMode::Exclude)
+        .zero_or_more()
     }
 }
 
@@ -754,7 +759,7 @@ mod variable {
     use crate::core::name::{name_with_dots_as_tokens, token_to_type_qualifier};
     use crate::input::RcStringView;
     use crate::pc_specific::WithPos;
-    use crate::tokens::TokenType;
+    use crate::tokens::TokenMatcher;
     use crate::{ParseError, *};
 
     // variable ::= <identifier-with-dots>
@@ -781,7 +786,7 @@ mod variable {
         let mut name_count = 0;
         let mut last_was_dot = false;
         for name in names {
-            if TokenType::Dot.matches(name) {
+            if '.'.matches_token(name) {
                 if name_count == 0 {
                     panic!("Leading dot cannot happen");
                 }
@@ -804,7 +809,7 @@ mod variable {
         let (names, opt_q_token) = name_as_tokens;
         let mut property_names: VecDeque<String> = names
             .into_iter()
-            .filter(|token| !TokenType::Dot.matches(token))
+            .filter(|token| !'.'.matches_token(token))
             .map(|token| token.to_str())
             .collect();
         let mut result = Expression::Variable(
@@ -1074,20 +1079,24 @@ mod binary_expression {
 
         fn map_token_to_operator(token: &Token) -> Option<Operator> {
             match TokenType::from_token(token) {
-                TokenType::Less => Some(Operator::Less),
                 TokenType::LessEquals => Some(Operator::LessOrEqual),
-                TokenType::Equals => Some(Operator::Equal),
                 TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
-                TokenType::Greater => Some(Operator::Greater),
                 TokenType::NotEquals => Some(Operator::NotEqual),
-                TokenType::Plus => Some(Operator::Plus),
-                TokenType::Minus => Some(Operator::Minus),
-                TokenType::Star => Some(Operator::Multiply),
-                TokenType::Slash => Some(Operator::Divide),
                 TokenType::Keyword => match Keyword::from(token) {
                     Keyword::Mod => Some(Operator::Modulo),
                     Keyword::And => Some(Operator::And),
                     Keyword::Or => Some(Operator::Or),
+                    _ => None,
+                },
+                // TODO support char-based Tokens or make the next expression friendlier
+                TokenType::Symbol => match token.as_str().chars().next().unwrap() {
+                    '+' => Some(Operator::Plus),
+                    '-' => Some(Operator::Minus),
+                    '*' => Some(Operator::Multiply),
+                    '/' => Some(Operator::Divide),
+                    '>' => Some(Operator::Greater),
+                    '<' => Some(Operator::Less),
+                    '=' => Some(Operator::Equal),
                     _ => None,
                 },
                 _ => None,
@@ -1150,7 +1159,7 @@ pub mod file_handle {
     use crate::error::ParseError;
     use crate::input::RcStringView;
     use crate::pc_specific::*;
-    use crate::tokens::{TokenType, any_token_of, whitespace};
+    use crate::tokens::{TokenType, any_token_of, pound, whitespace};
     use crate::*;
 
     pub fn file_handle_p()
@@ -1158,7 +1167,7 @@ pub mod file_handle {
         // # and digits
         // if # and 0 -> BadFileNameOrNumber
         // if # without digits -> SyntaxError (Expected: digits after #)
-        any_token_of!(TokenType::Pound)
+        pound()
             .with_pos()
             .and_tuple(any_token_of!(TokenType::Digits).or_expected("digits after #"))
             .flat_map(
@@ -1190,7 +1199,7 @@ pub mod guard {
 
     use crate::ParseError;
     use crate::input::RcStringView;
-    use crate::tokens::{TokenType, peek_token, whitespace};
+    use crate::tokens::{TokenMatcher, peek_token, whitespace};
 
     #[derive(Default)]
     pub enum Guard {
@@ -1212,7 +1221,7 @@ pub mod guard {
 
     fn lparen_guard() -> impl Parser<RcStringView, Output = Guard, Error = ParseError> {
         peek_token().flat_map(|input, token| {
-            if TokenType::LParen.matches(&token) {
+            if '('.matches_token(&token) {
                 Ok((input, Guard::Peeked))
             } else {
                 default_parse_error(input)

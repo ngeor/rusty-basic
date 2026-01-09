@@ -56,29 +56,9 @@ token_type_enum!(
         Eol,
         Whitespace("whitespace"),
         Digits,
-        LParen('('),
-        RParen(')'),
-        Colon,
-        Semicolon(';'),
-        Comma(','),
-        SingleQuote,
-        DoubleQuote,
-        Dot,
-        Equals,
-        Greater,
-        Less,
         GreaterEquals,
         LessEquals,
         NotEquals,
-        Plus,
-        Minus,
-        Star,
-        Slash,
-        Ampersand,
-        ExclamationMark,
-        Pound,
-        DollarSign,
-        Percent,
         // keyword needs to be before Identifier, because the first one wins
         Keyword,
         // Starts with letter, continues with letters or digits.
@@ -86,19 +66,38 @@ token_type_enum!(
         OctDigits,
         HexDigits,
 
-        // unknown must be last
-        Unknown,
+        // symbol must be last
+        Symbol,
     }
 
     const ALL_TOKEN_TYPES;
 );
 
 impl TokenType {
-    pub fn matches(&self, token: &Token) -> bool {
-        *self == Self::from_token(token)
-    }
-
     pub fn from_token(token: &Token) -> Self {
         Self::from_index(token.kind())
+    }
+}
+
+/// A trait that checks if the current value matches the given token.
+pub trait TokenMatcher {
+    /// Checks if the current value matches the given token.
+    fn matches_token(&self, token: &Token) -> bool;
+}
+
+impl TokenMatcher for TokenType {
+    /// Checks if the token is of this token type.
+    fn matches_token(&self, token: &Token) -> bool {
+        self.get_index() == token.kind()
+    }
+}
+
+impl TokenMatcher for char {
+    /// Checks if this is a Symbol token containing this character.
+    fn matches_token(&self, token: &Token) -> bool {
+        // TODO support char tokens or make the next expression friendlier
+        TokenType::Symbol.matches_token(token)
+            && token.as_str().len() == 1
+            && token.as_str().chars().next().unwrap() == *self
     }
 }

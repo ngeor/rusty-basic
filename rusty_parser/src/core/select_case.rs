@@ -138,9 +138,13 @@ mod case_expression_parser {
                 TokenType::LessEquals => Some(Operator::LessOrEqual),
                 TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
                 TokenType::NotEquals => Some(Operator::NotEqual),
-                TokenType::Less => Some(Operator::Less),
-                TokenType::Greater => Some(Operator::Greater),
-                TokenType::Equals => Some(Operator::Equal),
+                // TODO support char-based Tokens or make the next expression friendlier
+                TokenType::Symbol => match token.as_str().chars().next().unwrap() {
+                    '<' => Some(Operator::Less),
+                    '>' => Some(Operator::Greater),
+                    '=' => Some(Operator::Equal),
+                    _ => None,
+                },
                 _ => None,
             })
             .with_pos()

@@ -7,7 +7,7 @@ use crate::core::statement_separator::{comment_separator, common_separator};
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{colon_ws, peek_token, whitespace};
+use crate::tokens::{TokenMatcher, colon_ws, peek_token, whitespace};
 use crate::*;
 
 pub fn single_line_non_comment_statements_p()
@@ -52,7 +52,7 @@ impl ZeroOrMoreStatements {
             .flat_map_ok_none(
                 |input, token| {
                     for k in &self.0 {
-                        if k == &token {
+                        if k.matches_token(&token) {
                             return Ok((input, true));
                         }
                     }

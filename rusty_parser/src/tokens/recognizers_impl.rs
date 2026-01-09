@@ -34,49 +34,8 @@ pub fn any_token() -> impl Parser<RcStringView, Output = Token, Error = ParseErr
         Box::new(less_or_equal()),
         // NotEquals,
         Box::new(not_equal()),
-        // LParen: '(',
-        Box::new(specific(TokenType::LParen, '(')),
-        // RParen: ')',
-        Box::new(specific(TokenType::RParen, ')')),
-        // Colon,
-        Box::new(specific(TokenType::Colon, ':')),
-        // Semicolon: ';',
-        Box::new(specific(TokenType::Semicolon, ';')),
-        // Comma: ',',
-        Box::new(specific(TokenType::Comma, ',')),
-        // SingleQuote,
-        Box::new(specific(TokenType::SingleQuote, '\'')),
-        // DoubleQuote,
-        Box::new(specific(TokenType::DoubleQuote, '"')),
-        // Dot,
-        Box::new(specific(TokenType::Dot, '.')),
-        // Equals,
-        Box::new(specific(TokenType::Equals, '=')),
-        // Greater,
-        Box::new(specific(TokenType::Greater, '>')),
-        // Less,
-        Box::new(specific(TokenType::Less, '<')),
-        // Plus,
-        Box::new(specific(TokenType::Plus, '+')),
-        // Minus,
-        Box::new(specific(TokenType::Minus, '-')),
-        // Star,
-        Box::new(specific(TokenType::Star, '*')),
-        // Slash,
-        Box::new(specific(TokenType::Slash, '/')),
-        // Ampersand,
-        Box::new(specific(TokenType::Ampersand, '&')),
-        // ExclamationMark,
-        Box::new(specific(TokenType::ExclamationMark, '!')),
-        // Pound,
-        Box::new(specific(TokenType::Pound, '#')),
-        // DollarSign,
-        Box::new(specific(TokenType::DollarSign, '$')),
-        // Percent,
-        Box::new(specific(TokenType::Percent, '%')),
-        // // unknown must be last
-        // Unknown,
-        Box::new(unknown()),
+        // Symbol must be last,
+        Box::new(any_symbol()),
     ])
 }
 
@@ -160,10 +119,10 @@ fn specific(
         .to_token(token_type)
 }
 
-fn unknown() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn any_symbol() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     char_parsers::AnyChar
         .one_to_str()
-        .to_token(TokenType::Unknown)
+        .to_token(TokenType::Symbol)
 }
 
 fn oct_digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {

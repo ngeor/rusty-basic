@@ -8,6 +8,7 @@ pub type TokenKind = u8;
 #[derive(Clone, Debug)]
 pub struct Token {
     kind: TokenKind,
+    // TODO char or String text
     text: String,
 }
 
@@ -31,6 +32,7 @@ impl Token {
 
 pub type TokenList = Vec<Token>;
 
+// TODO move elsewhere or deprecate
 pub fn token_list_to_string(tokens: TokenList) -> String {
     tokens.into_iter().map(|token| token.text).collect()
 }

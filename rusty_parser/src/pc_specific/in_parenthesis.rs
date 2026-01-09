@@ -4,7 +4,7 @@ use rusty_pc::*;
 
 use crate::ParseError;
 use crate::input::RcStringView;
-use crate::tokens::{TokenType, any_token_of, whitespace};
+use crate::tokens::{any_symbol_of, any_token_of, whitespace};
 
 /// In parser mode, returns Some if the opening parenthesis is present
 /// AND the decorated parser has a value.
@@ -18,12 +18,11 @@ where
 }
 
 fn left_paren() -> impl Parser<RcStringView, Output = (Token, Option<Token>), Error = ParseError> {
-    any_token_of!(TokenType::LParen).and_opt_tuple(whitespace())
+    // TODO add ignoring for whitespace, add ignoring for and_opt_tuple
+    any_symbol_of!('(').and_opt_tuple(whitespace())
 }
 
 fn right_paren() -> impl Parser<RcStringView, Output = (Option<Token>, Token), Error = ParseError> {
-    opt_and_tuple(
-        whitespace(),
-        any_token_of!(TokenType::RParen).no_incomplete(),
-    )
+    // TODO add ignoring for whitespace, add ignoring for opt_and_tuple
+    opt_and_tuple(whitespace(), any_symbol_of!(')').no_incomplete())
 }

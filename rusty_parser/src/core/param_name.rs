@@ -5,7 +5,7 @@ use rusty_pc::*;
 use crate::core::{VarNameCtx, var_name};
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{TokenType, any_token_of};
+use crate::tokens::{any_symbol_of, any_token_of};
 use crate::{Keyword, ParseError, *};
 
 pub type Parameter = TypedName<ParamType>;
@@ -91,12 +91,8 @@ fn parameter_p() -> impl Parser<RcStringView, Output = Parameter, Error = ParseE
 
 fn array_indicator()
 -> impl Parser<RcStringView, Output = Option<(Token, Token)>, Error = ParseError> {
-    seq2(
-        any_token_of!(TokenType::LParen),
-        any_token_of!(TokenType::RParen),
-        |l, r| (l, r),
-    )
-    .to_option()
+    // TODO support ignoring token to avoid allocation
+    seq2(any_symbol_of!('('), any_symbol_of!(')'), |l, r| (l, r)).to_option()
 }
 
 fn extended_type()

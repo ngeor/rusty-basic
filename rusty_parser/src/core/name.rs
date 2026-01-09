@@ -4,7 +4,7 @@ use rusty_pc::*;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{TokenType, any_token_of, dot, peek_token};
+use crate::tokens::{TokenMatcher, TokenType, any_symbol_of, any_token_of, dot, peek_token};
 use crate::{AsBareName, BareName, ExpressionType, HasExpressionType, ToBareName, TypeQualifier};
 
 const MAX_LENGTH: usize = 40;
@@ -190,21 +190,16 @@ pub fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParseEr
 
 /// Parses a type qualifier character.
 fn type_qualifier_unchecked() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    any_token_of!(
-        TokenType::ExclamationMark,
-        TokenType::Pound,
-        TokenType::DollarSign,
-        TokenType::Percent,
-        TokenType::Ampersand,
-    )
+    any_symbol_of!('!', '#', '$', '%', '&')
 }
 
 fn is_type_qualifier(token: &Token) -> bool {
-    TokenType::ExclamationMark.matches(token)
-        || TokenType::Pound.matches(token)
-        || TokenType::DollarSign.matches(token)
-        || TokenType::Percent.matches(token)
-        || TokenType::Ampersand.matches(token)
+    // TODO improve performance
+    '!'.matches_token(token)
+        || '#'.matches_token(token)
+        || '$'.matches_token(token)
+        || '%'.matches_token(token)
+        || '&'.matches_token(token)
 }
 
 fn ensure_token_length(
@@ -266,7 +261,7 @@ fn identifier_or_keyword() -> impl Parser<RcStringView, Output = Token, Error = 
 }
 
 fn identifier_or_keyword_or_dot() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    any_token_of!(TokenType::Identifier, TokenType::Keyword, TokenType::Dot)
+    any_token_of!(TokenType::Identifier, TokenType::Keyword ; symbols = '.')
 }
 
 // TODO add test: max length of 40 characters applies both to parts and the full string
@@ -325,7 +320,7 @@ fn ensure_no_trailing_dot<P>(
 ) -> impl Parser<RcStringView, Output = P, Error = ParseError> {
     parser.and_opt_keep_left(peek_token().flat_map_negate_none(|input, token| {
         // TODO a friendlier flat_map that does not alter the input (and does not need it either)
-        if TokenType::Dot.matches(&token) {
+        if '.'.matches_token(&token) {
             Err((true, input, ParseError::IdentifierCannotIncludePeriod))
         } else {
             Ok((input, ()))
@@ -364,15 +359,16 @@ impl From<NameAsTokens> for Name {
 }
 
 pub fn token_to_type_qualifier(token: &Token) -> TypeQualifier {
-    if TokenType::ExclamationMark.matches(token) {
+    // TODO improve performance
+    if '!'.matches_token(token) {
         TypeQualifier::BangSingle
-    } else if TokenType::Pound.matches(token) {
+    } else if '#'.matches_token(token) {
         TypeQualifier::HashDouble
-    } else if TokenType::DollarSign.matches(token) {
+    } else if '$'.matches_token(token) {
         TypeQualifier::DollarString
-    } else if TokenType::Percent.matches(token) {
+    } else if '%'.matches_token(token) {
         TypeQualifier::PercentInteger
-    } else if TokenType::Ampersand.matches(token) {
+    } else if '&'.matches_token(token) {
         TypeQualifier::AmpersandLong
     } else {
         panic!("Unsupported token")
@@ -486,7 +482,7 @@ mod parse_tests {
         #[test]
         fn can_parse_identifier() {
             let token = parse_something_completely("Hello");
-            assert!(TokenType::Identifier.matches(&token));
+            assert!(TokenType::Identifier.matches_token(&token));
             assert_eq!(token.as_str(), "Hello");
         }
 

@@ -222,7 +222,7 @@ mod separator {
 /// Parses one or more tokens that are end of line or colon.
 fn eol_col_one_or_more() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     // TODO `one_or_more` creates a Vec that we dispose of
-    any_token_of!(TokenType::Eol, TokenType::Colon)
+    any_token_of!(TokenType::Eol ; symbols = ':')
         .one_or_more()
         .map(|_| ())
 }
@@ -230,7 +230,7 @@ fn eol_col_one_or_more() -> impl Parser<RcStringView, Output = (), Error = Parse
 /// Parses zero or more tokens that are whitespace, end of line, or colon.
 fn ws_eol_col_zero_or_more() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     // TODO `zero_or_more` creates a Vec that we dispose of
-    any_token_of!(TokenType::Whitespace, TokenType::Eol, TokenType::Colon)
+    any_token_of!(TokenType::Whitespace, TokenType::Eol ; symbols = ':')
         .zero_or_more()
         .map(|_| ())
 }

@@ -6,33 +6,145 @@ use crate::ParseError;
 use crate::tokens::TokenType;
 
 macro_rules! any_token_of {
+    // full options
     (
-        MatchMode::$match_mode:ident,
-        $($token_type:expr),+$(,)?
+        types = $($token_type:expr),*
+        ;
+        symbols = $($symbol:literal),*
+        ;
+        ws = $ws:literal
+        ;
+        mode = $match_mode:expr
+        $(,)?
     ) => {
         $crate::tokens::AnyTokenOf::new_multi(
             $crate::tokens::any_token(),
-            &[ $($token_type),+ ],
-            false,
-            $crate::tokens::MatchMode::$match_mode
+            &[ $($token_type),* ],
+            &[$($symbol),*],
+            $ws,
+            $match_mode
         )
     };
+
+    // minus mode
+    (
+        types = $($token_type:expr),*
+        ;
+        symbols = $($symbol:literal),*
+        ;
+        ws = $ws:literal
+        $(,)?
+    ) => {
+        any_token_of!(
+            types = $($token_type),*
+            ;
+            symbols = $($symbol),*
+            ;
+            ws = $ws
+            ;
+            mode = $crate::tokens::MatchMode::Include
+        )
+    };
+
+    // minus ws
+    (
+        types = $($token_type:expr),*
+        ;
+        symbols = $($symbol:literal),*
+        ;
+        mode = $match_mode:expr
+        $(,)?
+    ) => {
+        any_token_of!(
+            types = $($token_type),*
+            ;
+            symbols = $($symbol),*
+            ;
+            ws = false
+            ;
+            mode = $match_mode
+        )
+    };
+
+    // minus ws and minus mode
+    (
+        $($token_type:expr),+
+        ;
+        symbols = $($symbol:literal),+
+        $(,)?
+    ) => {
+        any_token_of!(
+            types = $($token_type),+
+            ;
+            symbols = $($symbol),+
+            ;
+            ws = false
+            ;
+            mode = $crate::tokens::MatchMode::Include
+        )
+    };
+
+    // only types and mode
+    (
+        $($token_type:expr),+
+        ;
+        mode = $match_mode:expr
+        $(,)?
+    ) => {
+        any_token_of!(
+            types = $($token_type),+
+            ;
+            symbols =
+            ;
+            ws = false
+            ;
+            mode = $match_mode
+        )
+    };
+
+    // only token types
     (
         $($token_type:expr),+$(,)?
     ) => {
-        any_token_of!(MatchMode::Include, $($token_type),+)
+        any_token_of!(
+            types = $($token_type),+
+            ;
+            symbols =
+            ;
+            ws = false
+        )
     };
 }
 
-macro_rules! any_token_of_ws {
+macro_rules! any_symbol_of {
     (
-        $($token_type:expr),+$(,)?
+        $($symbol:literal),+$(,)?
     ) => {
-        $crate::tokens::AnyTokenOf::new_multi($crate::tokens::any_token(), &[ $($token_type),+ ], true, $crate::tokens::MatchMode::Include)
+        any_token_of!(
+            types =
+            ;
+            symbols = $($symbol),+
+            ;
+            ws = false
+        )
     };
 }
 
-pub(crate) use {any_token_of, any_token_of_ws};
+macro_rules! any_symbol_of_ws {
+    (
+        $($symbol:literal),+$(,)?
+    ) => {
+        any_token_of!(
+            types =
+            ;
+            symbols = $($symbol),+
+            ;
+            ws = true
+        )
+    };
+}
+
+pub(crate) use {any_symbol_of, any_symbol_of_ws, any_token_of};
 
 /// Parses a token as long as it's one of the desired token kinds.
 /// This is an optimization to reduce the number of types created.
@@ -44,6 +156,9 @@ pub struct AnyTokenOf<P> {
 
     /// The token kinds that the parser is looking for.
     token_kinds: HashSet<TokenKind>,
+
+    /// The symbols that the parser is looking for.
+    symbols: HashSet<char>,
 
     /// The syntax error message to return for non-fatal errors.
     err_msg: String,
@@ -65,6 +180,7 @@ impl<P> AnyTokenOf<P> {
     pub fn new(
         parser: P,
         token_kinds: HashSet<TokenKind>,
+        symbols: HashSet<char>,
         err_msg: String,
         ws: bool,
         match_mode: MatchMode,
@@ -72,6 +188,7 @@ impl<P> AnyTokenOf<P> {
         Self {
             parser,
             token_kinds,
+            symbols,
             err_msg,
             ws,
             match_mode,
@@ -81,6 +198,7 @@ impl<P> AnyTokenOf<P> {
     pub fn new_multi(
         parser: P,
         token_types: &[TokenType],
+        symbols: &[char],
         ws: bool,
         match_mode: MatchMode,
     ) -> Self {
@@ -99,7 +217,24 @@ impl<P> AnyTokenOf<P> {
             err_msg.push_str(&token_type.to_string());
         }
 
-        Self::new(parser, token_kinds, err_msg, ws, match_mode)
+        for symbol in symbols {
+            if is_first {
+                is_first = false;
+            } else {
+                err_msg.push_str(" or ");
+            }
+
+            err_msg.push(*symbol);
+        }
+
+        Self::new(
+            parser,
+            token_kinds,
+            symbols.iter().copied().collect(),
+            err_msg,
+            ws,
+            match_mode,
+        )
     }
 }
 
@@ -222,8 +357,21 @@ impl<P> AnyTokenOf<P> {
 
     fn accept_token(&self, token: &Token) -> bool {
         match self.match_mode {
-            MatchMode::Include => self.token_kinds.contains(&token.kind()),
-            MatchMode::Exclude => !self.token_kinds.contains(&token.kind()),
+            MatchMode::Include => self.test_token(token),
+            MatchMode::Exclude => !self.test_token(token),
+        }
+    }
+
+    fn test_token(&self, token: &Token) -> bool {
+        self.token_kinds.contains(&token.kind()) || self.test_char(token)
+    }
+
+    fn test_char(&self, token: &Token) -> bool {
+        if token.kind() == TokenType::Symbol.get_index() {
+            let ch = token.as_str().chars().next().unwrap();
+            self.symbols.contains(&ch)
+        } else {
+            false
         }
     }
 

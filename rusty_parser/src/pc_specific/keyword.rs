@@ -1,7 +1,9 @@
 use rusty_pc::*;
 
 use crate::input::RcStringView;
-use crate::tokens::{TokenType, any_token, any_token_of, dollar_sign, peek_token, whitespace};
+use crate::tokens::{
+    TokenMatcher, TokenType, any_token, any_token_of, dollar_sign, peek_token, whitespace
+};
 use crate::{Keyword, ParseError};
 
 // TODO review usages of TokenType::Keyword
@@ -10,7 +12,7 @@ fn dollar_sign_check(
     parser: impl Parser<RcStringView, Output = Token, Error = ParseError>,
 ) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     parser.and_keep_left(peek_token().flat_map_negate_none(|input, t| {
-        if TokenType::DollarSign.matches(&t) {
+        if '$'.matches_token(&t) {
             default_parse_error(input)
         } else {
             Ok((input, ()))
@@ -26,7 +28,7 @@ pub fn keyword(k: Keyword) -> impl Parser<RcStringView, Output = Token, Error = 
 
 fn keyword_unchecked(k: Keyword) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     any_token().filter_or_err(
-        move |token| &k == token,
+        move |token| k.matches_token(token),
         ParseError::SyntaxError(format!("Expected: {}", k)),
     )
 }
@@ -60,7 +62,7 @@ pub fn keyword_dollar_sign(
     k: Keyword,
 ) -> impl Parser<RcStringView, Output = (Token, Token), Error = ParseError> {
     any_keyword_with_dollar_sign().filter_or_err(
-        move |(token, _)| &k == token,
+        move |(token, _)| k.matches_token(token),
         ParseError::SyntaxError(format!("Expected: {}", k)),
     )
 }

@@ -10,10 +10,10 @@ pub fn comment_p() -> impl Parser<RcStringView, Output = Statement, Error = Pars
 }
 
 pub fn comment_as_string_p() -> impl Parser<RcStringView, Output = String, Error = ParseError> {
-    any_token_of!(TokenType::SingleQuote).and(
-        any_token_of!(MatchMode::Exclude, TokenType::Eol).zero_or_more(),
-        |_, r| token_list_to_string(r),
-    )
+    // TODO support ignoring tokens to avoid allocation
+    any_symbol_of!('\'')
+        .and_keep_right(any_token_of!(TokenType::Eol ; mode = MatchMode::Exclude).zero_or_more())
+        .map(token_list_to_string)
 }
 
 #[cfg(test)]

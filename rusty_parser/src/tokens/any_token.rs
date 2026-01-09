@@ -3,10 +3,9 @@ use rusty_pc::*;
 use crate::Keyword;
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::tokens::any_symbol::AnySymbolParser;
-use crate::tokens::string_parsers::CharToStringParser;
-use crate::tokens::to_specific_parser::ToSpecificParser;
-use crate::tokens::{TokenType, char_parsers};
+use crate::tokens::TokenType;
+use crate::tokens::any_symbol::any_symbol;
+use crate::tokens::string_parsers::*;
 
 // TODO make identifier recognizer without dot
 
@@ -36,7 +35,7 @@ pub fn any_token() -> impl Parser<RcStringView, Output = Token, Error = ParseErr
         // NotEquals,
         Box::new(not_equal()),
         // Symbol must be last,
-        Box::new(AnySymbolParser),
+        Box::new(any_symbol()),
     ])
 }
 
@@ -50,74 +49,48 @@ fn eol() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
 }
 
 fn crlf() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    "\r\n".to_specific_parser().to_token(TokenType::Eol)
+    specific("\r\n").to_token(TokenType::Eol)
 }
 
 fn greater_or_equal() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    ">=".to_specific_parser().to_token(TokenType::GreaterEquals)
+    specific(">=").to_token(TokenType::GreaterEquals)
 }
 
 fn less_or_equal() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    "<=".to_specific_parser().to_token(TokenType::LessEquals)
+    specific("<=").to_token(TokenType::LessEquals)
 }
 
 fn not_equal() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    "<>".to_specific_parser().to_token(TokenType::NotEquals)
+    specific("<>").to_token(TokenType::NotEquals)
 }
 
 fn cr() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    specific(TokenType::Eol, '\r')
+    one('\r').to_token(TokenType::Eol)
 }
 
 fn lf() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    specific(TokenType::Eol, '\n')
+    one('\n').to_token(TokenType::Eol)
 }
 
 fn whitespace() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    many(TokenType::Whitespace, |ch| *ch == ' ' || *ch == '\t')
+    many(|ch| *ch == ' ' || *ch == '\t').to_token(TokenType::Whitespace)
 }
 
 fn digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    many(TokenType::Digits, char::is_ascii_digit)
+    many(char::is_ascii_digit).to_token(TokenType::Digits)
 }
 
 fn keyword() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     // using is_ascii_alphanumeric to read e.g. Sub1 and determine it is not a keyword
     // TODO can be done in a different way e.g. read alphabetic and then ensure it's followed by something other than alphanumeric
-    many(TokenType::Keyword, char::is_ascii_alphanumeric)
-        .filter(|token| Keyword::try_from(token.as_str()).is_ok())
+    many(char::is_ascii_alphanumeric)
+        .filter(|text| Keyword::try_from(text.as_str()).is_ok())
+        .to_token(TokenType::Keyword)
 }
 
 fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     // TODO leading-remaining
-    many(TokenType::Identifier, |ch| {
-        *ch == '_' || ch.is_ascii_alphanumeric()
-    })
-}
-
-fn many<F>(
-    token_type: TokenType,
-    predicate: F,
-) -> impl Parser<RcStringView, Output = Token, Error = ParseError>
-where
-    F: Fn(&char) -> bool,
-{
-    char_parsers::filter_or_err(
-        predicate,
-        ParseError::SyntaxError(format!("Expected: {}", token_type)),
-    )
-    .many_to_str()
-    .to_token(token_type)
-}
-
-fn specific(
-    token_type: TokenType,
-    needle: char,
-) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    needle
-        .to_specific_parser()
-        .one_to_str()
-        .to_token(token_type)
+    many(|ch| *ch == '_' || ch.is_ascii_alphanumeric()).to_token(TokenType::Identifier)
 }
 
 fn oct_digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
@@ -137,17 +110,9 @@ where
     F: Fn(&char) -> bool,
 {
     let prefix = format!("&{}", radix);
-    prefix
-        .to_specific_parser()
+    specific_owned(prefix)
         .and(
-            '-'.to_specific_parser().one_to_str().to_option().and(
-                char_parsers::filter_or_err(
-                    predicate,
-                    ParseError::SyntaxError(format!("Expected: {}", token_type)),
-                )
-                .many_to_str(),
-                StringCombiner,
-            ),
+            one('-').to_option().and(many(predicate), StringCombiner),
             StringCombiner,
         )
         .to_token(token_type)

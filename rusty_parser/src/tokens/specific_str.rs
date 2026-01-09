@@ -2,18 +2,15 @@ use rusty_pc::{ParseResult, Parser};
 
 use crate::ParseError;
 use crate::input::RcStringView;
-use crate::tokens::to_specific_parser::ToSpecificParser;
 
 /// Wraps an [str] so that it can be used as a specific parser.
-pub struct SpecificStr<'a> {
+pub(super) struct SpecificStr<'a> {
     needle: &'a str,
 }
 
-impl<'a> ToSpecificParser for &'a str {
-    type Parser = SpecificStr<'a>;
-
-    fn to_specific_parser(self) -> Self::Parser {
-        SpecificStr { needle: self }
+impl<'a> SpecificStr<'a> {
+    pub fn new(needle: &'a str) -> Self {
+        Self { needle }
     }
 }
 
@@ -27,15 +24,13 @@ impl<'a> Parser<RcStringView> for SpecificStr<'a> {
 }
 
 /// Wraps a [String] so that it can be used as a specific parser.
-pub struct SpecificString {
+pub(super) struct SpecificString {
     needle: String,
 }
 
-impl ToSpecificParser for String {
-    type Parser = SpecificString;
-
-    fn to_specific_parser(self) -> Self::Parser {
-        SpecificString { needle: self }
+impl SpecificString {
+    pub fn new(needle: String) -> Self {
+        Self { needle }
     }
 }
 

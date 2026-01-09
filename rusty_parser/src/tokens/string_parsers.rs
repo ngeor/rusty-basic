@@ -1,28 +1,34 @@
-use rusty_pc::{Many, Map, Parser};
+use rusty_pc::{Filter, Many, Map, Parser};
 
 use crate::ParseError;
+use crate::input::RcStringView;
+use crate::tokens::any_char::AnyChar;
+use crate::tokens::specific_str::{SpecificStr, SpecificString};
 
-pub trait CharToStringParser<I> {
-    /// Reads as many chars possible from the underlying parser and returns them as a string.
-    fn many_to_str(self) -> impl Parser<I, Output = String, Error = ParseError>;
-
-    /// Reads one char possible from the underlying parser and converts it into a string.
-    fn one_to_str(self) -> impl Parser<I, Output = String, Error = ParseError>;
+pub(super) fn many<F>(
+    predicate: F,
+) -> impl Parser<RcStringView, Output = String, Error = ParseError>
+where
+    F: Fn(&char) -> bool,
+{
+    AnyChar.filter(predicate).many(String::from, |mut s, ch| {
+        s.push(ch);
+        s
+    })
 }
 
-impl<I, P> CharToStringParser<I> for P
-where
-    I: Clone,
-    P: Parser<I, Output = char, Error = ParseError>,
-{
-    fn many_to_str(self) -> impl Parser<I, Output = String, Error = ParseError> {
-        self.many(String::from, |mut s: String, c| {
-            s.push(c);
-            s
-        })
-    }
+pub(super) fn one(ch: char) -> impl Parser<RcStringView, Output = String, Error = ParseError> {
+    AnyChar.filter(move |c| *c == ch).map(String::from)
+}
 
-    fn one_to_str(self) -> impl Parser<I, Output = String, Error = ParseError> {
-        self.map(String::from)
-    }
+pub(super) fn specific(
+    needle: &str,
+) -> impl Parser<RcStringView, Output = String, Error = ParseError> {
+    SpecificStr::new(needle)
+}
+
+pub(super) fn specific_owned(
+    needle: String,
+) -> impl Parser<RcStringView, Output = String, Error = ParseError> {
+    SpecificString::new(needle)
 }

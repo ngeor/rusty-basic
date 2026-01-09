@@ -1,3 +1,4 @@
+mod any_symbol;
 mod any_token_of;
 mod char_parsers;
 mod recognizers_impl;

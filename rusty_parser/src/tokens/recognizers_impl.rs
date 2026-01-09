@@ -3,6 +3,7 @@ use rusty_pc::*;
 use crate::Keyword;
 use crate::error::ParseError;
 use crate::input::RcStringView;
+use crate::tokens::any_symbol::AnySymbolParser;
 use crate::tokens::string_parsers::CharToStringParser;
 use crate::tokens::to_specific_parser::ToSpecificParser;
 use crate::tokens::{TokenType, char_parsers};
@@ -35,7 +36,7 @@ pub fn any_token() -> impl Parser<RcStringView, Output = Token, Error = ParseErr
         // NotEquals,
         Box::new(not_equal()),
         // Symbol must be last,
-        Box::new(any_symbol()),
+        Box::new(AnySymbolParser),
     ])
 }
 
@@ -117,12 +118,6 @@ fn specific(
         .to_specific_parser()
         .one_to_str()
         .to_token(token_type)
-}
-
-fn any_symbol() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    char_parsers::AnyChar
-        .one_to_str()
-        .to_token(TokenType::Symbol)
 }
 
 fn oct_digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {

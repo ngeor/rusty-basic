@@ -112,9 +112,13 @@ impl RcStringView {
     }
 
     pub fn inc_position(self) -> Self {
+        self.inc_position_by(1)
+    }
+
+    pub fn inc_position_by(self, amount: usize) -> Self {
         Self {
-            buffer: self.buffer,
-            index: self.index + 1,
+            index: self.index + amount,
+            ..self
         }
     }
 

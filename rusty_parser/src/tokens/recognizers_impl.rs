@@ -4,6 +4,7 @@ use crate::Keyword;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::tokens::string_parsers::CharToStringParser;
+use crate::tokens::to_specific_parser::ToSpecificParser;
 use crate::tokens::{TokenType, char_parsers};
 
 // TODO make identifier recognizer without dot
@@ -89,27 +90,19 @@ fn eol() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
 }
 
 fn crlf() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    char_parsers::specific('\r')
-        .concat(char_parsers::specific('\n'))
-        .to_token(TokenType::Eol)
+    "\r\n".to_specific_parser().to_token(TokenType::Eol)
 }
 
 fn greater_or_equal() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    char_parsers::specific('>')
-        .concat(char_parsers::specific('='))
-        .to_token(TokenType::GreaterEquals)
+    ">=".to_specific_parser().to_token(TokenType::GreaterEquals)
 }
 
 fn less_or_equal() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    char_parsers::specific('<')
-        .concat(char_parsers::specific('='))
-        .to_token(TokenType::LessEquals)
+    "<=".to_specific_parser().to_token(TokenType::LessEquals)
 }
 
 fn not_equal() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    char_parsers::specific('<')
-        .concat(char_parsers::specific('>'))
-        .to_token(TokenType::NotEquals)
+    "<>".to_specific_parser().to_token(TokenType::NotEquals)
 }
 
 fn cr() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
@@ -161,7 +154,8 @@ fn specific(
     token_type: TokenType,
     needle: char,
 ) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    char_parsers::specific(needle)
+    needle
+        .to_specific_parser()
         .one_to_str()
         .to_token(token_type)
 }
@@ -188,10 +182,11 @@ fn oct_or_hex_digits<F>(
 where
     F: Fn(&char) -> bool,
 {
-    char_parsers::specific('&')
-        .concat(char_parsers::specific(radix))
+    let prefix = format!("&{}", radix);
+    prefix
+        .to_specific_parser()
         .and(
-            char_parsers::specific('-').one_to_str().to_option().and(
+            '-'.to_specific_parser().one_to_str().to_option().and(
                 char_parsers::filter_or_err(
                     predicate,
                     ParseError::SyntaxError(format!("Expected: {}", token_type)),

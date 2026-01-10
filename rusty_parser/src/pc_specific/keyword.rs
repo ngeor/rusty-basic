@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use rusty_pc::*;
 
 use crate::input::RcStringView;
-use crate::tokens::{TokenMatcher, TokenType, any_token_of, dollar_sign, whitespace};
+use crate::tokens::{TokenType, whitespace};
 use crate::{Keyword, ParseError};
 
 // TODO review usages of TokenType::Keyword
@@ -44,20 +44,6 @@ pub fn keyword_pair(
     seq3(keyword(first), whitespace(), keyword(second), |_, _, _| ())
 }
 
-pub fn any_keyword_with_dollar_sign()
--> impl Parser<RcStringView, Output = (Token, Token), Error = ParseError> {
-    any_token_of!(TokenType::Keyword).and_tuple(dollar_sign())
-}
-
-pub fn keyword_dollar_sign(
-    k: Keyword,
-) -> impl Parser<RcStringView, Output = (Token, Token), Error = ParseError> {
-    any_keyword_with_dollar_sign().filter_or_err(
-        move |(token, _)| k.matches_token(token),
-        ParseError::SyntaxError(format!("Expected: {}", k)),
-    )
-}
-
 /// Parses the specific keyword, ensuring it's not followed by a dollar sign.
 /// See [keyword].
 pub struct KeywordParser<P> {
@@ -90,16 +76,10 @@ where
     fn parse(&self, input: I) -> ParseResult<I, Keyword, ParseError> {
         let original_input = input.clone();
         match self.parser.parse(input) {
-            Ok((input, token)) => {
-                match self.accept_token(&token) {
-                    Some(keyword) => {
-                        // found the keyword, but make sure it's not followed by a dollar sign
-                        self.ensure_no_trailing_dollar_sign(input.clone(), original_input)?;
-                        Ok((input, keyword))
-                    }
-                    None => self.to_syntax_err(original_input),
-                }
-            }
+            Ok((input, token)) => match self.accept_token(&token) {
+                Some(keyword) => Ok((input, keyword)),
+                None => self.to_syntax_err(original_input),
+            },
             Err((false, _, _)) => self.to_syntax_err(original_input),
             Err(err) => Err(err),
         }
@@ -144,31 +124,5 @@ impl<P> KeywordParser<P> {
         }
 
         Err((false, input, ParseError::SyntaxError(msg)))
-    }
-
-    // TODO move this check into `any_token`
-    fn ensure_no_trailing_dollar_sign<I, C>(
-        &self,
-        input: I,
-        original_input: I,
-    ) -> ParseResult<I, (), ParseError>
-    where
-        I: Clone,
-        P: Parser<I, C, Output = Token, Error = ParseError>,
-    {
-        let input_after_keyword = input.clone();
-
-        match self.parser.parse(input) {
-            Ok((_, token_after_keyword)) => {
-                if '$'.matches_token(&token_after_keyword) {
-                    // undo everything, let another parser pick up `NAME$`, which is a valid variable name, despite `NAME` being also a keyword
-                    self.to_syntax_err(original_input)
-                } else {
-                    Ok((input_after_keyword, ()))
-                }
-            }
-            Err((false, _, _)) => Ok((input_after_keyword, ())),
-            Err(err) => Err(err),
-        }
     }
 }

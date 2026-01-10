@@ -4,6 +4,7 @@ use crate::Keyword;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::tokens::TokenType;
+use crate::tokens::any_char::AnyCharOrEof;
 use crate::tokens::any_symbol::any_symbol;
 use crate::tokens::string_parsers::*;
 
@@ -81,11 +82,32 @@ fn digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
 }
 
 fn keyword() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    // using is_ascii_alphanumeric to read e.g. Sub1 and determine it is not a keyword
-    // TODO can be done in a different way e.g. read alphabetic and then ensure it's followed by something other than alphanumeric
-    many(char::is_ascii_alphanumeric)
+    many(char::is_ascii_alphabetic)
         .filter(|text| Keyword::try_from(text.as_str()).is_ok())
         .to_token(TokenType::Keyword)
+        .and_keep_left(ensure_no_illegal_char_after_keyword())
+}
+
+fn ensure_no_illegal_char_after_keyword() -> impl Parser<RcStringView, Error = ParseError> {
+    PeekParser::new(AnyCharOrEof.filter(is_allowed_char_after_keyword))
+}
+
+/// Checks if the given character is illegal after a keyword,
+/// which would cause the keyword to be interpreted as an
+/// identifier instead.
+///
+/// Examples of valid identifiers that begin with a keyword:
+///
+/// - `DIM DIM.`
+/// - `DIM DIM$`
+/// - `DIM DIM12`
+///
+/// Note that the dollar sign is the only type qualifier for
+/// which this is allowed to happen.
+///
+/// The parameter is '\0' if we encountered EOF, which is allowed.
+fn is_allowed_char_after_keyword(char_or_eof: &char) -> bool {
+    *char_or_eof != '.' && *char_or_eof != '$' && !char_or_eof.is_ascii_digit()
 }
 
 fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
@@ -134,5 +156,43 @@ where
         token_type: TokenType,
     ) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
         self.map(move |text| Token::new(token_type.get_index(), text))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::input::create_string_tokenizer;
+
+    fn parse_token(input: &str) -> Token {
+        any_token()
+            .parse(create_string_tokenizer(input.to_owned()))
+            .ok()
+            .unwrap()
+            .1
+    }
+
+    #[test]
+    fn test_keyword_eof() {
+        let input = "DIM";
+        let token = parse_token(input);
+        assert_eq!(token.kind(), TokenType::Keyword.get_index());
+        assert_eq!(token.as_str(), "DIM");
+    }
+
+    #[test]
+    fn test_keyword_spaces() {
+        let input = "DIM ";
+        let token = parse_token(input);
+        assert_eq!(token.kind(), TokenType::Keyword.get_index());
+        assert_eq!(token.as_str(), "DIM");
+    }
+
+    #[test]
+    fn test_keyword_dollar_sign() {
+        let input = "STRING$";
+        let token = parse_token(input);
+        assert_eq!(token.kind(), TokenType::Identifier.get_index());
+        assert_eq!(token.as_str(), "STRING");
     }
 }

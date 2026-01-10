@@ -20,3 +20,22 @@ impl Parser<RcStringView> for AnyChar {
         }
     }
 }
+
+/// Parses any char.
+/// It never fails. On EOF, it returns the special value `\0`,
+/// without incrementing the input's position any further.
+pub(super) struct AnyCharOrEof;
+
+impl Parser<RcStringView> for AnyCharOrEof {
+    type Output = char;
+    type Error = ParseError;
+
+    fn parse(&self, input: RcStringView) -> ParseResult<RcStringView, Self::Output, ParseError> {
+        if input.is_eof() {
+            Ok((input, char::MIN))
+        } else {
+            let ch = input.char();
+            Ok((input.inc_position(), ch))
+        }
+    }
+}

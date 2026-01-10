@@ -3,7 +3,6 @@ use rusty_pc::*;
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::pc_specific::*;
 use crate::tokens::{TokenMatcher, TokenType, any_symbol_of, any_token_of, dot, peek_token};
 use crate::{AsBareName, BareName, ExpressionType, HasExpressionType, ToBareName, TypeQualifier};
 
@@ -239,11 +238,10 @@ pub fn bare_name_with_dots() -> impl Parser<RcStringView, Output = BareName, Err
 /// Usage: label declaration (but also used internally in the module).
 pub fn identifier_with_dots() -> impl Parser<RcStringView, Output = TokenList, Error = ParseError> {
     OrParser::new(vec![
-        // to allow keywords, there must be at least one dot
         Box::new(
             seq2(
-                identifier_or_keyword().and(dot(), |left, right| vec![left, right]),
-                identifier_or_keyword_or_dot().zero_or_more(),
+                identifier_no_len_check().and(dot(), |left, right| vec![left, right]),
+                identifier_or_dot().zero_or_more(),
                 |mut left_list, mut right_list| {
                     left_list.append(&mut right_list);
                     left_list
@@ -256,11 +254,13 @@ pub fn identifier_with_dots() -> impl Parser<RcStringView, Output = TokenList, E
     ])
 }
 
-fn identifier_or_keyword() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+// TODO change identifier to include dots, then we don't need to check for Keyword here
+fn identifier_no_len_check() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     any_token_of!(TokenType::Identifier, TokenType::Keyword)
 }
 
-fn identifier_or_keyword_or_dot() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+// TODO change identifier to include dots, then we don't need to check for Keyword here
+fn identifier_or_dot() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     any_token_of!(TokenType::Identifier, TokenType::Keyword ; symbols = '.')
 }
 
@@ -287,13 +287,7 @@ pub fn name_with_dots() -> impl Parser<RcStringView, Output = Name, Error = Pars
 
 pub fn name_with_dots_as_tokens()
 -> impl Parser<RcStringView, Output = NameAsTokens, Error = ParseError> {
-    OrParser::new(vec![
-        Box::new(identifier_with_dots().and_opt_tuple(type_qualifier())),
-        Box::new(
-            ensure_no_trailing_dot_or_qualifier(any_keyword_with_dollar_sign())
-                .map(|(keyword_token, dollar_token)| (vec![keyword_token], Some(dollar_token))),
-        ),
-    ])
+    identifier_with_dots().and_opt_tuple(type_qualifier())
 }
 
 /// Parses a type qualifier character.

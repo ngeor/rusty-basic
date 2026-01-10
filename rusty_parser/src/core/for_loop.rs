@@ -2,7 +2,7 @@ use rusty_pc::*;
 
 use crate::core::expression::{expr_pos_ws_p, property, ws_expr_pos_p};
 use crate::core::opt_second_expression::opt_second_expression_after_keyword;
-use crate::core::statements::ZeroOrMoreStatements;
+use crate::core::statements::zero_or_more_statements;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
@@ -16,7 +16,7 @@ use crate::*;
 pub fn for_loop_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq4(
         parse_for_step_p(),
-        ZeroOrMoreStatements::new(Keyword::Next),
+        zero_or_more_statements!(Keyword::Next),
         keyword(Keyword::Next).or_fail(ParseError::ForWithoutNext),
         next_counter_p().to_option(),
         |(variable_name, lower_bound, upper_bound, opt_step), statements, _, opt_next_name_pos| {

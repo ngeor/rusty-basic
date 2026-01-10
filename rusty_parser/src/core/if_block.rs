@@ -2,9 +2,10 @@ use rusty_pc::*;
 
 use crate::core::comment::comment_p;
 use crate::core::expression::ws_expr_pos_ws_p;
-use crate::core::statements::{
-    ZeroOrMoreStatements, single_line_non_comment_statements_p, single_line_statements_p
+use crate::core::single_line_statements::{
+    single_line_non_comment_statements_p, single_line_statements_p
 };
+use crate::core::statements::zero_or_more_statements;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::whitespace;
@@ -69,7 +70,7 @@ fn multi_line_if_p() -> impl Parser<
     Error = ParseError,
 > {
     seq4(
-        ZeroOrMoreStatements::new_multi(vec![Keyword::End, Keyword::Else, Keyword::ElseIf]),
+        zero_or_more_statements!(Keyword::End, Keyword::Else, Keyword::ElseIf),
         else_if_block_p().zero_or_more(),
         else_block_p().to_option(),
         keyword_pair(Keyword::End, Keyword::If),
@@ -89,7 +90,7 @@ fn else_if_expr_then_p() -> impl Parser<RcStringView, Output = ExpressionPos, Er
 fn else_if_block_p() -> impl Parser<RcStringView, Output = ConditionalBlock, Error = ParseError> {
     seq2(
         else_if_expr_then_p(),
-        ZeroOrMoreStatements::new_multi(vec![Keyword::End, Keyword::Else, Keyword::ElseIf]),
+        zero_or_more_statements!(Keyword::End, Keyword::Else, Keyword::ElseIf),
         |condition, statements| ConditionalBlock {
             condition,
             statements,
@@ -98,7 +99,7 @@ fn else_if_block_p() -> impl Parser<RcStringView, Output = ConditionalBlock, Err
 }
 
 fn else_block_p() -> impl Parser<RcStringView, Output = Statements, Error = ParseError> {
-    keyword(Keyword::Else).and_keep_right(ZeroOrMoreStatements::new(Keyword::End))
+    keyword(Keyword::Else).and_keep_right(zero_or_more_statements!(Keyword::End))
 }
 
 #[cfg(test)]

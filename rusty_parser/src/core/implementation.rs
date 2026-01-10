@@ -1,7 +1,7 @@
 use rusty_pc::*;
 
 use crate::core::declaration::{function_declaration_p, sub_declaration_p};
-use crate::core::statements::ZeroOrMoreStatements;
+use crate::core::statements::zero_or_more_statements;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::whitespace;
@@ -19,7 +19,7 @@ fn function_implementation_p()
 -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParseError> {
     seq3(
         static_declaration_p(function_declaration_p()),
-        ZeroOrMoreStatements::new(Keyword::End),
+        zero_or_more_statements!(Keyword::End),
         keyword_pair(Keyword::End, Keyword::Function),
         |((name, params), is_static), body, _| {
             GlobalStatement::FunctionImplementation(FunctionImplementation {
@@ -36,7 +36,7 @@ fn sub_implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement,
 {
     seq3(
         static_declaration_p(sub_declaration_p()),
-        ZeroOrMoreStatements::new(Keyword::End),
+        zero_or_more_statements!(Keyword::End),
         keyword_pair(Keyword::End, Keyword::Sub),
         |((name, params), is_static), body, _| {
             GlobalStatement::SubImplementation(SubImplementation {

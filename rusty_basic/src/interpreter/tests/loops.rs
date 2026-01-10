@@ -244,3 +244,39 @@ fn do_loop_while_condition_enter_loop_if_false() {
     "#;
     assert_prints!(input, "5");
 }
+
+#[test]
+fn do_with_comment_after_do_loop_while() {
+    let input = r#"
+    A = 5
+    DO ' just a comment here
+        PRINT A
+        A = A + 1
+    LOOP WHILE A < 3
+    "#;
+    assert_prints!(input, "5");
+}
+
+#[test]
+fn do_single_line() {
+    let input = "A = 1: DO: PRINT A: A = A + 1: LOOP WHILE A <= 3";
+    assert_prints!(input, "1", "2", "3");
+}
+
+#[test]
+fn do_single_line_with_comment_and_loop_on_next_line() {
+    let input = r#"
+    A = 1: DO: PRINT A: A = A + 1 ' just a comment
+    LOOP WHILE A <= 3
+    "#;
+    assert_prints!(input, "1", "2", "3");
+}
+
+#[test]
+fn do_single_line_with_if_and_comment_and_loop_on_next_line() {
+    let input = r#"
+    A = 1: DO: PRINT A: A = A + 1: IF A = 2 THEN PRINT "two" ' just a comment
+    LOOP WHILE A <= 3
+    "#;
+    assert_prints!(input, "1", "two", "2", "3");
+}

@@ -2,7 +2,7 @@ use rusty_pc::*;
 
 use crate::core::expression::ws_expr_pos_p;
 use crate::core::statement_separator::comments_and_whitespace_p;
-use crate::core::statements::ZeroOrMoreStatements;
+use crate::core::statements::zero_or_more_statements;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::whitespace;
@@ -94,7 +94,7 @@ fn continue_after_case() -> impl Parser<RcStringView, Output = CaseBlock, Error 
                 Box::new(keyword(Keyword::Else).map(|_| vec![])),
                 Box::new(case_expression_list()),
             ]),
-            ZeroOrMoreStatements::new_multi(vec![Keyword::Case, Keyword::End]),
+            zero_or_more_statements!(Keyword::Case, Keyword::End),
             CaseBlock::new,
         ),
     )

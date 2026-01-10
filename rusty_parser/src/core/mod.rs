@@ -30,6 +30,7 @@ mod param_name;
 mod print;
 mod resume;
 mod select_case;
+mod single_line_statements;
 mod statement;
 mod statement_separator;
 mod statements;

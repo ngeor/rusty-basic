@@ -2,7 +2,7 @@ use rusty_pc::*;
 
 use crate::core::expression::ws_expr_pos_p;
 use crate::core::statement::ConditionalBlock;
-use crate::core::statements::ZeroOrMoreStatements;
+use crate::core::statements::zero_or_more_statements;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
@@ -12,7 +12,7 @@ pub fn while_wend_p() -> impl Parser<RcStringView, Output = Statement, Error = P
     seq4(
         keyword(Keyword::While),
         ws_expr_pos_p().or_expected("expression after WHILE"),
-        ZeroOrMoreStatements::new_with_custom_error(Keyword::Wend, ParseError::WhileWithoutWend),
+        zero_or_more_statements!(Keyword::Wend, ParseError::WhileWithoutWend),
         keyword(Keyword::Wend).or_fail(ParseError::WhileWithoutWend),
         |_, condition, statements, _| {
             Statement::While(ConditionalBlock {
@@ -159,7 +159,7 @@ mod tests {
         WHILE X > 0
             PRINT X WEND
         "#;
-        assert_parser_err!(input, ParseError::expected("statement separator"), 3, 20);
+        assert_parser_err!(input, ParseError::expected("end-of-statement"), 3, 20);
     }
 
     #[test]

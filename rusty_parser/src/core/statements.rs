@@ -1,195 +1,141 @@
+use rusty_common::Positioned;
+use rusty_pc::boxed::boxed;
 use rusty_pc::*;
 
-use crate::core::statement::{
-    single_line_non_comment_statement_p, single_line_statement_p, statement_p
-};
+use crate::core::statement::statement_p;
 use crate::core::statement_separator::{comment_separator, common_separator};
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{TokenMatcher, colon_ws, peek_token, whitespace};
 use crate::*;
 
-pub fn single_line_non_comment_statements_p()
--> impl Parser<RcStringView, Output = Statements, Error = ParseError> {
-    whitespace().and_keep_right(delimited_by_colon(
-        single_line_non_comment_statement_p().with_pos(),
-    ))
+macro_rules! zero_or_more_statements {
+    ($exit:expr, ParseError::$err:ident) => {
+        $crate::core::statements::zero_or_more_statements_p([$exit], Some(ParseError::$err))
+    };
+    ($($exit:expr),+) => {
+        $crate::core::statements::zero_or_more_statements_p( [$($exit),+], None)
+    };
 }
 
-pub fn single_line_statements_p()
--> impl Parser<RcStringView, Output = Statements, Error = ParseError> {
-    whitespace().and_keep_right(delimited_by_colon(single_line_statement_p().with_pos()))
+pub(crate) use zero_or_more_statements;
+
+/// Parses zero or more statements after the beginning of a statement that expects a block,
+/// e.g. DO ... LOOP, SUB ... END SUB, etc.
+///
+/// The given keywords determine when parsing should stop (without parsing the keywords themselves).
+/// e.g. in case of a FOR, stop parsing when NEXT is detected.
+///
+/// The custom error can be used to specify a custom error when the exit keyword is not found.
+pub fn zero_or_more_statements_p(
+    exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
+    custom_err: Option<ParseError>,
+) -> impl Parser<RcStringView, Output = Statements, Error = ParseError> {
+    one_statement_p(exit_keywords, custom_err)
+        .zero_or_more()
+        // Initialize the context before the loop of "zero_or_more" starts.
+        // The context indicates if the previous statement was a comment.
+        .init_context(false)
 }
 
-fn delimited_by_colon<P: Parser<RcStringView, Error = ParseError>>(
-    parser: P,
-) -> impl Parser<RcStringView, Output = Vec<P::Output>, Error = ParseError> {
-    delimited_by(
-        parser,
-        colon_ws(),
-        ParseError::syntax_error("Error: trailing colon"),
+/// Either parses one statement or detects the exit keyword and stops parsing.
+fn one_statement_p(
+    exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
+    custom_err: Option<ParseError>,
+) -> impl Parser<RcStringView, bool, Output = StatementPos, Error = ParseError> + SetContext<bool> {
+    one_statement_or_exit_keyword_p(exit_keywords, custom_err).flat_map(
+        |i, statement_or_exit_keyword| match statement_or_exit_keyword {
+            // we parsed a statement, return it
+            StatementOrExitKeyword::Statement(s) => Ok((i, s)),
+            // we detected an exit keyword, stop parsing
+            StatementOrExitKeyword::ExitKeyword(_keyword) => default_parse_error(i),
+        },
     )
 }
 
-pub struct ZeroOrMoreStatements(Vec<Keyword>, Option<ParseError>);
+/// Parses either one statement or the exit keyword (peeking).
+/// Either one must be preceded by the appropriate separator,
+/// which depending on the context (previously parsed statement)
+/// is either the comment separator (EOL) or the regular separator (EOL or colon).
+fn one_statement_or_exit_keyword_p(
+    exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
+    custom_err: Option<ParseError>,
+) -> impl Parser<RcStringView, bool, Output = StatementOrExitKeyword, Error = ParseError>
++ SetContext<bool> {
+    ThenWithLeftParser::new(
+        // must parse the separator
+        ctx_demand_separator_p(),
+        // must parse the statement or peek the exit keyword
+        find_exit_keyword_or_demand_statement_p(exit_keywords, custom_err),
+        // populate the context of the separator for the next iteration
+        is_comment,
+        // keep only the statement or the peeked exit keyword
+        KeepRightCombiner,
+    )
+}
 
-impl ZeroOrMoreStatements {
-    pub fn new(exit_source: Keyword) -> Self {
-        Self(vec![exit_source], None)
-    }
-
-    pub fn new_multi(exit_source: Vec<Keyword>) -> Self {
-        Self(exit_source, None)
-    }
-
-    pub fn new_with_custom_error(exit_source: Keyword, err: ParseError) -> Self {
-        Self(vec![exit_source], Some(err))
-    }
-
-    fn found_exit(&self, tokenizer: RcStringView) -> ParseResult<RcStringView, bool, ParseError> {
-        peek_token()
-            .flat_map_ok_none(
-                |input, token| {
-                    for k in &self.0 {
-                        if k.matches_token(&token) {
-                            return Ok((input, true));
-                        }
-                    }
-                    Ok((input, false))
-                },
-                |input| {
-                    // EOF is an error here as we're looking for the exit source
-                    match self.1.clone() {
-                        Some(custom_err) => Err((true, input, custom_err)),
-                        None => Err((
-                            true,
-                            input,
-                            ParseError::SyntaxError(keyword_syntax_error(&self.0)),
-                        )),
-                    }
-                },
-            )
-            .parse(tokenizer)
+fn is_comment(statement_or_exit_keyword: &StatementOrExitKeyword) -> bool {
+    match statement_or_exit_keyword {
+        StatementOrExitKeyword::Statement(Positioned {
+            element: Statement::Comment(_),
+            ..
+        }) => true,
+        _ => false,
     }
 }
 
-impl Parser<RcStringView> for ZeroOrMoreStatements {
-    type Output = Statements;
-    type Error = ParseError;
-    fn parse(
-        &self,
-        tokenizer: RcStringView,
-    ) -> ParseResult<RcStringView, Self::Output, ParseError> {
-        // must start with a separator (e.g. after a WHILE condition)
-        let mut tokenizer = match common_separator().parse(tokenizer) {
-            Ok((tokenizer, _)) => tokenizer,
-            Err((false, i, _)) => {
-                return Err((true, i, ParseError::expected("end-of-statement")));
-            }
-            Err(err) => {
-                return Err(err);
-            }
-        };
-
-        let mut result: Statements = vec![];
-        // TODO rewrite the numeric state or add constants
-        let mut state = 0;
-        loop {
-            // while not found exit
-            let found_exit = match self.found_exit(tokenizer) {
-                Ok((remaining, x)) => {
-                    tokenizer = remaining;
-                    x
-                }
-                Err((false, remaining, _)) => {
-                    tokenizer = remaining;
-                    false
-                }
-                Err(err) => return Err(err),
-            };
-            if found_exit {
-                break;
-            }
-
-            if state == 0 || state == 2 {
-                // looking for statement
-                match statement_p().with_pos().parse(tokenizer) {
-                    Ok((remaining, statement_pos)) => {
-                        tokenizer = remaining;
-                        result.push(statement_pos);
-                        state = 1;
-                    }
-                    Err((false, remaining, _)) => {
-                        return Err((
-                            true,
-                            remaining,
-                            match &self.1 {
-                                Some(custom_error) => custom_error.clone(),
-                                _ => ParseError::expected("statement"),
-                            },
-                        ));
-                    }
-                    Err(err) => {
-                        return Err(err);
-                    }
-                }
-            } else if state == 1 {
-                // looking for separator after statement
-                let found_separator =
-                    if let Some(Statement::Comment(_)) = result.last().map(|x| &x.element) {
-                        // last element was comment
-                        match comment_separator().parse(tokenizer) {
-                            Ok((remaining, _)) => {
-                                tokenizer = remaining;
-                                true
-                            }
-                            Err((false, remaining, _)) => {
-                                tokenizer = remaining;
-                                false
-                            }
-                            Err(err) => {
-                                return Err(err);
-                            }
-                        }
-                    } else {
-                        match common_separator().parse(tokenizer) {
-                            Ok((remaining, _)) => {
-                                tokenizer = remaining;
-                                true
-                            }
-                            Err((false, remaining, _)) => {
-                                tokenizer = remaining;
-                                false
-                            }
-                            Err(err) => {
-                                return Err(err);
-                            }
-                        }
-                    };
-                if found_separator {
-                    state = 2;
-                } else {
-                    return Err((true, tokenizer, ParseError::expected("statement separator")));
-                }
+/// A statement separator that is aware if the previously parsed statement
+/// was a comment or not.
+fn ctx_demand_separator_p()
+-> impl Parser<RcStringView, bool, Output = (), Error = ParseError> + SetContext<bool> {
+    // TODO consolidate the two separate separator functions, they are almost never used elsewhere
+    ctx_parser()
+        .map(|last_statement_was_comment| {
+            if last_statement_was_comment {
+                boxed(comment_separator()).no_context()
             } else {
-                panic!("Cannot happen")
+                boxed(common_separator()).no_context()
             }
-        }
-        Ok((tokenizer, result))
+        })
+        .flatten()
+        .or_fail(ParseError::expected("end-of-statement"))
+}
+
+fn find_exit_keyword_or_demand_statement_p(
+    exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
+    custom_err: Option<ParseError>,
+) -> impl Parser<RcStringView, Output = StatementOrExitKeyword, Error = ParseError> {
+    find_exit_keyword_p(exit_keywords, custom_err).or(demand_statement_p())
+}
+
+fn find_exit_keyword_p(
+    exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
+    custom_err: Option<ParseError>,
+) -> impl Parser<RcStringView, Output = StatementOrExitKeyword, Error = ParseError> {
+    // the first parser will return:
+    // Ok if it finds the keyword (peeking)
+    // Err(false) if it finds something else
+    // Err(true) if it finds EOF
+    let p = PeekParser::new(keyword_p(exit_keywords, true))
+        // Ok(None) if it finds the keyword
+        .map(StatementOrExitKeyword::ExitKeyword);
+
+    match custom_err {
+        Some(err) => boxed(p.map_fatal_err(move |_| err.clone())),
+        None => boxed(p),
     }
 }
 
-fn keyword_syntax_error<K>(keywords: K) -> String
-where
-    K: AsRef<[Keyword]>,
-{
-    let mut s = String::new();
-    for keyword in keywords.as_ref() {
-        if !s.is_empty() {
-            s.push_str(" or ");
-        }
-        s.push_str(&keyword.to_string());
-    }
-    format!("Expected: {}", s)
+fn demand_statement_p()
+-> impl Parser<RcStringView, Output = StatementOrExitKeyword, Error = ParseError> {
+    // needs to be lazy otherwise stackoverflow
+    lazy(statement_p)
+        .with_pos()
+        .map(StatementOrExitKeyword::Statement)
+        .or_fail(ParseError::expected("statement"))
+}
+
+enum StatementOrExitKeyword {
+    Statement(StatementPos),
+    ExitKeyword(Keyword),
 }

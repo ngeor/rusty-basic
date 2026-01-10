@@ -1,7 +1,7 @@
 use rusty_pc::*;
 
 use crate::core::expression::ws_expr_pos_p;
-use crate::core::statements::ZeroOrMoreStatements;
+use crate::core::statements::zero_or_more_statements;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::whitespace;
@@ -21,7 +21,7 @@ fn do_condition_top() -> impl Parser<RcStringView, Output = DoLoop, Error = Pars
     seq4(
         whitespace().and_tuple(keyword_of!(Keyword::Until, Keyword::While)),
         ws_expr_pos_p().or_expected("expression"),
-        ZeroOrMoreStatements::new(Keyword::Loop),
+        zero_or_more_statements!(Keyword::Loop),
         keyword(Keyword::Loop),
         |(_, k), condition, statements, _| DoLoop {
             condition,
@@ -38,7 +38,7 @@ fn do_condition_top() -> impl Parser<RcStringView, Output = DoLoop, Error = Pars
 
 fn do_condition_bottom() -> impl Parser<RcStringView, Output = DoLoop, Error = ParseError> {
     seq5(
-        ZeroOrMoreStatements::new(Keyword::Loop),
+        zero_or_more_statements!(Keyword::Loop),
         keyword(Keyword::Loop),
         whitespace(),
         keyword_of!(Keyword::Until, Keyword::While),

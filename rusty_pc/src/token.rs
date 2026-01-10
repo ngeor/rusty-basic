@@ -22,6 +22,10 @@ impl Token {
         self.kind
     }
 
+    pub fn text(self) -> String {
+        self.text
+    }
+
     pub fn as_str(&self) -> &str {
         &self.text
     }

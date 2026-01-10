@@ -241,6 +241,15 @@ impl<L, R> Combiner<L, R, R> for KeepRightCombiner {
     }
 }
 
+/// Ignores both left and right value and returns `()`.
+pub struct IgnoringBothCombiner;
+
+impl<L, R> Combiner<L, R, ()> for IgnoringBothCombiner {
+    fn combine(&self, _left: L, _right: R) -> () {
+        ()
+    }
+}
+
 // Combiner implementation for `Fn`.
 
 impl<L, R, O, F> Combiner<L, R, O> for F

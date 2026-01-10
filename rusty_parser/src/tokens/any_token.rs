@@ -90,7 +90,7 @@ fn keyword() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
 
 fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     // TODO leading-remaining
-    many(|ch| *ch == '_' || ch.is_ascii_alphanumeric()).to_token(TokenType::Identifier)
+    many(char::is_ascii_alphanumeric).to_token(TokenType::Identifier)
 }
 
 fn oct_digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {

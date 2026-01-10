@@ -1,28 +1,68 @@
-use crate::{ParseResult, Parser, parser_combinator};
+use crate::{ParseResult, Parser};
 
-parser_combinator!(
-    trait FlatMapOkNone {
-        /// Flat map the result of this parser for successful and incomplete results.
-        /// Mapping is done by the given closures.
-        /// Other errors are never allowed to be re-mapped.
-        fn flat_map_ok_none<F, G, U>(ok_mapper: F, incomplete_mapper: G) -> U
-        where F : Fn(I, Self::Output) -> ParseResult<I, U, Self::Error>,
-              G : Fn(I) -> ParseResult<I, U, Self::Error>;
-    }
-
-    struct FlatMapOkNoneParser<F, G>;
-
-    fn parse<U>(&self, input) -> U
-    where F : Fn(I, P::Output) -> ParseResult<I, U, P::Error>,
-              G : Fn(I) -> ParseResult<I, U, P::Error>
+/// Flat map the result of this parser for successful and incomplete results.
+/// Mapping is done by the given closures.
+/// Other errors are never allowed to be re-mapped.
+pub trait FlatMapOkNone<I, C>: Parser<I, C>
+where
+    Self: Sized,
+{
+    fn flat_map_ok_none<F, G, U>(
+        self,
+        ok_mapper: F,
+        incomplete_mapper: G,
+    ) -> FlatMapOkNoneParser<Self, F, G>
+    where
+        F: Fn(I, Self::Output) -> ParseResult<I, U, Self::Error>,
+        G: Fn(I) -> ParseResult<I, U, Self::Error>,
     {
+        FlatMapOkNoneParser::new(self, ok_mapper, incomplete_mapper)
+    }
+}
+
+impl<I, C, P> FlatMapOkNone<I, C> for P where P: Parser<I, C> {}
+
+pub struct FlatMapOkNoneParser<P, F, G> {
+    parser: P,
+    ok_mapper: F,
+    incomplete_mapper: G,
+}
+
+impl<P, F, G> FlatMapOkNoneParser<P, F, G> {
+    pub fn new(parser: P, ok_mapper: F, incomplete_mapper: G) -> Self {
+        Self {
+            parser,
+            ok_mapper,
+            incomplete_mapper,
+        }
+    }
+}
+
+impl<I, C, P, F, G, U> Parser<I, C> for FlatMapOkNoneParser<P, F, G>
+where
+    P: Parser<I, C>,
+    F: Fn(I, P::Output) -> ParseResult<I, U, P::Error>,
+    G: Fn(I) -> ParseResult<I, U, P::Error>,
+{
+    type Output = U;
+    type Error = P::Error;
+    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok((input, value)) => (self.ok_mapper)(input, value),
             Err((false, i, _)) => (self.incomplete_mapper)(i),
             Err(err) => Err(err),
         }
     }
-);
+}
+
+impl<C, P, F, G> crate::SetContext<C> for FlatMapOkNoneParser<P, F, G>
+where
+    P: crate::SetContext<C>,
+{
+    fn set_context(&mut self, ctx: C) {
+        self.parser.set_context(ctx)
+    }
+}
 
 pub trait FlatMapNegateNone<I, C>: FlatMapOkNone<I, C>
 where

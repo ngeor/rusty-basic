@@ -1,4 +1,4 @@
-use rusty_pc::{ParseResult, Parser, SetContext};
+use rusty_pc::{MapErr, Parser};
 
 use crate::ParseError;
 
@@ -13,19 +13,11 @@ where
     where
         F: MessageProvider,
     {
-        WithExpectedMessage::new(self, f)
+        self.map_non_fatal_err(move |_| ParseError::SyntaxError(f.to_str()))
     }
 }
 
 impl<I, C, P> WithExpected<I, C> for P where P: Parser<I, C, Error = ParseError> {}
-
-struct WithExpectedMessage<P, F>(P, F);
-
-impl<P, F> WithExpectedMessage<P, F> {
-    pub fn new(parser: P, f: F) -> Self {
-        Self(parser, f)
-    }
-}
 
 pub trait MessageProvider {
     fn to_str(&self) -> String;
@@ -49,31 +41,5 @@ where
 {
     fn to_str(&self) -> String {
         (self)()
-    }
-}
-
-impl<I, C, P, F> Parser<I, C> for WithExpectedMessage<P, F>
-where
-    P: Parser<I, C, Error = ParseError>,
-    F: MessageProvider,
-{
-    type Output = P::Output;
-    type Error = ParseError;
-
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
-        match self.0.parse(tokenizer) {
-            Ok(value) => Ok(value),
-            Err((false, i, _)) => Err((false, i, ParseError::SyntaxError(self.1.to_str()))),
-            Err(err) => Err(err),
-        }
-    }
-}
-
-impl<C, P, F> SetContext<C> for WithExpectedMessage<P, F>
-where
-    P: SetContext<C>,
-{
-    fn set_context(&mut self, ctx: C) {
-        self.0.set_context(ctx);
     }
 }

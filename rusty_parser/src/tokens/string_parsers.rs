@@ -1,4 +1,4 @@
-use rusty_pc::{Filter, Many, Map, Parser};
+use rusty_pc::{Filter, Many, Map, Parser, StringManyCombiner};
 
 use crate::ParseError;
 use crate::input::RcStringView;
@@ -11,10 +11,7 @@ pub(super) fn many<F>(
 where
     F: Fn(&char) -> bool,
 {
-    AnyChar.filter(predicate).many(String::from, |mut s, ch| {
-        s.push(ch);
-        s
-    })
+    AnyChar.filter(predicate).many(StringManyCombiner)
 }
 
 pub(super) fn one(ch: char) -> impl Parser<RcStringView, Output = String, Error = ParseError> {

@@ -8,7 +8,7 @@ use crate::core::comment::comment_as_string_p;
 ///
 /// For the comment we have:
 ///
-/// `<ws>* EOL <ws | eol>*`
+/// `EOL <ws | eol>*`
 ///
 /// And for the rest of the cases we have:
 ///
@@ -22,7 +22,7 @@ use crate::pc_specific::*;
 use crate::tokens::{TokenMatcher, TokenType, any_token_of, peek_token, whitespace};
 
 pub fn comment_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
-    opt_and_tuple(whitespace(), any_token_of!(TokenType::Eol)).and_opt(
+    any_token_of!(TokenType::Eol).and_opt(
         any_token_of!(TokenType::Eol, TokenType::Whitespace),
         |_, _| (),
     )

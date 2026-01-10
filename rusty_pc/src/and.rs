@@ -290,3 +290,13 @@ impl Combiner<Option<String>, String, String> for StringCombiner {
         }
     }
 }
+
+impl Combiner<char, Vec<char>, String> for StringCombiner {
+    fn combine(&self, left: char, right: Vec<char>) -> String {
+        let mut result = String::from(left);
+        for ch in right {
+            result.push(ch);
+        }
+        result
+    }
+}

@@ -26,6 +26,7 @@ mod peek;
 mod seq;
 pub mod supplier;
 mod then_with;
+mod then_with_left;
 mod to_option;
 mod token;
 
@@ -52,5 +53,6 @@ pub use parsers::*;
 pub use peek::*;
 pub use seq::*;
 pub use then_with::*;
+pub use then_with_left::*;
 pub use to_option::*;
 pub use token::*;

@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use rusty_pc::*;
 
 use crate::input::RcStringView;
-use crate::tokens::{TokenType, whitespace};
+use crate::tokens::{TokenType, any_token, whitespace};
 use crate::{Keyword, ParseError};
 
 // TODO review usages of TokenType::Keyword
@@ -18,16 +18,26 @@ pub fn keyword(
     keyword_of!(keyword)
 }
 
+// Parses one of the given keywords.
+
 macro_rules! keyword_of {
     (
         $($keyword:expr),+
         $(,)?
     ) => {
-        $crate::pc_specific::KeywordParser::new($crate::tokens::any_token(), [ $($keyword),+ ])
+        $crate::pc_specific::keyword_p([ $($keyword),+ ], false)
     };
 }
 
 pub(crate) use keyword_of;
+
+/// Parses on of the given keywords, possibly treating EOF as a fatal error.
+pub fn keyword_p(
+    keywords: impl IntoIterator<Item = Keyword>,
+    eof_is_fatal: bool,
+) -> impl Parser<RcStringView, Output = Keyword, Error = ParseError> {
+    KeywordParser::new(any_token(), keywords, eof_is_fatal)
+}
 
 // TODO 1. rename to keyword_ws like expressions 2. add ws_keyword and ws_keyword_ws
 pub fn keyword_followed_by_whitespace_p(
@@ -50,10 +60,13 @@ pub struct KeywordParser<P> {
     parser: P,
     // using a BTreeSet so that the generated error message is predictable (keywords sorted)
     keywords: BTreeSet<Keyword>,
+
+    /// If true, EOF will be reported as a fatal error
+    eof_is_fatal: bool,
 }
 
 impl<P> KeywordParser<P> {
-    pub fn new(parser: P, keywords: impl IntoIterator<Item = Keyword>) -> Self {
+    pub fn new(parser: P, keywords: impl IntoIterator<Item = Keyword>, eof_is_fatal: bool) -> Self {
         let mut keyword_set: BTreeSet<Keyword> = BTreeSet::new();
         for keyword in keywords {
             keyword_set.insert(keyword);
@@ -61,6 +74,7 @@ impl<P> KeywordParser<P> {
         Self {
             parser,
             keywords: keyword_set,
+            eof_is_fatal,
         }
     }
 }
@@ -78,9 +92,9 @@ where
         match self.parser.parse(input) {
             Ok((input, token)) => match self.accept_token(&token) {
                 Some(keyword) => Ok((input, keyword)),
-                None => self.to_syntax_err(original_input),
+                None => self.to_syntax_err(original_input, false),
             },
-            Err((false, _, _)) => self.to_syntax_err(original_input),
+            Err((false, _, _)) => self.to_syntax_err(original_input, self.eof_is_fatal),
             Err(err) => Err(err),
         }
     }
@@ -109,7 +123,7 @@ impl<P> KeywordParser<P> {
         }
     }
 
-    fn to_syntax_err<I, O>(&self, input: I) -> ParseResult<I, O, ParseError> {
+    fn to_syntax_err<I, O>(&self, input: I, fatal: bool) -> ParseResult<I, O, ParseError> {
         let mut msg = String::from("Expected: ");
         let mut is_first = true;
         for k in &self.keywords {
@@ -123,6 +137,6 @@ impl<P> KeywordParser<P> {
             msg.push_str(&k.to_string());
         }
 
-        Err((false, input, ParseError::SyntaxError(msg)))
+        Err((fatal, input, ParseError::SyntaxError(msg)))
     }
 }

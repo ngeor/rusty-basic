@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use rusty_pc::{Map, Parser};
 
 use crate::input::RcStringView;
-use crate::pc_specific::KeywordParser;
-use crate::tokens::any_token;
+use crate::pc_specific::keyword_p;
 use crate::{Keyword, ParseError};
 
 /// A parser that parses one of the given keywords and returns the corresponding associated value.
@@ -15,6 +14,6 @@ where
     T: Clone,
 {
     let keyword_to_value: HashMap<Keyword, T> = mappings.iter().cloned().collect();
-    KeywordParser::new(any_token(), keyword_to_value.keys().copied())
+    keyword_p(mappings.iter().map(|(k, _)| *k), false)
         .map(move |keyword| keyword_to_value.get(&keyword).unwrap().clone())
 }

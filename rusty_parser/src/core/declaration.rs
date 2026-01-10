@@ -1,6 +1,6 @@
 use rusty_pc::*;
 
-use crate::core::name::{bare_name_with_dots, name_with_dots};
+use crate::core::name::{bare_name_p, name_p};
 use crate::core::param_name::parameter_pos_p;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
@@ -35,7 +35,7 @@ pub fn function_declaration_p()
     seq4(
         keyword(Keyword::Function),
         whitespace(),
-        name_with_dots().with_pos().or_expected("function name"),
+        name_p().with_pos().or_expected("function name"),
         declaration_parameters_p(),
         |_, _, function_name_pos, declaration_parameters| {
             (function_name_pos, declaration_parameters)
@@ -48,7 +48,7 @@ pub fn sub_declaration_p()
     seq4(
         keyword(Keyword::Sub),
         whitespace(),
-        bare_name_with_dots().with_pos().or_expected("sub name"),
+        bare_name_p().with_pos().or_expected("sub name"),
         declaration_parameters_p(),
         |_, _, sub_name_pos, declaration_parameters| (sub_name_pos, declaration_parameters),
     )

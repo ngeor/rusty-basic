@@ -1,6 +1,6 @@
 use rusty_pc::*;
 
-use crate::core::name::{bare_name_without_dots, name_with_dots};
+use crate::core::name::{bare_name_without_dots, name_p};
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::whitespace;
@@ -146,10 +146,30 @@ fn qualified<T>()
 where
     T: Default + VarType,
 {
-    ctx_parser().flat_map(|i, (opt_q, _)| match opt_q {
-        Some(q) => Ok((i, T::new_built_in_compact(q))),
-        None => Err((false, i, ParseError::default())),
-    })
+    // get the context
+    ctx_parser()
+        // if the parsed name is qualified, return the result, otherwise non-fatal exit,
+        // so that the next option (extended) can be invoked
+        .flat_map(|i, (opt_q, _)| match opt_q {
+            Some(q) => Ok((i, T::new_built_in_compact(q))),
+            None => Err((false, i, ParseError::default())),
+        })
+        // the following `and` will be invoked only if we had a result
+        // we want to validate that a qualified variable is not
+        // followed by an `AS` clause, in order to simulate the error that QBasic
+        // throws when that happens
+        .and_tuple(PeekParser::new(as_clause()).to_option().no_context())
+        .flat_map(|i, (result, has_opt_clause)| {
+            if has_opt_clause.is_some() {
+                Err((
+                    true,
+                    i,
+                    ParseError::syntax_error("Identifier cannot end with %, &, !, #, or $"),
+                ))
+            } else {
+                Ok((i, result))
+            }
+        })
 }
 
 fn extended<T, BP>(
@@ -179,9 +199,7 @@ fn name_with_opt_array<P>(
 where
     P: Parser<RcStringView, Error = ParseError> + 'static,
 {
-    seq2(name_with_dots(), opt_array_parser, |name, array| {
-        (name, array)
-    })
+    seq2(name_p(), opt_array_parser, |name, array| (name, array))
 }
 
 fn create_typed_name<T, A>(name: Name, array: A, var_type: T) -> TypedName<T>

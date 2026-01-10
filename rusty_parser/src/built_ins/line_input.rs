@@ -41,7 +41,7 @@ mod tests {
     #[test]
     fn test_parse_two_variables() {
         let input = "LINE INPUT A$, B";
-        assert_parser_err!(input, ParseError::syntax_error("No separator: ,"));
+        assert_parser_err!(input, ParseError::expected("end-of-statement"));
     }
 
     #[test]

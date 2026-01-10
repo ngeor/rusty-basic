@@ -20,9 +20,13 @@ pub enum Expression {
     IntegerLiteral(i32),
     LongLiteral(i64),
     Variable(Name, VariableInfo),
+
+    /// During parsing, arrays are also parsed as function calls.
+    /// Only during linting can it be determined if it's an array or a function call.
     FunctionCall(Name, Expressions),
-    // not a parser type, only at linting can we determine
-    // if it's a FunctionCall or an ArrayElement
+
+    /// Not a parser type, only at linting can we determine
+    /// if it's a FunctionCall or an ArrayElement
     ArrayElement(
         // the name of the array (unqualified only for user defined types)
         Name,
@@ -756,10 +760,9 @@ mod variable {
 
     use rusty_pc::*;
 
-    use crate::core::name::{name_with_dots_as_tokens, token_to_type_qualifier};
+    use crate::core::name::{name_as_tokens_p, token_to_type_qualifier};
     use crate::input::RcStringView;
     use crate::pc_specific::WithPos;
-    use crate::tokens::TokenMatcher;
     use crate::{ParseError, *};
 
     // variable ::= <identifier-with-dots>
@@ -770,7 +773,7 @@ mod variable {
     //
     // if <identifier-with-dots> contains dots, it might be converted to a property expression
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
-        name_with_dots_as_tokens().map(map_to_expr).with_pos()
+        name_as_tokens_p().map(map_to_expr).with_pos()
     }
 
     fn map_to_expr(name_as_tokens: NameAsTokens) -> Expression {
@@ -782,14 +785,15 @@ mod variable {
     }
 
     fn is_property_expr(name_as_tokens: &NameAsTokens) -> bool {
-        let (names, _) = name_as_tokens;
-        let mut name_count = 0;
+        let (name_token, _) = name_as_tokens;
+        let mut name_count = 1;
         let mut last_was_dot = false;
-        for name in names {
-            if '.'.matches_token(name) {
-                if name_count == 0 {
-                    panic!("Leading dot cannot happen");
-                }
+
+        // leading dot cannot happen
+        debug_assert!(!name_token.as_str().starts_with('.'));
+
+        for name in name_token.as_str().chars() {
+            if '.' == name {
                 if last_was_dot {
                     // two dots in a row
                     return false;
@@ -797,8 +801,10 @@ mod variable {
                     last_was_dot = true;
                 }
             } else {
-                name_count += 1;
-                last_was_dot = false;
+                if last_was_dot {
+                    name_count += 1;
+                    last_was_dot = false;
+                }
             }
         }
         // at least two names and no trailing dot
@@ -806,12 +812,9 @@ mod variable {
     }
 
     fn map_to_property(name_as_tokens: NameAsTokens) -> Expression {
-        let (names, opt_q_token) = name_as_tokens;
-        let mut property_names: VecDeque<String> = names
-            .into_iter()
-            .filter(|token| !'.'.matches_token(token))
-            .map(|token| token.to_string())
-            .collect();
+        let (name_token, opt_q_token) = name_as_tokens;
+        let mut property_names: VecDeque<String> =
+            name_token.text().split('.').map(|s| s.to_owned()).collect();
         let mut result = Expression::Variable(
             Name::bare(BareName::new(property_names.pop_front().unwrap())),
             VariableInfo::unresolved(),
@@ -837,7 +840,7 @@ mod function_call_or_array_element {
     use rusty_pc::*;
 
     use crate::core::expression::expression_pos_p;
-    use crate::core::name::name_with_dots_as_tokens;
+    use crate::core::name::name_as_tokens_p;
     use crate::input::RcStringView;
     use crate::pc_specific::{WithPos, csv, in_parenthesis};
     use crate::{ParseError, *};
@@ -853,7 +856,7 @@ mod function_call_or_array_element {
     // A function can be qualified.
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
-        name_with_dots_as_tokens()
+        name_as_tokens_p()
             .and(
                 in_parenthesis(csv(expression_pos_p()).or_default()),
                 |name_as_tokens: NameAsTokens, arguments: Expressions| {
@@ -867,7 +870,7 @@ mod function_call_or_array_element {
 pub mod property {
     use rusty_pc::*;
 
-    use crate::core::name::{identifier, token_to_type_qualifier, type_qualifier};
+    use crate::core::name::{name_as_tokens_p, token_to_type_qualifier};
     use crate::error::ParseError;
     use crate::input::RcStringView;
     use crate::pc_specific::SpecificTrait;
@@ -881,54 +884,85 @@ pub mod property {
     // expr must not be qualified
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
-        seq2(base_expr_pos_p(), dot_properties(), |l, r| (l, r)).flat_map(
-            |input, (first_expr_pos, properties)| {
-                if !properties.is_empty() && is_qualified(&first_expr_pos.element) {
-                    // TODO do this check before parsing the properties
-                    return Err((
-                        true,
-                        input,
-                        ParseError::syntax_error("Qualified name cannot have properties"),
-                    ));
+        base_expr_pos_p()
+            .then_with_in_context(
+                |first_expr_pos| is_qualified(&first_expr_pos.element),
+                ctx_dot_property,
+            )
+            .flat_map(|input, (first_expr_pos, properties)| {
+                // not possible to have properties for qualified first expr
+                // therefore either we don't have properties
+                // or if we do then the first expr is bare
+                debug_assert!(properties.is_none() || !is_qualified(&first_expr_pos.element));
+
+                match properties {
+                    Some((property_name, opt_q_token)) => {
+                        let text = property_name.text();
+                        let mut it = text.split('.').peekable();
+                        let mut result = first_expr_pos;
+                        while let Some(name) = it.next() {
+                            if name.is_empty() {
+                                // detected something like X = Y(1).A..B
+                                return Err((true, input, ParseError::expected("identifier")));
+                            }
+
+                            let property_name = if it.peek().is_some() {
+                                Name::bare(BareName::new(name.to_owned()))
+                            } else {
+                                Name::new(
+                                    BareName::new(name.to_owned()),
+                                    opt_q_token.as_ref().map(token_to_type_qualifier),
+                                )
+                            };
+
+                            result = result.map(|prev_expr| {
+                                Expression::Property(
+                                    Box::new(prev_expr),
+                                    property_name,
+                                    ExpressionType::Unresolved,
+                                )
+                            });
+                        }
+                        Ok((input, result))
+                    }
+                    None => Ok((input, first_expr_pos)),
                 }
-                let result = properties.into_iter().fold(
-                    first_expr_pos,
-                    |prev_expr_pos, (name_token, opt_q_token)| {
-                        let property_name = Name::new(
-                            BareName::new(name_token.to_string()),
-                            opt_q_token.as_ref().map(token_to_type_qualifier),
-                        );
-                        prev_expr_pos.map(|prev_expr| {
-                            Expression::Property(
-                                Box::new(prev_expr),
-                                property_name,
-                                ExpressionType::Unresolved,
-                            )
-                        })
-                    },
-                );
-                Ok((input, result))
-            },
-        )
+            })
     }
 
-    fn dot_properties()
-    -> impl Parser<RcStringView, Output = Vec<(Token, Option<Token>)>, Error = ParseError> {
-        dot_property().zero_or_more()
+    /// Parses an optional `.property` after the first expression was parsed.
+    /// The boolean context indicates whether the previously parsed expression
+    /// was qualified or not.
+    /// If it was qualified, we return Ok(None) without trying to parse,
+    /// because qualified names can't have properties.
+    fn ctx_dot_property()
+    -> impl Parser<RcStringView, bool, Output = Option<NameAsTokens>, Error = ParseError>
+    + SetContext<bool> {
+        ctx_parser()
+            .flat_map(|i, was_first_expr_qualified| {
+                if was_first_expr_qualified {
+                    // fine, don't parse anything further
+                    // i.e. A$(1).Name won't attempt to parse the .Name part
+                    Ok((i, None))
+                } else {
+                    // it wasn't qualified, therefore let the dot_property continue
+                    default_parse_error(i)
+                }
+            })
+            .or(dot_property().no_context())
     }
 
-    fn dot_property()
-    -> impl Parser<RcStringView, Output = (Token, Option<Token>), Error = ParseError> {
-        dot().and_keep_right(property().or_expected("property name after dot"))
-    }
-
-    // cannot be followed by dot or type qualifier if qualified
-    fn property() -> impl Parser<RcStringView, Output = (Token, Option<Token>), Error = ParseError>
+    fn dot_property() -> impl Parser<RcStringView, Output = Option<NameAsTokens>, Error = ParseError>
     {
-        identifier().and_opt_tuple(type_qualifier())
+        dot()
+            .and_keep_right(name_as_tokens_p().or_expected("property name after dot"))
+            .to_option()
     }
 
-    // can't use expression_pos_p because it will stack overflow
+    /// Returns a name expression which could be a function call (array)
+    /// e.g. `A$(1)`,
+    /// or a variable e.g. `A.B.C$` (which can be Variable or Property).
+    /// can't use expression_pos_p because it will stack overflow
     fn base_expr_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
         // order is important, variable matches anything that function_call_or_array_element matches
         OrParser::new(vec![
@@ -937,11 +971,13 @@ pub mod property {
         ])
     }
 
-    fn is_qualified(expr: &Expression) -> bool {
+    pub fn is_qualified(expr: &Expression) -> bool {
         match expr {
-            Expression::Variable(name, _) | Expression::FunctionCall(name, _) => !name.is_bare(),
+            Expression::Variable(name, _)
+            | Expression::FunctionCall(name, _)
+            | Expression::Property(_, name, _) => !name.is_bare(),
             _ => {
-                panic!("Unexpected property type")
+                panic!("Unexpected property type {:?}", expr)
             }
         }
     }
@@ -1991,7 +2027,10 @@ mod tests {
 
     #[cfg(test)]
     mod name {
+        use rusty_pc::Parser;
+
         use super::*;
+        use crate::input::create_string_tokenizer;
 
         #[test]
         fn test_var_unresolved() {
@@ -2040,45 +2079,100 @@ mod tests {
         }
 
         #[test]
-        fn test_bare_array_cannot_have_consecutive_dots_in_properties() {
-            let input = "A(1).O..ops";
-            assert_parser_err!(input, "Expected: property name after dot");
+        fn test_left_side_bare_array_cannot_have_consecutive_dots_in_properties() {
+            let inputs = ["A(1).O..ops", "A(1).O..ops = 1"];
+            for input in inputs {
+                assert_parser_err!(input, "Expected: identifier");
+            }
         }
 
         #[test]
-        fn test_duplicate_qualifier_is_error() {
-            let input = "abc$%";
-            assert_parser_err!(input, "Identifier cannot end with %, &, !, #, or $");
+        fn test_left_side_expected_equals() {
+            let inputs = [
+                "abc$",       // this one would expect 'variable=expression' in QBasic
+                "abc$%",      // this one would expect 'variable=expression' in QBasic
+                "abc%% = 42", // this one would expect 'variable=expression' in QBasic
+                // trailing dot
+                "A$.",
+                "A$.B",
+                "A$. = \"hello\"",
+                // property of qualified array
+                "A$(1).Oops",
+                "A$(1).Oops = 42",
+                // trailing dot on qualified array property
+                "A(1).Suits$.",
+                "A(1).Suits$. = \"hi\"",
+                // extra qualifier on qualified array property
+                "A(1).Suits$%",
+                "A(1).Suits$% = 42",
+            ];
+            for input in inputs {
+                assert_parser_err!(input, ParseError::expected("="));
+            }
         }
 
         #[test]
-        fn test_dot_without_properties_is_error() {
-            let input = "abc$.";
-            assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
+        fn test_right_side_expected_end_of_statement() {
+            let inputs = [
+                // double qualifier
+                "Help A%%",
+                // property of qualified array
+                "Help A$(1).Oops",
+                // trailing dot on qualified array property
+                "Help A(1).Suits$.",
+                // extra qualifier on qualified array property
+                "Help A(1).Suits$%",
+            ];
+            for input in inputs {
+                assert_parser_err!(input, ParseError::expected("end-of-statement"));
+            }
         }
 
-        #[test]
-        fn test_dot_after_qualifier_is_error() {
-            let input = "abc$.hello";
-            assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
-        }
+        mod test_with_expression_parser {
+            use super::*;
 
-        #[test]
-        fn test_qualified_array_cannot_have_properties() {
-            let input = "A$(1).Oops";
-            assert_parser_err!(input, "Qualified name cannot have properties");
-        }
-
-        #[test]
-        fn test_bare_array_qualified_property_trailing_dot_is_not_allowed() {
-            let input = "A(1).Suit$.";
-            assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
-        }
-
-        #[test]
-        fn test_bare_array_qualified_property_extra_qualifier_is_error() {
-            let input = "A(1).Suit$%";
-            assert_parser_err!(input, "Identifier cannot end with %, &, !, #, or $");
+            #[test]
+            fn test_double_qualifier() {
+                let input = "A%%";
+                let reader = create_string_tokenizer(input.to_owned());
+                let parser = expression_pos_p();
+                let (reader, expr) = parser.parse(reader).ok().unwrap();
+                assert!(!reader.is_eof());
+                let expr = expr.element();
+                assert!(matches!(expr, Expression::Variable(_, _)));
+                if let Expression::Variable(n, _) = expr {
+                    assert_eq!(
+                        n,
+                        Name::qualified("A".into(), TypeQualifier::PercentInteger)
+                    );
+                }
+            }
+            #[test]
+            fn test_trailing_dot_after_qualifier() {
+                let input = "A$.";
+                let reader = create_string_tokenizer(input.to_owned());
+                let parser = expression_pos_p();
+                let (reader, expr) = parser.parse(reader).ok().unwrap();
+                assert!(!reader.is_eof());
+                let expr = expr.element();
+                assert!(matches!(expr, Expression::Variable(_, _)));
+                if let Expression::Variable(n, _) = expr {
+                    assert_eq!(n, Name::qualified("A".into(), TypeQualifier::DollarString));
+                }
+            }
+            #[test]
+            fn test_property_of_qualified_array() {
+                let input = "A$(1).Oops";
+                let reader = create_string_tokenizer(input.to_owned());
+                let parser = expression_pos_p();
+                let (reader, expr) = parser.parse(reader).ok().unwrap();
+                assert!(!reader.is_eof());
+                let expr = expr.element();
+                assert!(matches!(expr, Expression::FunctionCall(_, _)));
+                if let Expression::FunctionCall(n, _) = expr {
+                    assert_eq!(n, Name::qualified("A".into(), TypeQualifier::DollarString));
+                }
+            }
         }
     }
 }

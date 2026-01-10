@@ -2,7 +2,7 @@ use rusty_common::Positioned;
 use rusty_pc::*;
 
 use crate::core::expression::expression_pos_p;
-use crate::core::name::bare_name_with_dots;
+use crate::core::name::bare_name_p;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
@@ -31,7 +31,7 @@ fn goto() -> impl Parser<RcStringView, Output = OnErrorOption, Error = ParseErro
 }
 
 fn goto_label() -> impl Parser<RcStringView, Output = OnErrorOption, Error = ParseError> {
-    bare_name_with_dots().map(OnErrorOption::Label)
+    bare_name_p().map(OnErrorOption::Label)
 }
 
 fn goto_zero() -> impl Parser<RcStringView, Output = OnErrorOption, Error = ParseError> {

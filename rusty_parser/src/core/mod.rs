@@ -61,7 +61,7 @@ pub use self::global_statement::{
 };
 pub use self::keyword::Keyword;
 pub use self::letter_range::LetterRange;
-pub use self::name::{Name, NameAsTokens, NamePos, name_with_dots};
+pub use self::name::{Name, NameAsTokens, NamePos, name_p};
 pub use self::operator::Operator;
 pub use self::param_name::{ParamType, Parameter, ParameterPos, Parameters};
 pub use self::print::{Print, PrintArg};

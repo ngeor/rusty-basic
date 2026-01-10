@@ -11,7 +11,7 @@ use crate::core::for_loop::for_loop_p;
 use crate::core::go_sub::{statement_go_sub_p, statement_return_p};
 use crate::core::if_block::if_block_p;
 use crate::core::macros::bi_tuple;
-use crate::core::name::{bare_name_with_dots, identifier_with_dots, token_list_to_bare_name};
+use crate::core::name::{bare_name_p, identifier};
 use crate::core::on_error::statement_on_error_go_to_p;
 use crate::core::print::{parse_lprint_p, parse_print_p};
 use crate::core::resume::statement_resume_p;
@@ -335,14 +335,14 @@ pub fn single_line_statement_p() -> impl Parser<RcStringView, Output = Statement
 
 fn statement_label_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     // labels can have dots
-    identifier_with_dots().and(colon(), |tokens, _| {
-        Statement::Label(token_list_to_bare_name(tokens))
-    })
+    identifier()
+        .and_keep_left(colon())
+        .map(|token| Statement::Label(CaseInsensitiveString::new(token.text())))
 }
 
 fn statement_go_to_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     keyword_followed_by_whitespace_p(Keyword::GoTo)
-        .and_keep_right(bare_name_with_dots().or_expected("label"))
+        .and_keep_right(bare_name_p().or_expected("label"))
         .map(Statement::GoTo)
 }
 
@@ -378,10 +378,10 @@ mod end {
         fn test_sub_call_end_no_args_allowed() {
             assert_parser_err!(
                 "END 42",
-                ParseError::syntax_error(
+                ParseError::expected(
                     // TODO FIXME this was originally like this:
                     // "Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement"
-                    "No separator: 42"
+                    "end-of-statement"
                 )
             );
         }

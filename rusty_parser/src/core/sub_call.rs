@@ -37,21 +37,26 @@ impl Parser<RcStringView> for SubCallOrAssignment {
             ),
         ) = Self::name_and_opt_eq_sign().parse(tokenizer)?;
 
-        match opt_equal_sign {
-            Some(_) => expression_pos_p()
-                .or_expected("expression for assignment")
+        if opt_equal_sign.is_some() {
+            // we have the equal sign, it's an assignment
+            expression_pos_p()
+                .or_expected("variable=expression")
                 .parse(tokenizer)
-                .map_ok(|right_side_expr| Statement::assignment(name_expr, right_side_expr)),
-            _ => match expr_to_bare_name_args(name_expr) {
-                Ok((bare_name, Some(args))) => {
-                    Ok((tokenizer, Statement::sub_call(bare_name, args)))
-                }
-                Ok((bare_name, None)) => csv_expressions_first_guarded()
+                .map_ok(|right_side_expr| Statement::assignment(name_expr, right_side_expr))
+        } else if property::is_qualified(&name_expr) {
+            // a left-side qualified variable can only be assigned to,
+            // i.e. SUBs can't be qualified
+            Err((true, tokenizer, ParseError::expected("=")))
+        } else {
+            // it's a sub call
+            let (bare_name, opt_args) = expr_to_bare_name_args(name_expr);
+            match opt_args {
+                Some(args) => Ok((tokenizer, Statement::sub_call(bare_name, args))),
+                _ => csv_expressions_first_guarded()
                     .or_default()
                     .parse(tokenizer)
                     .map_ok(|args| Statement::sub_call(bare_name, args)),
-                Err(err) => Err((true, tokenizer, err)),
-            },
+            }
         }
     }
 }
@@ -66,44 +71,30 @@ impl SubCallOrAssignment {
 /// Converts a name expression into a sub bare name and optionally sub arguments.
 /// Sub arguments are only present for `Expression:FunctionCall` (i.e. when
 /// the sub already has parenthesis). For other cases arguments are resolved later.
-fn expr_to_bare_name_args(
-    name_expr: Expression,
-) -> Result<(BareName, Option<Expressions>), ParseError> {
+fn expr_to_bare_name_args(name_expr: Expression) -> (BareName, Option<Expressions>) {
     match name_expr {
         // A(1,2) or A$(1,2)
         Expression::FunctionCall(name, args) => {
             // this one is easy, convert it to a sub
-            demand_unqualified(name).map(|bare_name| (bare_name, Some(args)))
+            (name.demand_bare(), Some(args))
         }
         // A or A$ (might have arguments after space)
-        Expression::Variable(name, _) => {
-            demand_unqualified(name).map(|bare_name| (bare_name, None))
-        }
+        Expression::Variable(name, _) => (name.demand_bare(), None),
         // only possible if A.B is a sub, if left_name_expr contains a Function, abort
-        Expression::Property(_, _, _) => {
-            fold_to_bare_name(name_expr).map(|bare_name| (bare_name, None))
-        }
+        Expression::Property(_, _, _) => (fold_to_bare_name(name_expr), None),
         _ => panic!("Unexpected name expression"),
     }
 }
 
-fn demand_unqualified(name: Name) -> Result<BareName, ParseError> {
-    if name.is_bare() {
-        Ok(name.to_bare_name())
-    } else {
-        Err(ParseError::syntax_error("Sub cannot be qualified"))
-    }
-}
-
-fn fold_to_bare_name(expr: Expression) -> Result<BareName, ParseError> {
+fn fold_to_bare_name(expr: Expression) -> BareName {
     match expr {
-        Expression::Variable(name, _) => demand_unqualified(name),
+        Expression::Variable(name, _) => name.demand_bare(),
         Expression::Property(boxed_left_side, name, _) => {
-            let left_side_name = fold_to_bare_name(*boxed_left_side)?;
-            let bare_name = demand_unqualified(name)?;
-            Ok(Name::dot_concat(left_side_name, bare_name))
+            let left_side_name = fold_to_bare_name(*boxed_left_side);
+            let bare_name = name.demand_bare();
+            Name::dot_concat(left_side_name, bare_name)
         }
-        _ => Err(ParseError::syntax_error("Illegal sub name")),
+        _ => panic!("Illegal sub name {:?}", expr),
     }
 }
 

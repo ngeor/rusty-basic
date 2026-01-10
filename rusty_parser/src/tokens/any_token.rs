@@ -4,7 +4,7 @@ use crate::Keyword;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::tokens::TokenType;
-use crate::tokens::any_char::AnyCharOrEof;
+use crate::tokens::any_char::{AnyChar, AnyCharOrEof};
 use crate::tokens::any_symbol::any_symbol;
 use crate::tokens::string_parsers::*;
 
@@ -110,9 +110,29 @@ fn is_allowed_char_after_keyword(char_or_eof: &char) -> bool {
     *char_or_eof != '.' && *char_or_eof != '$' && !char_or_eof.is_ascii_digit()
 }
 
+// TODO validate the max length in `zero_or_more` e.g. `between(0, MAX_LENGTH - 1)`
+const MAX_LENGTH: usize = 40;
+
 fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    // TODO leading-remaining
-    many(char::is_ascii_alphanumeric).to_token(TokenType::Identifier)
+    AnyChar
+        .filter(char::is_ascii_alphabetic)
+        .and(
+            AnyChar.filter(is_allowed_char_in_identifier).zero_or_more(),
+            StringCombiner,
+        )
+        .flat_map(|i, s| {
+            // TODO add a `.validate()` parser combinator that does not use the input and uses the output only by ref
+            if s.len() > MAX_LENGTH {
+                Err((true, i, ParseError::IdentifierTooLong))
+            } else {
+                Ok((i, s))
+            }
+        })
+        .to_token(TokenType::Identifier)
+}
+
+fn is_allowed_char_in_identifier(ch: &char) -> bool {
+    ch.is_ascii_alphanumeric() || *ch == '.'
 }
 
 fn oct_digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {

@@ -619,6 +619,6 @@ mod tests {
     #[test]
     fn test_lprint_no_comma_between_expressions_is_error() {
         let input = "LPRINT 1 2";
-        assert_parser_err!(input, ParseError::syntax_error("No separator: 2"), 1, 11);
+        assert_parser_err!(input, ParseError::expected("end-of-statement"), 1, 11);
     }
 }

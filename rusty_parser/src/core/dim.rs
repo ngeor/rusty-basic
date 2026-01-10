@@ -111,7 +111,10 @@ mod tests {
     #[test]
     fn test_parse_dim_extended_with_qualified_name() {
         let input = "DIM A$ AS STRING";
-        assert_parser_err!(input, ParseError::syntax_error("No separator: AS"));
+        assert_parser_err!(
+            input,
+            ParseError::syntax_error("Identifier cannot end with %, &, !, #, or $")
+        );
     }
 
     #[test]

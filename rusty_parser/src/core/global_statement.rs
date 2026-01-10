@@ -209,13 +209,8 @@ mod separator {
     }
 
     fn raise_err() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
-        any_token().flat_map(|input, t| {
-            Err((
-                true,
-                input,
-                ParseError::SyntaxError(format!("No separator: {}", t)),
-            ))
-        })
+        any_token()
+            .flat_map(|input, _t| Err((true, input, ParseError::expected("end-of-statement"))))
     }
 }
 

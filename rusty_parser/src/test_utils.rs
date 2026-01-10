@@ -256,7 +256,12 @@ macro_rules! assert_parser_err {
     };
 
     ($input:expr, $expected_err:expr) => {
-        assert_eq!($crate::test_utils::parse_err($input), $expected_err);
+        assert_eq!(
+            $crate::test_utils::parse_err($input),
+            $expected_err,
+            "testing input {}",
+            $input
+        );
     };
 
     ($input:expr, $expected_err:expr, $row:expr, $col:expr) => {

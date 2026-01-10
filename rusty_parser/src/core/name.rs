@@ -3,10 +3,8 @@ use rusty_pc::*;
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::tokens::{TokenMatcher, TokenType, any_symbol_of, any_token_of, dot, peek_token};
+use crate::tokens::{TokenMatcher, TokenType, any_symbol_of, any_token_of, peek_token};
 use crate::{AsBareName, BareName, ExpressionType, HasExpressionType, ToBareName, TypeQualifier};
-
-const MAX_LENGTH: usize = 40;
 
 /// Defines a name.
 ///
@@ -178,17 +176,24 @@ mod type_tests {
 /// Use case: user defined type elements or types.
 pub fn bare_name_without_dots() -> impl Parser<RcStringView, Output = BareName, Error = ParseError>
 {
-    ensure_no_trailing_dot_or_qualifier(identifier()).map(|token| BareName::new(token.to_string()))
+    ensure_no_dots_or_trailing_qualifier(identifier()).map(|token| BareName::new(token.to_string()))
 }
 
 /// Parses an identifier token.
+///
 /// Errors if it exceeds the maximum length of identifiers.
+///
+/// Trailing dots are allowed, as well as consecutive dots
+/// within the resulting name. Keywords can also be part
+/// of the name (e.g. `VIEW.PRINT` is a valid result).
+///
+/// Usage: label declaration (but also used internally in the module).
 pub fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    any_token_of!(TokenType::Identifier).flat_map(ensure_token_length)
+    any_token_of!(TokenType::Identifier)
 }
 
 /// Parses a type qualifier character.
-fn type_qualifier_unchecked() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+pub fn type_qualifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     any_symbol_of!('!', '#', '$', '%', '&')
 }
 
@@ -199,17 +204,6 @@ fn is_type_qualifier(token: &Token) -> bool {
         || '$'.matches_token(token)
         || '%'.matches_token(token)
         || '&'.matches_token(token)
-}
-
-fn ensure_token_length(
-    input: RcStringView,
-    token: Token,
-) -> ParseResult<RcStringView, Token, ParseError> {
-    if token.len() > MAX_LENGTH {
-        Err((true, input, ParseError::IdentifierTooLong))
-    } else {
-        Ok((input, token))
-    }
 }
 
 /// Parses an unqualified name that might have dots.
@@ -223,57 +217,8 @@ fn ensure_token_length(
 /// of the name (e.g. `VIEW.PRINT` is a valid result).
 ///
 /// Usages: SUB name and labels.
-pub fn bare_name_with_dots() -> impl Parser<RcStringView, Output = BareName, Error = ParseError> {
-    ensure_no_trailing_qualifier(identifier_with_dots()).map(token_list_to_bare_name)
-}
-
-/// Parses a sequence of name-like tokens that might include dots.
-///
-/// Errors if it exceeds the maximum length of identifiers.
-///
-/// Trailing dots are allowed, as well as consecutive dots
-/// within the resulting name. Keywords can also be part
-/// of the name (e.g. `VIEW.PRINT` is a valid result).
-///
-/// Usage: label declaration (but also used internally in the module).
-pub fn identifier_with_dots() -> impl Parser<RcStringView, Output = TokenList, Error = ParseError> {
-    OrParser::new(vec![
-        Box::new(
-            seq2(
-                identifier_no_len_check().and(dot(), |left, right| vec![left, right]),
-                identifier_or_dot().zero_or_more(),
-                |mut left_list, mut right_list| {
-                    left_list.append(&mut right_list);
-                    left_list
-                },
-            )
-            .flat_map(ensure_token_list_length),
-        ),
-        // otherwise just one identifier (max_length already checked)
-        Box::new(identifier().map(|token| vec![token])),
-    ])
-}
-
-// TODO change identifier to include dots, then we don't need to check for Keyword here
-fn identifier_no_len_check() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    any_token_of!(TokenType::Identifier, TokenType::Keyword)
-}
-
-// TODO change identifier to include dots, then we don't need to check for Keyword here
-fn identifier_or_dot() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    any_token_of!(TokenType::Identifier, TokenType::Keyword ; symbols = '.')
-}
-
-// TODO add test: max length of 40 characters applies both to parts and the full string
-fn ensure_token_list_length(
-    input: RcStringView,
-    tokens: TokenList,
-) -> ParseResult<RcStringView, TokenList, ParseError> {
-    if tokens.iter().map(|token| token.len()).sum::<usize>() > MAX_LENGTH {
-        Err((true, input, ParseError::IdentifierTooLong))
-    } else {
-        Ok((input, tokens))
-    }
+pub fn bare_name_p() -> impl Parser<RcStringView, Output = BareName, Error = ParseError> {
+    ensure_no_trailing_qualifier(identifier()).map(|token| BareName::new(token.text()))
 }
 
 /// Parses a name that might be qualified and might have dots.
@@ -281,40 +226,32 @@ fn ensure_token_list_length(
 /// If a type qualifier exists, it cannot be followed by a dot or a second type qualifier.
 ///
 /// It can also be a keyword followed by the dollar sign (e.g. `END$` is a valid result).
-pub fn name_with_dots() -> impl Parser<RcStringView, Output = Name, Error = ParseError> {
-    name_with_dots_as_tokens().map(Name::from)
+pub fn name_p() -> impl Parser<RcStringView, Output = Name, Error = ParseError> {
+    name_as_tokens_p().map(Name::from)
 }
 
-pub fn name_with_dots_as_tokens()
--> impl Parser<RcStringView, Output = NameAsTokens, Error = ParseError> {
-    identifier_with_dots().and_opt_tuple(type_qualifier())
+pub fn name_as_tokens_p() -> impl Parser<RcStringView, Output = NameAsTokens, Error = ParseError> {
+    identifier().and_opt_tuple(type_qualifier())
 }
 
-/// Parses a type qualifier character.
-/// Fails if the qualifier is followed by a dot or an additional qualifier.
-pub fn type_qualifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    ensure_no_trailing_dot_or_qualifier(type_qualifier_unchecked())
-}
-
-fn ensure_no_trailing_dot_or_qualifier<P>(
-    parser: impl Parser<RcStringView, Output = P, Error = ParseError>,
-) -> impl Parser<RcStringView, Output = P, Error = ParseError> {
-    ensure_no_trailing_qualifier(ensure_no_trailing_dot(parser))
+fn ensure_no_dots_or_trailing_qualifier(
+    parser: impl Parser<RcStringView, Output = Token, Error = ParseError>,
+) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+    ensure_no_trailing_qualifier(ensure_no_dots(parser))
 }
 
 /// Returns the result of the given parser,
-/// but it gives an error if it is followed by a dot.
-fn ensure_no_trailing_dot<P>(
-    parser: impl Parser<RcStringView, Output = P, Error = ParseError>,
-) -> impl Parser<RcStringView, Output = P, Error = ParseError> {
-    parser.and_opt_keep_left(peek_token().flat_map_negate_none(|input, token| {
-        // TODO a friendlier flat_map that does not alter the input (and does not need it either)
-        if '.'.matches_token(&token) {
+/// but it gives an error if the identifier has dots.
+fn ensure_no_dots(
+    parser: impl Parser<RcStringView, Output = Token, Error = ParseError>,
+) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+    parser.flat_map(|input, token| {
+        if token.as_str().contains('.') {
             Err((true, input, ParseError::IdentifierCannotIncludePeriod))
         } else {
-            Ok((input, ()))
+            Ok((input, token))
         }
-    }))
+    })
 }
 
 /// Returns the result of the given parser,
@@ -335,13 +272,13 @@ fn ensure_no_trailing_qualifier<P>(
     }))
 }
 
-pub type NameAsTokens = (TokenList, Option<Token>);
+pub type NameAsTokens = (Token, Option<Token>);
 
 impl From<NameAsTokens> for Name {
     fn from(name_as_tokens: NameAsTokens) -> Self {
-        let (name_tokens, opt_q) = name_as_tokens;
+        let (name_token, opt_q) = name_as_tokens;
         Self::new(
-            token_list_to_bare_name(name_tokens),
+            BareName::new(name_token.text()),
             opt_q.as_ref().map(token_to_type_qualifier),
         )
     }
@@ -362,10 +299,6 @@ pub fn token_to_type_qualifier(token: &Token) -> TypeQualifier {
     } else {
         panic!("Unsupported token")
     }
-}
-
-pub fn token_list_to_bare_name(tokens: TokenList) -> BareName {
-    BareName::new(token_list_to_string(tokens))
 }
 
 #[cfg(test)]
@@ -439,8 +372,7 @@ mod parse_tests {
         #[test]
         fn cannot_have_trailing_qualifier() {
             for input in ["Hello!", "Hello#", "Hello$", "Hello%", "Hello&"] {
-                let result =
-                    bare_name_with_dots().parse(create_string_tokenizer(String::from(input)));
+                let result = bare_name_p().parse(create_string_tokenizer(String::from(input)));
                 assert_err(
                     input,
                     result,
@@ -453,7 +385,7 @@ mod parse_tests {
         fn cannot_exceed_max_length() {
             let input = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO".to_owned();
             assert_eq!(input.len(), 41);
-            let result = bare_name_with_dots().parse(create_string_tokenizer(input.clone()));
+            let result = bare_name_p().parse(create_string_tokenizer(input.clone()));
             assert_err(&input, result, ParseError::IdentifierTooLong);
         }
     }
@@ -489,7 +421,7 @@ mod parse_tests {
 
         fn parse_something_completely(input: &str) -> BareName {
             let tokenizer = create_string_tokenizer(input.to_owned());
-            let result = bare_name_with_dots().parse(tokenizer);
+            let result = bare_name_p().parse(tokenizer);
             assert_fully_parsed(&result, input);
             assert_result(input, result)
         }
@@ -523,7 +455,7 @@ mod parse_tests {
 
         fn parse_something_completely(input: &str) -> Name {
             let tokenizer = create_string_tokenizer(input.to_owned());
-            let result = name_with_dots().parse(tokenizer);
+            let result = name_p().parse(tokenizer);
             assert_fully_parsed(&result, input);
             assert_result(input, result)
         }

@@ -26,7 +26,7 @@ fn field_item_p() -> impl Parser<RcStringView, Output = (ExpressionPos, NamePos)
         expr_pos_ws_p(),
         keyword(Keyword::As),
         whitespace(),
-        name_with_dots().with_pos().or_expected("variable name"),
+        name_p().with_pos().or_expected("variable name"),
         |width, _, _, name| (width, name),
     )
 }

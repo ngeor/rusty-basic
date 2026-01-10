@@ -9,9 +9,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
     seq5(
         keyword(Keyword::LSet),
         whitespace(),
-        name_with_dots()
-            .with_pos()
-            .or_expected("variable after LSET"),
+        name_p().with_pos().or_expected("variable after LSET"),
         equal_sign_ws(),
         expression_pos_p().or_expected("expression"),
         |_, _, name_pos, _, value_expr_pos| {

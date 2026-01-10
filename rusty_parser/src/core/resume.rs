@@ -1,6 +1,6 @@
 use rusty_pc::*;
 
-use crate::core::name::bare_name_with_dots;
+use crate::core::name::bare_name_p;
 use crate::core::statement_separator::peek_eof_or_statement_separator;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
@@ -34,7 +34,7 @@ fn resume_next() -> impl Parser<RcStringView, Output = ResumeOption, Error = Par
 }
 
 fn resume_label() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParseError> {
-    whitespace().and(bare_name_with_dots(), |_, r| ResumeOption::Label(r))
+    whitespace().and(bare_name_p(), |_, r| ResumeOption::Label(r))
 }
 
 #[cfg(test)]

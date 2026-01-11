@@ -2,12 +2,11 @@
 /// Possible examples: digits, identifier, keyword, symbol, etc.
 pub type TokenKind = u8;
 
-// TODO remove the Clone trait
 /// Represents a recognized token.
 ///
 /// The [kind] field could have been a generic parameter, but that would require
 /// propagating the type too much.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Token {
     kind: TokenKind,
     text: String,

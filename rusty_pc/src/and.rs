@@ -126,10 +126,6 @@ impl<L, R, F, O> AndParser<L, R, F, O> {
     }
 }
 
-// TODO it would be nice to have a different implementation
-// that does not need Clone when the right parser is guaranteed
-// that it will return Ok or fatal Err
-
 impl<I, C, L, R, F, O> Parser<I, C> for AndParser<L, R, F, O>
 where
     I: Clone,

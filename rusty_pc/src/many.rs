@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{ParseResult, Parser, SetContext};
+use crate::{ParseResult, Parser, SetContext, Token};
 
 /// Collects multiple values from the underlying parser as long as parsing succeeds.
 pub trait Many<I, C>: Parser<I, C>
@@ -133,6 +133,17 @@ impl ManyCombiner<char, String> for StringManyCombiner {
 
     fn accumulate(&self, mut result: String, element: char) -> String {
         result.push(element);
+        result
+    }
+}
+
+impl ManyCombiner<Token, String> for StringManyCombiner {
+    fn seed(&self, element: Token) -> String {
+        element.text()
+    }
+
+    fn accumulate(&self, mut result: String, element: Token) -> String {
+        result.push_str(element.as_str());
         result
     }
 }

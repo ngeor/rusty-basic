@@ -44,14 +44,3 @@ impl std::fmt::Display for Token {
         self.text.fmt(f)
     }
 }
-
-pub type TokenList = Vec<Token>;
-
-// TODO move elsewhere or deprecate
-pub fn token_list_to_string(tokens: TokenList) -> String {
-    let mut result = String::new();
-    for token in tokens {
-        result.push_str(token.as_str());
-    }
-    result
-}

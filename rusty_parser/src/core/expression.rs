@@ -614,7 +614,7 @@ mod string_literal {
             string_delimiter(),
             inside_string(),
             string_delimiter(),
-            |_, token_list, _| Expression::StringLiteral(token_list_to_string(token_list)),
+            |_, text, _| Expression::StringLiteral(text),
         )
         .with_pos()
     }
@@ -624,12 +624,12 @@ mod string_literal {
         any_symbol_of!('"')
     }
 
-    fn inside_string() -> impl Parser<RcStringView, Output = TokenList, Error = ParseError> {
+    fn inside_string() -> impl Parser<RcStringView, Output = String, Error = ParseError> {
         any_token_of!(
             types = TokenType::Eol ;
             symbols = '"' ;
             mode = MatchMode::Exclude)
-        .zero_or_more()
+        .many_allow_none(StringManyCombiner)
     }
 }
 

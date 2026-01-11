@@ -1,8 +1,10 @@
-use rusty_pc::{OrFail, Parser, ToFatalParser};
+use rusty_pc::{OrFail, Parser, SurroundMode, ToFatalParser, surround};
 
 use crate::error::ParseError;
+use crate::input::RcStringView;
+use crate::tokens::whitespace;
 
-pub trait SpecificTrait<I>: Parser<I, Error = ParseError>
+pub trait SpecificTrait: Parser<RcStringView, Error = ParseError>
 where
     Self: Sized,
 {
@@ -16,6 +18,10 @@ where
     fn or_expected(self, expectation: &str) -> ToFatalParser<Self, ParseError> {
         self.or_fail(ParseError::expected(expectation))
     }
+
+    fn padded_by_ws(self) -> impl Parser<RcStringView, Output = Self::Output, Error = Self::Error> {
+        surround(whitespace(), self, whitespace(), SurroundMode::Optional)
+    }
 }
 
-impl<I, P> SpecificTrait<I> for P where P: Parser<I, Error = ParseError> {}
+impl<P> SpecificTrait for P where P: Parser<RcStringView, Error = ParseError> {}

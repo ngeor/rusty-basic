@@ -87,18 +87,6 @@ where
     {
         self.and_opt(right, KeepRightCombiner)
     }
-
-    fn surround<L, R>(
-        self,
-        left: L,
-        right: R,
-    ) -> impl Parser<I, C, Output = Self::Output, Error = Self::Error>
-    where
-        L: Parser<I, C, Error = Self::Error>,
-        R: Parser<I, C, Error = Self::Error>,
-    {
-        left.and_keep_right(self).and_keep_left(right)
-    }
 }
 
 impl<I, C, L> And<I, C> for L

@@ -610,12 +610,13 @@ mod string_literal {
     use crate::{ParseError, *};
 
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
-        seq3(
+        surround(
             string_delimiter(),
             inside_string(),
             string_delimiter(),
-            |_, text, _| Expression::StringLiteral(text),
+            SurroundMode::Mandatory,
         )
+        .map(Expression::StringLiteral)
         .with_pos()
     }
 

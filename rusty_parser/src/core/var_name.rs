@@ -244,7 +244,9 @@ impl CreateArray for ParamType {
 }
 
 fn as_clause() -> impl Parser<RcStringView, Output = Keyword, Error = ParseError> {
-    keyword(Keyword::As).surround(whitespace(), whitespace())
+    whitespace()
+        .and_keep_right(keyword(Keyword::As))
+        .and_keep_left(whitespace())
 }
 
 pub(crate) fn user_defined_type<T>() -> impl Parser<RcStringView, Output = T, Error = ParseError>

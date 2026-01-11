@@ -539,12 +539,11 @@ fn preceded_by_ws(
 fn followed_by_ws(
     parser: impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError>,
 ) -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
-    parser
-        .then_with_in_context(
-            |e| e.is_parenthesis(),
-            || conditionally_opt_whitespace().no_incomplete(),
-        )
-        .map(|(l, _r)| l)
+    parser.then_with_in_context(
+        conditionally_opt_whitespace(),
+        |e| e.is_parenthesis(),
+        KeepLeftCombiner,
+    )
 }
 
 /// Parses an expression
@@ -886,8 +885,9 @@ pub mod property {
     pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
         base_expr_pos_p()
             .then_with_in_context(
+                ctx_dot_property(),
                 |first_expr_pos| is_qualified(&first_expr_pos.element),
-                ctx_dot_property,
+                TupleCombiner,
             )
             .flat_map(|input, (first_expr_pos, properties)| {
                 // not possible to have properties for qualified first expr

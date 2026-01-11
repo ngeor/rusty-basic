@@ -1,5 +1,5 @@
 use rusty_pc::{
-    And, FlatMapOkNone, Flatten, Map, NoContext, OrFail, Parser, SetContext, ThenWithContext, ToOption, Token, ctx_parser
+    And, FlatMapOkNone, Flatten, Map, NoContext, OrFail, Parser, SetContext, ThenWithContext, ToOption, Token, TupleCombiner, ctx_parser
 };
 
 use crate::core::expression::ws_expr_pos_p;
@@ -25,8 +25,9 @@ where
     F: Fn(&P::Output) -> bool + 'static,
 {
     first_parser.then_with_in_context(
+        parse_second(keyword),
         move |first| is_first_wrapped_in_parenthesis(first),
-        move || parse_second(keyword),
+        TupleCombiner,
     )
 }
 

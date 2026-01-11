@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser};
+use crate::{ParseResult, Parser, SetContext};
 
 pub trait OrDefault<I, C>: Parser<I, C>
 where
@@ -39,9 +39,9 @@ where
         }
     }
 }
-impl<C, P> crate::SetContext<C> for OrDefaultParser<P>
+impl<C, P> SetContext<C> for OrDefaultParser<P>
 where
-    P: crate::SetContext<C>,
+    P: SetContext<C>,
 {
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)

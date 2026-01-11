@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser};
+use crate::{ParseResult, Parser, SetContext};
 
 pub trait ToOption<I, C>: Parser<I, C>
 where
@@ -32,9 +32,9 @@ where
         }
     }
 }
-impl<C, P> crate::SetContext<C> for ToOptionParser<P>
+impl<C, P> SetContext<C> for ToOptionParser<P>
 where
-    P: crate::SetContext<C>,
+    P: SetContext<C>,
 {
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)

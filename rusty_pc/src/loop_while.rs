@@ -1,20 +1,45 @@
-use crate::{ParseResult, Parser, default_parse_error, parser_combinator};
+use crate::{ParseResult, Parser, SetContext, default_parse_error};
 
-parser_combinator!(
-    trait LoopWhile
-    where Error: Default,
-    {
-        fn loop_while<F>(predicate: F) -> Vec<Self::Output>
-        where
-            F: Fn(&Self::Output) -> bool;
-    }
-
-    struct LoopWhileParser<F>;
-
-    fn parse(&self, tokenizer) -> Vec<P::Output>
+pub trait LoopWhile<I, C>: Parser<I, C>
+where
+    Self: Sized,
+    Self::Error: Default,
+{
+    fn loop_while<F>(
+        self,
+        predicate: F,
+    ) -> impl Parser<I, C, Output = Vec<Self::Output>, Error = Self::Error>
     where
-        F: Fn(&P::Output) -> bool
+        F: Fn(&Self::Output) -> bool,
     {
+        LoopWhileParser::new(self, predicate)
+    }
+}
+impl<I, C, P> LoopWhile<I, C> for P
+where
+    P: Parser<I, C>,
+    P::Error: Default,
+{
+}
+
+struct LoopWhileParser<P, F> {
+    parser: P,
+    predicate: F,
+}
+impl<P, F> LoopWhileParser<P, F> {
+    pub fn new(parser: P, predicate: F) -> Self {
+        Self { parser, predicate }
+    }
+}
+impl<I, C, P, F> Parser<I, C> for LoopWhileParser<P, F>
+where
+    P: Parser<I, C>,
+    P::Error: Default,
+    F: Fn(&P::Output) -> bool,
+{
+    type Output = Vec<P::Output>;
+    type Error = P::Error;
+    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         let mut result: Vec<P::Output> = vec![];
         let mut keep_going = true;
         let mut remaining = tokenizer;
@@ -22,7 +47,6 @@ parser_combinator!(
             match self.parser.parse(remaining) {
                 Ok((tokenizer, item)) => {
                     keep_going = (self.predicate)(&item);
-                    // push to the list regardless
                     result.push(item);
                     remaining = tokenizer;
                 }
@@ -39,4 +63,12 @@ parser_combinator!(
             Ok((remaining, result))
         }
     }
-);
+}
+impl<C, P, F> SetContext<C> for LoopWhileParser<P, F>
+where
+    P: SetContext<C>,
+{
+    fn set_context(&mut self, ctx: C) {
+        self.parser.set_context(ctx)
+    }
+}

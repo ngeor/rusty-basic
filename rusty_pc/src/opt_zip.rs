@@ -1,6 +1,6 @@
 // Mixed type or
 
-use crate::{ParseResult, Parser, binary_parser_declaration};
+use crate::{ParseResult, Parser, SetContext};
 
 pub enum ZipValue<L, R> {
     Left(L),
@@ -40,7 +40,26 @@ impl<L, R> ZipValue<L, R> {
     }
 }
 
-binary_parser_declaration!(pub struct OptZip);
+pub struct OptZip<L, R> {
+    left: L,
+    right: R,
+}
+impl<L, R> OptZip<L, R> {
+    pub fn new(left: L, right: R) -> Self {
+        Self { left, right }
+    }
+}
+impl<C, L, R> SetContext<C> for OptZip<L, R>
+where
+    C: Clone,
+    L: SetContext<C>,
+    R: SetContext<C>,
+{
+    fn set_context(&mut self, ctx: C) {
+        self.left.set_context(ctx.clone());
+        self.right.set_context(ctx);
+    }
+}
 
 pub fn opt_zip<L, R>(left: L, right: R) -> OptZip<L, R> {
     OptZip::new(left, right)

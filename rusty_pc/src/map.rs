@@ -1,4 +1,4 @@
-use crate::{ParseResult, ParseResultTrait, Parser};
+use crate::{ParseResult, ParseResultTrait, Parser, SetContext};
 
 pub trait Map<I, C>: Parser<I, C>
 where
@@ -33,9 +33,9 @@ where
         self.parser.parse(tokenizer).map_ok(&self.mapper)
     }
 }
-impl<C, P, F> crate::SetContext<C> for MapParser<P, F>
+impl<C, P, F> SetContext<C> for MapParser<P, F>
 where
-    P: crate::SetContext<C>,
+    P: SetContext<C>,
 {
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)

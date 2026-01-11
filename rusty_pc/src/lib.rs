@@ -13,7 +13,6 @@ mod flatten;
 mod init_context;
 mod lazy;
 mod loop_while;
-mod macros;
 mod many;
 mod map;
 mod map_err;

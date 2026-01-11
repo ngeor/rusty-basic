@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser};
+use crate::{ParseResult, Parser, SetContext};
 
 /// Flat map the result of this parser for successful and incomplete results.
 /// Mapping is done by the given closures.
@@ -55,9 +55,9 @@ where
     }
 }
 
-impl<C, P, F, G> crate::SetContext<C> for FlatMapOkNoneParser<P, F, G>
+impl<C, P, F, G> SetContext<C> for FlatMapOkNoneParser<P, F, G>
 where
-    P: crate::SetContext<C>,
+    P: SetContext<C>,
 {
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)

@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{ParseResult, Parser, SetContext};
 
 pub struct OrParser<I, C, O, E> {
     parsers: Vec<Box<dyn Parser<I, C, Output = O, Error = E>>>,
@@ -33,7 +33,26 @@ where
     }
 }
 
-binary_parser_declaration!(pub struct OrParserNoBox);
+pub struct OrParserNoBox<L, R> {
+    left: L,
+    right: R,
+}
+impl<L, R> OrParserNoBox<L, R> {
+    pub fn new(left: L, right: R) -> Self {
+        Self { left, right }
+    }
+}
+impl<C, L, R> SetContext<C> for OrParserNoBox<L, R>
+where
+    C: Clone,
+    L: SetContext<C>,
+    R: SetContext<C>,
+{
+    fn set_context(&mut self, ctx: C) {
+        self.left.set_context(ctx.clone());
+        self.right.set_context(ctx);
+    }
+}
 
 pub trait Or<I, C>: Parser<I, C>
 where

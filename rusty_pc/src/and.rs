@@ -231,9 +231,7 @@ impl<L, R> Combiner<L, R, R> for KeepRightCombiner {
 pub struct IgnoringBothCombiner;
 
 impl<L, R> Combiner<L, R, ()> for IgnoringBothCombiner {
-    fn combine(&self, _left: L, _right: R) -> () {
-        ()
-    }
+    fn combine(&self, _left: L, _right: R) {}
 }
 
 // Combiner implementation for `Fn`.

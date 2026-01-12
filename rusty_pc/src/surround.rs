@@ -60,26 +60,17 @@ where
         let original_input = input.get_position();
 
         // parse the left boundary
-        match self.left.parse(input) {
-            Ok(_) => (),
-            Err(err) if !err.is_fatal() => {
-                // if boundaries are optional, allow it
-                if self.mode == SurroundMode::Optional {
-                    ()
-                } else {
-                    return Err(err);
-                }
-            }
-            Err(err) => {
-                return Err(err);
-            }
-        };
+        if let Err(err) = self.left.parse(input)
+            && (err.is_fatal() || self.mode == SurroundMode::Mandatory)
+        {
+            return Err(err);
+        }
 
         // parse the main content
         let result = match self.parser.parse(input) {
             Ok(result) => result,
-            Err(err) if !err.is_fatal() => {
-                if self.mode == SurroundMode::Mandatory {
+            Err(err) => {
+                if err.is_fatal() || self.mode == SurroundMode::Mandatory {
                     // the content is mandatory, convert to fatal
                     return Err(err.to_fatal());
                 } else {
@@ -88,27 +79,15 @@ where
                     return Err(err);
                 }
             }
-            Err(err) => {
-                return Err(err);
-            }
         };
 
         // parse the right boundary
-        match self.right.parse(input) {
-            Ok(_) => (),
-            Err(err) if !err.is_fatal() => {
-                if self.mode == SurroundMode::Optional {
-                    // allow missing optional boundary
-                    ()
-                } else {
-                    // convert the missing right boundary into a fatal error!
-                    return Err(err.to_fatal());
-                }
-            }
-            Err(err) => {
-                return Err(err);
-            }
-        };
+        if let Err(err) = self.right.parse(input)
+            && (err.is_fatal() || self.mode == SurroundMode::Mandatory)
+        {
+            // convert the missing right boundary into a fatal error!
+            return Err(err.to_fatal());
+        }
 
         Ok(result)
     }

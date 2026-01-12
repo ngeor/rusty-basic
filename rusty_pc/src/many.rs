@@ -177,11 +177,7 @@ impl<E> ManyCombiner<E, Vec<E>> for VecManyCombiner {
 pub struct IgnoringManyCombiner;
 
 impl<E> ManyCombiner<E, ()> for IgnoringManyCombiner {
-    fn seed(&self, _element: E) -> () {
-        ()
-    }
+    fn seed(&self, _element: E) {}
 
-    fn accumulate(&self, _result: (), _element: E) -> () {
-        ()
-    }
+    fn accumulate(&self, _result: (), _element: E) {}
 }

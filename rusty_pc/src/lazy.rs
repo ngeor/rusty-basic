@@ -8,13 +8,13 @@ where
 {
     LazyParser {
         factory,
-        parser: None,
+        parser_holder: None,
     }
 }
 
 struct LazyParser<F, P> {
     factory: F,
-    parser: Option<P>,
+    parser_holder: Option<P>,
 }
 
 impl<I, C, F, P> Parser<I, C> for LazyParser<F, P>
@@ -27,12 +27,14 @@ where
     type Error = P::Error;
 
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
-        if self.parser.is_none() {
-            let parser = (self.factory)();
-            self.parser = Some(parser);
-            self.parser.as_mut().unwrap().parse(input)
-        } else {
-            self.parser.as_mut().unwrap().parse(input)
+        match self.parser_holder.as_mut() {
+            Some(parser) => parser.parse(input),
+            None => {
+                let mut parser = (self.factory)();
+                let result = parser.parse(input);
+                self.parser_holder = Some(parser);
+                result
+            }
         }
     }
 }

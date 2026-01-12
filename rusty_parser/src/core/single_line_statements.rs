@@ -21,8 +21,7 @@ pub fn single_line_statements_p()
 fn delimited_by_colon<P: Parser<RcStringView, Error = ParseError>>(
     parser: P,
 ) -> impl Parser<RcStringView, Output = Vec<P::Output>, Error = ParseError> {
-    delimited_by(
-        parser,
+    parser.delimited_by(
         colon_ws(),
         ParseError::syntax_error("Error: trailing colon"),
     )

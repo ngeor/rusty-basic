@@ -1,79 +1,250 @@
-use crate::*;
+use crate::{ParseResult, Parser, default_parse_error};
 
-/// Represents a value that has is followed by optional delimiter.
-pub trait Delimited<T> {
-    fn has_delimiter(&self) -> bool;
-    fn value(self) -> T;
-}
-
-// used by opt_zip
-
-impl<L, R> Delimited<Option<L>> for ZipValue<L, R> {
-    fn has_delimiter(&self) -> bool {
-        self.has_right()
-    }
-
-    fn value(self) -> Option<L> {
-        self.left()
-    }
-}
-
-// used by and_opt
-
-impl<L, R> Delimited<L> for (L, Option<R>) {
-    fn has_delimiter(&self) -> bool {
-        let (_, right) = self;
-        right.is_some()
-    }
-
-    fn value(self) -> L {
-        let (left, _) = self;
-        left
-    }
-}
-
-/// Gets a list of items separated by a delimiter.
-pub fn delimited_by<I, P: Parser<I>, D: Parser<I, Error = P::Error>>(
-    parser: P,
-    delimiter: D,
-    trailing_error: P::Error,
-) -> impl Parser<I, Output = Vec<P::Output>, Error = P::Error>
-where
-    I: Clone,
-    P::Error: Clone + Default,
-{
-    parse_delimited_to_items(parser.and_opt_tuple(delimiter), trailing_error)
-}
-
-/// Gets a list of items separated by a delimiter.
-/// The given parser already provides items and delimiters together.
-/// Public because needed by built_ins to implement csv_allow_missing.
-pub fn parse_delimited_to_items<I: Clone, P, L>(
-    parser: P,
-    trailing_error: P::Error,
-) -> impl Parser<I, Output = Vec<L>, Error = P::Error>
-where
-    P: Parser<I>,
-    P::Output: Delimited<L>,
-    P::Error: Clone + Default,
-{
-    parser
-        .loop_while(Delimited::has_delimiter)
-        .flat_map(move |input, items| map_items(input, items, trailing_error.clone()))
-}
-
-fn map_items<I, P, T, E>(input: I, items: Vec<P>, trailing_error: E) -> ParseResult<I, Vec<T>, E>
-where
-    P: Delimited<T>,
-{
-    if items
-        .last()
-        .map(Delimited::has_delimiter)
-        .unwrap_or_default()
+/// Creates a parser that can parse a list of element
+/// separated by a delimiter.
+pub trait DelimitedBy<I, C>: Parser<I, C> + Sized {
+    /// Creates a new parser that uses this parser to parse elements
+    /// that are separated by the given delimiter.
+    ///
+    /// Trailing delimiters are not allowed, in which case the given
+    /// error will be returned (fatal error).
+    ///
+    /// # Arguments
+    ///
+    /// * self - The current parser, that is used to parse an element of the list
+    /// * delimiter - THe parser that parses a delimiter (e.g. a comma, semicolon, etc.)
+    /// * trailing_error - The error to return if a trailing delimiter is found
+    fn delimited_by<D>(
+        self,
+        delimiter: D,
+        trailing_error: Self::Error,
+    ) -> DelimitedParser<Self, D, Self::Error, NormalElementCollector>
+    where
+        Self::Error: Clone + Default,
+        D: Parser<I, C, Error = Self::Error>,
     {
-        // trailing delimiter is fatal
-        Err((true, input, trailing_error))
-    } else {
-        Ok((input, items.into_iter().map(Delimited::value).collect()))
+        DelimitedParser {
+            parser: self,
+            delimiter,
+            trailing_error,
+            element_collector: NormalElementCollector,
+        }
     }
+
+    /// Creates a new parser that uses this parser to parse elements
+    /// that are separated by the given delimiter.
+    ///
+    /// It is possible to have continuous delimiters with no element
+    /// in between. That is why the output type is a Vec of Option elements.
+    ///
+    /// Trailing delimiters are not allowed, in which case the given
+    /// error will be returned (fatal error).
+    ///
+    /// # Arguments
+    ///
+    /// * self - The current parser, that is used to parse an element of the list
+    /// * delimiter - THe parser that parses a delimiter (e.g. a comma, semicolon, etc.)
+    /// * trailing_error - The error to return if a trailing delimiter is found
+    fn delimited_by_allow_missing<D>(
+        self,
+        delimiter: D,
+        trailing_error: Self::Error,
+    ) -> DelimitedParser<Self, D, Self::Error, OptionalElementCollector>
+    where
+        Self::Error: Clone + Default,
+        D: Parser<I, C, Error = Self::Error>,
+    {
+        DelimitedParser {
+            parser: self,
+            delimiter,
+            trailing_error,
+            element_collector: OptionalElementCollector,
+        }
+    }
+}
+
+// blanket implementation of the DelimitedBy trait
+
+impl<I, C, P> DelimitedBy<I, C> for P
+where
+    P: Parser<I, C>,
+    P::Error: Clone + Default,
+{
+}
+
+/// A parser that can parse a list of elements separated by a delimiter
+pub struct DelimitedParser<P, D, E, A> {
+    /// The parser that is used to parse the elements
+    parser: P,
+    /// The parser that is used to parse the delimiters
+    delimiter: D,
+    /// The error to return if a trailing delimiter is found
+    trailing_error: E,
+    /// Collects the elements into the final result
+    element_collector: A,
+}
+
+/// Collects the elements into the final result
+///
+/// The type `E` is the type of the parsed elements.
+pub trait ElementCollector<E> {
+    /// The type of the element as it is collected.
+    /// The normal case would be just the same as the `E` type,
+    /// but if optional elements are allowed, it can be `Option<E>`.
+    type CollectedElement;
+
+    /// Maps the parsed element to the collected element.
+    fn map(&self, element: E) -> Self::CollectedElement;
+
+    /// Creates optionally a value for a missing element.
+    /// This method should return `None` if missing elements
+    /// are not supported.
+    fn map_missing_element(&self) -> Option<Self::CollectedElement>;
+}
+
+/// Collects the elements into the final result,
+/// without any transformation.
+pub struct NormalElementCollector;
+
+impl<E> ElementCollector<E> for NormalElementCollector {
+    type CollectedElement = E;
+
+    fn map(&self, element: E) -> E {
+        element
+    }
+
+    fn map_missing_element(&self) -> Option<E> {
+        // missing elements are not supported
+        None
+    }
+}
+
+/// Collects the elements into the final result,
+/// but allows optional elements.
+pub struct OptionalElementCollector;
+
+impl<E> ElementCollector<E> for OptionalElementCollector {
+    /// The collected element is an `Option<E>`
+    /// in order to support optional elements.
+    type CollectedElement = Option<E>;
+
+    fn map(&self, element: E) -> Option<E> {
+        // map the element to a Some
+        Some(element)
+    }
+
+    fn map_missing_element(&self) -> Option<Option<E>> {
+        // This can be a bit confusing,
+        // as the signature is Option of Option of E.
+        // Some indicates that we support missing elements,
+        // and None is the missing element's value.
+        Some(None)
+    }
+}
+
+impl<I, C, P, D, E, A> Parser<I, C> for DelimitedParser<P, D, E, A>
+where
+    P: Parser<I, C, Error = E>,
+    D: Parser<I, C, Error = E>,
+    E: Clone + Default,
+    A: ElementCollector<P::Output>,
+{
+    // The output is determined by the element collector,
+    // allowing some versatility of the output type,
+    // without having to re-implement the parser,
+    // or having to do a map on the output after parsing is done.
+    type Output = Vec<A::CollectedElement>;
+    type Error = E;
+
+    fn parse(&self, mut input: I) -> ParseResult<I, Self::Output, Self::Error> {
+        let mut result: Self::Output = vec![];
+        let mut state = State::Initial;
+        let mut last_parsed = LastParsed::Nothing;
+        loop {
+            match self.parser.parse(input) {
+                Ok((remaining, value)) => {
+                    // collect value
+                    debug_assert!(state != State::AfterValue);
+                    state = State::AfterValue;
+                    result.push(self.element_collector.map(value));
+                    input = remaining;
+                    last_parsed = LastParsed::Value;
+                }
+                Err((false, remaining, _)) => {
+                    // maybe get delimiter
+                    state = State::AfterNoValue;
+                    input = remaining;
+                }
+                Err(err) => {
+                    // always return on fatal errors
+                    return Err(err);
+                }
+            }
+
+            debug_assert!(state == State::AfterValue || state == State::AfterNoValue);
+
+            match self.delimiter.parse(input) {
+                Ok((remaining, _)) => {
+                    if state == State::AfterNoValue {
+                        match self.element_collector.map_missing_element() {
+                            Some(value) => {
+                                // push an optional missing element
+                                result.push(value);
+                            }
+                            None => {
+                                // missing elements are not allowed and we found a delimiter
+                                return Err((true, remaining, self.trailing_error.clone()));
+                            }
+                        }
+                    }
+
+                    state = State::AfterDelimiter;
+                    input = remaining;
+                    last_parsed = LastParsed::Delimiter;
+                }
+                Err((false, remaining, _)) => {
+                    input = remaining;
+                    break;
+                }
+                Err(err) => {
+                    // always return on fatal errors
+                    return Err(err);
+                }
+            }
+        }
+
+        match last_parsed {
+            LastParsed::Nothing => default_parse_error(input),
+            LastParsed::Value => Ok((input, result)),
+            LastParsed::Delimiter => Err((true, input, self.trailing_error.clone())),
+        }
+    }
+}
+
+/// Keeps track of what was the most recently parsed item.
+enum LastParsed {
+    /// Nothing was parsed, this is the initial state.
+    Nothing,
+
+    /// The most recently parsed item was a value.
+    Value,
+
+    /// The most recently parsed item was a delimiter.
+    Delimiter,
+}
+
+/// Keeps track of the state of the loop.
+#[derive(PartialEq, Eq)]
+enum State {
+    /// Initial state.
+    Initial,
+
+    /// After having parsed a value.
+    AfterValue,
+
+    /// After having failed to parse a value.
+    AfterNoValue,
+
+    /// After having parsed a delimiter.
+    AfterDelimiter,
 }

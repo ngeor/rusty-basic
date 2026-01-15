@@ -31,14 +31,23 @@ pub(super) fn one(ch: char) -> impl Parser<RcStringView, Output = String, Error 
     AnyChar.filter(move |c| *c == ch).map(String::from)
 }
 
+/// Parses the specific string, case insensitive.
 pub(super) fn specific(
     needle: &str,
 ) -> impl Parser<RcStringView, Output = String, Error = ParseError> {
-    SpecificStr::new(needle)
+    SpecificStr::new(needle, StringManyCombiner)
 }
 
+/// Parses the specific string, case insensitive.
 pub(super) fn specific_owned(
     needle: String,
 ) -> impl Parser<RcStringView, Output = String, Error = ParseError> {
-    SpecificString::new(needle)
+    SpecificString::new(needle, StringManyCombiner)
+}
+
+/// Parses the specific string, case insensitive, ignoring the output.
+pub(super) fn specific_ignoring(
+    needle: String,
+) -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+    SpecificString::new(needle, IgnoringManyCombiner)
 }

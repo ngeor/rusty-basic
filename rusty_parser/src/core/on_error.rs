@@ -26,7 +26,7 @@ fn next() -> impl Parser<RcStringView, Output = OnErrorOption, Error = ParseErro
 }
 
 fn goto() -> impl Parser<RcStringView, Output = OnErrorOption, Error = ParseError> {
-    keyword_followed_by_whitespace_p(Keyword::GoTo)
+    keyword_ws_p(Keyword::GoTo)
         .and_keep_right(goto_label().or(goto_zero()).or_expected("label or 0"))
 }
 

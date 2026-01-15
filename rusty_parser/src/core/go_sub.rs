@@ -7,7 +7,7 @@ use crate::tokens::whitespace_ignoring;
 use crate::{Keyword, ParseError, Statement};
 
 pub fn statement_go_sub_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
-    keyword_followed_by_whitespace_p(Keyword::GoSub)
+    keyword_ws_p(Keyword::GoSub)
         .and_keep_right(bare_name_p().or_expected("label"))
         .map(Statement::GoSub)
 }

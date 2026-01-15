@@ -5,7 +5,7 @@ use crate::core::statement_separator::comments_in_between_keywords;
 use crate::core::statements::zero_or_more_statements;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace_ignoring;
+use crate::tokens::{keyword_ignoring, whitespace_ignoring};
 use crate::{ParseError, *};
 
 // SELECT CASE expr ' comment
@@ -82,7 +82,7 @@ fn case_blocks() -> impl Parser<RcStringView, Output = Vec<CaseBlock>, Error = P
 fn case_block() -> impl Parser<RcStringView, Output = CaseBlock, Error = ParseError> {
     // CASE
     // TODO is this syntax_error message even possible to happen?
-    keyword(Keyword::Case)
+    keyword_ignoring(Keyword::Case)
         .and_keep_right(continue_after_case().or_expected("'case expression' or ELSE after CASE"))
 }
 
@@ -113,7 +113,7 @@ mod case_expression_parser {
     use crate::core::opt_second_expression::opt_second_expression_after_keyword;
     use crate::input::RcStringView;
     use crate::pc_specific::*;
-    use crate::tokens::{TokenType, any_token, whitespace_ignoring};
+    use crate::tokens::{TokenType, any_token, keyword_ignoring, whitespace_ignoring};
     use crate::{CaseExpression, ExpressionTrait, Keyword, Operator, ParseError};
 
     pub fn parser() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParseError> {
@@ -122,7 +122,7 @@ mod case_expression_parser {
 
     fn case_is() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParseError> {
         seq3(
-            keyword(Keyword::Is),
+            keyword_ignoring(Keyword::Is),
             opt_and_keep_right(whitespace_ignoring(), relational_operator_p())
                 .or_expected("Operator after IS"),
             opt_and_keep_right(whitespace_ignoring(), expression_pos_p())

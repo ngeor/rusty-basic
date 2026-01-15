@@ -3,7 +3,7 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{comma_ws, whitespace_ignoring};
+use crate::tokens::comma_ws;
 use crate::{BuiltInSub, ParseError, *};
 
 /// Parses built-in subs with optional arguments.
@@ -12,14 +12,11 @@ pub fn parse_built_in_sub_with_opt_args(
     k: Keyword,
     built_in_sub: BuiltInSub,
 ) -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
-    seq3(
-        keyword(k),
-        whitespace_ignoring(),
-        csv_allow_missing(),
-        move |_, _, opt_args| {
+    keyword_ws_p(k)
+        .and_keep_right(csv_allow_missing())
+        .map(move |opt_args| {
             Statement::built_in_sub_call(built_in_sub, map_opt_args_to_flags(opt_args))
-        },
-    )
+        })
 }
 
 /// Maps optional arguments to arguments, inserting a dummy first argument indicating

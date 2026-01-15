@@ -6,7 +6,7 @@ use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::{BuiltInSub, ParseError, *};
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
-    keyword_followed_by_whitespace_p(Keyword::Width)
+    keyword_ws_p(Keyword::Width)
         .and_keep_right(csv_allow_missing())
         .map(|opt_args| Statement::built_in_sub_call(BuiltInSub::Width, map_args(opt_args)))
 }

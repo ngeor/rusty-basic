@@ -3,18 +3,16 @@ use rusty_pc::*;
 use crate::built_ins::common::{encode_opt_file_handle_arg, opt_file_handle_comma_p};
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace_ignoring;
 use crate::{BuiltInSub, ParseError, *};
 
 // INPUT variable-list
 // INPUT #file-number%, variable-list
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
-    seq4(
-        keyword(Keyword::Input),
-        whitespace_ignoring(),
+    seq3(
+        keyword_ws_p(Keyword::Input),
         opt_file_handle_comma_p(),
         csv_expressions_non_opt("#file-number or variable"),
-        |_, _, opt_file_number_pos, variables| {
+        |_, opt_file_number_pos, variables| {
             let mut args: Expressions = encode_opt_file_handle_arg(opt_file_number_pos);
             args.extend(variables);
             Statement::built_in_sub_call(BuiltInSub::Input, args)

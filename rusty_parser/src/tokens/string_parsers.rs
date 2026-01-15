@@ -1,4 +1,4 @@
-use rusty_pc::{Filter, IgnoringManyCombiner, Many, Map, Parser, StringManyCombiner};
+use rusty_pc::{Filter, IgnoringManyCombiner, Many, ManyCombiner, Map, Parser, StringManyCombiner};
 
 use crate::ParseError;
 use crate::input::RcStringView;
@@ -13,18 +13,33 @@ pub(super) fn many<F>(
 where
     F: Fn(&char) -> bool,
 {
-    AnyChar.filter(predicate).many(StringManyCombiner)
+    many_collecting(predicate, StringManyCombiner)
 }
 
 /// Parses one or more characters that match the given predicate,
 /// but ignores them, returning just `()`.
+#[allow(dead_code)]
 pub(super) fn many_ignoring<F>(
     predicate: F,
 ) -> impl Parser<RcStringView, Output = (), Error = ParseError>
 where
     F: Fn(&char) -> bool,
 {
-    AnyChar.filter(predicate).many(IgnoringManyCombiner)
+    many_collecting(predicate, IgnoringManyCombiner)
+}
+
+/// Parses one or more characters that match the given predicate,
+/// collecting them with the given combiner.
+pub(super) fn many_collecting<F, C, O>(
+    predicate: F,
+    combiner: C,
+) -> impl Parser<RcStringView, Output = O, Error = ParseError>
+where
+    F: Fn(&char) -> bool,
+    C: ManyCombiner<char, O>,
+    O: Default,
+{
+    AnyChar.filter(predicate).many(combiner)
 }
 
 pub(super) fn one(ch: char) -> impl Parser<RcStringView, Output = String, Error = ParseError> {

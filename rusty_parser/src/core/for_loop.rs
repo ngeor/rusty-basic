@@ -54,7 +54,7 @@ fn parse_for_p()
 -> impl Parser<RcStringView, Output = (ExpressionPos, ExpressionPos, ExpressionPos), Error = ParseError>
 {
     seq6(
-        keyword_followed_by_whitespace_p(Keyword::For),
+        keyword_ws_p(Keyword::For),
         property::parser().or_expected("name after FOR"),
         equal_sign_ws(),
         expr_pos_ws_p().or_expected("lower bound of FOR loop"),

@@ -3,17 +3,15 @@ use rusty_pc::*;
 use crate::core::dim_name::{dim_var_pos_p, redim_var_pos_p};
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace_ignoring;
 use crate::{ParseError, *};
 
 /// Parses DIM statement
 pub fn dim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
-    seq4(
-        keyword(Keyword::Dim),
-        whitespace_ignoring(),
+    seq3(
+        keyword_ws_p(Keyword::Dim),
         opt_shared_keyword(),
         csv_non_opt(dim_var_pos_p(), "name after DIM"),
-        |_, _, opt_shared, variables| {
+        |_, opt_shared, variables| {
             Statement::Dim(DimList {
                 shared: opt_shared.is_some(),
                 variables,
@@ -24,12 +22,11 @@ pub fn dim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
 
 /// Parses REDIM statement
 pub fn redim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
-    seq4(
-        keyword(Keyword::Redim),
-        whitespace_ignoring(),
+    seq3(
+        keyword_ws_p(Keyword::Redim),
         opt_shared_keyword(),
         csv_non_opt(redim_var_pos_p(), "name after REDIM"),
-        |_, _, opt_shared, variables| {
+        |_, opt_shared, variables| {
             Statement::Redim(DimList {
                 shared: opt_shared.is_some(),
                 variables,
@@ -39,7 +36,7 @@ pub fn redim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseE
 }
 
 fn opt_shared_keyword() -> impl Parser<RcStringView, Output = Option<()>, Error = ParseError> {
-    keyword_followed_by_whitespace_p(Keyword::Shared).to_option()
+    keyword_ws_p(Keyword::Shared).to_option()
 }
 
 #[cfg(test)]

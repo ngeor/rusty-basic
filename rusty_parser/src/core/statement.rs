@@ -341,7 +341,7 @@ fn statement_label_p() -> impl Parser<RcStringView, Output = Statement, Error = 
 }
 
 fn statement_go_to_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
-    keyword_followed_by_whitespace_p(Keyword::GoTo)
+    keyword_ws_p(Keyword::GoTo)
         .and_keep_right(bare_name_p().or_expected("label"))
         .map(Statement::GoTo)
 }
@@ -394,11 +394,11 @@ mod system {
     use crate::core::statement_separator::peek_eof_or_statement_separator;
     use crate::input::RcStringView;
     use crate::pc_specific::*;
-    use crate::tokens::whitespace_ignoring;
+    use crate::tokens::{keyword_ignoring, whitespace_ignoring};
     use crate::{Keyword, ParseError, Statement};
 
     pub fn parse_system_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
-        keyword(Keyword::System).and(
+        keyword_ignoring(Keyword::System).and(
             opt_and_tuple(whitespace_ignoring(), peek_eof_or_statement_separator())
                 .or_expected("end-of-statement"),
             |_, _| Statement::System,

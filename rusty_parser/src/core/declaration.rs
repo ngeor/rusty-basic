@@ -19,7 +19,7 @@ use crate::{ParseError, *};
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
 pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParseError> {
-    keyword_followed_by_whitespace_p(Keyword::Declare).and_keep_right(
+    keyword_ws_p(Keyword::Declare).and_keep_right(
         OrParser::new(vec![
             Box::new(
                 function_declaration_p().map(|(n, p)| GlobalStatement::function_declaration(n, p)),
@@ -32,25 +32,21 @@ pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement, Er
 
 pub fn function_declaration_p()
 -> impl Parser<RcStringView, Output = (NamePos, Parameters), Error = ParseError> {
-    seq4(
-        keyword(Keyword::Function),
-        whitespace_ignoring(),
+    seq3(
+        keyword_ws_p(Keyword::Function),
         name_p().with_pos().or_expected("function name"),
         declaration_parameters_p(),
-        |_, _, function_name_pos, declaration_parameters| {
-            (function_name_pos, declaration_parameters)
-        },
+        |_, function_name_pos, declaration_parameters| (function_name_pos, declaration_parameters),
     )
 }
 
 pub fn sub_declaration_p()
 -> impl Parser<RcStringView, Output = (BareNamePos, Parameters), Error = ParseError> {
-    seq4(
-        keyword(Keyword::Sub),
-        whitespace_ignoring(),
+    seq3(
+        keyword_ws_p(Keyword::Sub),
         bare_name_p().with_pos().or_expected("sub name"),
         declaration_parameters_p(),
-        |_, _, sub_name_pos, declaration_parameters| (sub_name_pos, declaration_parameters),
+        |_, sub_name_pos, declaration_parameters| (sub_name_pos, declaration_parameters),
     )
 }
 

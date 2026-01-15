@@ -160,7 +160,7 @@ impl HasExpressionType for ElementType {
 pub fn user_defined_type_p()
 -> impl Parser<RcStringView, Output = UserDefinedType, Error = ParseError> {
     seq5(
-        keyword_followed_by_whitespace_p(Keyword::Type),
+        keyword_ws_p(Keyword::Type),
         bare_name_without_dots().or_expected("name after TYPE"),
         comments_in_between_keywords(),
         elements_p(),
@@ -176,14 +176,13 @@ fn elements_p() -> impl Parser<RcStringView, Output = Vec<ElementPos>, Error = P
 }
 
 fn element_pos_p() -> impl Parser<RcStringView, Output = ElementPos, Error = ParseError> {
-    seq6(
+    seq5(
         bare_name_without_dots(),
         whitespace_ignoring(),
-        keyword(Keyword::As),
-        whitespace_ignoring(),
+        keyword_ws_p(Keyword::As),
         element_type_p().or_expected("element type"),
         comments_in_between_keywords(),
-        |element, _, _, _, element_type, comments| Element::new(element, element_type, comments),
+        |element, _, _, element_type, comments| Element::new(element, element_type, comments),
     )
     .with_pos()
 }

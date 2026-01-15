@@ -20,7 +20,7 @@ pub fn any_token() -> impl Parser<RcStringView, Output = Token, Error = ParseErr
         Box::new(digits()),
         // // keyword needs to be before Identifier, because the first one wins
         // Keyword,
-        Box::new(keyword()),
+        Box::new(any_keyword()),
         // // Starts with letter, continues with letters or digits.
         // Identifier,
         Box::new(identifier()),
@@ -80,16 +80,24 @@ fn lf() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
 /// if they want to. As whitespace isn't part of other tokens,
 /// it should be safe to do so.
 pub fn whitespace() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    many(is_whitespace)
-        .to_token(TokenType::Whitespace)
-        .with_expected_message("Expected: whitespace")
+    whitespace_collecting(StringManyCombiner).to_token(TokenType::Whitespace)
 }
 
 /// Parses any number of whitespace characters, but ignores the result.
 /// Whitespace is often ignored, so this function optimizes as it doesn't
 /// create a token or store the whitespace characters into a [String].
 pub fn whitespace_ignoring() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
-    many_ignoring(is_whitespace).with_expected_message("Expected: whitespace")
+    whitespace_collecting(IgnoringManyCombiner)
+}
+
+pub fn whitespace_collecting<C, O>(
+    combiner: C,
+) -> impl Parser<RcStringView, Output = O, Error = ParseError>
+where
+    C: ManyCombiner<char, O>,
+    O: Default,
+{
+    many_collecting(is_whitespace, combiner).with_expected_message("Expected: whitespace")
 }
 
 fn is_whitespace(ch: &char) -> bool {
@@ -100,14 +108,22 @@ fn digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     many(char::is_ascii_digit).to_token(TokenType::Digits)
 }
 
-fn keyword() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn any_keyword() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     many(char::is_ascii_alphabetic)
         .filter(|text| Keyword::try_from(text.as_str()).is_ok())
-        .to_token(TokenType::Keyword)
         .and_keep_left(ensure_no_illegal_char_after_keyword())
+        .with_expected_message("Expected: Keyword")
+        .to_token(TokenType::Keyword)
 }
 
-fn ensure_no_illegal_char_after_keyword() -> impl Parser<RcStringView, Error = ParseError> {
+pub fn keyword_ignoring(k: Keyword) -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+    specific_ignoring(k.to_string())
+        .and_keep_left(ensure_no_illegal_char_after_keyword())
+        .with_expected_message(format!("Expected: {}", k))
+}
+
+fn ensure_no_illegal_char_after_keyword()
+-> impl Parser<RcStringView, Output = char, Error = ParseError> {
     PeekParser::new(AnyCharOrEof.filter(is_allowed_char_after_keyword))
 }
 
@@ -126,7 +142,12 @@ fn ensure_no_illegal_char_after_keyword() -> impl Parser<RcStringView, Error = P
 ///
 /// The parameter is '\0' if we encountered EOF, which is allowed.
 fn is_allowed_char_after_keyword(char_or_eof: &char) -> bool {
-    *char_or_eof != '.' && *char_or_eof != '$' && !char_or_eof.is_ascii_digit()
+    // The is_ascii_alphanumeric used to be is_ascii_digit, to detect numbers.
+    // With the introduction of keyword_ignoring, which stops parsing as soon
+    // as the keyword is detected and not when we stop detecting letters,
+    // it needed to switch to is_ascii_alphanumeric to ignore words that start
+    // with keywords, e.g. GetName.
+    *char_or_eof != '.' && *char_or_eof != '$' && !char_or_eof.is_ascii_alphanumeric()
 }
 
 // TODO validate the max length in `zero_or_more` e.g. `between(0, MAX_LENGTH - 1)`

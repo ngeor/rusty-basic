@@ -4,17 +4,16 @@ use crate::core::expression::expression_pos_p;
 use crate::core::name::name_p;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{equal_sign_ws, whitespace_ignoring};
+use crate::tokens::equal_sign_ws;
 use crate::{Keyword, ParseError, Statement};
 
 pub fn constant_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
-    seq5(
-        keyword(Keyword::Const),
-        whitespace_ignoring(),
+    seq4(
+        keyword_ws_p(Keyword::Const),
         name_p().with_pos().or_expected("const name"),
         equal_sign_ws(),
         expression_pos_p().or_expected("const value"),
-        |_, _, const_name, _, const_value_expr| Statement::constant(const_name, const_value_expr),
+        |_, const_name, _, const_value_expr| Statement::constant(const_name, const_value_expr),
     )
 }
 

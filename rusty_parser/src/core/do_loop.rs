@@ -37,13 +37,12 @@ fn do_condition_top() -> impl Parser<RcStringView, Output = DoLoop, Error = Pars
 }
 
 fn do_condition_bottom() -> impl Parser<RcStringView, Output = DoLoop, Error = ParseError> {
-    seq5(
+    seq4(
         zero_or_more_statements!(Keyword::Loop),
-        keyword(Keyword::Loop),
-        whitespace_ignoring(),
+        keyword_ws_p(Keyword::Loop),
         keyword_of!(Keyword::Until, Keyword::While),
         ws_expr_pos_p().or_expected("expression"),
-        |statements, _, _, k, condition| DoLoop {
+        |statements, _, k, condition| DoLoop {
             condition,
             statements,
             position: DoLoopConditionPosition::Bottom,

@@ -3,7 +3,7 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{equal_sign_ws, whitespace_ignoring};
+use crate::tokens::{equal_sign_ws, keyword_ignoring, whitespace_ignoring};
 use crate::{BuiltInSub, ParseError, *};
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq6(
@@ -31,9 +31,8 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
 // FOR <ws+> INPUT <ws+>
 fn parse_open_mode_p()
 -> impl Parser<RcStringView, Output = Positioned<FileMode>, Error = ParseError> {
-    seq4(
-        keyword(Keyword::For),
-        whitespace_ignoring(),
+    seq3(
+        keyword_ws_p(Keyword::For),
         keyword_map(&[
             (Keyword::Append, FileMode::Append),
             (Keyword::Input, FileMode::Input),
@@ -42,19 +41,17 @@ fn parse_open_mode_p()
         ])
         .with_pos(),
         whitespace_ignoring(),
-        |_, _, file_mode, _| file_mode,
+        |_, file_mode, _| file_mode,
     )
 }
 
 // ACCESS <ws+> READ <ws+>
 fn parse_open_access_p()
 -> impl Parser<RcStringView, Output = Positioned<FileAccess>, Error = ParseError> {
-    seq4(
-        keyword(Keyword::Access),
-        whitespace_ignoring(),
-        keyword(Keyword::Read).with_pos(),
-        whitespace_ignoring(),
-        |_, _, positioned, _| FileAccess::Read.at(&positioned),
+    seq2(
+        keyword_ws_p(Keyword::Access),
+        keyword_ws_p(Keyword::Read).with_pos(),
+        |_, positioned| FileAccess::Read.at(&positioned),
     )
 }
 
@@ -67,7 +64,7 @@ fn parse_file_number_p() -> impl Parser<RcStringView, Output = ExpressionPos, Er
 
 fn parse_len_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     seq3(
-        whitespace_ignoring().and(keyword(Keyword::Len), IgnoringBothCombiner),
+        whitespace_ignoring().and(keyword_ignoring(Keyword::Len), IgnoringBothCombiner),
         equal_sign_ws(),
         expression_pos_p().or_expected("expression after LEN ="),
         |_, _, e| e,

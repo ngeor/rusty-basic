@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use rusty_pc::*;
 
 use crate::input::RcStringView;
-use crate::tokens::{TokenType, any_token, whitespace_ignoring};
+use crate::tokens::{TokenType, any_token, keyword_ignoring, whitespace_ignoring};
 use crate::{Keyword, ParseError};
 
 // TODO review usages of TokenType::Keyword
@@ -39,23 +39,22 @@ pub fn keyword_p(
     KeywordParser::new(any_token(), keywords, eof_is_fatal)
 }
 
-// TODO 1. rename to keyword_ws like expressions 2. add ws_keyword and ws_keyword_ws
-pub fn keyword_followed_by_whitespace_p(
-    k: Keyword,
-) -> impl Parser<RcStringView, Output = (), Error = ParseError> {
-    seq2(keyword(k), whitespace_ignoring(), |_, _| ())
+/// Parses the given keyword, followed by mandatory whitespace.
+pub fn keyword_ws_p(k: Keyword) -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+    keyword_ignoring(k).and(whitespace_ignoring().no_incomplete(), IgnoringBothCombiner)
 }
 
 // TODO add keyword_pair_ws
+/// Parses the first keyword, followed by mandatory whitespace,
+/// followed by the second keyword. If the first keyword is parsed,
+/// both the whitespace and the second keyword must be parsed.
 pub fn keyword_pair(
     first: Keyword,
     second: Keyword,
-) -> impl Parser<RcStringView, Error = ParseError> {
-    seq3(
-        keyword(first),
-        whitespace_ignoring(),
-        keyword(second),
-        |_, _, _| (),
+) -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+    keyword_ws_p(first).and(
+        keyword_ignoring(second).no_incomplete(),
+        IgnoringBothCombiner,
     )
 }
 

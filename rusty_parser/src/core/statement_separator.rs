@@ -21,10 +21,12 @@ use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::{TokenMatcher, TokenType, any_token_of, peek_token, whitespace};
 
+/// Parses a comment separator, which is the EOL,
+/// followed optionally by any number of EOL or whitespace tokens.
 pub fn comment_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
-    any_token_of!(TokenType::Eol).and_opt(
-        any_token_of!(TokenType::Eol, TokenType::Whitespace),
-        |_, _| (),
+    any_token_of!(TokenType::Eol).and(
+        any_token_of!(TokenType::Eol, TokenType::Whitespace).many_allow_none(IgnoringManyCombiner),
+        IgnoringBothCombiner,
     )
 }
 

@@ -4,11 +4,14 @@ use crate::input::RcStringView;
 use crate::tokens::*;
 use crate::{ParseError, *};
 
-/// Tries to read a comment.
+/// Parses a comment as a statement.
+/// Does not consume the EOL token.
 pub fn comment_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     comment_as_string_p().map(Statement::Comment)
 }
 
+/// Parses a comment as a [String].
+/// Does not consume the EOL token.
 pub fn comment_as_string_p() -> impl Parser<RcStringView, Output = String, Error = ParseError> {
     // TODO support ignoring tokens to avoid allocation
     any_symbol_of!('\'').and_keep_right(

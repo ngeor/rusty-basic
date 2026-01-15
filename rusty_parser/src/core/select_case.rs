@@ -1,7 +1,7 @@
 use rusty_pc::*;
 
 use crate::core::expression::ws_expr_pos_p;
-use crate::core::statement_separator::comments_and_whitespace_p;
+use crate::core::statement_separator::comments_in_between_keywords;
 use crate::core::statements::zero_or_more_statements;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
@@ -23,7 +23,7 @@ use crate::{ParseError, *};
 pub fn select_case_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq4(
         select_case_expr_p(),
-        comments_and_whitespace_p(),
+        comments_in_between_keywords(),
         case_blocks(),
         keyword_pair(Keyword::End, Keyword::Select),
         |expr, inline_comments, all_case_blocks: Vec<CaseBlock>, _| {

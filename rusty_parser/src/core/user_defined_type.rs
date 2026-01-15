@@ -6,7 +6,7 @@ use rusty_pc::*;
 
 use crate::core::expression::expression_pos_p;
 use crate::core::name::bare_name_without_dots;
-use crate::core::statement_separator::comments_and_whitespace_p;
+use crate::core::statement_separator::comments_in_between_keywords;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
@@ -162,7 +162,7 @@ pub fn user_defined_type_p()
     seq5(
         keyword_followed_by_whitespace_p(Keyword::Type),
         bare_name_without_dots().or_expected("name after TYPE"),
-        comments_and_whitespace_p(),
+        comments_in_between_keywords(),
         elements_p(),
         keyword_pair(Keyword::End, Keyword::Type),
         |_, name, comments, elements, _| UserDefinedType::new(name, comments, elements),
@@ -182,7 +182,7 @@ fn element_pos_p() -> impl Parser<RcStringView, Output = ElementPos, Error = Par
         keyword(Keyword::As),
         whitespace(),
         element_type_p().or_expected("element type"),
-        comments_and_whitespace_p(),
+        comments_in_between_keywords(),
         |element, _, _, _, element_type, comments| Element::new(element, element_type, comments),
     )
     .with_pos()

@@ -94,15 +94,24 @@ pub fn peek_eof_or_statement_separator()
     })
 }
 
-// TODO review all parsers that return a collection, implement some `accumulate` method
 /// Reads multiple comments and the surrounding whitespace.
-pub fn comments_and_whitespace_p()
+/// Used for SELECT and TYPE statements to parse comments
+/// that might be in-between keywords.
+pub fn comments_in_between_keywords()
 -> impl Parser<RcStringView, Output = Vec<Positioned<String>>, Error = ParseError> {
-    opt_and_keep_right(
-        whitespace(),
-        OptZip::new(comment_separator(), comment_as_string_p().with_pos())
-            .one_or_more()
-            .map(ZipValue::collect_right)
-            .or_default(),
-    )
+    eol_ws_zero_or_more().and_keep_right(comment_as_string_followed_by_separator().zero_or_more())
+}
+
+fn eol_ws_zero_or_more() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+    any_token_of!(TokenType::Eol, TokenType::Whitespace).many_allow_none(IgnoringManyCombiner)
+}
+
+/// Parses a comment as a string, demanding that it is followed
+/// by a separator (EOL), as this is supposed to be a
+/// comment in-between keywords, so it can't be terminated by EOF.
+fn comment_as_string_followed_by_separator()
+-> impl Parser<RcStringView, Output = Positioned<String>, Error = ParseError> {
+    comment_as_string_p()
+        .with_pos()
+        .and_keep_left(comment_separator().or_expected("EOL"))
 }

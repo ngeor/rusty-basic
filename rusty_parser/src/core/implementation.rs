@@ -4,7 +4,7 @@ use crate::core::declaration::{function_declaration_p, sub_declaration_p};
 use crate::core::statements::zero_or_more_statements;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace;
+use crate::tokens::whitespace_ignoring;
 use crate::{ParseError, *};
 
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
@@ -56,8 +56,12 @@ where
     P: Parser<RcStringView, Output = T, Error = ParseError>,
 {
     parser.and_opt(
-        opt_and_tuple(whitespace(), keyword(Keyword::Static)),
-        |l, r: Option<(Option<Token>, Keyword)>| (l, r.is_some()),
+        opt_and(
+            whitespace_ignoring(),
+            keyword(Keyword::Static),
+            IgnoringBothCombiner,
+        ),
+        |l, r: Option<()>| (l, r.is_some()),
     )
 }
 

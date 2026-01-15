@@ -5,7 +5,7 @@ use crate::ParseError;
 use crate::core::comment::comment_as_string_p;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{TokenMatcher, TokenType, any_token_of, peek_token, whitespace};
+use crate::tokens::{TokenMatcher, TokenType, any_token_of, peek_token, whitespace_ignoring};
 
 /// Parses a comment separator, which is the EOL,
 /// followed optionally by any number of EOL or whitespace tokens.
@@ -39,7 +39,7 @@ fn eol_ws_zero_or_more() -> impl Parser<RcStringView, Output = (), Error = Parse
 /// ws* ' ! (where `!` stands for read and undo)
 pub fn common_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
     opt_and(
-        whitespace(),
+        whitespace_ignoring(),
         OrParser::new(vec![
             Box::new(eol_or_col_separator()),
             Box::new(no_separator_needed_before_comment()),

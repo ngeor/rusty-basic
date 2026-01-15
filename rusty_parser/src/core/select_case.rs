@@ -5,7 +5,7 @@ use crate::core::statement_separator::comments_in_between_keywords;
 use crate::core::statements::zero_or_more_statements;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace;
+use crate::tokens::whitespace_ignoring;
 use crate::{ParseError, *};
 
 // SELECT CASE expr ' comment
@@ -88,7 +88,7 @@ fn case_block() -> impl Parser<RcStringView, Output = CaseBlock, Error = ParseEr
 
 fn continue_after_case() -> impl Parser<RcStringView, Output = CaseBlock, Error = ParseError> {
     opt_and_keep_right(
-        whitespace(),
+        whitespace_ignoring(),
         seq2(
             OrParser::new(vec![
                 Box::new(keyword(Keyword::Else).map(|_| vec![])),
@@ -113,7 +113,7 @@ mod case_expression_parser {
     use crate::core::opt_second_expression::opt_second_expression_after_keyword;
     use crate::input::RcStringView;
     use crate::pc_specific::*;
-    use crate::tokens::{TokenType, any_token, whitespace};
+    use crate::tokens::{TokenType, any_token, whitespace_ignoring};
     use crate::{CaseExpression, ExpressionTrait, Keyword, Operator, ParseError};
 
     pub fn parser() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParseError> {
@@ -123,9 +123,9 @@ mod case_expression_parser {
     fn case_is() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParseError> {
         seq3(
             keyword(Keyword::Is),
-            opt_and_keep_right(whitespace(), relational_operator_p())
+            opt_and_keep_right(whitespace_ignoring(), relational_operator_p())
                 .or_expected("Operator after IS"),
-            opt_and_keep_right(whitespace(), expression_pos_p())
+            opt_and_keep_right(whitespace_ignoring(), expression_pos_p())
                 .or_expected("expression after IS operator"),
             |_, Positioned { element, .. }, r| CaseExpression::Is(element, r),
         )

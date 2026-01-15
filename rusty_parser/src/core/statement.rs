@@ -394,12 +394,12 @@ mod system {
     use crate::core::statement_separator::peek_eof_or_statement_separator;
     use crate::input::RcStringView;
     use crate::pc_specific::*;
-    use crate::tokens::whitespace;
+    use crate::tokens::whitespace_ignoring;
     use crate::{Keyword, ParseError, Statement};
 
     pub fn parse_system_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
         keyword(Keyword::System).and(
-            opt_and_tuple(whitespace(), peek_eof_or_statement_separator())
+            opt_and_tuple(whitespace_ignoring(), peek_eof_or_statement_separator())
                 .or_expected("end-of-statement"),
             |_, _| Statement::System,
         )

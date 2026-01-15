@@ -3,12 +3,11 @@ use rusty_pc::*;
 use crate::Keyword;
 use crate::error::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::WithExpected;
 use crate::tokens::TokenType;
 use crate::tokens::any_char::{AnyChar, AnyCharOrEof};
 use crate::tokens::any_symbol::any_symbol;
 use crate::tokens::string_parsers::*;
-
-// TODO make identifier recognizer without dot
 
 /// Parses any token.
 pub fn any_token() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
@@ -73,8 +72,28 @@ fn lf() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     one('\n').to_token(TokenType::Eol)
 }
 
-fn whitespace() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    many(|ch| *ch == ' ' || *ch == '\t').to_token(TokenType::Whitespace)
+/// Parses any number of whitespace characters,
+/// and returns them as a single token.
+///
+/// This is one of the few functions that are public from this module,
+/// allowing users to call it bypassing the `any_token` function,
+/// if they want to. As whitespace isn't part of other tokens,
+/// it should be safe to do so.
+pub fn whitespace() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+    many(is_whitespace)
+        .to_token(TokenType::Whitespace)
+        .with_expected_message("Expected: whitespace")
+}
+
+/// Parses any number of whitespace characters, but ignores the result.
+/// Whitespace is often ignored, so this function optimizes as it doesn't
+/// create a token or store the whitespace characters into a [String].
+pub fn whitespace_ignoring() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+    many_ignoring(is_whitespace).with_expected_message("Expected: whitespace")
+}
+
+fn is_whitespace(ch: &char) -> bool {
+    *ch == ' ' || *ch == '\t'
 }
 
 fn digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {

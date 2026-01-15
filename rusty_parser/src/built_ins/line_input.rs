@@ -3,14 +3,14 @@ use rusty_pc::*;
 use crate::built_ins::common::{encode_opt_file_handle_arg, opt_file_handle_comma_p};
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace;
+use crate::tokens::whitespace_ignoring;
 use crate::{BuiltInSub, ParseError, *};
 // LINE INPUT variable$
 // LINE INPUT #file-number%, variable$
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq4(
         keyword_pair(Keyword::Line, Keyword::Input),
-        whitespace(),
+        whitespace_ignoring(),
         opt_file_handle_comma_p(),
         expression_pos_p().or_expected("#file-number or variable"),
         |_, _, opt_file_number_pos, variable| {
@@ -45,7 +45,7 @@ mod tests {
     }
 
     #[test]
-    fn test_no_whitespace_after_input() {
+    fn test_no_whitespace_ignoring_after_input() {
         let input = "LINE INPUT";
         assert_parser_err!(input, ParseError::expected("whitespace"));
     }

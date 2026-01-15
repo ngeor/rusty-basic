@@ -3,14 +3,14 @@ use rusty_pc::*;
 use crate::core::dim_name::{dim_var_pos_p, redim_var_pos_p};
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace;
+use crate::tokens::whitespace_ignoring;
 use crate::{ParseError, *};
 
 /// Parses DIM statement
 pub fn dim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq4(
         keyword(Keyword::Dim),
-        whitespace(),
+        whitespace_ignoring(),
         opt_shared_keyword(),
         csv_non_opt(dim_var_pos_p(), "name after DIM"),
         |_, _, opt_shared, variables| {
@@ -26,7 +26,7 @@ pub fn dim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
 pub fn redim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq4(
         keyword(Keyword::Redim),
-        whitespace(),
+        whitespace_ignoring(),
         opt_shared_keyword(),
         csv_non_opt(redim_var_pos_p(), "name after REDIM"),
         |_, _, opt_shared, variables| {

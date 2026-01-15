@@ -8,7 +8,7 @@ use crate::core::single_line_statements::{
 use crate::core::statements::zero_or_more_statements;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace;
+use crate::tokens::whitespace_ignoring;
 use crate::{ParseError, *};
 
 pub fn if_block_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
@@ -51,7 +51,7 @@ fn single_line_if_else_p() -> impl Parser<
 > {
     single_line_non_comment_statements_p().and_opt(
         // comment or ELSE
-        whitespace()
+        whitespace_ignoring()
             .and(comment_p().with_pos(), |_, s| vec![s])
             .or(single_line_else_p()),
         |l, r| (l, vec![], r),
@@ -59,8 +59,8 @@ fn single_line_if_else_p() -> impl Parser<
 }
 
 fn single_line_else_p() -> impl Parser<RcStringView, Output = Statements, Error = ParseError> {
-    whitespace()
-        .and_tuple(keyword(Keyword::Else))
+    whitespace_ignoring()
+        .and(keyword(Keyword::Else), IgnoringBothCombiner)
         .and_keep_right(single_line_statements_p().or_expected("Statements for single line ELSE"))
 }
 

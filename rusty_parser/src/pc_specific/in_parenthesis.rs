@@ -28,11 +28,11 @@ where
 }
 
 fn left_paren() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    // TODO add ignoring for whitespace, add ignoring for and_opt_tuple
+    // TODO add ignoring support for parenthesis
     any_symbol_of!('(')
 }
 
 fn right_paren() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    // TODO add ignoring for whitespace, add ignoring for opt_and_tuple
+    // TODO add ignoring support for parenthesis
     any_symbol_of!(')')
 }

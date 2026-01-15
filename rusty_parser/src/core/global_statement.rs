@@ -8,7 +8,7 @@ use crate::core::{statement, user_defined_type};
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{TokenType, any_token, any_token_of, peek_token, whitespace};
+use crate::tokens::{TokenType, any_token, any_token_of, peek_token, whitespace_ignoring};
 use crate::*;
 
 pub type Program = Vec<GlobalStatementPos>;
@@ -160,8 +160,8 @@ fn main_program() -> impl Parser<RcStringView, Output = Program, Error = ParseEr
 
 fn next_statements() -> impl Parser<RcStringView, Output = Program, Error = ParseError> {
     opt_and_keep_right(
-        whitespace(),
-        next_statement().and_opt_keep_left(whitespace()),
+        whitespace_ignoring(),
+        next_statement().and_opt_keep_left(whitespace_ignoring()),
     )
     .zero_or_more()
 }

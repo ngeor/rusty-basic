@@ -4,7 +4,7 @@ use crate::core::name::{bare_name_p, name_p};
 use crate::core::param_name::parameter_pos_p;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace;
+use crate::tokens::whitespace_ignoring;
 use crate::{ParseError, *};
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)
@@ -34,7 +34,7 @@ pub fn function_declaration_p()
 -> impl Parser<RcStringView, Output = (NamePos, Parameters), Error = ParseError> {
     seq4(
         keyword(Keyword::Function),
-        whitespace(),
+        whitespace_ignoring(),
         name_p().with_pos().or_expected("function name"),
         declaration_parameters_p(),
         |_, _, function_name_pos, declaration_parameters| {
@@ -47,7 +47,7 @@ pub fn sub_declaration_p()
 -> impl Parser<RcStringView, Output = (BareNamePos, Parameters), Error = ParseError> {
     seq4(
         keyword(Keyword::Sub),
-        whitespace(),
+        whitespace_ignoring(),
         bare_name_p().with_pos().or_expected("sub name"),
         declaration_parameters_p(),
         |_, _, sub_name_pos, declaration_parameters| (sub_name_pos, declaration_parameters),
@@ -59,7 +59,7 @@ fn declaration_parameters_p() -> impl Parser<RcStringView, Output = Parameters, 
 {
     // TODO remove the need for the double .or_default()
     opt_and_keep_right(
-        whitespace(),
+        whitespace_ignoring(),
         in_parenthesis(csv(parameter_pos_p()).or_default()),
     )
     .or_default()

@@ -3,12 +3,12 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{equal_sign_ws, whitespace};
+use crate::tokens::{equal_sign_ws, whitespace_ignoring};
 use crate::{BuiltInSub, ParseError, *};
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq5(
         keyword(Keyword::LSet),
-        whitespace(),
+        whitespace_ignoring(),
         name_p().with_pos().or_expected("variable after LSET"),
         equal_sign_ws(),
         expression_pos_p().or_expected("expression"),

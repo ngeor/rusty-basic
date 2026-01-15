@@ -3,7 +3,7 @@ use rusty_pc::*;
 use crate::core::name::{bare_name_without_dots, name_p};
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace;
+use crate::tokens::whitespace_ignoring;
 use crate::{ParseError, *};
 
 /// A variable name with a type.
@@ -244,9 +244,9 @@ impl CreateArray for ParamType {
 }
 
 fn as_clause() -> impl Parser<RcStringView, Output = Keyword, Error = ParseError> {
-    whitespace()
+    whitespace_ignoring()
         .and_keep_right(keyword(Keyword::As))
-        .and_keep_left(whitespace())
+        .and_keep_left(whitespace_ignoring())
 }
 
 pub(crate) fn user_defined_type<T>() -> impl Parser<RcStringView, Output = T, Error = ParseError>

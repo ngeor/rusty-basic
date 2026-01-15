@@ -5,6 +5,8 @@ use rusty_pc::{ParseErr, ParseResult, Parser, Token, TokenKind};
 use crate::ParseError;
 use crate::tokens::TokenType;
 
+// TODO support "ignoring" mode for all tokens
+
 macro_rules! any_token_of {
     // full options
     (

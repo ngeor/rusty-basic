@@ -6,14 +6,14 @@ use crate::core::name::bare_name_p;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace;
+use crate::tokens::whitespace_ignoring;
 use crate::{Expression, Keyword, OnErrorOption, Statement};
 
 pub fn statement_on_error_go_to_p()
 -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq2(
         keyword_pair(Keyword::On, Keyword::Error),
-        whitespace(),
+        whitespace_ignoring(),
         |_, _| (),
     )
     .and_keep_right(next().or(goto()).or_expected("GOTO or RESUME"))

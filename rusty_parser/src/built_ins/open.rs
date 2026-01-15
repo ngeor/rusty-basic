@@ -3,7 +3,7 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{equal_sign_ws, whitespace};
+use crate::tokens::{equal_sign_ws, whitespace_ignoring};
 use crate::{BuiltInSub, ParseError, *};
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq6(
@@ -33,7 +33,7 @@ fn parse_open_mode_p()
 -> impl Parser<RcStringView, Output = Positioned<FileMode>, Error = ParseError> {
     seq4(
         keyword(Keyword::For),
-        whitespace(),
+        whitespace_ignoring(),
         keyword_map(&[
             (Keyword::Append, FileMode::Append),
             (Keyword::Input, FileMode::Input),
@@ -41,7 +41,7 @@ fn parse_open_mode_p()
             (Keyword::Random, FileMode::Random),
         ])
         .with_pos(),
-        whitespace(),
+        whitespace_ignoring(),
         |_, _, file_mode, _| file_mode,
     )
 }
@@ -51,9 +51,9 @@ fn parse_open_access_p()
 -> impl Parser<RcStringView, Output = Positioned<FileAccess>, Error = ParseError> {
     seq4(
         keyword(Keyword::Access),
-        whitespace(),
+        whitespace_ignoring(),
         keyword(Keyword::Read).with_pos(),
-        whitespace(),
+        whitespace_ignoring(),
         |_, _, positioned, _| FileAccess::Read.at(&positioned),
     )
 }
@@ -67,7 +67,7 @@ fn parse_file_number_p() -> impl Parser<RcStringView, Output = ExpressionPos, Er
 
 fn parse_len_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
     seq3(
-        whitespace().and_tuple(keyword(Keyword::Len)),
+        whitespace_ignoring().and(keyword(Keyword::Len), IgnoringBothCombiner),
         equal_sign_ws(),
         expression_pos_p().or_expected("expression after LEN ="),
         |_, _, e| e,

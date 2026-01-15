@@ -74,11 +74,6 @@ pub fn semicolon_ws() -> impl Parser<RcStringView, Output = Token, Error = Parse
     any_symbol_of_ws!(';')
 }
 
-/// Whitespace.
-pub fn whitespace() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    any_token_of!(TokenType::Whitespace)
-}
-
 pub fn digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     any_token_of!(TokenType::Digits)
 }

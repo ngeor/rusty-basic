@@ -4,7 +4,7 @@ use crate::core::name::bare_name_p;
 use crate::core::statement_separator::peek_eof_or_statement_separator;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace;
+use crate::tokens::whitespace_ignoring;
 use crate::{Keyword, ParseError, ResumeOption, Statement};
 
 // RESUME
@@ -30,11 +30,11 @@ fn blank_resume() -> impl Parser<RcStringView, Output = ResumeOption, Error = Pa
 }
 
 fn resume_next() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParseError> {
-    whitespace().and(keyword(Keyword::Next), |_, _| ResumeOption::Next)
+    whitespace_ignoring().and(keyword(Keyword::Next), |_, _| ResumeOption::Next)
 }
 
 fn resume_label() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParseError> {
-    whitespace().and(bare_name_p(), |_, r| ResumeOption::Label(r))
+    whitespace_ignoring().and(bare_name_p(), |_, r| ResumeOption::Label(r))
 }
 
 #[cfg(test)]

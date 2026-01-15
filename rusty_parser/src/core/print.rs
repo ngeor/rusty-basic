@@ -8,7 +8,7 @@ use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::{
-    TokenMatcher, any_symbol_of_ws, any_token_of, comma_ws, peek_token, semicolon_ws, whitespace
+    TokenMatcher, any_symbol_of_ws, any_token_of, comma_ws, peek_token, semicolon_ws, whitespace_ignoring
 };
 use crate::*;
 
@@ -213,7 +213,7 @@ impl Parser<RcStringView> for PrintArgsParser {
 }
 
 fn print_boundary() -> impl Parser<RcStringView, Output = Guard, Error = ParseError> {
-    whitespace()
+    whitespace_ignoring()
         .map(|_| Guard::Whitespace)
         .or(peek_token().flat_map(|input, token| {
             // TODO improve performance

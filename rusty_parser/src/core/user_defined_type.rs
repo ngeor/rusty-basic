@@ -10,7 +10,7 @@ use crate::core::statement_separator::comments_in_between_keywords;
 use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{star_ws, whitespace};
+use crate::tokens::{star_ws, whitespace_ignoring};
 use crate::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -178,9 +178,9 @@ fn elements_p() -> impl Parser<RcStringView, Output = Vec<ElementPos>, Error = P
 fn element_pos_p() -> impl Parser<RcStringView, Output = ElementPos, Error = ParseError> {
     seq6(
         bare_name_without_dots(),
-        whitespace(),
+        whitespace_ignoring(),
         keyword(Keyword::As),
-        whitespace(),
+        whitespace_ignoring(),
         element_type_p().or_expected("element type"),
         comments_in_between_keywords(),
         |element, _, _, _, element_type, comments| Element::new(element, element_type, comments),

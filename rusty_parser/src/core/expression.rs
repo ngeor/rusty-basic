@@ -1007,7 +1007,7 @@ mod binary_expression {
     use crate::error::ParseError;
     use crate::input::RcStringView;
     use crate::pc_specific::{SpecificTrait, WithPos};
-    use crate::tokens::{TokenType, any_token, whitespace};
+    use crate::tokens::{TokenType, any_token, whitespace_ignoring};
     use crate::*;
 
     // result ::= <non-bin-expr> <operator> <expr>
@@ -1088,7 +1088,7 @@ mod binary_expression {
             is_paren: bool,
         ) -> impl Parser<RcStringView, Output = Positioned<Operator>, Error = ParseError> {
             opt_and_tuple(
-                whitespace(),
+                whitespace_ignoring(),
                 any_token()
                     .filter_map(Self::map_token_to_operator)
                     .with_pos(),
@@ -1195,7 +1195,7 @@ pub mod file_handle {
     use crate::error::ParseError;
     use crate::input::RcStringView;
     use crate::pc_specific::*;
-    use crate::tokens::{TokenType, any_token_of, pound, whitespace};
+    use crate::tokens::{TokenType, any_token_of, pound, whitespace_ignoring};
     use crate::*;
 
     pub fn file_handle_p()
@@ -1226,7 +1226,7 @@ pub mod file_handle {
     }
 
     fn ws_file_handle() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
-        whitespace().and_keep_right(file_handle_as_expression_pos_p())
+        whitespace_ignoring().and_keep_right(file_handle_as_expression_pos_p())
     }
 }
 
@@ -1235,7 +1235,7 @@ pub mod guard {
 
     use crate::ParseError;
     use crate::input::RcStringView;
-    use crate::tokens::{TokenMatcher, peek_token, whitespace};
+    use crate::tokens::{TokenMatcher, peek_token, whitespace_ignoring};
 
     #[derive(Default)]
     pub enum Guard {
@@ -1252,7 +1252,7 @@ pub mod guard {
     }
 
     fn whitespace_guard() -> impl Parser<RcStringView, Output = Guard, Error = ParseError> {
-        whitespace().map(|_| Guard::Whitespace)
+        whitespace_ignoring().map(|_| Guard::Whitespace)
     }
 
     fn lparen_guard() -> impl Parser<RcStringView, Output = Guard, Error = ParseError> {

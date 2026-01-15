@@ -2,7 +2,7 @@ use rusty_pc::{OrFail, Parser, SurroundMode, ToFatalParser, surround};
 
 use crate::error::ParseError;
 use crate::input::RcStringView;
-use crate::tokens::whitespace;
+use crate::tokens::whitespace_ignoring;
 
 pub trait SpecificTrait: Parser<RcStringView, Error = ParseError>
 where
@@ -20,7 +20,12 @@ where
     }
 
     fn padded_by_ws(self) -> impl Parser<RcStringView, Output = Self::Output, Error = Self::Error> {
-        surround(whitespace(), self, whitespace(), SurroundMode::Optional)
+        surround(
+            whitespace_ignoring(),
+            self,
+            whitespace_ignoring(),
+            SurroundMode::Optional,
+        )
     }
 }
 

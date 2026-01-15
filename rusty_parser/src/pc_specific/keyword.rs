@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use rusty_pc::*;
 
 use crate::input::RcStringView;
-use crate::tokens::{TokenType, any_token, whitespace};
+use crate::tokens::{TokenType, any_token, whitespace_ignoring};
 use crate::{Keyword, ParseError};
 
 // TODO review usages of TokenType::Keyword
@@ -43,7 +43,7 @@ pub fn keyword_p(
 pub fn keyword_followed_by_whitespace_p(
     k: Keyword,
 ) -> impl Parser<RcStringView, Output = (), Error = ParseError> {
-    seq2(keyword(k), whitespace(), |_, _| ())
+    seq2(keyword(k), whitespace_ignoring(), |_, _| ())
 }
 
 // TODO add keyword_pair_ws
@@ -51,7 +51,12 @@ pub fn keyword_pair(
     first: Keyword,
     second: Keyword,
 ) -> impl Parser<RcStringView, Error = ParseError> {
-    seq3(keyword(first), whitespace(), keyword(second), |_, _, _| ())
+    seq3(
+        keyword(first),
+        whitespace_ignoring(),
+        keyword(second),
+        |_, _, _| (),
+    )
 }
 
 /// Parses the specific keyword, ensuring it's not followed by a dollar sign.

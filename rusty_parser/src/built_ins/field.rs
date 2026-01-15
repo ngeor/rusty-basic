@@ -3,14 +3,14 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::tokens::{comma_ws, whitespace};
+use crate::tokens::{comma_ws, whitespace_ignoring};
 use crate::{BuiltInSub, ParseError, *};
 
 /// Example: FIELD #1, 10 AS FirstName$, 20 AS LastName$
 pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
     seq5(
         keyword(Keyword::Field),
-        whitespace(),
+        whitespace_ignoring(),
         file_handle_p().or_expected("file-number"),
         comma_ws(),
         csv_non_opt(field_item_p(), "field width"),
@@ -25,7 +25,7 @@ fn field_item_p() -> impl Parser<RcStringView, Output = (ExpressionPos, NamePos)
     seq4(
         expr_pos_ws_p(),
         keyword(Keyword::As),
-        whitespace(),
+        whitespace_ignoring(),
         name_p().with_pos().or_expected("variable name"),
         |width, _, _, name| (width, name),
     )

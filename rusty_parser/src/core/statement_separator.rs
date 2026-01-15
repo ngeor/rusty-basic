@@ -3,20 +3,6 @@ use rusty_pc::*;
 
 use crate::ParseError;
 use crate::core::comment::comment_as_string_p;
-/// Separator between statements.
-/// There are two cases, after a comment, or after a different kind of statement.
-///
-/// For the comment we have:
-///
-/// `EOL <ws | eol>*`
-///
-/// And for the rest of the cases we have:
-///
-/// ````text
-/// <ws>* '\'' (undoing it)
-/// <ws>* ':' <ws*>
-/// <ws>* EOL <ws | eol>*
-/// ```
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::{TokenMatcher, TokenType, any_token_of, peek_token, whitespace};
@@ -24,24 +10,21 @@ use crate::tokens::{TokenMatcher, TokenType, any_token_of, peek_token, whitespac
 /// Parses a comment separator, which is the EOL,
 /// followed optionally by any number of EOL or whitespace tokens.
 pub fn comment_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
-    any_token_of!(TokenType::Eol).and(
-        any_token_of!(TokenType::Eol, TokenType::Whitespace).many_allow_none(IgnoringManyCombiner),
-        IgnoringBothCombiner,
-    )
+    any_token_of!(TokenType::Eol).and(eol_ws_zero_or_more(), IgnoringBothCombiner)
+}
+
+/// Parses any number of EOL or whitespace tokens.
+fn eol_ws_zero_or_more() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+    any_token_of!(TokenType::Eol, TokenType::Whitespace).many_allow_none(IgnoringManyCombiner)
 }
 
 /// Common separator reads a separator between statements.
 ///
-/// The steps are:
-///
-/// Skip whitespace.
-/// If single quote, undo and return ok.
-/// If found colon, store that information and continue reading.
-/// If found EOL, store that information and continue reading.
-/// If found anything else, stop.
-/// If found colon after having found a colon or an EOL, undo it and stop.
-/// So it's something like: one colon or multiple EOL, surrounded by optional whitespace.
-///
+/// ````text
+/// <ws>* '\'' (undoing it)
+/// <ws>* ':' <ws*>
+/// <ws>* EOL <ws | eol>*
+/// ```
 /// The colon variant can be seen as:
 /// ws* colon (ws | eol)*
 ///
@@ -58,14 +41,17 @@ pub fn common_separator() -> impl Parser<RcStringView, Output = (), Error = Pars
     opt_and(
         whitespace(),
         OrParser::new(vec![
-            Box::new(any_token_of!(TokenType::Eol ; symbols = ':').and_opt(
-                any_token_of!(TokenType::Eol, TokenType::Whitespace).zero_or_more(),
-                |_, _| (),
-            )),
+            Box::new(eol_or_col_separator()),
             Box::new(no_separator_needed_before_comment()),
         ]),
-        |_, _| (),
+        IgnoringBothCombiner,
     )
+}
+
+/// EOL or colon, followed by any number of EOL or whitespace tokens.
+/// (eol | colon) (ws | eol)*
+fn eol_or_col_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+    any_token_of!(TokenType::Eol ; symbols = ':').and(eol_ws_zero_or_more(), IgnoringBothCombiner)
 }
 
 pub fn no_separator_needed_before_comment()
@@ -100,10 +86,6 @@ pub fn peek_eof_or_statement_separator()
 pub fn comments_in_between_keywords()
 -> impl Parser<RcStringView, Output = Vec<Positioned<String>>, Error = ParseError> {
     eol_ws_zero_or_more().and_keep_right(comment_as_string_followed_by_separator().zero_or_more())
-}
-
-fn eol_ws_zero_or_more() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
-    any_token_of!(TokenType::Eol, TokenType::Whitespace).many_allow_none(IgnoringManyCombiner)
 }
 
 /// Parses a comment as a string, demanding that it is followed

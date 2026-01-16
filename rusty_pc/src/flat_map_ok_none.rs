@@ -46,7 +46,7 @@ where
 {
     type Output = U;
     type Error = P::Error;
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok((input, value)) => (self.ok_mapper)(input, value),
             Err((false, i, _)) => (self.incomplete_mapper)(i),

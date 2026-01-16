@@ -156,7 +156,7 @@ where
     type Output = Vec<A::CollectedElement>;
     type Error = E;
 
-    fn parse(&self, mut input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, mut input: I) -> ParseResult<I, Self::Output, Self::Error> {
         let mut result: Self::Output = vec![];
         let mut state = State::Initial;
         let mut last_parsed = LastParsed::Nothing;

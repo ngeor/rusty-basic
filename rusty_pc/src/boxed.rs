@@ -16,7 +16,7 @@ impl<I, C, O, E> Parser<I, C> for BoxedParser<I, C, O, E> {
     type Output = O;
     type Error = E;
 
-    fn parse(&self, input: I) -> super::ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: I) -> super::ParseResult<I, Self::Output, Self::Error> {
         self.parser.parse(input)
     }
 }

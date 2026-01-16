@@ -32,7 +32,7 @@ where
 {
     type Output = Positioned<P::Output>;
     type Error = P::Error;
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         let pos = tokenizer.pos();
         self.parser.parse(tokenizer).map_ok(|x| x.at_pos(pos))
     }

@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::marker::PhantomData;
 
 use crate::{Combiner, ParseResult, Parser, SetContext};
@@ -43,7 +42,7 @@ impl<I, C, P> ThenWithContext<I, C> for P where P: Parser<I, C> {}
 
 pub struct ThenWithContextParser<L, R, F, A, O> {
     left: L,
-    right: RefCell<R>,
+    right: R,
     ctx_projection: F,
     combiner: A,
     _marker: PhantomData<O>,
@@ -53,7 +52,7 @@ impl<L, R, F, A, O> ThenWithContextParser<L, R, F, A, O> {
     pub fn new(left: L, right: R, ctx_projection: F, combiner: A) -> Self {
         Self {
             left,
-            right: RefCell::new(right),
+            right,
             ctx_projection,
             combiner,
             _marker: PhantomData,
@@ -71,13 +70,11 @@ where
     type Output = O;
     type Error = L::Error;
 
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         let (input, left) = self.left.parse(input)?;
-        {
-            let ctx = (self.ctx_projection)(&left);
-            self.right.borrow_mut().set_context(ctx);
-        }
-        match self.right.borrow().parse(input) {
+        let ctx = (self.ctx_projection)(&left);
+        self.right.set_context(ctx);
+        match self.right.parse(input) {
             Ok((input, right)) => Ok((input, self.combiner.combine(left, right))),
             Err((_, input, err)) => Err((true, input, err)),
         }

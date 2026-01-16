@@ -124,7 +124,7 @@ where
     type Output = O;
     type Error = L::Error;
 
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.left.parse(tokenizer.clone()) {
             Ok((input, left)) => {
                 match self.right.parse(input) {

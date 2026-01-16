@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-
 use crate::Parser;
 
 pub fn lazy<I, C, F, P>(factory: F) -> impl Parser<I, C, Output = P::Output, Error = P::Error>
@@ -9,13 +7,13 @@ where
 {
     LazyParser {
         factory,
-        parser: RefCell::new(None),
+        parser: None,
     }
 }
 
 struct LazyParser<F, P> {
     factory: F,
-    parser: RefCell<Option<P>>,
+    parser: Option<P>,
 }
 
 impl<I, C, F, P> Parser<I, C> for LazyParser<F, P>
@@ -26,13 +24,13 @@ where
     type Output = P::Output;
     type Error = P::Error;
 
-    fn parse(&self, input: I) -> crate::ParseResult<I, Self::Output, Self::Error> {
-        if self.parser.borrow().is_none() {
+    fn parse(&mut self, input: I) -> crate::ParseResult<I, Self::Output, Self::Error> {
+        if self.parser.is_none() {
             let parser = (self.factory)();
-            *self.parser.borrow_mut() = Some(parser);
-            self.parser.borrow().as_ref().unwrap().parse(input)
+            self.parser = Some(parser);
+            self.parser.as_mut().unwrap().parse(input)
         } else {
-            self.parser.borrow().as_ref().unwrap().parse(input)
+            self.parser.as_mut().unwrap().parse(input)
         }
     }
 }

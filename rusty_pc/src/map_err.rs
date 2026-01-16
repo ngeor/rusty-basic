@@ -38,7 +38,7 @@ where
     type Output = P::Output;
     type Error = E;
 
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok(value) => Ok(value),
             Err((false, i, err)) => {
@@ -99,7 +99,7 @@ where
     type Output = P::Output;
     type Error = P::Error;
 
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok(value) => Ok(value),
             Err((false, i, err)) => Err((

@@ -18,7 +18,7 @@ where
     type Output = O;
     type Error = E;
 
-    fn parse(&self, input: I) -> ParseResult<I, O, E> {
+    fn parse(&mut self, input: I) -> ParseResult<I, O, E> {
         Ok((input, (self.0)()))
     }
 }

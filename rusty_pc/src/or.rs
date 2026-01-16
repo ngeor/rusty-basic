@@ -17,7 +17,7 @@ where
     type Output = O;
     type Error = E;
 
-    fn parse(&self, mut input: I) -> ParseResult<I, O, Self::Error> {
+    fn parse(&mut self, mut input: I) -> ParseResult<I, O, Self::Error> {
         for i in 0..self.parsers.len() - 1 {
             match self.parsers[i].parse(input) {
                 Ok(x) => return Ok(x),
@@ -29,7 +29,7 @@ where
             }
         }
 
-        self.parsers.last().unwrap().parse(input)
+        self.parsers.last_mut().unwrap().parse(input)
     }
 }
 
@@ -76,7 +76,7 @@ where
     type Output = L::Output;
     type Error = L::Error;
 
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.left.parse(input) {
             Ok(x) => Ok(x),
             Err((false, input, _)) => self.right.parse(input),

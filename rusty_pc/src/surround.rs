@@ -55,7 +55,7 @@ where
     type Output = P::Output;
     type Error = P::Error;
 
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         let original_input = input.clone();
 
         // parse the left boundary

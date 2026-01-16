@@ -54,7 +54,7 @@ where
 {
     type Output = P::Output;
     type Error = E;
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(tokenizer.clone()) {
             Ok((input, value)) => {
                 if (self.predicate)(&value) {

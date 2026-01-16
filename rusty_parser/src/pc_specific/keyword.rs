@@ -91,7 +91,7 @@ where
     type Output = Keyword;
     type Error = ParseError;
 
-    fn parse(&self, input: I) -> ParseResult<I, Keyword, ParseError> {
+    fn parse(&mut self, input: I) -> ParseResult<I, Keyword, ParseError> {
         let original_input = input.clone();
         match self.parser.parse(input) {
             Ok((input, token)) => match self.accept_token(&token) {

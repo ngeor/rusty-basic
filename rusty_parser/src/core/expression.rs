@@ -1022,7 +1022,7 @@ mod binary_expression {
         type Error = ParseError;
 
         fn parse(
-            &self,
+            &mut self,
             tokenizer: RcStringView,
         ) -> ParseResult<RcStringView, Self::Output, ParseError> {
             self.do_parse(tokenizer)
@@ -2136,7 +2136,7 @@ mod tests {
             fn test_double_qualifier() {
                 let input = "A%%";
                 let reader = create_string_tokenizer(input.to_owned());
-                let parser = expression_pos_p();
+                let mut parser = expression_pos_p();
                 let (reader, expr) = parser.parse(reader).ok().unwrap();
                 assert!(!reader.is_eof());
                 let expr = expr.element();
@@ -2152,7 +2152,7 @@ mod tests {
             fn test_trailing_dot_after_qualifier() {
                 let input = "A$.";
                 let reader = create_string_tokenizer(input.to_owned());
-                let parser = expression_pos_p();
+                let mut parser = expression_pos_p();
                 let (reader, expr) = parser.parse(reader).ok().unwrap();
                 assert!(!reader.is_eof());
                 let expr = expr.element();
@@ -2165,7 +2165,7 @@ mod tests {
             fn test_property_of_qualified_array() {
                 let input = "A$(1).Oops";
                 let reader = create_string_tokenizer(input.to_owned());
-                let parser = expression_pos_p();
+                let mut parser = expression_pos_p();
                 let (reader, expr) = parser.parse(reader).ok().unwrap();
                 assert!(!reader.is_eof());
                 let expr = expr.element();

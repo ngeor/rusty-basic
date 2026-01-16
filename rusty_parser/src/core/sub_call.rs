@@ -24,7 +24,7 @@ impl Parser<RcStringView> for SubCallOrAssignment {
     type Output = Statement;
     type Error = ParseError;
     fn parse(
-        &self,
+        &mut self,
         tokenizer: RcStringView,
     ) -> ParseResult<RcStringView, Self::Output, ParseError> {
         let (

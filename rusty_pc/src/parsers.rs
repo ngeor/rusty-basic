@@ -6,5 +6,5 @@ pub trait Parser<I, C = ()> {
     type Error;
 
     /// Parses the given input and returns a result.
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error>;
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error>;
 }

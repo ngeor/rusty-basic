@@ -30,7 +30,7 @@ where
     type Output = O;
     type Error = ParseError;
 
-    fn parse(&self, input: RcStringView) -> ParseResult<RcStringView, O, ParseError> {
+    fn parse(&mut self, input: RcStringView) -> ParseResult<RcStringView, O, ParseError> {
         parse_specific_str(self.needle, &self.combiner, input)
     }
 }
@@ -60,7 +60,7 @@ where
     type Output = O;
     type Error = ParseError;
 
-    fn parse(&self, input: RcStringView) -> ParseResult<RcStringView, O, ParseError> {
+    fn parse(&mut self, input: RcStringView) -> ParseResult<RcStringView, O, ParseError> {
         parse_specific_str(&self.needle, &self.combiner, input)
     }
 }

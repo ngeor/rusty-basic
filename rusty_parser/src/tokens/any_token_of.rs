@@ -192,14 +192,14 @@ where
     type Output = Token;
     type Error = ParseError;
 
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         self.parse_token(input)
     }
 }
 
 impl<P> AnyTokenOf<P> {
     /// Parses the token we're looking for.
-    fn parse_token<I, C>(&self, input: I) -> ParseResult<I, Token, ParseError>
+    fn parse_token<I, C>(&mut self, input: I) -> ParseResult<I, Token, ParseError>
     where
         I: Clone,
         P: Parser<I, C, Output = Token, Error = ParseError>,

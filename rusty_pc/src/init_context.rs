@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-
 use crate::{ParseResult, Parser, SetContext};
 
 pub trait InitContext<I, CInner>: Parser<I, CInner> + SetContext<CInner> + Sized {
@@ -18,8 +16,8 @@ impl<I, CInner, P> InitContext<I, CInner> for P where P: Parser<I, CInner> + Set
 /// Initializes the context of the underlying parser to the given value
 /// before parsing starts.
 pub struct InitContextParser<P, CInner> {
-    /// The underlying parser. Stored as RefCell to be able to mutate the context.
-    parser: RefCell<P>,
+    /// The underlying parser.
+    parser: P,
     /// The value to set the context to.
     value: CInner,
 }
@@ -27,10 +25,7 @@ pub struct InitContextParser<P, CInner> {
 impl<P, CInner> InitContextParser<P, CInner> {
     /// Creates a new instance.
     pub fn new(parser: P, value: CInner) -> Self {
-        Self {
-            parser: RefCell::new(parser),
-            value,
-        }
+        Self { parser, value }
     }
 }
 
@@ -41,11 +36,8 @@ where
 {
     type Output = P::Output;
     type Error = P::Error;
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
-        // adding explicit blocks just to drop the borrow
-        {
-            self.parser.borrow_mut().set_context(self.value.clone());
-        }
-        self.parser.borrow().parse(input)
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+        self.parser.set_context(self.value.clone());
+        self.parser.parse(input)
     }
 }

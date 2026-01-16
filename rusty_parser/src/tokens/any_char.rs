@@ -11,7 +11,10 @@ impl Parser<RcStringView> for AnyChar {
     type Output = char;
     type Error = ParseError;
 
-    fn parse(&self, input: RcStringView) -> ParseResult<RcStringView, Self::Output, ParseError> {
+    fn parse(
+        &mut self,
+        input: RcStringView,
+    ) -> ParseResult<RcStringView, Self::Output, ParseError> {
         if input.is_eof() {
             default_parse_error(input)
         } else {
@@ -30,7 +33,10 @@ impl Parser<RcStringView> for AnyCharOrEof {
     type Output = char;
     type Error = ParseError;
 
-    fn parse(&self, input: RcStringView) -> ParseResult<RcStringView, Self::Output, ParseError> {
+    fn parse(
+        &mut self,
+        input: RcStringView,
+    ) -> ParseResult<RcStringView, Self::Output, ParseError> {
         if input.is_eof() {
             Ok((input, char::MIN))
         } else {

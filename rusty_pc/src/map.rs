@@ -29,7 +29,7 @@ where
 {
     type Output = U;
     type Error = P::Error;
-    fn parse(&self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         self.parser.parse(tokenizer).map_ok(&self.mapper)
     }
 }

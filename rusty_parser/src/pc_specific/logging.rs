@@ -54,7 +54,7 @@ where
     type Error = ParseError;
 
     fn parse(
-        &self,
+        &mut self,
         tokenizer: RcStringView,
     ) -> ParseResult<RcStringView, Self::Output, ParseError> {
         println!(

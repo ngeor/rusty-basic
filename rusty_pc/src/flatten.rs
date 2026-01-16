@@ -28,9 +28,9 @@ where
 {
     type Output = <P::Output as Parser<I, C>>::Output;
     type Error = P::Error;
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(input) {
-            Ok((i, new_parser)) => new_parser.parse(i),
+            Ok((i, mut new_parser)) => new_parser.parse(i),
             Err(err) => Err(err),
         }
     }

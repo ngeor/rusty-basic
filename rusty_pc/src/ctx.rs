@@ -36,7 +36,7 @@ where
     type Output = C;
     type Error = E;
 
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match &self.0 {
             Some(ctx) => Ok((input, ctx.clone())),
             None => Err((true, input, E::default())),
@@ -83,7 +83,7 @@ where
 {
     type Output = P::Output;
     type Error = P::Error;
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         self.parser.parse(input)
     }
 }

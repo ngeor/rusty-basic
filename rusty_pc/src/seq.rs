@@ -61,7 +61,7 @@ macro_rules! seq_pc {
             type Error = _E;
 
             #[allow(non_snake_case)]
-            fn parse(&self, tokenizer: _I) -> ParseResult<_I, Self::Output, _E> {
+            fn parse(&mut self, tokenizer: _I) -> ParseResult<_I, Self::Output, _E> {
                 // the first is allowed to return incomplete
                 let (tokenizer, $first_type) = self.$first_type.parse(tokenizer)?;
 

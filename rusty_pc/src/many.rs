@@ -54,7 +54,7 @@ where
 {
     type Output = O;
     type Error = P::Error;
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok((mut input, first_value)) => {
                 let mut result = self.combiner.seed(first_value);

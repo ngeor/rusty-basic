@@ -187,7 +187,7 @@ impl Parser<RcStringView> for PrintArgsParser {
     type Error = ParseError;
 
     fn parse(
-        &self,
+        &mut self,
         mut tokenizer: RcStringView,
     ) -> ParseResult<RcStringView, Self::Output, ParseError> {
         let mut result: Vec<PrintArg> = vec![];

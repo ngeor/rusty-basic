@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::marker::PhantomData;
 
 use crate::{Combiner, ParseResult, Parser, SetContext};
@@ -27,7 +26,7 @@ use crate::{Combiner, ParseResult, Parser, SetContext};
 /// * A: The combiner that combines the two results into a single value.
 /// * O: The output of the parser (the combined result)
 pub struct ThenWithLeftParser<L, R, X, F, A, O> {
-    left: RefCell<L>,
+    left: L,
     right: R,
     right_context_mapper: F,
     combiner: A,
@@ -37,7 +36,7 @@ pub struct ThenWithLeftParser<L, R, X, F, A, O> {
 impl<L, R, X, F, A, O> ThenWithLeftParser<L, R, X, F, A, O> {
     pub fn new(left: L, right: R, right_context_mapper: F, combiner: A) -> Self {
         Self {
-            left: RefCell::new(left),
+            left,
             right,
             right_context_mapper,
             combiner,
@@ -56,15 +55,14 @@ where
     type Output = O;
     type Error = L::Error;
 
-    fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
-        // the block is done in order to relinquish the borrow
-        let (input, left) = { self.left.borrow().parse(input)? };
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+        let (input, left) = self.left.parse(input)?;
         match self.right.parse(input) {
             Ok((input, right)) => {
                 // create context from right
                 let left_context = (self.right_context_mapper)(&right);
                 // pass it back to left
-                self.left.borrow_mut().set_context(left_context);
+                self.left.set_context(left_context);
                 // return the result
                 Ok((input, self.combiner.combine(left, right)))
             }
@@ -82,6 +80,6 @@ where
         // on purpose not setting the context to the right side,
         // as it is the one that it is supposed to generate the context
         // of the left side.
-        self.left.borrow_mut().set_context(ctx);
+        self.left.set_context(ctx);
     }
 }

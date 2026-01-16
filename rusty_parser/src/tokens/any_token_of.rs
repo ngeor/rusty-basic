@@ -1,11 +1,9 @@
 use std::collections::HashSet;
 
-use rusty_pc::{ParseErr, ParseResult, Parser, Token, TokenKind};
+use rusty_pc::{ParseResult, Parser, Token, TokenKind};
 
 use crate::ParseError;
 use crate::tokens::TokenType;
-
-// TODO support "ignoring" mode for all tokens
 
 macro_rules! any_token_of {
     // full options
@@ -14,8 +12,6 @@ macro_rules! any_token_of {
         ;
         symbols = $($symbol:literal),*
         ;
-        ws = $ws:literal
-        ;
         mode = $match_mode:expr
         $(,)?
     ) => {
@@ -23,52 +19,11 @@ macro_rules! any_token_of {
             $crate::tokens::any_token(),
             &[ $($token_type),* ],
             &[$($symbol),*],
-            $ws,
             $match_mode
         )
     };
 
     // minus mode
-    (
-        types = $($token_type:expr),*
-        ;
-        symbols = $($symbol:literal),*
-        ;
-        ws = $ws:literal
-        $(,)?
-    ) => {
-        any_token_of!(
-            types = $($token_type),*
-            ;
-            symbols = $($symbol),*
-            ;
-            ws = $ws
-            ;
-            mode = $crate::tokens::MatchMode::Include
-        )
-    };
-
-    // minus ws
-    (
-        types = $($token_type:expr),*
-        ;
-        symbols = $($symbol:literal),*
-        ;
-        mode = $match_mode:expr
-        $(,)?
-    ) => {
-        any_token_of!(
-            types = $($token_type),*
-            ;
-            symbols = $($symbol),*
-            ;
-            ws = false
-            ;
-            mode = $match_mode
-        )
-    };
-
-    // minus ws and minus mode
     (
         $($token_type:expr),+
         ;
@@ -79,8 +34,6 @@ macro_rules! any_token_of {
             types = $($token_type),+
             ;
             symbols = $($symbol),+
-            ;
-            ws = false
             ;
             mode = $crate::tokens::MatchMode::Include
         )
@@ -98,8 +51,6 @@ macro_rules! any_token_of {
             ;
             symbols =
             ;
-            ws = false
-            ;
             mode = $match_mode
         )
     };
@@ -113,7 +64,7 @@ macro_rules! any_token_of {
             ;
             symbols =
             ;
-            ws = false
+            mode = $crate::tokens::MatchMode::Include
         )
     };
 }
@@ -127,7 +78,7 @@ macro_rules! any_symbol_of {
             ;
             symbols = $($symbol),+
             ;
-            ws = false
+            mode = $crate::tokens::MatchMode::Include
         )
     };
 }
@@ -141,8 +92,8 @@ macro_rules! any_symbol_of_ws {
             ;
             symbols = $($symbol),+
             ;
-            ws = true
-        )
+            mode = $crate::tokens::MatchMode::Include
+        ).padded_by_ws()
     };
 }
 
@@ -165,9 +116,6 @@ pub struct AnyTokenOf<P> {
     /// The syntax error message to return for non-fatal errors.
     err_msg: String,
 
-    /// Are leading and trailing whitespaces allowed?
-    ws: bool,
-
     match_mode: MatchMode,
 }
 
@@ -184,7 +132,6 @@ impl<P> AnyTokenOf<P> {
         token_kinds: HashSet<TokenKind>,
         symbols: HashSet<char>,
         err_msg: String,
-        ws: bool,
         match_mode: MatchMode,
     ) -> Self {
         Self {
@@ -192,7 +139,6 @@ impl<P> AnyTokenOf<P> {
             token_kinds,
             symbols,
             err_msg,
-            ws,
             match_mode,
         }
     }
@@ -201,7 +147,6 @@ impl<P> AnyTokenOf<P> {
         parser: P,
         token_types: &[TokenType],
         symbols: &[char],
-        ws: bool,
         match_mode: MatchMode,
     ) -> Self {
         let mut token_kinds: HashSet<TokenKind> = HashSet::new();
@@ -234,7 +179,6 @@ impl<P> AnyTokenOf<P> {
             token_kinds,
             symbols.iter().copied().collect(),
             err_msg,
-            ws,
             match_mode,
         )
     }
@@ -249,45 +193,11 @@ where
     type Error = ParseError;
 
     fn parse(&self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
-        if self.ws {
-            self.parse_token_padded_by_ws(input)
-        } else {
-            self.parse_token(input)
-        }
+        self.parse_token(input)
     }
 }
 
 impl<P> AnyTokenOf<P> {
-    fn parse_token_padded_by_ws<I, C>(&self, input: I) -> ParseResult<I, Token, ParseError>
-    where
-        I: Clone,
-        P: Parser<I, C, Output = Token, Error = ParseError>,
-    {
-        let original_input = input.clone();
-
-        // parse either the target token or (if self.ws is true) the leading whitespace
-        let (input, opt_token) = self.parse_leading_ws_or_token(input)?;
-
-        let (input, token) = match opt_token {
-            // we already found the token
-            Some(token) => (input, token),
-            _ => {
-                // we only found the leading whitespace
-                // parse the token, and if the error is not fatal, return the original input
-                // i.e. undo parsing the leading whitespace
-                match self.parse_token(input) {
-                    Ok((input, token)) => Ok((input, token)),
-                    Err((false, _, err)) => Err((false, original_input, err)),
-                    Err(err) => Err(err),
-                }?
-            }
-        };
-
-        // parse the trailing whitespace
-        let input = self.parse_trailing_ws(input)?;
-        Ok((input, token))
-    }
-
     /// Parses the token we're looking for.
     fn parse_token<I, C>(&self, input: I) -> ParseResult<I, Token, ParseError>
     where
@@ -305,54 +215,6 @@ impl<P> AnyTokenOf<P> {
                 }
             }
             Err((false, _, _)) => self.to_syntax_err(original_input),
-            Err(err) => Err(err),
-        }
-    }
-
-    /// Perform the first parse, which can yield either the token we're looking for
-    /// or an optional leading whitespace.
-    fn parse_leading_ws_or_token<I, C>(&self, input: I) -> ParseResult<I, Option<Token>, ParseError>
-    where
-        I: Clone,
-        P: Parser<I, C, Output = Token, Error = ParseError>,
-    {
-        let original_input = input.clone();
-        match self.parser.parse(input) {
-            Ok((input, token)) => {
-                if self.accept_token(&token) {
-                    // found it
-                    Ok((input, Some(token)))
-                } else if TokenType::Whitespace.get_index() == token.kind() {
-                    // found leading whitespace
-                    Ok((input, None))
-                } else {
-                    self.to_syntax_err(original_input)
-                }
-            }
-            Err((false, _, _)) => self.to_syntax_err(original_input),
-            Err(err) => Err(err),
-        }
-    }
-
-    /// Parse the optional trailing whitespace.
-    /// This method returns the input from which the next parser should continue.
-    /// If the trailing whitespace was not found, then that is the original input.
-    fn parse_trailing_ws<I, C>(&self, input: I) -> Result<I, ParseErr<I, ParseError>>
-    where
-        I: Clone,
-        P: Parser<I, C, Output = Token, Error = ParseError>,
-    {
-        let original_input = input.clone();
-        match self.parser.parse(input) {
-            Ok((input, ws_token)) => {
-                if ws_token.kind() == TokenType::Whitespace.get_index() {
-                    // ok accept trailing whitespace
-                    Ok(input)
-                } else {
-                    Ok(original_input)
-                }
-            }
-            Err((false, _, _)) => Ok(original_input),
             Err(err) => Err(err),
         }
     }

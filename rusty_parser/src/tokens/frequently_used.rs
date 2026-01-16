@@ -2,6 +2,7 @@ use rusty_pc::{Parser, Token};
 
 use crate::ParseError;
 use crate::input::RcStringView;
+use crate::pc_specific::SpecificTrait;
 use crate::tokens::{TokenType, any_symbol_of, any_symbol_of_ws, any_token_of};
 
 /// Equal sign, surrounded by optional whitespace.

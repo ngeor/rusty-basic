@@ -2130,6 +2130,8 @@ mod tests {
         }
 
         mod test_with_expression_parser {
+            use rusty_pc::text::CharInput;
+
             use super::*;
 
             #[test]

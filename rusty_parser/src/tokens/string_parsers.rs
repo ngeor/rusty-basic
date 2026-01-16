@@ -1,8 +1,8 @@
+use rusty_pc::text::any_char;
 use rusty_pc::{Filter, IgnoringManyCombiner, Many, ManyCombiner, Map, Parser, StringManyCombiner};
 
 use crate::ParseError;
 use crate::input::RcStringView;
-use crate::tokens::any_char::AnyChar;
 use crate::tokens::specific_str::{SpecificStr, SpecificString};
 
 /// Parses one or more characters that match the given predicate
@@ -39,11 +39,11 @@ where
     C: ManyCombiner<char, O>,
     O: Default,
 {
-    AnyChar.filter(predicate).many(combiner)
+    any_char().filter(predicate).many(combiner)
 }
 
 pub(super) fn one(ch: char) -> impl Parser<RcStringView, Output = String, Error = ParseError> {
-    AnyChar.filter(move |c| *c == ch).map(String::from)
+    any_char().filter(move |c| *c == ch).map(String::from)
 }
 
 /// Parses the specific string, case insensitive.

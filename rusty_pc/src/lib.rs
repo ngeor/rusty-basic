@@ -23,6 +23,7 @@ mod peek;
 mod seq;
 pub mod supplier;
 mod surround;
+pub mod text;
 mod then_with;
 mod then_with_left;
 mod to_option;

@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 
+use rusty_pc::text::CharInput;
 use rusty_pc::{ManyCombiner, ParseResult, Parser};
 
 use crate::ParseError;

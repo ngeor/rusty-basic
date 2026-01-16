@@ -304,6 +304,7 @@ pub fn token_to_type_qualifier(token: &Token) -> TypeQualifier {
 #[cfg(test)]
 mod parse_tests {
     use rusty_pc::Parser;
+    use rusty_pc::text::CharInput;
 
     use super::*;
     use crate::input::create_string_tokenizer;

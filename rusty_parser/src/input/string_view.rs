@@ -3,6 +3,7 @@ use std::io::{BufRead, BufReader};
 use std::rc::Rc;
 
 use rusty_common::{HasPos, Position};
+use rusty_pc::text::CharInput;
 
 use super::row_col_view::*;
 
@@ -106,23 +107,21 @@ impl RcStringView {
             self.buffer.row_col[self.index]
         }
     }
+}
 
-    pub fn char(&self) -> char {
+impl CharInput for RcStringView {
+    fn char(&self) -> char {
         self.char_at(self.index)
     }
 
-    pub fn inc_position(self) -> Self {
-        self.inc_position_by(1)
-    }
-
-    pub fn inc_position_by(self, amount: usize) -> Self {
+    fn inc_position_by(self, amount: usize) -> Self {
         Self {
             index: self.index + amount,
             ..self
         }
     }
 
-    pub fn is_eof(&self) -> bool {
+    fn is_eof(&self) -> bool {
         self.index >= self.len()
     }
 }

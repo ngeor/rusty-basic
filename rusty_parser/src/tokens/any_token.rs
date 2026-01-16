@@ -1,3 +1,4 @@
+use rusty_pc::text::any_char;
 use rusty_pc::*;
 
 use crate::Keyword;
@@ -5,7 +6,7 @@ use crate::error::ParseError;
 use crate::input::RcStringView;
 use crate::pc_specific::WithExpected;
 use crate::tokens::TokenType;
-use crate::tokens::any_char::{AnyChar, AnyCharOrEof};
+use crate::tokens::any_char::AnyCharOrEof;
 use crate::tokens::any_symbol::any_symbol;
 use crate::tokens::string_parsers::*;
 
@@ -154,10 +155,12 @@ fn is_allowed_char_after_keyword(char_or_eof: &char) -> bool {
 const MAX_LENGTH: usize = 40;
 
 fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
-    AnyChar
+    any_char()
         .filter(char::is_ascii_alphabetic)
         .and(
-            AnyChar.filter(is_allowed_char_in_identifier).zero_or_more(),
+            any_char()
+                .filter(is_allowed_char_in_identifier)
+                .zero_or_more(),
             StringCombiner,
         )
         .flat_map(|i, s| {

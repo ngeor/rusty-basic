@@ -5,7 +5,7 @@ use crate::core::declaration::declaration_p;
 use crate::core::def_type::def_type_p;
 use crate::core::implementation::implementation_p;
 use crate::core::{statement, user_defined_type};
-use crate::error::ParseError;
+use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::{TokenType, any_token, any_token_of, peek_token, whitespace_ignoring};
@@ -140,7 +140,7 @@ pub type FunctionImplementation = SubprogramImplementation<Name>;
 // comment: ' comment
 // separator: eol|col
 
-pub fn program_parser_p() -> impl Parser<RcStringView, Output = Program, Error = ParseError> {
+pub fn program_parser_p() -> impl Parser<RcStringView, Output = Program, Error = ParserError> {
     ws_eol_col_zero_or_more()
         .and_opt_keep_right(main_program())
         .and_opt_keep_left(ws_eol_col_zero_or_more())
@@ -148,7 +148,7 @@ pub fn program_parser_p() -> impl Parser<RcStringView, Output = Program, Error =
         .map(|opt| opt.unwrap_or_default())
 }
 
-fn main_program() -> impl Parser<RcStringView, Output = Program, Error = ParseError> {
+fn main_program() -> impl Parser<RcStringView, Output = Program, Error = ParserError> {
     global_statement_pos_p().and_opt(next_statements(), |first, opt_next| {
         let mut program = vec![first];
         if let Some(next) = opt_next {
@@ -158,7 +158,7 @@ fn main_program() -> impl Parser<RcStringView, Output = Program, Error = ParseEr
     })
 }
 
-fn next_statements() -> impl Parser<RcStringView, Output = Program, Error = ParseError> {
+fn next_statements() -> impl Parser<RcStringView, Output = Program, Error = ParserError> {
     opt_and_keep_right(
         whitespace_ignoring(),
         next_statement().and_opt_keep_left(whitespace_ignoring()),
@@ -166,7 +166,7 @@ fn next_statements() -> impl Parser<RcStringView, Output = Program, Error = Pars
     .zero_or_more()
 }
 
-fn next_statement() -> impl Parser<RcStringView, Output = GlobalStatementPos, Error = ParseError> {
+fn next_statement() -> impl Parser<RcStringView, Output = GlobalStatementPos, Error = ParserError> {
     separator::separator()
         .and_keep_right(OrParser::new(vec![
             // need to detect EOF, because the separator we detected might have been the last EOL of the file
@@ -185,7 +185,7 @@ fn next_statement() -> impl Parser<RcStringView, Output = GlobalStatementPos, Er
 /// Returns Ok(()) if we're at EOF,
 /// otherwise an incomplete result,
 /// without modifying the input.
-fn detect_eof() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+fn detect_eof() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
     peek_token().flat_map_negate_none(|i, _| default_parse_error(i))
 }
 
@@ -193,7 +193,7 @@ mod separator {
     use super::*;
     use crate::core::statement_separator::no_separator_needed_before_comment;
 
-    pub fn separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+    pub fn separator() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
         OrParser::new(vec![
             // EOL or colon separator
             Box::new(eol_or_colon_separator()),
@@ -204,23 +204,24 @@ mod separator {
         ])
     }
 
-    fn eol_or_colon_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+    fn eol_or_colon_separator() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
         eol_col_one_or_more().and_opt(ws_eol_col_zero_or_more(), |_, _| ())
     }
 
-    fn raise_err() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
-        any_token()
-            .flat_map(|input, _t| Err((true, input, ParseError::expected("end-of-statement"))))
+    fn raise_err() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
+        any_token().flat_map(|input, _t| {
+            Err((input, ParserError::expected("end-of-statement").to_fatal()))
+        })
     }
 }
 
 /// Parses one or more tokens that are end of line or colon.
-fn eol_col_one_or_more() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+fn eol_col_one_or_more() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
     any_token_of!(TokenType::Eol ; symbols = ':').many(IgnoringManyCombiner)
 }
 
 /// Parses zero or more tokens that are whitespace, end of line, or colon.
-fn ws_eol_col_zero_or_more() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+fn ws_eol_col_zero_or_more() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
     any_token_of!(TokenType::Whitespace, TokenType::Eol ; symbols = ':')
         .many_allow_none(IgnoringManyCombiner)
 }
@@ -229,12 +230,11 @@ fn ws_eol_col_zero_or_more() -> impl Parser<RcStringView, Output = (), Error = P
 /// If we're at EOF, the parser returns a happy empty result.
 /// Otherwise it returns a syntax error.
 /// This is a failsafe to ensure we have parsed the entire input.
-fn demand_eof() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+fn demand_eof() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
     any_token().flat_map_negate_none(|input, t| {
         Err((
-            true,
             input,
-            ParseError::SyntaxError(format!("Cannot parse, expected EOF {:?}", t)),
+            ParserError::syntax_error(&format!("Cannot parse, expected EOF {:?}", t)),
         ))
     })
 }
@@ -243,7 +243,7 @@ fn demand_eof() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
 /// This includes regular statements, but also DEF types,
 /// declarations, implementations, and user-defined types.
 fn global_statement_pos_p()
--> impl Parser<RcStringView, Output = GlobalStatementPos, Error = ParseError> {
+-> impl Parser<RcStringView, Output = GlobalStatementPos, Error = ParserError> {
     OrParser::new(vec![
         Box::new(def_type_p().map(GlobalStatement::DefType)),
         Box::new(declaration_p()),

@@ -5,18 +5,18 @@ use crate::core::statements::zero_or_more_statements;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::whitespace_ignoring;
-use crate::{ParseError, *};
+use crate::{ParserError, *};
 
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
 
-pub fn implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParseError>
+pub fn implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParserError>
 {
     function_implementation_p().or(sub_implementation_p())
 }
 
 fn function_implementation_p()
--> impl Parser<RcStringView, Output = GlobalStatement, Error = ParseError> {
+-> impl Parser<RcStringView, Output = GlobalStatement, Error = ParserError> {
     seq3(
         static_declaration_p(function_declaration_p()),
         zero_or_more_statements!(Keyword::End),
@@ -32,7 +32,7 @@ fn function_implementation_p()
     )
 }
 
-fn sub_implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParseError>
+fn sub_implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParserError>
 {
     seq3(
         static_declaration_p(sub_declaration_p()),
@@ -51,9 +51,9 @@ fn sub_implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement,
 
 fn static_declaration_p<P, T>(
     parser: P,
-) -> impl Parser<RcStringView, Output = (T, bool), Error = ParseError>
+) -> impl Parser<RcStringView, Output = (T, bool), Error = ParserError>
 where
-    P: Parser<RcStringView, Output = T, Error = ParseError>,
+    P: Parser<RcStringView, Output = T, Error = ParserError>,
 {
     parser.and_opt(
         opt_and(
@@ -71,7 +71,6 @@ mod tests {
 
     use super::*;
     use crate::assert_parser_err;
-    use crate::error::ParseError;
     use crate::test_utils::*;
 
     #[test]
@@ -149,7 +148,7 @@ mod tests {
         let input = "
         FUNCTION Echo(X AS STRING * 5)
         END FUNCTION";
-        assert_parser_err!(input, ParseError::expected(")"));
+        assert_parser_err!(input, ParserErrorKind::expected(")"));
     }
 
     #[test]
@@ -157,7 +156,7 @@ mod tests {
         let input = "
         SUB Echo(X AS STRING * 5)
         END SUB";
-        assert_parser_err!(input, ParseError::expected(")"));
+        assert_parser_err!(input, ParserErrorKind::expected(")"));
     }
 
     #[test]

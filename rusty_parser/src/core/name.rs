@@ -1,10 +1,12 @@
 use rusty_common::Positioned;
 use rusty_pc::*;
 
-use crate::error::ParseError;
+use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::tokens::{TokenMatcher, TokenType, any_symbol_of, any_token_of, peek_token};
-use crate::{AsBareName, BareName, ExpressionType, HasExpressionType, ToBareName, TypeQualifier};
+use crate::{
+    AsBareName, BareName, ExpressionType, HasExpressionType, ParserErrorKind, ToBareName, TypeQualifier
+};
 
 /// Defines a name.
 ///
@@ -174,7 +176,7 @@ mod type_tests {
 /// Errors if it exceeds the maximum length of identifiers.
 ///
 /// Use case: user defined type elements or types.
-pub fn bare_name_without_dots() -> impl Parser<RcStringView, Output = BareName, Error = ParseError>
+pub fn bare_name_without_dots() -> impl Parser<RcStringView, Output = BareName, Error = ParserError>
 {
     ensure_no_dots_or_trailing_qualifier(identifier()).map(|token| BareName::new(token.to_string()))
 }
@@ -188,12 +190,12 @@ pub fn bare_name_without_dots() -> impl Parser<RcStringView, Output = BareName, 
 /// of the name (e.g. `VIEW.PRINT` is a valid result).
 ///
 /// Usage: label declaration (but also used internally in the module).
-pub fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+pub fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     any_token_of!(TokenType::Identifier)
 }
 
 /// Parses a type qualifier character.
-pub fn type_qualifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+pub fn type_qualifier() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     any_symbol_of!('!', '#', '$', '%', '&')
 }
 
@@ -217,7 +219,7 @@ fn is_type_qualifier(token: &Token) -> bool {
 /// of the name (e.g. `VIEW.PRINT` is a valid result).
 ///
 /// Usages: SUB name and labels.
-pub fn bare_name_p() -> impl Parser<RcStringView, Output = BareName, Error = ParseError> {
+pub fn bare_name_p() -> impl Parser<RcStringView, Output = BareName, Error = ParserError> {
     ensure_no_trailing_qualifier(identifier()).map(|token| BareName::new(token.text()))
 }
 
@@ -226,28 +228,31 @@ pub fn bare_name_p() -> impl Parser<RcStringView, Output = BareName, Error = Par
 /// If a type qualifier exists, it cannot be followed by a dot or a second type qualifier.
 ///
 /// It can also be a keyword followed by the dollar sign (e.g. `END$` is a valid result).
-pub fn name_p() -> impl Parser<RcStringView, Output = Name, Error = ParseError> {
+pub fn name_p() -> impl Parser<RcStringView, Output = Name, Error = ParserError> {
     name_as_tokens_p().map(Name::from)
 }
 
-pub fn name_as_tokens_p() -> impl Parser<RcStringView, Output = NameAsTokens, Error = ParseError> {
+pub fn name_as_tokens_p() -> impl Parser<RcStringView, Output = NameAsTokens, Error = ParserError> {
     identifier().and_opt_tuple(type_qualifier())
 }
 
 fn ensure_no_dots_or_trailing_qualifier(
-    parser: impl Parser<RcStringView, Output = Token, Error = ParseError>,
-) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+    parser: impl Parser<RcStringView, Output = Token, Error = ParserError>,
+) -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     ensure_no_trailing_qualifier(ensure_no_dots(parser))
 }
 
 /// Returns the result of the given parser,
 /// but it gives an error if the identifier has dots.
 fn ensure_no_dots(
-    parser: impl Parser<RcStringView, Output = Token, Error = ParseError>,
-) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+    parser: impl Parser<RcStringView, Output = Token, Error = ParserError>,
+) -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     parser.flat_map(|input, token| {
         if token.as_str().contains('.') {
-            Err((true, input, ParseError::IdentifierCannotIncludePeriod))
+            Err((
+                input,
+                ParserError::fatal(ParserErrorKind::IdentifierCannotIncludePeriod),
+            ))
         } else {
             Ok((input, token))
         }
@@ -257,14 +262,13 @@ fn ensure_no_dots(
 /// Returns the result of the given parser,
 /// but it gives an error if it is followed by a type qualifier character.
 fn ensure_no_trailing_qualifier<P>(
-    parser: impl Parser<RcStringView, Output = P, Error = ParseError>,
-) -> impl Parser<RcStringView, Output = P, Error = ParseError> {
+    parser: impl Parser<RcStringView, Output = P, Error = ParserError>,
+) -> impl Parser<RcStringView, Output = P, Error = ParserError> {
     parser.and_opt_keep_left(peek_token().flat_map_negate_none(|input, token| {
         if is_type_qualifier(&token) {
             Err((
-                true,
                 input,
-                ParseError::syntax_error("Identifier cannot end with %, &, !, #, or $"),
+                ParserError::syntax_error("Identifier cannot end with %, &, !, #, or $"),
             ))
         } else {
             Ok((input, ()))
@@ -332,13 +336,15 @@ mod parse_tests {
         }
     }
 
-    fn assert_err<T, E>(input: &str, result: ParseResult<RcStringView, T, E>, expected_err: E)
-    where
-        E: std::fmt::Debug + PartialEq,
-    {
+    fn assert_err<T>(
+        input: &str,
+        result: ParseResult<RcStringView, T, ParserError>,
+        expected_err: ParserErrorKind,
+    ) {
         match result {
-            Err((_, _, err)) => {
-                assert_eq!(err, expected_err);
+            Err((_, err)) => {
+                assert!(err.is_fatal());
+                assert_eq!(*err.kind(), expected_err);
             }
             _ => {
                 panic!("Should have failed for {}", input)
@@ -366,7 +372,11 @@ mod parse_tests {
             for input in ["Hell.o", "Hello."] {
                 let result =
                     bare_name_without_dots().parse(create_string_tokenizer(String::from(input)));
-                assert_err(input, result, ParseError::IdentifierCannotIncludePeriod);
+                assert_err(
+                    input,
+                    result,
+                    ParserErrorKind::IdentifierCannotIncludePeriod,
+                );
             }
         }
 
@@ -377,7 +387,7 @@ mod parse_tests {
                 assert_err(
                     input,
                     result,
-                    ParseError::syntax_error("Identifier cannot end with %, &, !, #, or $"),
+                    ParserErrorKind::syntax_error("Identifier cannot end with %, &, !, #, or $"),
                 );
             }
         }
@@ -387,7 +397,7 @@ mod parse_tests {
             let input = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO".to_owned();
             assert_eq!(input.len(), 41);
             let result = bare_name_p().parse(create_string_tokenizer(input.clone()));
-            assert_err(&input, result, ParseError::IdentifierTooLong);
+            assert_err(&input, result, ParserErrorKind::IdentifierTooLong);
         }
     }
 
@@ -413,7 +423,7 @@ mod parse_tests {
             let input = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO".to_owned();
             assert_eq!(input.len(), 41);
             let result = identifier().parse(create_string_tokenizer(input.clone()));
-            assert_err(&input, result, ParseError::IdentifierTooLong);
+            assert_err(&input, result, ParserErrorKind::IdentifierTooLong);
         }
     }
 

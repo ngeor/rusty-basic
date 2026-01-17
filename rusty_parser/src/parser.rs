@@ -27,7 +27,7 @@ pub fn parse_main_file(f: File) -> Result<Program, ParseErrorPos> {
 pub fn program_parser(reader: RcStringView) -> Result<Program, ParseErrorPos> {
     match program_parser_p().parse(reader) {
         Ok((_, program)) => Ok(program),
-        Err((_, input, err)) => Err(err.at_pos(input.position())),
+        Err((input, err)) => Err(err.at_pos(input.position())),
     }
 }
 

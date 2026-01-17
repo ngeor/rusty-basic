@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser, SetContext};
+use crate::{ParseResult, Parser, ParserErrorTrait, SetContext};
 
 pub trait OrDefault<I, C>: Parser<I, C>
 where
@@ -34,7 +34,7 @@ where
     fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok((input, value)) => Ok((input, value)),
-            Err((false, input, _)) => Ok((input, P::Output::default())),
+            Err((input, err)) if !err.is_fatal() => Ok((input, P::Output::default())),
             Err(err) => Err(err),
         }
     }

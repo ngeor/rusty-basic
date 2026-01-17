@@ -4,10 +4,10 @@ use rusty_pc::*;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::comma_ws;
-use crate::{BuiltInSub, ParseError, *};
+use crate::{BuiltInSub, ParserError, *};
 
 /// Example: FIELD #1, 10 AS FirstName$, 20 AS LastName$
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq4(
         keyword_ws_p(Keyword::Field),
         file_handle_p().or_expected("file-number"),
@@ -19,8 +19,8 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
     )
 }
 
-fn field_item_p() -> impl Parser<RcStringView, Output = (ExpressionPos, NamePos), Error = ParseError>
-{
+fn field_item_p()
+-> impl Parser<RcStringView, Output = (ExpressionPos, NamePos), Error = ParserError> {
     seq3(
         expr_pos_ws_p(),
         keyword_ws_p(Keyword::As),

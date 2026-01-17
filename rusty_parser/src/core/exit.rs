@@ -2,9 +2,9 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::{ExitObject, Keyword, ParseError, Statement};
+use crate::{ExitObject, Keyword, ParserError, Statement};
 
-pub fn statement_exit_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn statement_exit_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq2(
         keyword_ws_p(Keyword::Exit),
         keyword_map(&[
@@ -17,11 +17,10 @@ pub fn statement_exit_p() -> impl Parser<RcStringView, Output = Statement, Error
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
-    use crate::error::ParseError;
+    use crate::{ParserErrorKind, assert_parser_err};
 
     #[test]
     fn exit_without_object() {
-        assert_parser_err!("EXIT ", ParseError::expected("FUNCTION or SUB"));
+        assert_parser_err!("EXIT ", ParserErrorKind::expected("FUNCTION or SUB"));
     }
 }

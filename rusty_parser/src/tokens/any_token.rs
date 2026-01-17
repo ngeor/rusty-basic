@@ -1,17 +1,17 @@
 use rusty_pc::text::any_char;
 use rusty_pc::*;
 
-use crate::Keyword;
-use crate::error::ParseError;
+use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::pc_specific::WithExpected;
 use crate::tokens::TokenType;
 use crate::tokens::any_char::AnyCharOrEof;
 use crate::tokens::any_symbol::any_symbol;
 use crate::tokens::string_parsers::*;
+use crate::{Keyword, ParserErrorKind};
 
 /// Parses any token.
-pub fn any_token() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+pub fn any_token() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     OrParser::new(vec![
         // Eol,
         Box::new(eol()),
@@ -41,35 +41,35 @@ pub fn any_token() -> impl Parser<RcStringView, Output = Token, Error = ParseErr
 }
 
 /// Peeks the next token without consuming it.
-pub fn peek_token() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+pub fn peek_token() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     PeekParser::new(any_token())
 }
 
-fn eol() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn eol() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     OrParser::new(vec![Box::new(crlf()), Box::new(cr()), Box::new(lf())])
 }
 
-fn crlf() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn crlf() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     specific("\r\n").to_token(TokenType::Eol)
 }
 
-fn greater_or_equal() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn greater_or_equal() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     specific(">=").to_token(TokenType::GreaterEquals)
 }
 
-fn less_or_equal() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn less_or_equal() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     specific("<=").to_token(TokenType::LessEquals)
 }
 
-fn not_equal() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn not_equal() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     specific("<>").to_token(TokenType::NotEquals)
 }
 
-fn cr() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn cr() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     one('\r').to_token(TokenType::Eol)
 }
 
-fn lf() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn lf() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     one('\n').to_token(TokenType::Eol)
 }
 
@@ -80,20 +80,20 @@ fn lf() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
 /// allowing users to call it bypassing the `any_token` function,
 /// if they want to. As whitespace isn't part of other tokens,
 /// it should be safe to do so.
-pub fn whitespace() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+pub fn whitespace() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     whitespace_collecting(StringManyCombiner).to_token(TokenType::Whitespace)
 }
 
 /// Parses any number of whitespace characters, but ignores the result.
 /// Whitespace is often ignored, so this function optimizes as it doesn't
 /// create a token or store the whitespace characters into a [String].
-pub fn whitespace_ignoring() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+pub fn whitespace_ignoring() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
     whitespace_collecting(IgnoringManyCombiner)
 }
 
 pub fn whitespace_collecting<C, O>(
     combiner: C,
-) -> impl Parser<RcStringView, Output = O, Error = ParseError>
+) -> impl Parser<RcStringView, Output = O, Error = ParserError>
 where
     C: ManyCombiner<char, O>,
     O: Default,
@@ -105,11 +105,11 @@ fn is_whitespace(ch: &char) -> bool {
     *ch == ' ' || *ch == '\t'
 }
 
-fn digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn digits() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     many(char::is_ascii_digit).to_token(TokenType::Digits)
 }
 
-fn any_keyword() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn any_keyword() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     many(char::is_ascii_alphabetic)
         .filter(|text: &String| Keyword::try_from(text.as_str()).is_ok())
         .and_keep_left(ensure_no_illegal_char_after_keyword())
@@ -117,14 +117,14 @@ fn any_keyword() -> impl Parser<RcStringView, Output = Token, Error = ParseError
         .to_token(TokenType::Keyword)
 }
 
-pub fn keyword_ignoring(k: Keyword) -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+pub fn keyword_ignoring(k: Keyword) -> impl Parser<RcStringView, Output = (), Error = ParserError> {
     specific_ignoring(k.to_string())
         .and_keep_left(ensure_no_illegal_char_after_keyword())
         .with_expected_message(format!("Expected: {}", k))
 }
 
 fn ensure_no_illegal_char_after_keyword()
--> impl Parser<RcStringView, Output = char, Error = ParseError> {
+-> impl Parser<RcStringView, Output = char, Error = ParserError> {
     PeekParser::new(AnyCharOrEof.filter(is_allowed_char_after_keyword))
 }
 
@@ -154,7 +154,7 @@ fn is_allowed_char_after_keyword(char_or_eof: &char) -> bool {
 // TODO validate the max length in `zero_or_more` e.g. `between(0, MAX_LENGTH - 1)`
 const MAX_LENGTH: usize = 40;
 
-fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     any_char()
         .filter(char::is_ascii_alphabetic)
         .and(
@@ -163,26 +163,31 @@ fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParseError>
                 .zero_or_more(),
             StringCombiner,
         )
-        .flat_map(|i, s| {
-            // TODO add a `.validate()` parser combinator that does not use the input and uses the output only by ref
-            if s.len() > MAX_LENGTH {
-                Err((true, i, ParseError::IdentifierTooLong))
-            } else {
-                Ok((i, s))
-            }
-        })
+        .filter(LengthValidator)
         .to_token(TokenType::Identifier)
+}
+
+struct LengthValidator;
+
+impl FilterPredicate<String, ParserError> for LengthValidator {
+    fn filter(&self, value: String) -> Result<String, ParserError> {
+        if value.len() > MAX_LENGTH {
+            Err(ParserError::fatal(ParserErrorKind::IdentifierTooLong))
+        } else {
+            Ok(value)
+        }
+    }
 }
 
 fn is_allowed_char_in_identifier(ch: &char) -> bool {
     ch.is_ascii_alphanumeric() || *ch == '.'
 }
 
-fn oct_digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn oct_digits() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     oct_or_hex_digits('O', |ch| *ch >= '0' && *ch <= '7', TokenType::OctDigits)
 }
 
-fn hex_digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+fn hex_digits() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     oct_or_hex_digits('H', char::is_ascii_hexdigit, TokenType::HexDigits)
 }
 
@@ -190,7 +195,7 @@ fn oct_or_hex_digits<F>(
     radix: char,
     predicate: F,
     token_type: TokenType,
-) -> impl Parser<RcStringView, Output = Token, Error = ParseError>
+) -> impl Parser<RcStringView, Output = Token, Error = ParserError>
 where
     F: Fn(&char) -> bool,
 {
@@ -207,17 +212,17 @@ trait StringToTokenParser {
     fn to_token(
         self,
         token_type: TokenType,
-    ) -> impl Parser<RcStringView, Output = Token, Error = ParseError>;
+    ) -> impl Parser<RcStringView, Output = Token, Error = ParserError>;
 }
 
 impl<P> StringToTokenParser for P
 where
-    P: Parser<RcStringView, Output = String, Error = ParseError>,
+    P: Parser<RcStringView, Output = String, Error = ParserError>,
 {
     fn to_token(
         self,
         token_type: TokenType,
-    ) -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+    ) -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
         self.map(move |text| Token::new(token_type.get_index(), text))
     }
 }

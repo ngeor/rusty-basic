@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{ParseResult, Parser, SetContext, ToOption, ToOptionParser};
+use crate::{ParseResult, Parser, ParserErrorTrait, SetContext, ToOption, ToOptionParser};
 
 //
 // And (with undo)
@@ -12,7 +12,7 @@ where
     I: Clone,
 {
     /// Parses both the left and the right side.
-    /// If the right side fails with a non fatal error, parsing of the left side is undone.
+    /// If the right side fails with a soft error, parsing of the left side is undone.
     fn and<R, F, O>(self, right: R, combiner: F) -> AndParser<Self, R, F, O>
     where
         R: Parser<I, C, Error = Self::Error>,
@@ -126,15 +126,11 @@ where
 
     fn parse(&mut self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.left.parse(tokenizer.clone()) {
-            Ok((input, left)) => {
-                match self.right.parse(input) {
-                    Ok((input, right)) => Ok((input, self.combiner.combine(left, right))),
-                    // return original input here
-                    Err((false, _, err)) => Err((false, tokenizer, err)),
-                    Err(err) => Err(err),
-                }
-            }
-            Err((fatal, i, err)) => Err((fatal, i, err)),
+            Ok((input, left)) => match self.right.parse(input) {
+                Ok((input, right)) => Ok((input, self.combiner.combine(left, right))),
+                Err((input, err)) => Err((if err.is_fatal() { input } else { tokenizer }, err)),
+            },
+            Err(err) => Err(err),
         }
     }
 }
@@ -161,6 +157,7 @@ pub fn opt_and<I, L, R, E, F, O>(
 ) -> impl Parser<I, Output = O, Error = E>
 where
     I: Clone,
+    E: ParserErrorTrait,
     F: Combiner<Option<L>, R, O>,
 {
     left.to_option().and(right, combiner)
@@ -175,6 +172,7 @@ pub fn opt_and_tuple<I, L, R, E>(
 ) -> impl Parser<I, Output = (Option<L>, R), Error = E>
 where
     I: Clone,
+    E: ParserErrorTrait,
 {
     opt_and(left, right, TupleCombiner)
 }
@@ -188,6 +186,7 @@ pub fn opt_and_keep_right<I, L, R, E>(
 ) -> impl Parser<I, Output = R, Error = E>
 where
     I: Clone,
+    E: ParserErrorTrait,
 {
     opt_and(left, right, KeepRightCombiner)
 }

@@ -1,10 +1,16 @@
-use crate::{ParseResult, Parser, SetContext};
+use crate::{ParseResult, Parser, ParserErrorTrait, SetContext};
 
-pub struct OrParser<I, C, O, E> {
+pub struct OrParser<I, C, O, E>
+where
+    E: ParserErrorTrait,
+{
     parsers: Vec<Box<dyn Parser<I, C, Output = O, Error = E>>>,
 }
 
-impl<I, C, O, E> OrParser<I, C, O, E> {
+impl<I, C, O, E> OrParser<I, C, O, E>
+where
+    E: ParserErrorTrait,
+{
     pub fn new(parsers: Vec<Box<dyn Parser<I, C, Output = O, Error = E>>>) -> Self {
         Self { parsers }
     }
@@ -13,6 +19,7 @@ impl<I, C, O, E> OrParser<I, C, O, E> {
 impl<I, C, O, E> Parser<I, C> for OrParser<I, C, O, E>
 where
     C: Clone,
+    E: ParserErrorTrait,
 {
     type Output = O;
     type Error = E;
@@ -21,7 +28,7 @@ where
         for i in 0..self.parsers.len() - 1 {
             match self.parsers[i].parse(input) {
                 Ok(x) => return Ok(x),
-                Err((false, i, _)) => {
+                Err((i, err)) if !err.is_fatal() => {
                     input = i;
                     continue;
                 }
@@ -79,7 +86,7 @@ where
     fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.left.parse(input) {
             Ok(x) => Ok(x),
-            Err((false, input, _)) => self.right.parse(input),
+            Err((input, err)) if !err.is_fatal() => self.right.parse(input),
             Err(err) => Err(err),
         }
     }

@@ -1,24 +1,27 @@
-use rusty_pc::{OrFail, Parser, SurroundMode, ToFatalParser, surround};
+use rusty_pc::{OrFail, Parser, ParserErrorTrait, SurroundMode, ToFatalParser, surround};
 
-use crate::error::ParseError;
+use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::tokens::whitespace_ignoring;
 
-pub trait SpecificTrait: Parser<RcStringView, Error = ParseError>
+pub trait OrExpected<C>: Parser<RcStringView, C, Error = ParserError>
 where
     Self: Sized,
 {
-    fn or_syntax_error(self, msg: &str) -> ToFatalParser<Self, ParseError> {
-        self.or_fail(ParseError::syntax_error(msg))
-    }
-
     /// Demands a successful result or returns a fatal syntax error
     /// with an error message like "Expected: " followed by the
     /// given expectation message.
-    fn or_expected(self, expectation: &str) -> ToFatalParser<Self, ParseError> {
-        self.or_fail(ParseError::expected(expectation))
+    fn or_expected(self, expectation: &str) -> ToFatalParser<Self, ParserError> {
+        self.or_fail(ParserError::expected(expectation).to_fatal())
     }
+}
 
+impl<P, C> OrExpected<C> for P where P: Parser<RcStringView, C, Error = ParserError> {}
+
+pub trait PaddedByWs: Parser<RcStringView, Error = ParserError>
+where
+    Self: Sized,
+{
     fn padded_by_ws(self) -> impl Parser<RcStringView, Output = Self::Output, Error = Self::Error> {
         surround(
             whitespace_ignoring(),
@@ -29,4 +32,4 @@ where
     }
 }
 
-impl<P> SpecificTrait for P where P: Parser<RcStringView, Error = ParseError> {}
+impl<P> PaddedByWs for P where P: Parser<RcStringView, Error = ParserError> {}

@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser, SetContext};
+use crate::{ParseResult, Parser, ParserErrorTrait, SetContext};
 
 pub trait NoIncomplete<I, C>: Parser<I, C> + Sized {
     fn no_incomplete(self) -> ToFatalParser<Self, Self::Error> {
@@ -10,6 +10,7 @@ impl<I, C, P> NoIncomplete<I, C> for P where P: Parser<I, C> + Sized {}
 
 pub trait OrFail<I, C>: Parser<I, C> + Sized {
     fn or_fail(self, err: Self::Error) -> ToFatalParser<Self, Self::Error> {
+        debug_assert!(err.is_fatal());
         ToFatalParser::new(self, Some(err))
     }
 }
@@ -33,7 +34,7 @@ impl<P, E> ToFatalParser<P, E> {
 impl<I, C, P, E> Parser<I, C> for ToFatalParser<P, E>
 where
     P: Parser<I, C, Error = E>,
-    E: Clone,
+    E: ParserErrorTrait,
 {
     type Output = P::Output;
     type Error = E;
@@ -41,12 +42,12 @@ where
     fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok(value) => Ok(value),
-            Err((false, i, err)) => {
+            Err((i, err)) if !err.is_fatal() => {
                 let err = match &self.override_non_fatal_error {
                     Some(e) => e.clone(),
-                    _ => err,
+                    _ => err.to_fatal(),
                 };
-                Err((true, i, err))
+                Err((i, err))
             }
             Err(e) => Err(e),
         }
@@ -102,19 +103,9 @@ where
     fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok(value) => Ok(value),
-            Err((false, i, err)) => Err((
-                false,
+            Err((i, err)) => Err((
                 i,
-                if self.map_non_fatal {
-                    (self.mapper)(err)
-                } else {
-                    err
-                },
-            )),
-            Err((true, i, err)) => Err((
-                true,
-                i,
-                if self.map_fatal {
+                if self.map_non_fatal && !err.is_fatal() || self.map_fatal && err.is_fatal() {
                     (self.mapper)(err)
                 } else {
                     err

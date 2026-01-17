@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser, default_parse_error};
+use crate::{ParseResult, Parser, ParserErrorTrait, default_parse_error};
 
 /// Creates a parser that can parse a list of element
 /// separated by a delimiter.
@@ -20,9 +20,9 @@ pub trait DelimitedBy<I, C>: Parser<I, C> + Sized {
         trailing_error: Self::Error,
     ) -> DelimitedParser<Self, D, Self::Error, NormalElementCollector>
     where
-        Self::Error: Clone + Default,
         D: Parser<I, C, Error = Self::Error>,
     {
+        debug_assert!(trailing_error.is_fatal());
         DelimitedParser {
             parser: self,
             delimiter,
@@ -51,9 +51,9 @@ pub trait DelimitedBy<I, C>: Parser<I, C> + Sized {
         trailing_error: Self::Error,
     ) -> DelimitedParser<Self, D, Self::Error, OptionalElementCollector>
     where
-        Self::Error: Clone + Default,
         D: Parser<I, C, Error = Self::Error>,
     {
+        debug_assert!(trailing_error.is_fatal());
         DelimitedParser {
             parser: self,
             delimiter,
@@ -146,7 +146,7 @@ impl<I, C, P, D, E, A> Parser<I, C> for DelimitedParser<P, D, E, A>
 where
     P: Parser<I, C, Error = E>,
     D: Parser<I, C, Error = E>,
-    E: Clone + Default,
+    E: ParserErrorTrait,
     A: ElementCollector<P::Output>,
 {
     // The output is determined by the element collector,
@@ -170,14 +170,14 @@ where
                     input = remaining;
                     last_parsed = LastParsed::Value;
                 }
-                Err((false, remaining, _)) => {
+                Err((remaining, err)) => {
+                    if err.is_fatal() {
+                        // always return on fatal errors
+                        return Err((remaining, err));
+                    }
                     // maybe get delimiter
                     state = State::AfterNoValue;
                     input = remaining;
-                }
-                Err(err) => {
-                    // always return on fatal errors
-                    return Err(err);
                 }
             }
 
@@ -193,7 +193,7 @@ where
                             }
                             None => {
                                 // missing elements are not allowed and we found a delimiter
-                                return Err((true, remaining, self.trailing_error.clone()));
+                                return Err((remaining, self.trailing_error.clone()));
                             }
                         }
                     }
@@ -202,13 +202,13 @@ where
                     input = remaining;
                     last_parsed = LastParsed::Delimiter;
                 }
-                Err((false, remaining, _)) => {
+                Err((remaining, err)) => {
+                    if err.is_fatal() {
+                        // always return on fatal errors
+                        return Err((remaining, err));
+                    }
                     input = remaining;
                     break;
-                }
-                Err(err) => {
-                    // always return on fatal errors
-                    return Err(err);
                 }
             }
         }
@@ -216,7 +216,7 @@ where
         match last_parsed {
             LastParsed::Nothing => default_parse_error(input),
             LastParsed::Value => Ok((input, result)),
-            LastParsed::Delimiter => Err((true, input, self.trailing_error.clone())),
+            LastParsed::Delimiter => Err((input, self.trailing_error.clone())),
         }
     }
 }

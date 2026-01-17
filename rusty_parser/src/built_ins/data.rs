@@ -2,9 +2,9 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::{BuiltInSub, ParseError, *};
+use crate::{BuiltInSub, ParserError, *};
 
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq2(
         keyword(Keyword::Data),
         csv_expressions_first_guarded().or_default(),

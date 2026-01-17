@@ -3,7 +3,7 @@ use rusty_pc::*;
 use crate::core::expression::{expr_pos_ws_p, property, ws_expr_pos_p};
 use crate::core::opt_second_expression::opt_second_expression_after_keyword;
 use crate::core::statements::zero_or_more_statements;
-use crate::error::ParseError;
+use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::{equal_sign_ws, whitespace_ignoring};
@@ -13,11 +13,11 @@ use crate::*;
 // statements
 // NEXT (I)
 
-pub fn for_loop_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn for_loop_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq4(
         parse_for_step_p(),
         zero_or_more_statements!(Keyword::Next),
-        keyword(Keyword::Next).or_fail(ParseError::ForWithoutNext),
+        keyword(Keyword::Next).or_fail(ParserError::fatal(ParserErrorKind::ForWithoutNext)),
         next_counter_p().to_option(),
         |(variable_name, lower_bound, upper_bound, opt_step), statements, _, opt_next_name_pos| {
             Statement::ForLoop(ForLoop {
@@ -41,7 +41,7 @@ fn parse_for_step_p() -> impl Parser<
         ExpressionPos,
         Option<ExpressionPos>,
     ),
-    Error = ParseError,
+    Error = ParserError,
 > {
     opt_second_expression_after_keyword(parse_for_p(), Keyword::Step, |(_var, _low, upper)| {
         upper.is_parenthesis()
@@ -51,7 +51,7 @@ fn parse_for_step_p() -> impl Parser<
 
 /// Parses the "FOR I = 1 TO 2" part
 fn parse_for_p()
--> impl Parser<RcStringView, Output = (ExpressionPos, ExpressionPos, ExpressionPos), Error = ParseError>
+-> impl Parser<RcStringView, Output = (ExpressionPos, ExpressionPos, ExpressionPos), Error = ParserError>
 {
     seq6(
         keyword_ws_p(Keyword::For),
@@ -64,7 +64,7 @@ fn parse_for_p()
     )
 }
 
-fn next_counter_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+fn next_counter_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
     whitespace_ignoring().and_keep_right(property::parser())
 }
 
@@ -72,7 +72,6 @@ fn next_counter_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error =
 mod tests {
     use rusty_common::*;
 
-    use crate::error::ParseError;
     use crate::test_utils::*;
     use crate::{assert_parser_err, *};
     #[test]
@@ -248,6 +247,6 @@ mod tests {
         FOR I = 0 TO 2STEP 1
         NEXT I
         ";
-        assert_parser_err!(input, ParseError::expected("end-of-statement"), 2, 23);
+        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 2, 23);
     }
 }

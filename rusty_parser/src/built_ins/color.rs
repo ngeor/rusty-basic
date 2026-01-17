@@ -2,17 +2,16 @@ use rusty_pc::*;
 
 use crate::built_ins::common::parse_built_in_sub_with_opt_args;
 use crate::input::RcStringView;
-use crate::{BuiltInSub, ParseError, *};
+use crate::{BuiltInSub, ParserError, *};
 
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     parse_built_in_sub_with_opt_args(Keyword::Color, BuiltInSub::Color)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::error::ParseError;
     use crate::test_utils::*;
-    use crate::{BuiltInSub, Statement, assert_parser_err, parse};
+    use crate::{BuiltInSub, ParserErrorKind, Statement, assert_parser_err, parse};
 
     #[test]
     fn parse_foreground_only() {
@@ -60,6 +59,6 @@ mod tests {
     #[test]
     fn parse_no_args() {
         let input = "COLOR";
-        assert_parser_err!(input, ParseError::expected("whitespace"), 1, 6);
+        assert_parser_err!(input, ParserErrorKind::expected("whitespace"), 1, 6);
     }
 }

@@ -1,8 +1,9 @@
 use std::fs::File;
 
 use rusty_common::*;
+use rusty_pc::ParserErrorTrait;
 
-use crate::error::{ParseError, ParseErrorPos};
+use crate::error::ParserErrorKind;
 use crate::{parse, parse_main_file, parse_main_str, *};
 
 pub fn parse_str_no_pos(input: &str) -> Vec<GlobalStatement> {
@@ -30,8 +31,10 @@ pub fn parse_file_no_pos(filename: &str) -> Vec<GlobalStatement> {
 /// # Panics
 ///
 /// If the parser does not have an error.
-pub fn parse_err_pos(input: &str) -> ParseErrorPos {
-    parse_main_str(input.to_owned()).expect_err("Parser should have failed")
+pub fn parse_err_pos(input: &str) -> Positioned<ParserErrorKind> {
+    let positioned_err = parse_main_str(input.to_owned()).expect_err("Parser should have failed");
+    assert!(positioned_err.element.is_fatal());
+    positioned_err.map(|e| e.kind().clone())
 }
 
 /// Parses the given string, expecting that it will fail.
@@ -40,7 +43,7 @@ pub fn parse_err_pos(input: &str) -> ParseErrorPos {
 /// # Panics
 ///
 /// If the parser does not have an error.
-pub fn parse_err(input: &str) -> ParseError {
+pub fn parse_err(input: &str) -> ParserErrorKind {
     parse_err_pos(input).element()
 }
 
@@ -251,7 +254,7 @@ macro_rules! assert_parser_err {
     ($input:expr, $expected_err:literal) => {
         $crate::assert_parser_err!(
             $input,
-            $crate::error::ParseError::syntax_error($expected_err)
+            $crate::error::ParserErrorKind::syntax_error($expected_err)
         );
     };
 

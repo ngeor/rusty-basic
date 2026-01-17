@@ -3,11 +3,11 @@ use rusty_pc::*;
 use crate::built_ins::common::{encode_opt_file_handle_arg, opt_file_handle_comma_p};
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::{BuiltInSub, ParseError, *};
+use crate::{BuiltInSub, ParserError, *};
 
 // INPUT variable-list
 // INPUT #file-number%, variable-list
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq3(
         keyword_ws_p(Keyword::Input),
         opt_file_handle_comma_p(),
@@ -22,7 +22,6 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
 
 #[cfg(test)]
 mod tests {
-    use crate::error::ParseError;
     use crate::test_utils::*;
     use crate::{BuiltInSub, assert_built_in_sub_call, assert_parser_err, *};
 
@@ -52,13 +51,13 @@ mod tests {
     #[test]
     fn test_no_whitespace_ignoring_after_input() {
         let input = "INPUT";
-        assert_parser_err!(input, ParseError::expected("whitespace"));
+        assert_parser_err!(input, ParserErrorKind::expected("whitespace"));
     }
 
     #[test]
     fn test_no_variable() {
         let input = "INPUT ";
-        assert_parser_err!(input, ParseError::expected("#file-number or variable"));
+        assert_parser_err!(input, ParserErrorKind::expected("#file-number or variable"));
     }
 
     #[test]

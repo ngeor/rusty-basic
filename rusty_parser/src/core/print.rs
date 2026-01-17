@@ -4,7 +4,7 @@ use rusty_pc::*;
 use crate::core::expression::file_handle::file_handle_p;
 use crate::core::expression::guard::Guard;
 use crate::core::expression::{expression_pos_p, ws_expr_pos_p};
-use crate::error::ParseError;
+use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::{
@@ -96,7 +96,7 @@ impl PrintArg {
 }
 
 /// See [Print] for the definition.
-pub fn parse_print_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn parse_print_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     keyword(Keyword::Print)
         .and_opt_keep_right(print_boundary().and_tuple(seq3(
             opt_file_handle_comma_p(),
@@ -115,7 +115,7 @@ pub fn parse_print_p() -> impl Parser<RcStringView, Output = Statement, Error = 
         })
 }
 
-pub fn parse_lprint_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn parse_lprint_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     keyword(Keyword::LPrint)
         .and_opt_keep_right(print_boundary().and_tuple(seq2(
             opt_using(),
@@ -133,7 +133,7 @@ pub fn parse_lprint_p() -> impl Parser<RcStringView, Output = Statement, Error =
         })
 }
 
-fn opt_using() -> impl Parser<RcStringView, Output = Option<ExpressionPos>, Error = ParseError> {
+fn opt_using() -> impl Parser<RcStringView, Output = Option<ExpressionPos>, Error = ParserError> {
     seq3(
         keyword(Keyword::Using),
         ws_expr_pos_p().or_expected("expression after USING"),
@@ -144,7 +144,7 @@ fn opt_using() -> impl Parser<RcStringView, Output = Option<ExpressionPos>, Erro
 }
 
 fn opt_file_handle_comma_p()
--> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>, Error = ParseError> {
+-> impl Parser<RcStringView, Output = Option<Positioned<FileHandle>>, Error = ParserError> {
     seq2(file_handle_p(), comma_ws(), |file_handle, _| file_handle).to_option()
 }
 
@@ -154,7 +154,7 @@ impl PrintArgsParser {
     fn next(
         tokenizer: RcStringView,
         allow_expr: bool,
-    ) -> ParseResult<RcStringView, PrintArg, ParseError> {
+    ) -> ParseResult<RcStringView, PrintArg, ParserError> {
         if allow_expr {
             Self::any_print_arg().parse(tokenizer)
         } else {
@@ -162,13 +162,13 @@ impl PrintArgsParser {
         }
     }
 
-    fn any_print_arg() -> impl Parser<RcStringView, Output = PrintArg, Error = ParseError> {
+    fn any_print_arg() -> impl Parser<RcStringView, Output = PrintArg, Error = ParserError> {
         expression_pos_p()
             .map(PrintArg::Expression)
             .or(Self::delimiter_print_arg())
     }
 
-    fn delimiter_print_arg() -> impl Parser<RcStringView, Output = PrintArg, Error = ParseError> {
+    fn delimiter_print_arg() -> impl Parser<RcStringView, Output = PrintArg, Error = ParserError> {
         // TODO support char based tokens or make the next mapping friendlier
         any_symbol_of_ws!(';', ',').map(|t| {
             if ';'.matches_token(&t) {
@@ -184,12 +184,12 @@ impl PrintArgsParser {
 
 impl Parser<RcStringView> for PrintArgsParser {
     type Output = Vec<PrintArg>;
-    type Error = ParseError;
+    type Error = ParserError;
 
     fn parse(
         &mut self,
         mut tokenizer: RcStringView,
-    ) -> ParseResult<RcStringView, Self::Output, ParseError> {
+    ) -> ParseResult<RcStringView, Self::Output, ParserError> {
         let mut result: Vec<PrintArg> = vec![];
         let mut last_one_was_expression = false;
         loop {
@@ -199,7 +199,7 @@ impl Parser<RcStringView> for PrintArgsParser {
                     result.push(next);
                     tokenizer = remaining;
                 }
-                Err((false, remaining, _)) => {
+                Err((remaining, err)) if !err.is_fatal() => {
                     tokenizer = remaining;
                     break;
                 }
@@ -212,7 +212,7 @@ impl Parser<RcStringView> for PrintArgsParser {
     }
 }
 
-fn print_boundary() -> impl Parser<RcStringView, Output = Guard, Error = ParseError> {
+fn print_boundary() -> impl Parser<RcStringView, Output = Guard, Error = ParserError> {
     whitespace_ignoring()
         .map(|_| Guard::Whitespace)
         .or(peek_token().flat_map(|input, token| {
@@ -416,7 +416,7 @@ mod tests {
     #[test]
     fn test_print_file_no_args_no_comma() {
         let input = "PRINT #1";
-        assert_parser_err!(input, ParseError::expected(","), 1, 9);
+        assert_parser_err!(input, ParserErrorKind::expected(","), 1, 9);
     }
 
     #[test]
@@ -452,7 +452,7 @@ mod tests {
     #[test]
     fn test_print_file_semicolon_after_file_number_err() {
         let input = "PRINT #1; 42";
-        assert_parser_err!(input, ParseError::expected(","), 1, 9);
+        assert_parser_err!(input, ParserErrorKind::expected(","), 1, 9);
     }
 
     #[test]
@@ -547,13 +547,13 @@ mod tests {
     #[test]
     fn test_print_using_no_args_missing_semicolon() {
         let input = "PRINT USING \"#\"";
-        assert_parser_err!(input, ParseError::expected(";"), 1, 16);
+        assert_parser_err!(input, ParserErrorKind::expected(";"), 1, 16);
     }
 
     #[test]
     fn test_lprint_using_no_args_missing_semicolon() {
         let input = "LPRINT USING \"#\"";
-        assert_parser_err!(input, ParseError::expected(";"), 1, 17);
+        assert_parser_err!(input, ParserErrorKind::expected(";"), 1, 17);
     }
 
     #[test]
@@ -619,6 +619,6 @@ mod tests {
     #[test]
     fn test_lprint_no_comma_between_expressions_is_error() {
         let input = "LPRINT 1 2";
-        assert_parser_err!(input, ParseError::expected("end-of-statement"), 1, 11);
+        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 1, 11);
     }
 }

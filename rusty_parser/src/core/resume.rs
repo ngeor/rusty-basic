@@ -5,19 +5,19 @@ use crate::core::statement_separator::peek_eof_or_statement_separator;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::{keyword_ignoring, whitespace_ignoring};
-use crate::{Keyword, ParseError, ResumeOption, Statement};
+use crate::{Keyword, ParserError, ResumeOption, Statement};
 
 // RESUME
 // RESUME NEXT
 // RESUME label
 
-pub fn statement_resume_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn statement_resume_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     keyword(Keyword::Resume)
         .and_keep_right(resume_option_p().or_expected("label or NEXT or end-of-statement"))
         .map(Statement::Resume)
 }
 
-fn resume_option_p() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParseError> {
+fn resume_option_p() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParserError> {
     OrParser::new(vec![
         Box::new(blank_resume()),
         Box::new(resume_next()),
@@ -25,28 +25,27 @@ fn resume_option_p() -> impl Parser<RcStringView, Output = ResumeOption, Error =
     ])
 }
 
-fn blank_resume() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParseError> {
+fn blank_resume() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParserError> {
     peek_eof_or_statement_separator().map(|_| ResumeOption::Bare)
 }
 
-fn resume_next() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParseError> {
+fn resume_next() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParserError> {
     whitespace_ignoring().and(keyword_ignoring(Keyword::Next), |_, _| ResumeOption::Next)
 }
 
-fn resume_label() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParseError> {
+fn resume_label() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParserError> {
     whitespace_ignoring().and(bare_name_p(), |_, r| ResumeOption::Label(r))
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::assert_parser_err;
-    use crate::error::ParseError;
+    use crate::{ParserErrorKind, assert_parser_err};
 
     #[test]
     fn resume_with_invalid_option() {
         assert_parser_err!(
             "RESUME FOR",
-            ParseError::expected("label or NEXT or end-of-statement")
+            ParserErrorKind::expected("label or NEXT or end-of-statement")
         );
     }
 }

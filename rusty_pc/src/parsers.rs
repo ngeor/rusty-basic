@@ -3,7 +3,7 @@ use crate::{FilterParser, FilterPredicate, ParseResult};
 /// A parser uses the given input in order to produce a result.
 pub trait Parser<I, C = ()> {
     type Output;
-    type Error;
+    type Error: ParserErrorTrait;
 
     /// Parses the given input and returns a result.
     fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error>;
@@ -15,4 +15,10 @@ pub trait Parser<I, C = ()> {
     {
         FilterParser::new(self, predicate)
     }
+}
+
+pub trait ParserErrorTrait: Clone + Default {
+    fn is_fatal(&self) -> bool;
+
+    fn to_fatal(self) -> Self;
 }

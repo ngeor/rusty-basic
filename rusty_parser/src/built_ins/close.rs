@@ -4,7 +4,7 @@ use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::comma_ws;
 use crate::{
-    BuiltInSub, ParseError, file_handle_as_expression_pos_p, guarded_file_handle_or_expression_p, *
+    BuiltInSub, ParserError, file_handle_as_expression_pos_p, guarded_file_handle_or_expression_p, *
 };
 
 // <result> ::= <CLOSE> | <CLOSE><file_handles>
@@ -12,7 +12,7 @@ use crate::{
 // next_file_handles ::= <file_handle> | <file_handle> <opt-ws> "," <opt-ws> <next_file_handles>
 // first_file_handle ::= "(" <file_handle> ")" | <ws> <file_handle>
 // file_handle ::= "#" <digits> | <expr>
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq2(
         keyword(Keyword::Close),
         file_handles(),
@@ -20,7 +20,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
     )
 }
 
-fn file_handles() -> impl Parser<RcStringView, Output = Expressions, Error = ParseError> {
+fn file_handles() -> impl Parser<RcStringView, Output = Expressions, Error = ParserError> {
     guarded_file_handle_or_expression_p()
         .map(|first| vec![first])
         .and(
@@ -33,7 +33,7 @@ fn file_handles() -> impl Parser<RcStringView, Output = Expressions, Error = Par
 }
 
 fn file_handle_or_expression_p()
--> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+-> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
     OrParser::new(vec![
         Box::new(file_handle_as_expression_pos_p()),
         Box::new(expression_pos_p()),
@@ -44,7 +44,6 @@ fn file_handle_or_expression_p()
 mod tests {
     use rusty_common::*;
 
-    use crate::error::ParseError;
     use crate::test_utils::*;
     use crate::{BuiltInSub, assert_parser_err, *};
 
@@ -114,7 +113,7 @@ mod tests {
     #[test]
     fn test_one_file_number_with_hash_no_leading_space() {
         let input = "CLOSE#1";
-        assert_parser_err!(input, ParseError::expected("end-of-statement"), 1, 7);
+        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 1, 7);
     }
 
     #[test]
@@ -122,7 +121,7 @@ mod tests {
         let input = "CLOSE (#1)";
         assert_parser_err!(
             input,
-            ParseError::expected("expression inside parenthesis"),
+            ParserErrorKind::expected("expression inside parenthesis"),
             1,
             8
         );
@@ -133,7 +132,7 @@ mod tests {
         let input = "CLOSE(#1)";
         assert_parser_err!(
             input,
-            ParseError::expected("expression inside parenthesis"),
+            ParserErrorKind::expected("expression inside parenthesis"),
             1,
             7
         );

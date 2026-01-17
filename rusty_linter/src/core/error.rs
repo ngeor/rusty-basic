@@ -1,5 +1,5 @@
 use rusty_common::{AtPos, HasPos, Positioned};
-use rusty_parser::ParseError;
+use rusty_parser::{ParserError, ParserErrorKind};
 use rusty_variant::VariantError;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -26,7 +26,7 @@ pub enum LintError {
     TypeNotDefined,
     VariableRequired,
     WrongNumberOfDimensions,
-    ParserError(ParseError),
+    ParserError(ParserErrorKind),
 
     // custom
     NotFiniteNumber,
@@ -44,13 +44,13 @@ impl From<VariantError> for LintError {
     }
 }
 
-impl From<ParseError> for LintError {
-    fn from(e: ParseError) -> Self {
-        match e {
-            ParseError::NextWithoutFor => Self::NextWithoutFor,
-            ParseError::Overflow => Self::Overflow,
-            ParseError::ElementNotDefined => Self::ElementNotDefined,
-            _ => Self::ParserError(e),
+impl From<ParserError> for LintError {
+    fn from(e: ParserError) -> Self {
+        match e.kind() {
+            ParserErrorKind::NextWithoutFor => Self::NextWithoutFor,
+            ParserErrorKind::Overflow => Self::Overflow,
+            ParserErrorKind::ElementNotDefined => Self::ElementNotDefined,
+            _ => Self::ParserError(e.to_kind()),
         }
     }
 }

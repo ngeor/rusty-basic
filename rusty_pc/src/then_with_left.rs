@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{Combiner, ParseResult, Parser, SetContext};
+use crate::{Combiner, ParseResult, Parser, ParserErrorTrait, SetContext};
 
 /// This parser is a binary parser that sets
 /// the context of the left-side parser
@@ -67,7 +67,7 @@ where
                 Ok((input, self.combiner.combine(left, right)))
             }
             // right-side error is always fatal
-            Err((_, i, err)) => Err((true, i, err)),
+            Err((i, err)) => Err((i, err.to_fatal())),
         }
     }
 }

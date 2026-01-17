@@ -1,3 +1,5 @@
+use crate::ParserErrorTrait;
+
 /// The successful result of a parsing operation.
 /// Consists of two elements:
 /// - I: the remaining input
@@ -6,17 +8,16 @@ pub type ParseOk<I, O> = (I, O);
 
 /// The unsuccessful result of a parsing operation.
 /// Consists of these elements:
-/// - A flag indicating if the error is fatal or not.
 /// - I: the remaining input
 /// - E: the error.
-pub type ParseErr<I, E> = (bool, I, E);
+pub type ParseErr<I, E> = (I, E);
 
-/// Creates a failed result containing the default parse error (non fatal).
+/// Creates a failed result containing the default parse error (soft).
 pub fn default_parse_error<I, O, E>(input: I) -> ParseResult<I, O, E>
 where
-    E: Default,
+    E: ParserErrorTrait,
 {
-    Err((false, input, E::default()))
+    Err((input, E::default()))
 }
 
 /// The parse result is an alias for the standard Result type,

@@ -2,16 +2,15 @@ use rusty_pc::*;
 
 use crate::built_ins::common::parse_built_in_sub_with_opt_args;
 use crate::input::RcStringView;
-use crate::{BuiltInSub, ParseError, *};
+use crate::{BuiltInSub, ParserError, *};
 
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     // TODO limit to 2 args here so linter can be removed
     parse_built_in_sub_with_opt_args(Keyword::Locate, BuiltInSub::Locate)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::error::ParseError;
     use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
     use crate::{BuiltInSub, assert_parser_err, parse, *};
     #[test]
@@ -83,7 +82,7 @@ mod tests {
     fn cannot_have_trailing_comma() {
         assert_parser_err!(
             "LOCATE 1, 2,",
-            ParseError::syntax_error("Error: trailing comma")
+            ParserErrorKind::syntax_error("Error: trailing comma")
         );
     }
 }

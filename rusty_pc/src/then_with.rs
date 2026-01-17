@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{Combiner, ParseResult, Parser, SetContext};
+use crate::{Combiner, ParseResult, Parser, ParserErrorTrait, SetContext};
 
 /// A binary parser that sets the context of the right-side parser
 /// based on the value returned by the left-side parser.
@@ -15,7 +15,7 @@ pub trait ThenWithContext<I, C>: Parser<I, C> {
     /// based on the result of this parser.
     ///
     /// The right-side parser is treated as a 'complete' parser,
-    /// i.e. non-fatal errors will be converted to fatal.
+    /// i.e. soft errors will be converted to fatal.
     ///
     /// # Arguments
     ///
@@ -76,7 +76,8 @@ where
         self.right.set_context(ctx);
         match self.right.parse(input) {
             Ok((input, right)) => Ok((input, self.combiner.combine(left, right))),
-            Err((_, input, err)) => Err((true, input, err)),
+            // right-side error is always fatal
+            Err((input, err)) => Err((input, err.to_fatal())),
         }
     }
 }

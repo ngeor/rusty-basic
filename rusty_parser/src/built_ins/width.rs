@@ -4,8 +4,8 @@ use rusty_pc::*;
 use crate::built_ins::common::csv_allow_missing;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::{BuiltInSub, ParseError, *};
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+use crate::{BuiltInSub, ParserError, *};
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     keyword_ws_p(Keyword::Width)
         .and_keep_right(csv_allow_missing())
         .map(|opt_args| Statement::built_in_sub_call(BuiltInSub::Width, map_args(opt_args)))
@@ -24,7 +24,6 @@ fn map_arg(arg: Option<ExpressionPos>) -> Expressions {
 
 #[cfg(test)]
 mod tests {
-    use crate::error::ParseError;
     use crate::test_utils::{DemandSingleStatement, ExpressionLiteralFactory};
     use crate::{BuiltInSub, assert_parser_err, parse, *};
 
@@ -67,7 +66,7 @@ mod tests {
     fn cannot_have_trailing_comma() {
         assert_parser_err!(
             "WIDTH 1, 2,",
-            ParseError::syntax_error("Error: trailing comma")
+            ParserErrorKind::syntax_error("Error: trailing comma")
         );
     }
 }

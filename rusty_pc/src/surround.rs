@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser};
+use crate::{ParseResult, Parser, ParserErrorTrait};
 
 pub fn surround<L, P, R>(
     left: L,
@@ -20,14 +20,14 @@ pub struct SurroundParser<P, L, R> {
 pub enum SurroundMode {
     /// The boundaries are optional.
     /// Parsing the main content will be attempted even if the left boundary is missing.
-    /// If the main content is missing, a non-fatal result is returned,
+    /// If the main content is missing, a soft error is returned,
     /// and the left boundary is reverted (if one existed).
     ///
     /// Typical use case: padded by optional whitespace.
     Optional,
 
     /// The boundaries are mandatory.
-    /// If the left boundary is missing, a non-fatal error is returned.
+    /// If the left boundary is missing, a soft error is returned.
     /// If the right boundary is missing, a fatal error is returned.
     /// If the main content is missing, a fatal error is returned.
     Mandatory,
@@ -61,12 +61,12 @@ where
         // parse the left boundary
         let input = match self.left.parse(input) {
             Ok((input, _)) => input,
-            Err((false, input, err)) => {
+            Err((input, err)) if !err.is_fatal() => {
                 // if boundaries are optional, allow it
                 if self.mode == SurroundMode::Optional {
                     input
                 } else {
-                    return Err((false, input, err));
+                    return Err((input, err));
                 }
             }
             Err(err) => {
@@ -77,13 +77,13 @@ where
         // parse the main content
         let (input, result) = match self.parser.parse(input) {
             Ok((input, result)) => (input, result),
-            Err((false, input, err)) => {
+            Err((input, err)) if !err.is_fatal() => {
                 if self.mode == SurroundMode::Mandatory {
                     // the content is mandatory, convert to fatal
-                    return Err((true, input, err));
+                    return Err((input, err.to_fatal()));
                 } else {
                     // the content is optional, return original input (undo parsing left boundary)
-                    return Err((false, original_input, err));
+                    return Err((original_input, err));
                 }
             }
             Err(err) => {
@@ -94,13 +94,13 @@ where
         // parse the right boundary
         let input = match self.right.parse(input) {
             Ok((input, _)) => input,
-            Err((false, input, err)) => {
+            Err((input, err)) if !err.is_fatal() => {
                 if self.mode == SurroundMode::Optional {
                     // allow missing optional boundary
                     input
                 } else {
                     // convert the missing right boundary into a fatal error!
-                    return Err((true, input, err));
+                    return Err((input, err.to_fatal()));
                 }
             }
             Err(err) => {

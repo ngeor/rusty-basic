@@ -4,7 +4,7 @@ use rusty_pc::*;
 use crate::core::var_name;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::{ParseError, *};
+use crate::{ParserError, *};
 
 pub type DimVar = TypedName<DimType>;
 pub type DimVarPos = Positioned<DimVar>;
@@ -101,20 +101,20 @@ impl DimNameBuilder {
 /// A(10)
 /// A$(1 TO 2, 0 TO 10)
 /// A(1 TO 5) AS INTEGER
-pub fn dim_var_pos_p() -> impl Parser<RcStringView, Output = DimVarPos, Error = ParseError> {
+pub fn dim_var_pos_p() -> impl Parser<RcStringView, Output = DimVarPos, Error = ParserError> {
     dim_or_redim(|| array_dimensions::array_dimensions_p().or_default())
 }
 
-pub fn redim_var_pos_p() -> impl Parser<RcStringView, Output = DimVarPos, Error = ParseError> {
+pub fn redim_var_pos_p() -> impl Parser<RcStringView, Output = DimVarPos, Error = ParserError> {
     dim_or_redim(|| array_dimensions::array_dimensions_p().or_expected("array dimensions"))
 }
 
 fn dim_or_redim<A, AP>(
     array_dimensions_parser: A,
-) -> impl Parser<RcStringView, Output = DimVarPos, Error = ParseError>
+) -> impl Parser<RcStringView, Output = DimVarPos, Error = ParserError>
 where
     A: Fn() -> AP,
-    AP: Parser<RcStringView, Output = ArrayDimensions, Error = ParseError> + 'static,
+    AP: Parser<RcStringView, Output = ArrayDimensions, Error = ParserError> + 'static,
 {
     var_name(array_dimensions_parser, type_definition::extended_type).with_pos()
 }
@@ -125,17 +125,17 @@ mod array_dimensions {
     use crate::core::opt_second_expression::opt_second_expression_after_keyword;
     use crate::input::RcStringView;
     use crate::pc_specific::*;
-    use crate::{ParseError, *};
+    use crate::{ParserError, *};
 
     pub fn array_dimensions_p()
-    -> impl Parser<RcStringView, Output = ArrayDimensions, Error = ParseError> {
+    -> impl Parser<RcStringView, Output = ArrayDimensions, Error = ParserError> {
         in_parenthesis(csv_non_opt(array_dimension_p(), "array dimension"))
     }
 
     // expr (e.g. 10)
     // expr ws+ TO ws+ expr (e.g. 1 TO 10)
     // paren_expr ws* TO ws* paren_expr
-    fn array_dimension_p() -> impl Parser<RcStringView, Output = ArrayDimension, Error = ParseError>
+    fn array_dimension_p() -> impl Parser<RcStringView, Output = ArrayDimension, Error = ParserError>
     {
         opt_second_expression_after_keyword(
             expression_pos_p(),
@@ -163,15 +163,15 @@ mod type_definition {
     use crate::input::RcStringView;
     use crate::pc_specific::*;
     use crate::tokens::star_ws;
-    use crate::{ParseError, *};
+    use crate::{ParserError, *};
 
     pub fn extended_type()
-    -> impl Parser<RcStringView, VarNameCtx, Output = DimType, Error = ParseError>
+    -> impl Parser<RcStringView, VarNameCtx, Output = DimType, Error = ParserError>
     + SetContext<VarNameCtx> {
-        ctx_parser::<RcStringView, VarNameCtx, ParseError>()
+        ctx_parser::<RcStringView, VarNameCtx, ParserError>()
             .map(|(_opt_q, allow_user_defined)| {
                 let mut parsers: Vec<
-                    Box<dyn Parser<RcStringView, Output = DimType, Error = ParseError>>,
+                    Box<dyn Parser<RcStringView, Output = DimType, Error = ParserError>>,
                 > = vec![
                     Box::new(built_in_numeric_type()),
                     Box::new(built_in_string()),
@@ -192,7 +192,7 @@ mod type_definition {
             .flatten()
     }
 
-    fn built_in_numeric_type() -> impl Parser<RcStringView, Output = DimType, Error = ParseError> {
+    fn built_in_numeric_type() -> impl Parser<RcStringView, Output = DimType, Error = ParserError> {
         keyword_map(&[
             (
                 Keyword::Single,
@@ -213,7 +213,7 @@ mod type_definition {
         ])
     }
 
-    fn built_in_string() -> impl Parser<RcStringView, Output = DimType, Error = ParseError> {
+    fn built_in_string() -> impl Parser<RcStringView, Output = DimType, Error = ParserError> {
         keyword(Keyword::String).and_opt(
             star_ws().and_keep_right(expression_pos_p().or_expected("string length after *")),
             |_, opt_len| match opt_len {

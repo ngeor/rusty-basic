@@ -2,9 +2,9 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::tokens::{TokenType, any_token_of, dollar_sign};
-use crate::{BuiltInFunction, ParseError, *};
+use crate::{BuiltInFunction, ParserError, *};
 
-pub fn parse() -> impl Parser<RcStringView, Output = Expression, Error = ParseError> {
+pub fn parse() -> impl Parser<RcStringView, Output = Expression, Error = ParserError> {
     seq2(
         any_token_of!(TokenType::Identifier)
             .filter(|token: &Token| token.as_str().eq_ignore_ascii_case("STRING"))

@@ -3,10 +3,10 @@ use rusty_pc::*;
 use crate::core::dim_name::{dim_var_pos_p, redim_var_pos_p};
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::{ParseError, *};
+use crate::{ParserError, *};
 
 /// Parses DIM statement
-pub fn dim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn dim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq3(
         keyword_ws_p(Keyword::Dim),
         opt_shared_keyword(),
@@ -21,7 +21,7 @@ pub fn dim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
 }
 
 /// Parses REDIM statement
-pub fn redim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn redim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq3(
         keyword_ws_p(Keyword::Redim),
         opt_shared_keyword(),
@@ -35,7 +35,7 @@ pub fn redim_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseE
     )
 }
 
-fn opt_shared_keyword() -> impl Parser<RcStringView, Output = Option<()>, Error = ParseError> {
+fn opt_shared_keyword() -> impl Parser<RcStringView, Output = Option<()>, Error = ParserError> {
     keyword_ws_p(Keyword::Shared).to_option()
 }
 
@@ -43,7 +43,6 @@ fn opt_shared_keyword() -> impl Parser<RcStringView, Output = Option<()>, Error 
 mod tests {
     use rusty_common::*;
 
-    use crate::error::ParseError;
     use crate::test_utils::*;
     use crate::{
         assert_parse_dim_compact, assert_parse_dim_extended_built_in, assert_parser_err, *
@@ -99,7 +98,7 @@ mod tests {
         let input = "DIM X AS AS";
         assert_parser_err!(
             input,
-            ParseError::SyntaxError(
+            ParserErrorKind::SyntaxError(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string()
             )
         );
@@ -110,14 +109,14 @@ mod tests {
         let input = "DIM A$ AS STRING";
         assert_parser_err!(
             input,
-            ParseError::syntax_error("Identifier cannot end with %, &, !, #, or $")
+            ParserErrorKind::syntax_error("Identifier cannot end with %, &, !, #, or $")
         );
     }
 
     #[test]
     fn test_parse_dim_user_defined_too_long() {
         let input = "DIM A AS ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO";
-        assert_parser_err!(input, ParseError::IdentifierTooLong);
+        assert_parser_err!(input, ParserErrorKind::IdentifierTooLong);
     }
 
     #[test]
@@ -132,7 +131,7 @@ mod tests {
     #[test]
     fn test_parse_dim_user_defined_type_cannot_include_period() {
         let input = "DIM Card AS A.B";
-        assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, ParserErrorKind::IdentifierCannotIncludePeriod);
     }
 
     #[test]
@@ -242,7 +241,7 @@ mod tests {
             let left_sides = ["DIM", "DIM%", "DIM&", "DIM!", "DIM#"];
             for left_side in &left_sides {
                 let input = format!("DIM {}", left_side);
-                assert!(matches!(parse_err(&input), ParseError::SyntaxError(_)));
+                assert!(matches!(parse_err(&input), ParserErrorKind::SyntaxError(_)));
             }
         }
     }

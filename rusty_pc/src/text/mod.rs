@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::Parser;
+use crate::{Parser, ParserErrorTrait};
 
 pub trait CharInput: Clone {
     fn char(&self) -> char;
@@ -15,13 +15,13 @@ pub trait CharInput: Clone {
 }
 
 /// Parses any char.
-/// Fails only on EOF, returning the default parse error (non fatal).
+/// Fails only on EOF, returning the default parse error (soft error).
 pub struct AnyChar<I, E>(PhantomData<(I, E)>);
 
 pub fn any_char<I, E>() -> AnyChar<I, E>
 where
     I: CharInput,
-    E: Default,
+    E: ParserErrorTrait,
 {
     AnyChar(PhantomData)
 }
@@ -29,7 +29,7 @@ where
 impl<I, E> Parser<I> for AnyChar<I, E>
 where
     I: CharInput,
-    E: Default,
+    E: ParserErrorTrait,
 {
     type Output = char;
     type Error = E;

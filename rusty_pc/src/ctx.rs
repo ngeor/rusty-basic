@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{ParseResult, Parser};
+use crate::{ParseResult, Parser, ParserErrorTrait};
 
 /// Indicates the support of context and allows for setting the context value.
 pub trait SetContext<C> {
@@ -15,7 +15,7 @@ pub trait SetContext<C> {
 pub fn ctx_parser<I, C, E>() -> impl Parser<I, C, Output = C, Error = E> + SetContext<C>
 where
     C: Clone,
-    E: Default,
+    E: ParserErrorTrait,
 {
     CtxParser::new(None)
 }
@@ -31,7 +31,7 @@ impl<C, E> CtxParser<C, E> {
 impl<I, C, E> Parser<I, C> for CtxParser<C, E>
 where
     C: Clone,
-    E: Default,
+    E: ParserErrorTrait,
 {
     type Output = C;
     type Error = E;
@@ -39,7 +39,7 @@ where
     fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match &self.0 {
             Some(ctx) => Ok((input, ctx.clone())),
-            None => Err((true, input, E::default())),
+            None => panic!("context was not set"),
         }
     }
 }

@@ -21,7 +21,7 @@ macro_rules! seq_pc {
             _mapper: _F,
             // holds the first parser
             $first_type: Box<dyn Parser<_I, _C, Output = $first_type, Error = _E>>,
-            // holds the remaining parsers (not allowed to return non-fatal errors)
+            // holds the remaining parsers (not allowed to return soft errors)
             $($generic_type: Box<dyn Parser<_I, _C, Output = $generic_type, Error = _E>>),+
         }
 
@@ -55,6 +55,7 @@ macro_rules! seq_pc {
         <_I, _C, _E, _F, $first_type, $($generic_type),+>
         where
             _C: Clone,
+            _E: $crate::ParserErrorTrait,
             _F : Fn($first_type, $($generic_type),+) -> _O
         {
             type Output = _O;
@@ -70,7 +71,7 @@ macro_rules! seq_pc {
                     let (tokenizer, $generic_type) = match self.$generic_type.parse(tokenizer) {
                         Ok(x) => x,
                         // ... so convert any error to fatal
-                        Err((_, input, err)) => return Err((true, input, err)),
+                        Err((input, err)) => return Err((input, err.to_fatal())),
                     };
                 )+
                 Ok(
@@ -90,6 +91,7 @@ macro_rules! seq_pc {
         ) -> impl Parser<_I, _C, Output = _O, Error = _E>
         where
             _C: Clone,
+            _E: $crate::ParserErrorTrait,
             _F: Fn($first_type, $($generic_type),+) -> _O
         {
             $name::new(

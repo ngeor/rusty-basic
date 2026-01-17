@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser, SetContext};
+use crate::{ParseResult, Parser, ParserErrorTrait, SetContext};
 
 pub trait ToOption<I, C>: Parser<I, C>
 where
@@ -27,7 +27,7 @@ where
     fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok((input, value)) => Ok((input, Some(value))),
-            Err((false, input, _)) => Ok((input, None)),
+            Err((input, err)) if !err.is_fatal() => Ok((input, None)),
             Err(err) => Err(err),
         }
     }

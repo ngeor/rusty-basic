@@ -7,7 +7,7 @@ use rusty_pc::*;
 use crate::core::expression::expression_pos_p;
 use crate::core::name::bare_name_without_dots;
 use crate::core::statement_separator::comments_in_between_keywords;
-use crate::error::ParseError;
+use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::{star_ws, whitespace_ignoring};
@@ -158,7 +158,7 @@ impl HasExpressionType for ElementType {
 // Type must be defined Before DECLARE SUB
 
 pub fn user_defined_type_p()
--> impl Parser<RcStringView, Output = UserDefinedType, Error = ParseError> {
+-> impl Parser<RcStringView, Output = UserDefinedType, Error = ParserError> {
     seq5(
         keyword_ws_p(Keyword::Type),
         bare_name_without_dots().or_expected("name after TYPE"),
@@ -169,13 +169,13 @@ pub fn user_defined_type_p()
     )
 }
 
-fn elements_p() -> impl Parser<RcStringView, Output = Vec<ElementPos>, Error = ParseError> {
+fn elements_p() -> impl Parser<RcStringView, Output = Vec<ElementPos>, Error = ParserError> {
     element_pos_p()
         .one_or_more()
-        .or_fail(ParseError::ElementNotDefined)
+        .or_fail(ParserError::fatal(ParserErrorKind::ElementNotDefined))
 }
 
-fn element_pos_p() -> impl Parser<RcStringView, Output = ElementPos, Error = ParseError> {
+fn element_pos_p() -> impl Parser<RcStringView, Output = ElementPos, Error = ParserError> {
     seq5(
         bare_name_without_dots(),
         whitespace_ignoring(),
@@ -187,7 +187,7 @@ fn element_pos_p() -> impl Parser<RcStringView, Output = ElementPos, Error = Par
     .with_pos()
 }
 
-fn element_type_p() -> impl Parser<RcStringView, Output = ElementType, Error = ParseError> {
+fn element_type_p() -> impl Parser<RcStringView, Output = ElementType, Error = ParserError> {
     OrParser::new(vec![
         Box::new(keyword_map(&[
             (Keyword::Integer, ElementType::Integer),
@@ -209,7 +209,7 @@ fn element_type_p() -> impl Parser<RcStringView, Output = ElementType, Error = P
     ])
 }
 
-fn demand_string_length_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError>
+fn demand_string_length_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError>
 {
     expression_pos_p().or_expected("string length")
 }
@@ -218,7 +218,6 @@ fn demand_string_length_p() -> impl Parser<RcStringView, Output = ExpressionPos,
 mod tests {
     use rusty_common::AtPos;
 
-    use crate::error::ParseError;
     use crate::test_utils::*;
     use crate::{assert_parser_err, *};
 
@@ -287,7 +286,7 @@ mod tests {
         TYPE Card
         END TYPE
         ";
-        assert_parser_err!(input, ParseError::ElementNotDefined);
+        assert_parser_err!(input, ParserErrorKind::ElementNotDefined);
     }
 
     #[test]
@@ -298,7 +297,7 @@ mod tests {
             Value AS INTEGER
         END TYPE
         ";
-        assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, ParserErrorKind::IdentifierCannotIncludePeriod);
     }
 
     #[test]
@@ -309,6 +308,6 @@ mod tests {
             Value AS INTEGER
         END TYPE
         ";
-        assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, ParserErrorKind::IdentifierCannotIncludePeriod);
     }
 }

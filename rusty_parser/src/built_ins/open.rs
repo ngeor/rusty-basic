@@ -4,8 +4,8 @@ use rusty_pc::*;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::{equal_sign_ws, keyword_ignoring, whitespace_ignoring};
-use crate::{BuiltInSub, ParseError, *};
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+use crate::{BuiltInSub, ParserError, *};
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq6(
         keyword(Keyword::Open),
         ws_expr_pos_ws_p().or_expected("file name after OPEN"),
@@ -30,7 +30,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
 
 // FOR <ws+> INPUT <ws+>
 fn parse_open_mode_p()
--> impl Parser<RcStringView, Output = Positioned<FileMode>, Error = ParseError> {
+-> impl Parser<RcStringView, Output = Positioned<FileMode>, Error = ParserError> {
     seq3(
         keyword_ws_p(Keyword::For),
         keyword_map(&[
@@ -47,7 +47,7 @@ fn parse_open_mode_p()
 
 // ACCESS <ws+> READ <ws+>
 fn parse_open_access_p()
--> impl Parser<RcStringView, Output = Positioned<FileAccess>, Error = ParseError> {
+-> impl Parser<RcStringView, Output = Positioned<FileAccess>, Error = ParserError> {
     seq2(
         keyword_ws_p(Keyword::Access),
         keyword_ws_p(Keyword::Read).with_pos(),
@@ -57,12 +57,12 @@ fn parse_open_access_p()
 
 // AS <ws+> expression
 // AS ( expression )
-fn parse_file_number_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+fn parse_file_number_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
     keyword(Keyword::As)
         .and_keep_right(guarded_file_handle_or_expression_p().or_expected("#file-number%"))
 }
 
-fn parse_len_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+fn parse_len_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
     seq3(
         whitespace_ignoring().and(keyword_ignoring(Keyword::Len), IgnoringBothCombiner),
         equal_sign_ws(),
@@ -98,7 +98,6 @@ fn map_opt_len(opt_len: Option<ExpressionPos>) -> ExpressionPos {
 mod tests {
     use rusty_common::*;
 
-    use crate::error::ParseError;
     use crate::test_utils::*;
     use crate::{BuiltInSub, assert_parser_err, *};
     #[test]
@@ -237,7 +236,7 @@ mod tests {
     #[test]
     fn test_open_access_read_for_input_as_file_handle_with_spaces() {
         let input = r#"OPEN "FILE.TXT" ACCESS READ FOR INPUT AS #1"#;
-        assert_parser_err!(input, ParseError::expected("AS file-number"), 1, 29);
+        assert_parser_err!(input, ParserErrorKind::expected("AS file-number"), 1, 29);
     }
 
     #[test]

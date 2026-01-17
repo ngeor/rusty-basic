@@ -5,7 +5,7 @@ use crate::core::param_name::parameter_pos_p;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::whitespace_ignoring;
-use crate::{ParseError, *};
+use crate::{ParserError, *};
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)
 // FunctionDeclaration   ::= FUNCTION<ws+><Name><ws*><DeclarationParameters>
@@ -18,7 +18,7 @@ use crate::{ParseError, *};
 // ExtendedBuiltIn       ::= <BareName><ws+>AS<ws+>(SINGLE|DOUBLE|STRING|INTEGER|LONG)
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
-pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParseError> {
+pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParserError> {
     keyword_ws_p(Keyword::Declare).and_keep_right(
         OrParser::new(vec![
             Box::new(
@@ -31,7 +31,7 @@ pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement, Er
 }
 
 pub fn function_declaration_p()
--> impl Parser<RcStringView, Output = (NamePos, Parameters), Error = ParseError> {
+-> impl Parser<RcStringView, Output = (NamePos, Parameters), Error = ParserError> {
     seq3(
         keyword_ws_p(Keyword::Function),
         name_p().with_pos().or_expected("function name"),
@@ -41,7 +41,7 @@ pub fn function_declaration_p()
 }
 
 pub fn sub_declaration_p()
--> impl Parser<RcStringView, Output = (BareNamePos, Parameters), Error = ParseError> {
+-> impl Parser<RcStringView, Output = (BareNamePos, Parameters), Error = ParserError> {
     seq3(
         keyword_ws_p(Keyword::Sub),
         bare_name_p().with_pos().or_expected("sub name"),
@@ -51,7 +51,7 @@ pub fn sub_declaration_p()
 }
 
 // result ::= "" | "(" ")" | "(" parameter (,parameter)* ")"
-fn declaration_parameters_p() -> impl Parser<RcStringView, Output = Parameters, Error = ParseError>
+fn declaration_parameters_p() -> impl Parser<RcStringView, Output = Parameters, Error = ParserError>
 {
     // TODO remove the need for the double .or_default()
     opt_and_keep_right(
@@ -65,7 +65,6 @@ fn declaration_parameters_p() -> impl Parser<RcStringView, Output = Parameters, 
 mod tests {
     use rusty_common::*;
 
-    use crate::error::ParseError;
     use crate::test_utils::*;
     use crate::{assert_function_declaration, assert_parser_err, *};
 
@@ -131,13 +130,13 @@ mod tests {
     #[test]
     fn test_string_fixed_length_function_param_not_allowed() {
         let input = "DECLARE FUNCTION Echo(X AS STRING * 5)";
-        assert_parser_err!(input, ParseError::expected(")"));
+        assert_parser_err!(input, ParserErrorKind::expected(")"));
     }
 
     #[test]
     fn test_string_fixed_length_sub_param_not_allowed() {
         let input = "DECLARE SUB Echo(X AS STRING * 5)";
-        assert_parser_err!(input, ParseError::expected(")"));
+        assert_parser_err!(input, ParserErrorKind::expected(")"));
     }
 
     #[test]
@@ -162,7 +161,7 @@ mod tests {
             "DECLARE SUB Echo(XY AS Ca.rd)",
         ];
         for input in inputs {
-            assert_parser_err!(input, ParseError::IdentifierCannotIncludePeriod);
+            assert_parser_err!(input, ParserErrorKind::IdentifierCannotIncludePeriod);
         }
     }
 

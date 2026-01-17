@@ -1,10 +1,10 @@
 use rusty_pc::*;
 
 use crate::input::RcStringView;
-use crate::{Expression, ParseError, Statement};
+use crate::{Expression, ParserError, Statement};
 
 // Parses built-in subs which have a special syntax.
-pub fn built_in_sub_call_p() -> OrParser<RcStringView, (), Statement, ParseError> {
+pub fn built_in_sub_call_p() -> OrParser<RcStringView, (), Statement, ParserError> {
     OrParser::new(vec![
         Box::new(super::close::parse()),
         Box::new(super::color::parse()),
@@ -28,7 +28,7 @@ pub fn built_in_sub_call_p() -> OrParser<RcStringView, (), Statement, ParseError
 // needed for built-in functions that are also keywords (e.g. LEN), so they
 // cannot be parsed by the `word` module.
 pub fn built_in_function_call_p()
--> impl Parser<RcStringView, Output = Expression, Error = ParseError> {
+-> impl Parser<RcStringView, Output = Expression, Error = ParserError> {
     OrParser::new(vec![
         Box::new(super::len::parse()),
         Box::new(super::string_fn::parse()),

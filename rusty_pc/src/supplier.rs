@@ -1,10 +1,11 @@
 use std::marker::PhantomData;
 
-use crate::{ParseResult, Parser, SetContext};
+use crate::{ParseResult, Parser, ParserErrorTrait, SetContext};
 
 pub fn supplier<I, C, F, O, E>(f: F) -> impl Parser<I, C, Output = O, Error = E> + SetContext<C>
 where
     F: Fn() -> O,
+    E: ParserErrorTrait,
 {
     SupplierParser(f, PhantomData)
 }
@@ -14,6 +15,7 @@ struct SupplierParser<F, E>(F, PhantomData<E>);
 impl<I, C, F, O, E> Parser<I, C> for SupplierParser<F, E>
 where
     F: Fn() -> O,
+    E: ParserErrorTrait,
 {
     type Output = O;
     type Error = E;

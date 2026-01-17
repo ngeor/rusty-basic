@@ -3,17 +3,17 @@ use rusty_pc::*;
 use crate::core::expression::ws_expr_pos_p;
 use crate::core::statement::ConditionalBlock;
 use crate::core::statements::zero_or_more_statements;
-use crate::error::ParseError;
+use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::*;
 
-pub fn while_wend_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn while_wend_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq4(
         keyword(Keyword::While),
         ws_expr_pos_p().or_expected("expression after WHILE"),
-        zero_or_more_statements!(Keyword::Wend, ParseError::WhileWithoutWend),
-        keyword(Keyword::Wend).or_fail(ParseError::WhileWithoutWend),
+        zero_or_more_statements!(Keyword::Wend, ParserErrorKind::WhileWithoutWend),
+        keyword(Keyword::Wend).or_fail(ParserError::fatal(ParserErrorKind::WhileWithoutWend)),
         |_, condition, statements, _| {
             Statement::While(ConditionalBlock {
                 condition,
@@ -27,7 +27,6 @@ pub fn while_wend_p() -> impl Parser<RcStringView, Output = Statement, Error = P
 mod tests {
     use rusty_common::*;
 
-    use crate::error::ParseError;
     use crate::test_utils::*;
     use crate::{assert_parser_err, *};
     #[test]
@@ -114,7 +113,7 @@ mod tests {
     #[test]
     fn test_wend_without_while() {
         let input = "WEND";
-        assert_parser_err!(input, ParseError::WendWithoutWhile);
+        assert_parser_err!(input, ParserErrorKind::WendWithoutWhile);
     }
 
     #[test]
@@ -123,7 +122,7 @@ mod tests {
         WHILE X > 0
         PRINT X
         "#;
-        assert_parser_err!(input, ParseError::WhileWithoutWend);
+        assert_parser_err!(input, ParserErrorKind::WhileWithoutWend);
     }
 
     #[test]
@@ -159,7 +158,7 @@ mod tests {
         WHILE X > 0
             PRINT X WEND
         "#;
-        assert_parser_err!(input, ParseError::expected("end-of-statement"), 3, 20);
+        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 3, 20);
     }
 
     #[test]

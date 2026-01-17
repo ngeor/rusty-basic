@@ -4,12 +4,12 @@ use rusty_pc::{Map, Parser};
 
 use crate::input::RcStringView;
 use crate::pc_specific::keyword_p;
-use crate::{Keyword, ParseError};
+use crate::{Keyword, ParserError};
 
 /// A parser that parses one of the given keywords and returns the corresponding associated value.
 pub fn keyword_map<T>(
     mappings: &[(Keyword, T)],
-) -> impl Parser<RcStringView, Output = T, Error = ParseError>
+) -> impl Parser<RcStringView, Output = T, Error = ParserError>
 where
     T: Clone,
 {

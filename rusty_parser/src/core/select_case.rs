@@ -6,7 +6,7 @@ use crate::core::statements::zero_or_more_statements;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::{keyword_ignoring, whitespace_ignoring};
-use crate::{ParseError, *};
+use crate::{ParserError, *};
 
 // SELECT CASE expr ' comment
 // CASE 1
@@ -20,7 +20,7 @@ use crate::{ParseError, *};
 // CASE <ws+> IS <Operator> <expr>
 // CASE <expr>
 
-pub fn select_case_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn select_case_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq4(
         select_case_expr_p(),
         comments_in_between_keywords(),
@@ -52,7 +52,7 @@ pub fn select_case_p() -> impl Parser<RcStringView, Output = Statement, Error = 
 }
 
 /// Parses the `SELECT CASE expression` part
-fn select_case_expr_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+fn select_case_expr_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
     keyword_pair(Keyword::Select, Keyword::Case)
         .and_keep_right(ws_expr_pos_p().or_expected("expression after CASE"))
 }
@@ -75,18 +75,18 @@ fn select_case_expr_p() -> impl Parser<RcStringView, Output = ExpressionPos, Err
 //
 // For range-expression, no space is needed before TO if the first expression is in parenthesis
 
-fn case_blocks() -> impl Parser<RcStringView, Output = Vec<CaseBlock>, Error = ParseError> {
+fn case_blocks() -> impl Parser<RcStringView, Output = Vec<CaseBlock>, Error = ParserError> {
     case_block().zero_or_more()
 }
 
-fn case_block() -> impl Parser<RcStringView, Output = CaseBlock, Error = ParseError> {
+fn case_block() -> impl Parser<RcStringView, Output = CaseBlock, Error = ParserError> {
     // CASE
     // TODO is this syntax_error message even possible to happen?
     keyword_ignoring(Keyword::Case)
         .and_keep_right(continue_after_case().or_expected("'case expression' or ELSE after CASE"))
 }
 
-fn continue_after_case() -> impl Parser<RcStringView, Output = CaseBlock, Error = ParseError> {
+fn continue_after_case() -> impl Parser<RcStringView, Output = CaseBlock, Error = ParserError> {
     opt_and_keep_right(
         whitespace_ignoring(),
         seq2(
@@ -101,7 +101,7 @@ fn continue_after_case() -> impl Parser<RcStringView, Output = CaseBlock, Error 
 }
 
 fn case_expression_list()
--> impl Parser<RcStringView, Output = Vec<CaseExpression>, Error = ParseError> {
+-> impl Parser<RcStringView, Output = Vec<CaseExpression>, Error = ParserError> {
     csv(case_expression_parser::parser())
 }
 
@@ -114,13 +114,13 @@ mod case_expression_parser {
     use crate::input::RcStringView;
     use crate::pc_specific::*;
     use crate::tokens::{TokenType, any_token, keyword_ignoring, whitespace_ignoring};
-    use crate::{CaseExpression, ExpressionTrait, Keyword, Operator, ParseError};
+    use crate::{CaseExpression, ExpressionTrait, Keyword, Operator, ParserError};
 
-    pub fn parser() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParseError> {
+    pub fn parser() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParserError> {
         case_is().or(simple_or_range())
     }
 
-    fn case_is() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParseError> {
+    fn case_is() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParserError> {
         seq3(
             keyword_ignoring(Keyword::Is),
             opt_and_keep_right(whitespace_ignoring(), relational_operator_p())
@@ -132,7 +132,7 @@ mod case_expression_parser {
     }
 
     fn relational_operator_p()
-    -> impl Parser<RcStringView, Output = Positioned<Operator>, Error = ParseError> {
+    -> impl Parser<RcStringView, Output = Positioned<Operator>, Error = ParserError> {
         any_token()
             .filter_map(|token| match TokenType::from_token(token) {
                 TokenType::LessEquals => Some(Operator::LessOrEqual),
@@ -149,7 +149,8 @@ mod case_expression_parser {
             .with_pos()
     }
 
-    fn simple_or_range() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParseError> {
+    fn simple_or_range() -> impl Parser<RcStringView, Output = CaseExpression, Error = ParserError>
+    {
         opt_second_expression_after_keyword(
             expression_pos_p(),
             Keyword::To,
@@ -166,7 +167,6 @@ mod case_expression_parser {
 mod tests {
     use rusty_common::*;
 
-    use crate::error::ParseError;
     use crate::test_utils::*;
     use crate::{assert_parser_err, bin_exp, int_lit, paren_exp, *};
     #[test]
@@ -322,7 +322,7 @@ mod tests {
         let input = "
         SELECT CASE1
         END SELECT";
-        assert_parser_err!(input, ParseError::expected("CASE"), 2, 16);
+        assert_parser_err!(input, ParserErrorKind::expected("CASE"), 2, 16);
     }
 
     #[test]
@@ -331,7 +331,7 @@ mod tests {
         SELECT CASE X
         CASE1
         END SELECT";
-        assert_parser_err!(input, ParseError::expected("END"), 3, 9);
+        assert_parser_err!(input, ParserErrorKind::expected("END"), 3, 9);
     }
 
     #[test]
@@ -340,7 +340,12 @@ mod tests {
         SELECT CASE X
         CASE 1 TO
         END SELECT";
-        assert_parser_err!(input, ParseError::expected("expression after TO"), 3, 18);
+        assert_parser_err!(
+            input,
+            ParserErrorKind::expected("expression after TO"),
+            3,
+            18
+        );
     }
 
     #[test]
@@ -349,7 +354,7 @@ mod tests {
         SELECT CASE X
         CASE 1TO
         END SELECT";
-        assert_parser_err!(input, ParseError::expected("end-of-statement"), 3, 15);
+        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 3, 15);
     }
 
     #[test]
@@ -358,7 +363,7 @@ mod tests {
         SELECT CASE X
         CASE 1TO2
         END SELECT";
-        assert_parser_err!(input, ParseError::expected("end-of-statement"), 3, 15);
+        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 3, 15);
     }
 
     #[test]
@@ -367,7 +372,7 @@ mod tests {
         SELECT CASE X
         CASE 1 TO2
         END SELECT";
-        assert_parser_err!(input, ParseError::expected("end-of-statement"), 3, 15);
+        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 3, 15);
     }
 
     #[test]
@@ -376,6 +381,6 @@ mod tests {
         SELECT CASE X
         CASE 1TO 2
         END SELECT";
-        assert_parser_err!(input, ParseError::expected("end-of-statement"), 3, 15);
+        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 3, 15);
     }
 }

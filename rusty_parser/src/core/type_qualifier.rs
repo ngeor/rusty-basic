@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::fmt::Display;
 
-use crate::error::ParseError;
+use crate::error::ParserError;
 
 /// The optional character postfix that specifies the type of a name.
 /// Example: A$ denotes a string variable
@@ -23,9 +23,9 @@ pub enum TypeQualifier {
 
 // TODO #[cfg(test)]
 impl TryFrom<char> for TypeQualifier {
-    type Error = ParseError;
+    type Error = ParserError;
 
-    fn try_from(ch: char) -> Result<Self, ParseError> {
+    fn try_from(ch: char) -> Result<Self, ParserError> {
         if ch == '!' {
             Ok(Self::BangSingle)
         } else if ch == '#' {
@@ -37,7 +37,7 @@ impl TryFrom<char> for TypeQualifier {
         } else if ch == '&' {
             Ok(Self::AmpersandLong)
         } else {
-            Err(ParseError::expected("%, &, !, # or $"))
+            Err(ParserError::expected("%, &, !, # or $"))
         }
     }
 }

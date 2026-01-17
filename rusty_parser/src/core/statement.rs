@@ -18,12 +18,12 @@ use crate::core::resume::statement_resume_p;
 use crate::core::select_case::select_case_p;
 use crate::core::sub_call::sub_call_or_assignment_p;
 use crate::core::while_wend::while_wend_p;
-use crate::error::ParseError;
+use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::colon;
 use crate::{
-    BareName, BuiltInSub, DimVars, Expression, ExpressionPos, Expressions, Keyword, NamePos, Operator, Print
+    BareName, BuiltInSub, DimVars, Expression, ExpressionPos, Expressions, Keyword, NamePos, Operator, ParserErrorKind, Print
 };
 
 pub type StatementPos = Positioned<Statement>;
@@ -291,7 +291,7 @@ impl Statement {
     }
 }
 
-pub fn statement_p() -> OrParser<RcStringView, (), Statement, ParseError> {
+pub fn statement_p() -> OrParser<RcStringView, (), Statement, ParserError> {
     OrParser::new(vec![
         Box::new(statement_label_p()),
         Box::new(single_line_statement_p()),
@@ -306,7 +306,7 @@ pub fn statement_p() -> OrParser<RcStringView, (), Statement, ParseError> {
 
 // Tries to read a statement that is allowed to be on a single line IF statement,
 // excluding comments.
-pub fn single_line_non_comment_statement_p() -> OrParser<RcStringView, (), Statement, ParseError> {
+pub fn single_line_non_comment_statement_p() -> OrParser<RcStringView, (), Statement, ParserError> {
     OrParser::new(vec![
         Box::new(dim_p()),
         Box::new(redim_p()),
@@ -328,34 +328,34 @@ pub fn single_line_non_comment_statement_p() -> OrParser<RcStringView, (), State
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
-pub fn single_line_statement_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError>
-{
+pub fn single_line_statement_p()
+-> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     comment_p().or(single_line_non_comment_statement_p())
 }
 
-fn statement_label_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+fn statement_label_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     // labels can have dots
     identifier()
         .and_keep_left(colon())
         .map(|token| Statement::Label(CaseInsensitiveString::new(token.text())))
 }
 
-fn statement_go_to_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+fn statement_go_to_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     keyword_ws_p(Keyword::GoTo)
         .and_keep_right(bare_name_p().or_expected("label"))
         .map(Statement::GoTo)
 }
 
 /// A parser that fails if an illegal starting keyword is found.
-fn illegal_starting_keywords() -> impl Parser<RcStringView, Output = Statement, Error = ParseError>
+fn illegal_starting_keywords() -> impl Parser<RcStringView, Output = Statement, Error = ParserError>
 {
     keyword_map(&[
-        (Keyword::Wend, ParseError::WendWithoutWhile),
-        (Keyword::Else, ParseError::ElseWithoutIf),
-        (Keyword::Loop, ParseError::LoopWithoutDo),
-        (Keyword::Next, ParseError::NextWithoutFor),
+        (Keyword::Wend, ParserErrorKind::WendWithoutWhile),
+        (Keyword::Else, ParserErrorKind::ElseWithoutIf),
+        (Keyword::Loop, ParserErrorKind::LoopWithoutDo),
+        (Keyword::Next, ParserErrorKind::NextWithoutFor),
     ])
-    .flat_map(|input, err| Err((true, input, err)))
+    .flat_map(|input, err| Err((input, ParserError::fatal(err))))
 }
 
 mod end {
@@ -363,22 +363,21 @@ mod end {
 
     use crate::input::RcStringView;
     use crate::pc_specific::*;
-    use crate::{Keyword, ParseError, Statement};
+    use crate::{Keyword, ParserError, Statement};
 
-    pub fn parse_end_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+    pub fn parse_end_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
         keyword(Keyword::End).map(|_| Statement::End)
     }
 
     #[cfg(test)]
     mod tests {
-        use crate::assert_parser_err;
-        use crate::error::ParseError;
+        use crate::{ParserErrorKind, assert_parser_err};
 
         #[test]
         fn test_sub_call_end_no_args_allowed() {
             assert_parser_err!(
                 "END 42",
-                ParseError::expected(
+                ParserErrorKind::expected(
                     // TODO FIXME this was originally like this:
                     // "Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement"
                     "end-of-statement"
@@ -395,9 +394,9 @@ mod system {
     use crate::input::RcStringView;
     use crate::pc_specific::*;
     use crate::tokens::{keyword_ignoring, whitespace_ignoring};
-    use crate::{Keyword, ParseError, Statement};
+    use crate::{Keyword, ParserError, Statement};
 
-    pub fn parse_system_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+    pub fn parse_system_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
         keyword_ignoring(Keyword::System).and(
             opt_and_tuple(whitespace_ignoring(), peek_eof_or_statement_separator())
                 .or_expected("end-of-statement"),
@@ -407,12 +406,16 @@ mod system {
 
     #[cfg(test)]
     mod tests {
-        use crate::assert_parser_err;
-        use crate::error::ParseError;
+        use crate::{ParserErrorKind, assert_parser_err};
 
         #[test]
         fn test_sub_call_system_no_args_allowed() {
-            assert_parser_err!("SYSTEM 42", ParseError::expected("end-of-statement"), 1, 7);
+            assert_parser_err!(
+                "SYSTEM 42",
+                ParserErrorKind::expected("end-of-statement"),
+                1,
+                7
+            );
         }
     }
 }

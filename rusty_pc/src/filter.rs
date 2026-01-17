@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser, SetContext};
+use crate::{ParseResult, Parser, ParserErrorTrait, SetContext};
 
 pub struct FilterParser<P, F> {
     parser: P,
@@ -24,7 +24,14 @@ where
         let (input, value) = self.parser.parse(input)?;
         match self.predicate.filter(value) {
             Ok(value) => Ok((input, value)),
-            Err((fatal, err)) => Err((fatal, if fatal { input } else { original_input }, err)),
+            Err(err) => Err((
+                if err.is_fatal() {
+                    input
+                } else {
+                    original_input
+                },
+                err,
+            )),
         }
     }
 }
@@ -39,19 +46,19 @@ where
 }
 
 pub trait FilterPredicate<T, E> {
-    fn filter(&self, value: T) -> Result<T, (bool, E)>;
+    fn filter(&self, value: T) -> Result<T, E>;
 }
 
 impl<F, T, E> FilterPredicate<T, E> for F
 where
     F: Fn(&T) -> bool,
-    E: Default,
+    E: ParserErrorTrait,
 {
-    fn filter(&self, value: T) -> Result<T, (bool, E)> {
+    fn filter(&self, value: T) -> Result<T, E> {
         if (self)(&value) {
             Ok(value)
         } else {
-            Err((false, E::default()))
+            Err(E::default())
         }
     }
 }

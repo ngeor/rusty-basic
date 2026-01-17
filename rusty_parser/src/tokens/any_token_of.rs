@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
-use rusty_pc::{ParseResult, Parser, Token, TokenKind};
+use rusty_pc::{ParseResult, Parser, ParserErrorTrait, Token, TokenKind};
 
-use crate::ParseError;
+use crate::ParserError;
 use crate::tokens::TokenType;
 
 macro_rules! any_token_of {
@@ -113,7 +113,7 @@ pub struct AnyTokenOf<P> {
     /// The symbols that the parser is looking for.
     symbols: HashSet<char>,
 
-    /// The syntax error message to return for non-fatal errors.
+    /// The syntax error message to return for soft errors.
     err_msg: String,
 
     match_mode: MatchMode,
@@ -150,7 +150,7 @@ impl<P> AnyTokenOf<P> {
         match_mode: MatchMode,
     ) -> Self {
         let mut token_kinds: HashSet<TokenKind> = HashSet::new();
-        let mut err_msg: String = "Expected: ".to_owned();
+        let mut err_msg: String = String::new();
         let mut is_first = true;
         for token_type in token_types {
             token_kinds.insert(token_type.get_index());
@@ -187,10 +187,10 @@ impl<P> AnyTokenOf<P> {
 impl<I, C, P> Parser<I, C> for AnyTokenOf<P>
 where
     I: Clone,
-    P: Parser<I, C, Output = Token, Error = ParseError>,
+    P: Parser<I, C, Output = Token, Error = ParserError>,
 {
     type Output = Token;
-    type Error = ParseError;
+    type Error = ParserError;
 
     fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         self.parse_token(input)
@@ -199,10 +199,10 @@ where
 
 impl<P> AnyTokenOf<P> {
     /// Parses the token we're looking for.
-    fn parse_token<I, C>(&mut self, input: I) -> ParseResult<I, Token, ParseError>
+    fn parse_token<I, C>(&mut self, input: I) -> ParseResult<I, Token, ParserError>
     where
         I: Clone,
-        P: Parser<I, C, Output = Token, Error = ParseError>,
+        P: Parser<I, C, Output = Token, Error = ParserError>,
     {
         let original_input = input.clone();
         match self.parser.parse(input) {
@@ -214,7 +214,7 @@ impl<P> AnyTokenOf<P> {
                     self.to_syntax_err(original_input)
                 }
             }
-            Err((false, _, _)) => self.to_syntax_err(original_input),
+            Err((_, err)) if !err.is_fatal() => self.to_syntax_err(original_input),
             Err(err) => Err(err),
         }
     }
@@ -240,7 +240,7 @@ impl<P> AnyTokenOf<P> {
     }
 
     /// Creates the syntax error when the desired token kinds are not found.
-    fn to_syntax_err<I, O>(&self, input: I) -> ParseResult<I, O, ParseError> {
-        Err((false, input, ParseError::syntax_error(&self.err_msg)))
+    fn to_syntax_err<I, O>(&self, input: I) -> ParseResult<I, O, ParserError> {
+        Err((input, ParserError::expected(&self.err_msg)))
     }
 }

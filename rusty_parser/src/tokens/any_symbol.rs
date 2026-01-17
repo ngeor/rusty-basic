@@ -1,5 +1,5 @@
 use rusty_pc::text::{CharInput, any_char};
-use rusty_pc::{Map, Parser, Token};
+use rusty_pc::{Map, Parser, ParserErrorTrait, Token};
 
 use crate::tokens::TokenType;
 
@@ -7,7 +7,7 @@ use crate::tokens::TokenType;
 pub(super) fn any_symbol<I, E>() -> impl Parser<I, Output = Token, Error = E>
 where
     I: CharInput,
-    E: Default,
+    E: ParserErrorTrait,
 {
     any_char().map(|ch| Token::new(TokenType::Symbol.get_index(), ch.to_string()))
 }

@@ -3,10 +3,10 @@ use rusty_pc::*;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::equal_sign_ws;
-use crate::{BuiltInSub, ParseError, *};
+use crate::{BuiltInSub, ParserError, *};
 
 // DEF SEG(=expr)?
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq2(
         keyword_pair(Keyword::Def, Keyword::Seg),
         equal_sign_and_expression().to_option(),
@@ -17,7 +17,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
 }
 
 fn equal_sign_and_expression()
--> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+-> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
     equal_sign_ws().and_keep_right(expression_pos_p().or_expected("Expression after equal sign"))
 }
 

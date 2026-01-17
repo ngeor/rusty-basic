@@ -3,14 +3,14 @@ use rusty_pc::*;
 
 use crate::core::expression::expression_pos_p;
 use crate::core::name::bare_name_p;
-use crate::error::ParseError;
+use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::whitespace_ignoring;
 use crate::{Expression, Keyword, OnErrorOption, Statement};
 
 pub fn statement_on_error_go_to_p()
--> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+-> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq2(
         keyword_pair(Keyword::On, Keyword::Error),
         whitespace_ignoring(),
@@ -20,23 +20,23 @@ pub fn statement_on_error_go_to_p()
     .map(Statement::OnError)
 }
 
-fn next() -> impl Parser<RcStringView, Output = OnErrorOption, Error = ParseError> {
+fn next() -> impl Parser<RcStringView, Output = OnErrorOption, Error = ParserError> {
     // TODO implement a fn_map that ignores its input
     keyword_pair(Keyword::Resume, Keyword::Next).map(|_| OnErrorOption::Next)
 }
 
-fn goto() -> impl Parser<RcStringView, Output = OnErrorOption, Error = ParseError> {
+fn goto() -> impl Parser<RcStringView, Output = OnErrorOption, Error = ParserError> {
     keyword_ws_p(Keyword::GoTo)
         .and_keep_right(goto_label().or(goto_zero()).or_expected("label or 0"))
 }
 
-fn goto_label() -> impl Parser<RcStringView, Output = OnErrorOption, Error = ParseError> {
+fn goto_label() -> impl Parser<RcStringView, Output = OnErrorOption, Error = ParserError> {
     bare_name_p().map(OnErrorOption::Label)
 }
 
-fn goto_zero() -> impl Parser<RcStringView, Output = OnErrorOption, Error = ParseError> {
+fn goto_zero() -> impl Parser<RcStringView, Output = OnErrorOption, Error = ParserError> {
     expression_pos_p().flat_map(|input, Positioned { element, .. }| match element {
         Expression::IntegerLiteral(0) => Ok((input, OnErrorOption::Zero)),
-        _ => Err((true, input, ParseError::expected("label or 0"))),
+        _ => Err((input, ParserError::expected("label or 0").to_fatal())),
     })
 }

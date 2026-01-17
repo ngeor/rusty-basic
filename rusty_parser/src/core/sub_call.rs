@@ -2,7 +2,7 @@ use rusty_common::*;
 use rusty_pc::*;
 
 use crate::core::expression::{csv_expressions_first_guarded, expression_pos_p, property};
-use crate::error::ParseError;
+use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::equal_sign_ws;
@@ -14,7 +14,7 @@ use crate::*;
 // SubCallArgsParenthesis   ::= BareName(Expressions)
 
 pub fn sub_call_or_assignment_p()
--> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+-> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     SubCallOrAssignment
 }
 
@@ -22,11 +22,11 @@ struct SubCallOrAssignment;
 
 impl Parser<RcStringView> for SubCallOrAssignment {
     type Output = Statement;
-    type Error = ParseError;
+    type Error = ParserError;
     fn parse(
         &mut self,
         tokenizer: RcStringView,
-    ) -> ParseResult<RcStringView, Self::Output, ParseError> {
+    ) -> ParseResult<RcStringView, Self::Output, ParserError> {
         let (
             tokenizer,
             (
@@ -46,7 +46,7 @@ impl Parser<RcStringView> for SubCallOrAssignment {
         } else if property::is_qualified(&name_expr) {
             // a left-side qualified variable can only be assigned to,
             // i.e. SUBs can't be qualified
-            Err((true, tokenizer, ParseError::expected("=")))
+            Err((tokenizer, ParserError::expected("=").to_fatal()))
         } else {
             // it's a sub call
             let (bare_name, opt_args) = expr_to_bare_name_args(name_expr);
@@ -63,7 +63,7 @@ impl Parser<RcStringView> for SubCallOrAssignment {
 
 impl SubCallOrAssignment {
     fn name_and_opt_eq_sign()
-    -> impl Parser<RcStringView, Output = (ExpressionPos, Option<Token>), Error = ParseError> {
+    -> impl Parser<RcStringView, Output = (ExpressionPos, Option<Token>), Error = ParserError> {
         property::parser().and_opt_tuple(equal_sign_ws())
     }
 }

@@ -2,15 +2,15 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::pc_specific::*;
-use crate::{BuiltInSub, ParseError, *};
+use crate::{BuiltInSub, ParserError, *};
 
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     keyword_pair(Keyword::View, Keyword::Print)
         .and_keep_right(parse_args().or_default())
         .map(|opt_args| Statement::built_in_sub_call(BuiltInSub::ViewPrint, opt_args))
 }
 
-fn parse_args() -> impl Parser<RcStringView, Output = Expressions, Error = ParseError> {
+fn parse_args() -> impl Parser<RcStringView, Output = Expressions, Error = ParserError> {
     seq3(
         ws_expr_pos_ws_p(),
         keyword(Keyword::To),

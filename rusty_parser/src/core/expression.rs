@@ -7,7 +7,7 @@ use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::comma_ws;
 use crate::{
-    BuiltInFunction, ExpressionType, FileHandle, HasExpressionType, Name, Operator, ParseError, TypeQualifier, UnaryOperator, VariableInfo
+    BuiltInFunction, ExpressionType, FileHandle, HasExpressionType, Name, Operator, ParserError, TypeQualifier, UnaryOperator, VariableInfo
 };
 
 // TODO move traits and logic that is linter specific to linter (including CanCastTo from common)
@@ -456,7 +456,7 @@ impl ExpressionTrait for Box<ExpressionPos> {
 /// `( expr [, expr]* )`
 pub fn in_parenthesis_csv_expressions_non_opt(
     expectation: &str,
-) -> impl Parser<RcStringView, Output = Expressions, Error = ParseError> + '_ {
+) -> impl Parser<RcStringView, Output = Expressions, Error = ParserError> + '_ {
     in_parenthesis(csv_expressions_non_opt(expectation)).no_incomplete()
 }
 
@@ -464,7 +464,7 @@ pub fn in_parenthesis_csv_expressions_non_opt(
 /// FIXME Unlike csv_expressions, the first expression does not need a separator!
 pub fn csv_expressions_non_opt(
     expectation: &str,
-) -> impl Parser<RcStringView, Output = Expressions, Error = ParseError> + use<'_> {
+) -> impl Parser<RcStringView, Output = Expressions, Error = ParserError> + use<'_> {
     csv_non_opt(expression_pos_p(), expectation)
 }
 
@@ -473,7 +473,7 @@ pub fn csv_expressions_non_opt(
 /// Missing expressions are not allowed.
 /// The first expression needs to be preceded by space or surrounded in parenthesis.
 pub fn csv_expressions_first_guarded()
--> impl Parser<RcStringView, Output = Expressions, Error = ParseError> {
+-> impl Parser<RcStringView, Output = Expressions, Error = ParserError> {
     ws_expr_pos_p().map(|first| vec![first]).and(
         comma_ws()
             .and_keep_right(expression_pos_p().or_expected("expression after comma"))
@@ -482,7 +482,8 @@ pub fn csv_expressions_first_guarded()
     )
 }
 
-pub fn expression_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+pub fn expression_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError>
+{
     lazy(eager_expression_pos_p)
 }
 
@@ -494,7 +495,7 @@ pub fn expression_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos, E
 /// <ws> <expr-in-parenthesis> |
 /// <expr-in-parenthesis>
 /// ```
-pub fn ws_expr_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+pub fn ws_expr_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
     // ws* ( expr )
     // ws+ expr
     preceded_by_ws(expression_pos_p())
@@ -511,7 +512,7 @@ pub fn ws_expr_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos, Erro
 /// <expr-in-parenthesis> <ws> |
 /// <expr-in-parenthesis>
 /// ```
-pub fn expr_pos_ws_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+pub fn expr_pos_ws_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
     followed_by_ws(expression_pos_p())
 }
 
@@ -526,19 +527,20 @@ pub fn expr_pos_ws_p() -> impl Parser<RcStringView, Output = ExpressionPos, Erro
 /// <ws> <expr-in-parenthesis> <ws> |
 /// <expr-in-parenthesis>
 /// ```
-pub fn ws_expr_pos_ws_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+pub fn ws_expr_pos_ws_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError>
+{
     followed_by_ws(ws_expr_pos_p())
 }
 
 fn preceded_by_ws(
-    parser: impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError>,
-) -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    parser: impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError>,
+) -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
     guard::parser().and_keep_right(parser)
 }
 
 fn followed_by_ws(
-    parser: impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError>,
-) -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    parser: impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError>,
+) -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
     parser.then_with_in_context(
         conditionally_opt_whitespace(),
         |e| e.is_parenthesis(),
@@ -547,7 +549,7 @@ fn followed_by_ws(
 }
 
 /// Parses an expression
-fn eager_expression_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError>
+fn eager_expression_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError>
 {
     binary_expression::parser()
 }
@@ -558,7 +560,7 @@ mod single_or_double_literal {
     use crate::input::RcStringView;
     use crate::pc_specific::WithPos;
     use crate::tokens::{digits, dot, pound};
-    use crate::{ParseError, *};
+    use crate::{ParserError, *};
 
     // single ::= <digits> . <digits>
     // single ::= . <digits> (without leading zero)
@@ -567,7 +569,7 @@ mod single_or_double_literal {
 
     // TODO support more qualifiers besides '#'
 
-    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         // TODO this is difficult to understand
         opt_and_tuple(
             // read integer digits optionally (might start with . e.g. `.123`)
@@ -588,12 +590,12 @@ mod single_or_double_literal {
             if opt_pound.is_some() {
                 match s.parse::<f64>() {
                     Ok(f) => Ok((input, Expression::DoubleLiteral(f))),
-                    Err(err) => Err((true, input, err.into())),
+                    Err(err) => Err((input, err.into())),
                 }
             } else {
                 match s.parse::<f32>() {
                     Ok(f) => Ok((input, Expression::SingleLiteral(f))),
-                    Err(err) => Err((true, input, err.into())),
+                    Err(err) => Err((input, err.into())),
                 }
             }
         })
@@ -607,9 +609,9 @@ mod string_literal {
     use crate::input::RcStringView;
     use crate::pc_specific::*;
     use crate::tokens::{MatchMode, TokenType, any_symbol_of, any_token_of};
-    use crate::{ParseError, *};
+    use crate::{ParserError, *};
 
-    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         surround(
             string_delimiter(),
             inside_string(),
@@ -620,12 +622,12 @@ mod string_literal {
         .with_pos()
     }
 
-    fn string_delimiter() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
+    fn string_delimiter() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
         // TODO support ignoring token to avoid allocation
         any_symbol_of!('"')
     }
 
-    fn inside_string() -> impl Parser<RcStringView, Output = String, Error = ParseError> {
+    fn inside_string() -> impl Parser<RcStringView, Output = String, Error = ParserError> {
         any_token_of!(
             types = TokenType::Eol ;
             symbols = '"' ;
@@ -638,14 +640,14 @@ mod integer_or_long_literal {
     use rusty_pc::*;
     use rusty_variant::{BitVec, BitVecIntOrLong, MAX_INTEGER, MAX_LONG};
 
-    use crate::error::ParseError;
+    use crate::error::ParserError;
     use crate::input::RcStringView;
     use crate::pc_specific::WithPos;
     use crate::tokens::{TokenType, any_token_of};
     use crate::*;
 
     // result ::= <digits> | <hex-digits> | <oct-digits>
-    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         any_token_of!(
             TokenType::Digits,
             TokenType::HexDigits,
@@ -658,7 +660,7 @@ mod integer_or_long_literal {
     fn process_token(
         input: RcStringView,
         token: Token,
-    ) -> ParseResult<RcStringView, Expression, ParseError> {
+    ) -> ParseResult<RcStringView, Expression, ParserError> {
         let res = match TokenType::from_token(&token) {
             TokenType::Digits => process_dec(token),
             TokenType::HexDigits => process_hex(token),
@@ -667,11 +669,11 @@ mod integer_or_long_literal {
         };
         match res {
             Ok(expr) => Ok((input, expr)),
-            Err(err) => Err((true, input, err)),
+            Err(err) => Err((input, err)),
         }
     }
 
-    fn process_dec(token: Token) -> Result<Expression, ParseError> {
+    fn process_dec(token: Token) -> Result<Expression, ParserError> {
         match token.to_string().parse::<u32>() {
             Ok(u) => {
                 if u <= MAX_INTEGER as u32 {
@@ -686,7 +688,7 @@ mod integer_or_long_literal {
         }
     }
 
-    fn process_hex(token: Token) -> Result<Expression, ParseError> {
+    fn process_hex(token: Token) -> Result<Expression, ParserError> {
         // token text is &HFFFF or &H-FFFF
         let mut s: String = token.to_string();
         // remove &
@@ -694,7 +696,7 @@ mod integer_or_long_literal {
         // remove H
         s.remove(0);
         if s.starts_with('-') {
-            Err(ParseError::Overflow)
+            Err(ParserError::fatal(ParserErrorKind::Overflow))
         } else {
             let mut result: BitVec = BitVec::new();
             for digit in s.chars().skip_while(|ch| *ch == '0') {
@@ -717,14 +719,14 @@ mod integer_or_long_literal {
         }
     }
 
-    fn process_oct(token: Token) -> Result<Expression, ParseError> {
+    fn process_oct(token: Token) -> Result<Expression, ParserError> {
         let mut s: String = token.to_string();
         // remove &
         s.remove(0);
         // remove O
         s.remove(0);
         if s.starts_with('-') {
-            Err(ParseError::Overflow)
+            Err(ParserError::fatal(ParserErrorKind::Overflow))
         } else {
             let mut result: BitVec = BitVec::new();
             for digit in s.chars().skip_while(|ch| *ch == '0') {
@@ -743,14 +745,14 @@ mod integer_or_long_literal {
         }
     }
 
-    fn create_expression_from_bit_vec(bit_vec: BitVec) -> Result<Expression, ParseError> {
+    fn create_expression_from_bit_vec(bit_vec: BitVec) -> Result<Expression, ParserError> {
         bit_vec
             .convert_to_int_or_long_expr()
             .map(|x| match x {
                 BitVecIntOrLong::Int(i) => Expression::IntegerLiteral(i),
                 BitVecIntOrLong::Long(l) => Expression::LongLiteral(l),
             })
-            .map_err(|_| ParseError::Overflow)
+            .map_err(|_| ParserError::fatal(ParserErrorKind::Overflow))
     }
 }
 
@@ -763,7 +765,7 @@ mod variable {
     use crate::core::name::{name_as_tokens_p, token_to_type_qualifier};
     use crate::input::RcStringView;
     use crate::pc_specific::WithPos;
-    use crate::{ParseError, *};
+    use crate::{ParserError, *};
 
     // variable ::= <identifier-with-dots>
     //           |  <identifier-with-dots> <type-qualifier>
@@ -772,7 +774,7 @@ mod variable {
     // must not be followed by parenthesis (solved by ordering of parsers)
     //
     // if <identifier-with-dots> contains dots, it might be converted to a property expression
-    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         name_as_tokens_p().map(map_to_expr).with_pos()
     }
 
@@ -843,7 +845,7 @@ mod function_call_or_array_element {
     use crate::core::name::name_as_tokens_p;
     use crate::input::RcStringView;
     use crate::pc_specific::{WithPos, csv, in_parenthesis};
-    use crate::{ParseError, *};
+    use crate::{ParserError, *};
 
     // function_call ::= <function-name> "(" <expr>* ")"
     // function-name ::= <identifier-with-dots>
@@ -855,7 +857,7 @@ mod function_call_or_array_element {
     //
     // A function can be qualified.
 
-    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         name_as_tokens_p()
             .and(
                 in_parenthesis(csv(expression_pos_p()).or_default()),
@@ -871,9 +873,9 @@ pub mod property {
     use rusty_pc::*;
 
     use crate::core::name::{name_as_tokens_p, token_to_type_qualifier};
-    use crate::error::ParseError;
+    use crate::error::ParserError;
     use crate::input::RcStringView;
-    use crate::pc_specific::SpecificTrait;
+    use crate::pc_specific::OrExpected;
     use crate::tokens::dot;
     use crate::*;
 
@@ -883,7 +885,7 @@ pub mod property {
     //
     // expr must not be qualified
 
-    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         base_expr_pos_p()
             .then_with_in_context(
                 ctx_dot_property(),
@@ -904,7 +906,10 @@ pub mod property {
                         while let Some(name) = it.next() {
                             if name.is_empty() {
                                 // detected something like X = Y(1).A..B
-                                return Err((true, input, ParseError::expected("identifier")));
+                                return Err((
+                                    input,
+                                    ParserError::expected("identifier").to_fatal(),
+                                ));
                             }
 
                             let property_name = if it.peek().is_some() {
@@ -937,7 +942,7 @@ pub mod property {
     /// If it was qualified, we return Ok(None) without trying to parse,
     /// because qualified names can't have properties.
     fn ctx_dot_property()
-    -> impl Parser<RcStringView, bool, Output = Option<NameAsTokens>, Error = ParseError>
+    -> impl Parser<RcStringView, bool, Output = Option<NameAsTokens>, Error = ParserError>
     + SetContext<bool> {
         ctx_parser()
             .flat_map(|i, was_first_expr_qualified| {
@@ -953,8 +958,8 @@ pub mod property {
             .or(dot_property().no_context())
     }
 
-    fn dot_property() -> impl Parser<RcStringView, Output = Option<NameAsTokens>, Error = ParseError>
-    {
+    fn dot_property()
+    -> impl Parser<RcStringView, Output = Option<NameAsTokens>, Error = ParserError> {
         dot()
             .and_keep_right(name_as_tokens_p().or_expected("property name after dot"))
             .to_option()
@@ -964,7 +969,7 @@ pub mod property {
     /// e.g. `A$(1)`,
     /// or a variable e.g. `A.B.C$` (which can be Variable or Property).
     /// can't use expression_pos_p because it will stack overflow
-    fn base_expr_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    fn base_expr_pos_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         // order is important, variable matches anything that function_call_or_array_element matches
         OrParser::new(vec![
             Box::new(super::function_call_or_array_element::parser()),
@@ -990,9 +995,9 @@ mod built_in_function_call {
     use crate::built_ins::built_in_function_call_p;
     use crate::input::RcStringView;
     use crate::pc_specific::WithPos;
-    use crate::{ParseError, *};
+    use crate::{ParserError, *};
 
-    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         built_in_function_call_p().with_pos()
     }
 }
@@ -1004,14 +1009,14 @@ mod binary_expression {
     use super::{
         built_in_function_call, expression_pos_p, guard, integer_or_long_literal, parenthesis, property, single_or_double_literal, string_literal, unary_expression
     };
-    use crate::error::ParseError;
+    use crate::error::ParserError;
     use crate::input::RcStringView;
-    use crate::pc_specific::{SpecificTrait, WithPos};
+    use crate::pc_specific::{OrExpected, WithPos};
     use crate::tokens::{TokenType, any_token, whitespace_ignoring};
     use crate::*;
 
     // result ::= <non-bin-expr> <operator> <expr>
-    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         BinaryExprParser
     }
 
@@ -1019,12 +1024,12 @@ mod binary_expression {
 
     impl Parser<RcStringView> for BinaryExprParser {
         type Output = ExpressionPos;
-        type Error = ParseError;
+        type Error = ParserError;
 
         fn parse(
             &mut self,
             tokenizer: RcStringView,
-        ) -> ParseResult<RcStringView, Self::Output, ParseError> {
+        ) -> ParseResult<RcStringView, Self::Output, ParserError> {
             self.do_parse(tokenizer)
                 .map_ok(ExpressionPos::simplify_unary_minus_literals)
         }
@@ -1034,7 +1039,7 @@ mod binary_expression {
         fn do_parse(
             &self,
             tokenizer: RcStringView,
-        ) -> ParseResult<RcStringView, ExpressionPos, ParseError> {
+        ) -> ParseResult<RcStringView, ExpressionPos, ParserError> {
             let (tokenizer, first) = Self::non_bin_expr().parse(tokenizer)?;
 
             let is_paren = first.is_parenthesis();
@@ -1050,9 +1055,12 @@ mod binary_expression {
                         op == Operator::And || op == Operator::Or || op == Operator::Modulo;
                     let tokenizer = match guard::parser().parse(tokenizer) {
                         Ok((tokenizer, _)) => tokenizer,
-                        Err((false, input, _)) => {
+                        Err((input, err)) if !err.is_fatal() => {
                             if is_keyword_op {
-                                return Err((true, input, ParseError::expected("whitespace or (")));
+                                return Err((
+                                    input,
+                                    ParserError::expected("whitespace or (").to_fatal(),
+                                ));
                             } else {
                                 input
                             }
@@ -1066,12 +1074,13 @@ mod binary_expression {
                         .parse(tokenizer)
                         .map_ok(|right| first.apply_priority_order(right, op, op_pos))
                 }
-                Err((false, tokenizer, _)) => Ok((tokenizer, first)),
+                Err((tokenizer, err)) if !err.is_fatal() => Ok((tokenizer, first)),
                 Err(err) => Err(err),
             }
         }
 
-        fn non_bin_expr() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+        fn non_bin_expr() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError>
+        {
             OrParser::new(vec![
                 Box::new(single_or_double_literal::parser()),
                 Box::new(string_literal::parser()),
@@ -1086,7 +1095,7 @@ mod binary_expression {
 
         fn operator(
             is_paren: bool,
-        ) -> impl Parser<RcStringView, Output = Positioned<Operator>, Error = ParseError> {
+        ) -> impl Parser<RcStringView, Output = Positioned<Operator>, Error = ParserError> {
             opt_and_tuple(
                 whitespace_ignoring(),
                 any_token()
@@ -1103,9 +1112,8 @@ mod binary_expression {
                     Ok((input, op_pos))
                 } else {
                     Err((
-                        true,
                         input,
-                        ParseError::SyntaxError(format!(
+                        ParserError::syntax_error(&format!(
                             "Expected: parenthesis before operator {:?}",
                             op_pos.element()
                         )),
@@ -1147,11 +1155,11 @@ mod unary_expression {
 
     use crate::core::expression::{expression_pos_p, guard};
     use crate::input::RcStringView;
-    use crate::pc_specific::{SpecificTrait, WithPos, keyword};
+    use crate::pc_specific::{OrExpected, WithPos, keyword};
     use crate::tokens::minus_sign;
-    use crate::{ParseError, *};
+    use crate::{ParserError, *};
 
-    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         seq2(
             unary_op(),
             expression_pos_p().or_expected("expression after unary operator"),
@@ -1160,7 +1168,7 @@ mod unary_expression {
     }
 
     fn unary_op()
-    -> impl Parser<RcStringView, Output = Positioned<UnaryOperator>, Error = ParseError> {
+    -> impl Parser<RcStringView, Output = Positioned<UnaryOperator>, Error = ParserError> {
         minus_sign()
             .map(|_| UnaryOperator::Minus)
             .or(keyword(Keyword::Not)
@@ -1175,10 +1183,10 @@ mod parenthesis {
 
     use crate::core::expression::expression_pos_p;
     use crate::input::RcStringView;
-    use crate::pc_specific::{SpecificTrait, WithPos, in_parenthesis};
-    use crate::{ParseError, *};
+    use crate::pc_specific::{OrExpected, WithPos, in_parenthesis};
+    use crate::{ParserError, *};
 
-    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    pub fn parser() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         in_parenthesis(expression_pos_p().or_expected("expression inside parenthesis"))
             .map(|child| Expression::Parenthesis(Box::new(child)))
             .with_pos()
@@ -1192,14 +1200,14 @@ pub mod file_handle {
     use rusty_pc::*;
 
     use crate::core::expression::ws_expr_pos_p;
-    use crate::error::ParseError;
+    use crate::error::ParserError;
     use crate::input::RcStringView;
     use crate::pc_specific::*;
     use crate::tokens::{TokenType, any_token_of, pound, whitespace_ignoring};
     use crate::*;
 
     pub fn file_handle_p()
-    -> impl Parser<RcStringView, Output = Positioned<FileHandle>, Error = ParseError> {
+    -> impl Parser<RcStringView, Output = Positioned<FileHandle>, Error = ParserError> {
         // # and digits
         // if # and 0 -> BadFileNameOrNumber
         // if # without digits -> SyntaxError (Expected: digits after #)
@@ -1209,23 +1217,26 @@ pub mod file_handle {
             .flat_map(
                 |input, (pound, digits)| match digits.as_str().parse::<u8>() {
                     Ok(d) if d > 0 => Ok((input, FileHandle::from(d).at_pos(pound.pos))),
-                    _ => Err((true, input, ParseError::BadFileNameOrNumber)),
+                    _ => Err((
+                        input,
+                        ParserError::fatal(ParserErrorKind::BadFileNameOrNumber),
+                    )),
                 },
             )
     }
 
     /// Parses a file handle ( e.g. `#1` ) as an integer literal expression.
     pub fn file_handle_as_expression_pos_p()
-    -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         file_handle_p().map(|file_handle_pos| file_handle_pos.map(Expression::from))
     }
 
     pub fn guarded_file_handle_or_expression_p()
-    -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         ws_file_handle().or(ws_expr_pos_p())
     }
 
-    fn ws_file_handle() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParseError> {
+    fn ws_file_handle() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
         whitespace_ignoring().and_keep_right(file_handle_as_expression_pos_p())
     }
 }
@@ -1233,7 +1244,7 @@ pub mod file_handle {
 pub mod guard {
     use rusty_pc::*;
 
-    use crate::ParseError;
+    use crate::ParserError;
     use crate::input::RcStringView;
     use crate::tokens::{TokenMatcher, peek_token, whitespace_ignoring};
 
@@ -1247,15 +1258,15 @@ pub mod guard {
     /// `result ::= " " | "("`
     ///
     /// The "(" will be undone.
-    pub fn parser() -> impl Parser<RcStringView, Output = Guard, Error = ParseError> {
+    pub fn parser() -> impl Parser<RcStringView, Output = Guard, Error = ParserError> {
         whitespace_guard().or(lparen_guard())
     }
 
-    fn whitespace_guard() -> impl Parser<RcStringView, Output = Guard, Error = ParseError> {
+    fn whitespace_guard() -> impl Parser<RcStringView, Output = Guard, Error = ParserError> {
         whitespace_ignoring().map(|_| Guard::Whitespace)
     }
 
-    fn lparen_guard() -> impl Parser<RcStringView, Output = Guard, Error = ParseError> {
+    fn lparen_guard() -> impl Parser<RcStringView, Output = Guard, Error = ParserError> {
         peek_token().flat_map(|input, token| {
             if '('.matches_token(&token) {
                 Ok((input, Guard::Peeked))
@@ -1270,7 +1281,6 @@ pub mod guard {
 mod tests {
     use rusty_common::*;
 
-    use crate::error::ParseError;
     use crate::test_utils::*;
     use crate::{assert_expression, assert_literal_expression, assert_parser_err, expr, *};
 
@@ -1887,7 +1897,7 @@ mod tests {
         );
         assert_parser_err!(
             "PRINT 1AND 2",
-            ParseError::expected("parenthesis before operator And")
+            ParserErrorKind::expected("parenthesis before operator And")
         );
         assert_expression!(
             "(1 OR 2)AND 3",
@@ -1920,7 +1930,7 @@ mod tests {
         );
         assert_parser_err!(
             "PRINT 1OR 2",
-            ParseError::expected("parenthesis before operator Or")
+            ParserErrorKind::expected("parenthesis before operator Or")
         );
         assert_expression!(
             "(1 AND 2)OR 3",
@@ -1974,19 +1984,19 @@ mod tests {
         #[test]
         fn test_file_handle_zero() {
             let input = "CLOSE #0";
-            assert_parser_err!(input, ParseError::BadFileNameOrNumber);
+            assert_parser_err!(input, ParserErrorKind::BadFileNameOrNumber);
         }
 
         #[test]
         fn test_file_handle_overflow() {
             let input = "CLOSE #256";
-            assert_parser_err!(input, ParseError::BadFileNameOrNumber);
+            assert_parser_err!(input, ParserErrorKind::BadFileNameOrNumber);
         }
 
         #[test]
         fn test_file_handle_negative() {
             let input = "CLOSE #-1";
-            assert_parser_err!(input, ParseError::expected("digits after #"));
+            assert_parser_err!(input, ParserErrorKind::expected("digits after #"));
         }
     }
 
@@ -1995,8 +2005,8 @@ mod tests {
 
         #[test]
         fn test_overflow() {
-            assert_parser_err!("PRINT &H-10", ParseError::Overflow);
-            assert_parser_err!("PRINT &H100000000", ParseError::Overflow);
+            assert_parser_err!("PRINT &H-10", ParserErrorKind::Overflow);
+            assert_parser_err!("PRINT &H100000000", ParserErrorKind::Overflow);
         }
     }
 
@@ -2005,8 +2015,8 @@ mod tests {
 
         #[test]
         fn test_overflow() {
-            assert_parser_err!("PRINT &O-10", ParseError::Overflow);
-            assert_parser_err!("PRINT &O40000000000", ParseError::Overflow);
+            assert_parser_err!("PRINT &O-10", ParserErrorKind::Overflow);
+            assert_parser_err!("PRINT &O40000000000", ParserErrorKind::Overflow);
         }
     }
 
@@ -2016,13 +2026,13 @@ mod tests {
         #[test]
         fn len_in_print_must_be_unqualified() {
             let program = r#"PRINT LEN!("hello")"#;
-            assert_parser_err!(program, ParseError::expected("("), 1, 10);
+            assert_parser_err!(program, ParserErrorKind::expected("("), 1, 10);
         }
 
         #[test]
         fn len_in_assignment_must_be_unqualified() {
             let program = r#"A = LEN!("hello")"#;
-            assert_parser_err!(program, ParseError::expected("("), 1, 8);
+            assert_parser_err!(program, ParserErrorKind::expected("("), 1, 8);
         }
     }
 
@@ -2108,7 +2118,7 @@ mod tests {
                 "A(1).Suits$% = 42",
             ];
             for input in inputs {
-                assert_parser_err!(input, ParseError::expected("="));
+                assert_parser_err!(input, ParserErrorKind::expected("="));
             }
         }
 
@@ -2125,7 +2135,7 @@ mod tests {
                 "Help A(1).Suits$%",
             ];
             for input in inputs {
-                assert_parser_err!(input, ParseError::expected("end-of-statement"));
+                assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"));
             }
         }
 

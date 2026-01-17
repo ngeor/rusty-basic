@@ -2,17 +2,17 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::tokens::*;
-use crate::{ParseError, *};
+use crate::{ParserError, *};
 
 /// Parses a comment as a statement.
 /// Does not consume the EOL token.
-pub fn comment_p() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn comment_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     comment_as_string_p().map(Statement::Comment)
 }
 
 /// Parses a comment as a [String].
 /// Does not consume the EOL token.
-pub fn comment_as_string_p() -> impl Parser<RcStringView, Output = String, Error = ParseError> {
+pub fn comment_as_string_p() -> impl Parser<RcStringView, Output = String, Error = ParserError> {
     // TODO support ignoring tokens to avoid allocation
     any_symbol_of!('\'').and_keep_right(
         any_token_of!(TokenType::Eol ; mode = MatchMode::Exclude)

@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser, SetContext};
+use crate::{ParseResult, Parser, ParserErrorTrait, SetContext};
 
 /// Flat map the result of this parser for successful and incomplete results.
 /// Mapping is done by the given closures.
@@ -49,7 +49,7 @@ where
     fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok((input, value)) => (self.ok_mapper)(input, value),
-            Err((false, i, _)) => (self.incomplete_mapper)(i),
+            Err((i, err)) if !err.is_fatal() => (self.incomplete_mapper)(i),
             Err(err) => Err(err),
         }
     }

@@ -4,8 +4,8 @@ use rusty_pc::*;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::equal_sign_ws;
-use crate::{BuiltInSub, ParseError, *};
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+use crate::{BuiltInSub, ParserError, *};
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq4(
         keyword_ws_p(Keyword::LSet),
         name_p().with_pos().or_expected("variable after LSET"),

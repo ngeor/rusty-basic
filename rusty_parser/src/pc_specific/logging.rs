@@ -2,11 +2,11 @@
 use rusty_pc::ParseResult;
 use rusty_pc::{Parser, SetContext};
 
-use crate::error::ParseError;
+use crate::error::ParserError;
 use crate::input::RcStringView;
 
 #[allow(dead_code)]
-pub trait Logging: Parser<RcStringView, Error = ParseError>
+pub trait Logging: Parser<RcStringView, Error = ParserError>
 where
     Self: Sized,
     Self::Output: std::fmt::Debug,
@@ -18,7 +18,7 @@ where
 
 impl<P> Logging for P
 where
-    P: Parser<RcStringView, Error = ParseError>,
+    P: Parser<RcStringView, Error = ParserError>,
     P::Output: std::fmt::Debug,
 {
 }
@@ -47,16 +47,16 @@ fn indentation() -> String {
 
 impl<P> Parser<RcStringView> for LoggingParser<P>
 where
-    P: Parser<RcStringView, Error = ParseError>,
+    P: Parser<RcStringView, Error = ParserError>,
     P::Output: std::fmt::Debug,
 {
     type Output = P::Output;
-    type Error = ParseError;
+    type Error = ParserError;
 
     fn parse(
         &mut self,
         tokenizer: RcStringView,
-    ) -> ParseResult<RcStringView, Self::Output, ParseError> {
+    ) -> ParseResult<RcStringView, Self::Output, ParserError> {
         println!(
             "{}{} Parsing at position {:?}",
             indentation(),
@@ -81,16 +81,15 @@ where
                 );
                 Ok((input, value))
             }
-            Err((fatal, i, err)) => {
+            Err((i, err)) => {
                 println!(
-                    "{}{} Err fatal={} {:?}, current position {:?}",
+                    "{}{} Err {:?}, current position {:?}",
                     indentation(),
                     self.tag,
-                    fatal,
                     err,
                     i.position()
                 );
-                Err((fatal, i, err))
+                Err((i, err))
             }
         }
     }

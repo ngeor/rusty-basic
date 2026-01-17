@@ -1,7 +1,7 @@
 use rusty_common::*;
 use rusty_pc::*;
 
-use crate::ParseError;
+use crate::ParserError;
 use crate::core::comment::comment_as_string_p;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
@@ -9,12 +9,12 @@ use crate::tokens::{TokenMatcher, TokenType, any_token_of, peek_token, whitespac
 
 /// Parses a comment separator, which is the EOL,
 /// followed optionally by any number of EOL or whitespace tokens.
-pub fn comment_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+pub fn comment_separator() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
     any_token_of!(TokenType::Eol).and(eol_ws_zero_or_more(), IgnoringBothCombiner)
 }
 
 /// Parses any number of EOL or whitespace tokens.
-fn eol_ws_zero_or_more() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+fn eol_ws_zero_or_more() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
     any_token_of!(TokenType::Eol, TokenType::Whitespace).many_allow_none(IgnoringManyCombiner)
 }
 
@@ -37,7 +37,7 @@ fn eol_ws_zero_or_more() -> impl Parser<RcStringView, Output = (), Error = Parse
 /// Together it should be:
 /// ws* (colon | eol) (ws | eol)*
 /// ws* ' ! (where `!` stands for read and undo)
-pub fn common_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+pub fn common_separator() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
     opt_and(
         whitespace_ignoring(),
         OrParser::new(vec![
@@ -50,12 +50,12 @@ pub fn common_separator() -> impl Parser<RcStringView, Output = (), Error = Pars
 
 /// EOL or colon, followed by any number of EOL or whitespace tokens.
 /// (eol | colon) (ws | eol)*
-fn eol_or_col_separator() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+fn eol_or_col_separator() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
     any_token_of!(TokenType::Eol ; symbols = ':').and(eol_ws_zero_or_more(), IgnoringBothCombiner)
 }
 
 pub fn no_separator_needed_before_comment()
--> impl Parser<RcStringView, Output = (), Error = ParseError> {
+-> impl Parser<RcStringView, Output = (), Error = ParserError> {
     // warning: cannot use filter_map because it will undo and we've already "undo" via "peek"
     peek_token().flat_map(|input, t| {
         if '\''.matches_token(&t) {
@@ -67,7 +67,7 @@ pub fn no_separator_needed_before_comment()
 }
 
 pub fn peek_eof_or_statement_separator()
--> impl Parser<RcStringView, Output = (), Error = ParseError> {
+-> impl Parser<RcStringView, Output = (), Error = ParserError> {
     peek_token().flat_map_negate_none(|input, token| {
         if ':'.matches_token(&token)
             || '\''.matches_token(&token)
@@ -84,7 +84,7 @@ pub fn peek_eof_or_statement_separator()
 /// Used for SELECT and TYPE statements to parse comments
 /// that might be in-between keywords.
 pub fn comments_in_between_keywords()
--> impl Parser<RcStringView, Output = Vec<Positioned<String>>, Error = ParseError> {
+-> impl Parser<RcStringView, Output = Vec<Positioned<String>>, Error = ParserError> {
     eol_ws_zero_or_more().and_keep_right(comment_as_string_followed_by_separator().zero_or_more())
 }
 
@@ -92,7 +92,7 @@ pub fn comments_in_between_keywords()
 /// by a separator (EOL), as this is supposed to be a
 /// comment in-between keywords, so it can't be terminated by EOF.
 fn comment_as_string_followed_by_separator()
--> impl Parser<RcStringView, Output = Positioned<String>, Error = ParseError> {
+-> impl Parser<RcStringView, Output = Positioned<String>, Error = ParserError> {
     comment_as_string_p()
         .with_pos()
         .and_keep_left(comment_separator().or_expected("EOL"))

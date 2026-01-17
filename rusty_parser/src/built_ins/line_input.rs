@@ -4,10 +4,10 @@ use crate::built_ins::common::{encode_opt_file_handle_arg, opt_file_handle_comma
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::whitespace_ignoring;
-use crate::{BuiltInSub, ParseError, *};
+use crate::{BuiltInSub, ParserError, *};
 // LINE INPUT variable$
 // LINE INPUT #file-number%, variable$
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseError> {
+pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
     seq4(
         keyword_pair(Keyword::Line, Keyword::Input),
         whitespace_ignoring(),
@@ -24,7 +24,6 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParseErr
 
 #[cfg(test)]
 mod tests {
-    use crate::error::ParseError;
     use crate::test_utils::*;
     use crate::{BuiltInSub, assert_built_in_sub_call, assert_parser_err, *};
     #[test]
@@ -41,19 +40,19 @@ mod tests {
     #[test]
     fn test_parse_two_variables() {
         let input = "LINE INPUT A$, B";
-        assert_parser_err!(input, ParseError::expected("end-of-statement"));
+        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"));
     }
 
     #[test]
     fn test_no_whitespace_ignoring_after_input() {
         let input = "LINE INPUT";
-        assert_parser_err!(input, ParseError::expected("whitespace"));
+        assert_parser_err!(input, ParserErrorKind::expected("whitespace"));
     }
 
     #[test]
     fn test_no_variable() {
         let input = "LINE INPUT ";
-        assert_parser_err!(input, ParseError::expected("#file-number or variable"));
+        assert_parser_err!(input, ParserErrorKind::expected("#file-number or variable"));
     }
 
     #[test]

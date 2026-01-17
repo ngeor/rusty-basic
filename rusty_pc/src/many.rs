@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{ParseResult, Parser, SetContext, Token};
+use crate::{ParseResult, Parser, ParserErrorTrait, SetContext, Token};
 
 /// Collects multiple values from the underlying parser as long as parsing succeeds.
 pub trait Many<I, C>: Parser<I, C>
@@ -64,7 +64,7 @@ where
                             input = i;
                             result = self.combiner.accumulate(result, value);
                         }
-                        Err((false, i, _)) => {
+                        Err((i, err)) if !err.is_fatal() => {
                             input = i;
                             break;
                         }
@@ -75,11 +75,11 @@ where
                 }
                 Ok((input, result))
             }
-            Err((false, input, err)) => {
+            Err((input, err)) if !err.is_fatal() => {
                 if self.allow_none {
                     Ok((input, O::default()))
                 } else {
-                    Err((false, input, err))
+                    Err((input, err))
                 }
             }
             Err(err) => Err(err),

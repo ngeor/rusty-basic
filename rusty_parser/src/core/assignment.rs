@@ -2,7 +2,6 @@
 mod tests {
     use rusty_common::*;
 
-    use crate::error::ParseError;
     use crate::test_utils::*;
     use crate::{assert_global_assignment, assert_parser_err, *};
 
@@ -172,18 +171,18 @@ mod tests {
 
     #[test]
     fn test_numeric_assignment_to_keyword_not_allowed() {
-        assert_parser_err!("FOR = 42", ParseError::expected("name after FOR"));
+        assert_parser_err!("FOR = 42", ParserErrorKind::expected("name after FOR"));
     }
 
     #[test]
     fn test_identifier_too_long() {
         assert_parser_err!(
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMN = 42",
-            ParseError::IdentifierTooLong
+            ParserErrorKind::IdentifierTooLong
         );
         assert_parser_err!(
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMN% = 42",
-            ParseError::IdentifierTooLong
+            ParserErrorKind::IdentifierTooLong
         );
     }
 
@@ -307,7 +306,7 @@ mod tests {
             let left_sides = ["DIM", "DIM%", "DIM&", "DIM!", "DIM#"];
             for left_side in &left_sides {
                 let input = format!("{} = 42", left_side);
-                assert!(matches!(parse_err(&input), ParseError::SyntaxError(_)));
+                assert!(matches!(parse_err(&input), ParserErrorKind::SyntaxError(_)));
             }
         }
     }

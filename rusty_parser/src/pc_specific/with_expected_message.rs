@@ -1,23 +1,23 @@
 use rusty_pc::{MapErr, Parser};
 
-use crate::ParseError;
+use crate::{ParserError, ParserErrorKind};
 
-pub trait WithExpected<I, C>: Parser<I, C, Error = ParseError>
+pub trait WithExpected<I, C>: Parser<I, C, Error = ParserError>
 where
     Self: Sized,
 {
     fn with_expected_message<F>(
         self,
         f: F,
-    ) -> impl Parser<I, C, Output = Self::Output, Error = ParseError>
+    ) -> impl Parser<I, C, Output = Self::Output, Error = ParserError>
     where
         F: MessageProvider,
     {
-        self.map_non_fatal_err(move |_| ParseError::SyntaxError(f.to_str()))
+        self.map_non_fatal_err(move |_| ParserError::soft(ParserErrorKind::SyntaxError(f.to_str())))
     }
 }
 
-impl<I, C, P> WithExpected<I, C> for P where P: Parser<I, C, Error = ParseError> {}
+impl<I, C, P> WithExpected<I, C> for P where P: Parser<I, C, Error = ParserError> {}
 
 pub trait MessageProvider {
     fn to_str(&self) -> String;

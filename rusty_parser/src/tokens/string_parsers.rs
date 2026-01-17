@@ -1,7 +1,7 @@
 use rusty_pc::text::any_char;
 use rusty_pc::{IgnoringManyCombiner, Many, ManyCombiner, Map, Parser, StringManyCombiner};
 
-use crate::ParseError;
+use crate::ParserError;
 use crate::input::RcStringView;
 use crate::tokens::specific_str::{SpecificStr, SpecificString};
 
@@ -9,7 +9,7 @@ use crate::tokens::specific_str::{SpecificStr, SpecificString};
 /// and returns a String.
 pub(super) fn many<F>(
     predicate: F,
-) -> impl Parser<RcStringView, Output = String, Error = ParseError>
+) -> impl Parser<RcStringView, Output = String, Error = ParserError>
 where
     F: Fn(&char) -> bool,
 {
@@ -21,7 +21,7 @@ where
 #[allow(dead_code)]
 pub(super) fn many_ignoring<F>(
     predicate: F,
-) -> impl Parser<RcStringView, Output = (), Error = ParseError>
+) -> impl Parser<RcStringView, Output = (), Error = ParserError>
 where
     F: Fn(&char) -> bool,
 {
@@ -33,7 +33,7 @@ where
 pub(super) fn many_collecting<F, C, O>(
     predicate: F,
     combiner: C,
-) -> impl Parser<RcStringView, Output = O, Error = ParseError>
+) -> impl Parser<RcStringView, Output = O, Error = ParserError>
 where
     F: Fn(&char) -> bool,
     C: ManyCombiner<char, O>,
@@ -42,7 +42,7 @@ where
     any_char().filter(predicate).many(combiner)
 }
 
-pub(super) fn one(ch: char) -> impl Parser<RcStringView, Output = String, Error = ParseError> {
+pub(super) fn one(ch: char) -> impl Parser<RcStringView, Output = String, Error = ParserError> {
     any_char()
         .filter(move |c: &char| *c == ch)
         .map(String::from)
@@ -51,20 +51,20 @@ pub(super) fn one(ch: char) -> impl Parser<RcStringView, Output = String, Error 
 /// Parses the specific string, case insensitive.
 pub(super) fn specific(
     needle: &str,
-) -> impl Parser<RcStringView, Output = String, Error = ParseError> {
+) -> impl Parser<RcStringView, Output = String, Error = ParserError> {
     SpecificStr::new(needle, StringManyCombiner)
 }
 
 /// Parses the specific string, case insensitive.
 pub(super) fn specific_owned(
     needle: String,
-) -> impl Parser<RcStringView, Output = String, Error = ParseError> {
+) -> impl Parser<RcStringView, Output = String, Error = ParserError> {
     SpecificString::new(needle, StringManyCombiner)
 }
 
 /// Parses the specific string, case insensitive, ignoring the output.
 pub(super) fn specific_ignoring(
     needle: String,
-) -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+) -> impl Parser<RcStringView, Output = (), Error = ParserError> {
     SpecificString::new(needle, IgnoringManyCombiner)
 }

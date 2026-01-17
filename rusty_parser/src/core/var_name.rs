@@ -4,7 +4,7 @@ use crate::core::name::{bare_name_without_dots, name_p};
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::{keyword_ignoring, whitespace_ignoring};
-use crate::{ParseError, *};
+use crate::{ParserError, *};
 
 /// A variable name with a type.
 ///
@@ -111,13 +111,13 @@ pub(super) type VarNameCtx = (Option<TypeQualifier>, bool);
 pub(super) fn var_name<T, A, B, AP, BP>(
     opt_array_parser_factory: A,
     extended_type_parser_factory: B,
-) -> impl Parser<RcStringView, Output = TypedName<T>, Error = ParseError>
+) -> impl Parser<RcStringView, Output = TypedName<T>, Error = ParserError>
 where
     T: Default + VarType + CreateArray<ArrayDimensions = AP::Output>,
     A: Fn() -> AP,
-    AP: Parser<RcStringView, Error = ParseError> + 'static,
+    AP: Parser<RcStringView, Error = ParserError> + 'static,
     B: Fn() -> BP + 'static,
-    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>
+    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError>
         + SetContext<VarNameCtx>
         + 'static,
 {
@@ -132,10 +132,10 @@ where
 
 fn var_type_parser<T, BP>(
     extended_type_parser: BP,
-) -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + SetContext<VarNameCtx>
+) -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
 where
     T: Default + VarType,
-    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError>
+    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError>
         + SetContext<VarNameCtx>
         + 'static,
 {
@@ -143,17 +143,17 @@ where
 }
 
 fn qualified<T>()
--> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + SetContext<VarNameCtx>
+-> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
 where
     T: Default + VarType,
 {
     // get the context
     ctx_parser()
-        // if the parsed name is qualified, return the result, otherwise non-fatal exit,
+        // if the parsed name is qualified, return the result, otherwise soft error,
         // so that the next option (extended) can be invoked
         .flat_map(|i, (opt_q, _)| match opt_q {
             Some(q) => Ok((i, T::new_built_in_compact(q))),
-            None => Err((false, i, ParseError::default())),
+            None => Err((i, ParserError::default())),
         })
         // the following `and` will be invoked only if we had a result
         // we want to validate that a qualified variable is not
@@ -163,9 +163,8 @@ where
         .flat_map(|i, (result, has_opt_clause)| {
             if has_opt_clause.is_some() {
                 Err((
-                    true,
                     i,
-                    ParseError::syntax_error("Identifier cannot end with %, &, !, #, or $"),
+                    ParserError::syntax_error("Identifier cannot end with %, &, !, #, or $"),
                 ))
             } else {
                 Ok((i, result))
@@ -175,10 +174,10 @@ where
 
 fn extended<T, BP>(
     extended_type_parser: BP,
-) -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + SetContext<VarNameCtx>
+) -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
 where
     T: Default + VarType,
-    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + SetContext<VarNameCtx>,
+    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>,
 {
     let extended_type_parser = extended_type_parser.no_incomplete();
     as_clause()
@@ -187,7 +186,7 @@ where
 }
 
 fn bare<T>()
--> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParseError> + SetContext<VarNameCtx>
+-> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
 where
     T: Default + VarType,
 {
@@ -196,9 +195,9 @@ where
 
 fn name_with_opt_array<P>(
     opt_array_parser: P,
-) -> impl Parser<RcStringView, Output = (Name, P::Output), Error = ParseError>
+) -> impl Parser<RcStringView, Output = (Name, P::Output), Error = ParserError>
 where
-    P: Parser<RcStringView, Error = ParseError> + 'static,
+    P: Parser<RcStringView, Error = ParserError> + 'static,
 {
     seq2(name_p(), opt_array_parser, |name, array| (name, array))
 }
@@ -243,13 +242,13 @@ impl CreateArray for ParamType {
     }
 }
 
-fn as_clause() -> impl Parser<RcStringView, Output = (), Error = ParseError> {
+fn as_clause() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
     whitespace_ignoring()
         .and_keep_right(keyword_ignoring(Keyword::As))
         .and_keep_left(whitespace_ignoring())
 }
 
-pub(crate) fn user_defined_type<T>() -> impl Parser<RcStringView, Output = T, Error = ParseError>
+pub(crate) fn user_defined_type<T>() -> impl Parser<RcStringView, Output = T, Error = ParserError>
 where
     T: VarType,
 {

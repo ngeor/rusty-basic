@@ -1,7 +1,7 @@
 use rusty_pc::text::CharInput;
 use rusty_pc::{ParseResult, Parser};
 
-use crate::ParseError;
+use crate::ParserError;
 use crate::input::RcStringView;
 
 /// Parses any char.
@@ -11,12 +11,12 @@ pub(super) struct AnyCharOrEof;
 
 impl Parser<RcStringView> for AnyCharOrEof {
     type Output = char;
-    type Error = ParseError;
+    type Error = ParserError;
 
     fn parse(
         &mut self,
         input: RcStringView,
-    ) -> ParseResult<RcStringView, Self::Output, ParseError> {
+    ) -> ParseResult<RcStringView, Self::Output, ParserError> {
         if input.is_eof() {
             Ok((input, char::MIN))
         } else {

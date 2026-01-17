@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use rusty_pc::text::CharInput;
 use rusty_pc::{ManyCombiner, ParseResult, Parser};
 
-use crate::ParseError;
+use crate::ParserError;
 use crate::input::RcStringView;
 
 /// Wraps an [str] so that it can be used as a specific parser.
@@ -29,9 +29,9 @@ where
     O: Default,
 {
     type Output = O;
-    type Error = ParseError;
+    type Error = ParserError;
 
-    fn parse(&mut self, input: RcStringView) -> ParseResult<RcStringView, O, ParseError> {
+    fn parse(&mut self, input: RcStringView) -> ParseResult<RcStringView, O, ParserError> {
         parse_specific_str(self.needle, &self.combiner, input)
     }
 }
@@ -59,9 +59,9 @@ where
     O: Default,
 {
     type Output = O;
-    type Error = ParseError;
+    type Error = ParserError;
 
-    fn parse(&mut self, input: RcStringView) -> ParseResult<RcStringView, O, ParseError> {
+    fn parse(&mut self, input: RcStringView) -> ParseResult<RcStringView, O, ParserError> {
         parse_specific_str(&self.needle, &self.combiner, input)
     }
 }
@@ -70,7 +70,7 @@ fn parse_specific_str<O>(
     needle: &str,
     combiner: &impl ManyCombiner<char, O>,
     input: RcStringView,
-) -> ParseResult<RcStringView, O, ParseError>
+) -> ParseResult<RcStringView, O, ParserError>
 where
     O: Default,
 {
@@ -107,10 +107,6 @@ where
     if success {
         Ok((input.inc_position_by(read), buffer))
     } else {
-        Err((
-            false,
-            input,
-            ParseError::SyntaxError(format!("Expected: {}", needle)),
-        ))
+        Err((input, ParserError::expected(needle)))
     }
 }

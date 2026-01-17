@@ -13,7 +13,7 @@ pub fn while_wend_p() -> impl Parser<RcStringView, Output = Statement, Error = P
         keyword(Keyword::While),
         ws_expr_pos_p().or_expected("expression after WHILE"),
         zero_or_more_statements!(Keyword::Wend, ParserErrorKind::WhileWithoutWend),
-        keyword(Keyword::Wend).or_fail(ParserError::fatal(ParserErrorKind::WhileWithoutWend)),
+        keyword(Keyword::Wend).or_fail(ParserError::WhileWithoutWend),
         |_, condition, statements, _| {
             Statement::While(ConditionalBlock {
                 condition,
@@ -113,7 +113,7 @@ mod tests {
     #[test]
     fn test_wend_without_while() {
         let input = "WEND";
-        assert_parser_err!(input, ParserErrorKind::WendWithoutWhile);
+        assert_parser_err!(input, ParserError::WendWithoutWhile);
     }
 
     #[test]
@@ -122,7 +122,7 @@ mod tests {
         WHILE X > 0
         PRINT X
         "#;
-        assert_parser_err!(input, ParserErrorKind::WhileWithoutWend);
+        assert_parser_err!(input, ParserError::WhileWithoutWend);
     }
 
     #[test]
@@ -158,7 +158,7 @@ mod tests {
         WHILE X > 0
             PRINT X WEND
         "#;
-        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 3, 20);
+        assert_parser_err!(input, expected("end-of-statement"), 3, 20);
     }
 
     #[test]

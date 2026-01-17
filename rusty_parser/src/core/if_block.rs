@@ -404,7 +404,7 @@ end if"#;
     #[test]
     fn test_else_without_if() {
         let input = "ELSE";
-        assert_parser_err!(input, ParserErrorKind::ElseWithoutIf);
+        assert_parser_err!(input, ParserError::ElseWithoutIf);
     }
 
     #[test]

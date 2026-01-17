@@ -18,12 +18,11 @@ use crate::core::resume::statement_resume_p;
 use crate::core::select_case::select_case_p;
 use crate::core::sub_call::sub_call_or_assignment_p;
 use crate::core::while_wend::while_wend_p;
-use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::tokens::colon;
 use crate::{
-    BareName, BuiltInSub, DimVars, Expression, ExpressionPos, Expressions, Keyword, NamePos, Operator, ParserErrorKind, Print
+    BareName, BuiltInSub, DimVars, Expression, ExpressionPos, Expressions, Keyword, NamePos, Operator, ParserError, Print
 };
 
 pub type StatementPos = Positioned<Statement>;
@@ -350,12 +349,12 @@ fn statement_go_to_p() -> impl Parser<RcStringView, Output = Statement, Error = 
 fn illegal_starting_keywords() -> impl Parser<RcStringView, Output = Statement, Error = ParserError>
 {
     keyword_map(&[
-        (Keyword::Wend, ParserErrorKind::WendWithoutWhile),
-        (Keyword::Else, ParserErrorKind::ElseWithoutIf),
-        (Keyword::Loop, ParserErrorKind::LoopWithoutDo),
-        (Keyword::Next, ParserErrorKind::NextWithoutFor),
+        (Keyword::Wend, ParserError::WendWithoutWhile),
+        (Keyword::Else, ParserError::ElseWithoutIf),
+        (Keyword::Loop, ParserError::LoopWithoutDo),
+        (Keyword::Next, ParserError::NextWithoutFor),
     ])
-    .flat_map(|input, err| Err((input, ParserError::fatal(err))))
+    .flat_map(|input, err| Err((input, err)))
 }
 
 mod end {
@@ -371,13 +370,13 @@ mod end {
 
     #[cfg(test)]
     mod tests {
-        use crate::{ParserErrorKind, assert_parser_err};
+        use crate::assert_parser_err;
 
         #[test]
         fn test_sub_call_end_no_args_allowed() {
             assert_parser_err!(
                 "END 42",
-                ParserErrorKind::expected(
+                expected(
                     // TODO FIXME this was originally like this:
                     // "Expected: DEF or FUNCTION or IF or SELECT or SUB or TYPE or end-of-statement"
                     "end-of-statement"
@@ -406,16 +405,11 @@ mod system {
 
     #[cfg(test)]
     mod tests {
-        use crate::{ParserErrorKind, assert_parser_err};
+        use crate::assert_parser_err;
 
         #[test]
         fn test_sub_call_system_no_args_allowed() {
-            assert_parser_err!(
-                "SYSTEM 42",
-                ParserErrorKind::expected("end-of-statement"),
-                1,
-                7
-            );
+            assert_parser_err!("SYSTEM 42", expected("end-of-statement"), 1, 7);
         }
     }
 }

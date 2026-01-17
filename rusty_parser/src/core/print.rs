@@ -416,7 +416,7 @@ mod tests {
     #[test]
     fn test_print_file_no_args_no_comma() {
         let input = "PRINT #1";
-        assert_parser_err!(input, ParserErrorKind::expected(","), 1, 9);
+        assert_parser_err!(input, expected(","), 1, 9);
     }
 
     #[test]
@@ -452,7 +452,7 @@ mod tests {
     #[test]
     fn test_print_file_semicolon_after_file_number_err() {
         let input = "PRINT #1; 42";
-        assert_parser_err!(input, ParserErrorKind::expected(","), 1, 9);
+        assert_parser_err!(input, expected(","), 1, 9);
     }
 
     #[test]
@@ -547,13 +547,13 @@ mod tests {
     #[test]
     fn test_print_using_no_args_missing_semicolon() {
         let input = "PRINT USING \"#\"";
-        assert_parser_err!(input, ParserErrorKind::expected(";"), 1, 16);
+        assert_parser_err!(input, expected(";"), 1, 16);
     }
 
     #[test]
     fn test_lprint_using_no_args_missing_semicolon() {
         let input = "LPRINT USING \"#\"";
-        assert_parser_err!(input, ParserErrorKind::expected(";"), 1, 17);
+        assert_parser_err!(input, expected(";"), 1, 17);
     }
 
     #[test]
@@ -619,6 +619,6 @@ mod tests {
     #[test]
     fn test_lprint_no_comma_between_expressions_is_error() {
         let input = "LPRINT 1 2";
-        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 1, 11);
+        assert_parser_err!(input, expected("end-of-statement"), 1, 11);
     }
 }

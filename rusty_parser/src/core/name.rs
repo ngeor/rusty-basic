@@ -4,9 +4,7 @@ use rusty_pc::*;
 use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::tokens::{TokenMatcher, TokenType, any_symbol_of, any_token_of, peek_token};
-use crate::{
-    AsBareName, BareName, ExpressionType, HasExpressionType, ParserErrorKind, ToBareName, TypeQualifier
-};
+use crate::{AsBareName, BareName, ExpressionType, HasExpressionType, ToBareName, TypeQualifier};
 
 /// Defines a name.
 ///
@@ -249,10 +247,7 @@ fn ensure_no_dots(
 ) -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
     parser.flat_map(|input, token| {
         if token.as_str().contains('.') {
-            Err((
-                input,
-                ParserError::fatal(ParserErrorKind::IdentifierCannotIncludePeriod),
-            ))
+            Err((input, ParserError::IdentifierCannotIncludePeriod))
         } else {
             Ok((input, token))
         }
@@ -339,12 +334,12 @@ mod parse_tests {
     fn assert_err<T>(
         input: &str,
         result: ParseResult<RcStringView, T, ParserError>,
-        expected_err: ParserErrorKind,
+        expected_err: ParserError,
     ) {
         match result {
             Err((_, err)) => {
                 assert!(err.is_fatal());
-                assert_eq!(*err.kind(), expected_err);
+                assert_eq!(err, expected_err);
             }
             _ => {
                 panic!("Should have failed for {}", input)
@@ -372,11 +367,7 @@ mod parse_tests {
             for input in ["Hell.o", "Hello."] {
                 let result =
                     bare_name_without_dots().parse(create_string_tokenizer(String::from(input)));
-                assert_err(
-                    input,
-                    result,
-                    ParserErrorKind::IdentifierCannotIncludePeriod,
-                );
+                assert_err(input, result, ParserError::IdentifierCannotIncludePeriod);
             }
         }
 
@@ -387,7 +378,7 @@ mod parse_tests {
                 assert_err(
                     input,
                     result,
-                    ParserErrorKind::syntax_error("Identifier cannot end with %, &, !, #, or $"),
+                    ParserError::syntax_error("Identifier cannot end with %, &, !, #, or $"),
                 );
             }
         }
@@ -397,7 +388,7 @@ mod parse_tests {
             let input = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO".to_owned();
             assert_eq!(input.len(), 41);
             let result = bare_name_p().parse(create_string_tokenizer(input.clone()));
-            assert_err(&input, result, ParserErrorKind::IdentifierTooLong);
+            assert_err(&input, result, ParserError::IdentifierTooLong);
         }
     }
 
@@ -423,7 +414,7 @@ mod parse_tests {
             let input = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO".to_owned();
             assert_eq!(input.len(), 41);
             let result = identifier().parse(create_string_tokenizer(input.clone()));
-            assert_err(&input, result, ParserErrorKind::IdentifierTooLong);
+            assert_err(&input, result, ParserError::IdentifierTooLong);
         }
     }
 

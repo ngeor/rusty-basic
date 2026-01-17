@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn test_open_access_read_for_input_as_file_handle_with_spaces() {
         let input = r#"OPEN "FILE.TXT" ACCESS READ FOR INPUT AS #1"#;
-        assert_parser_err!(input, ParserErrorKind::expected("AS file-number"), 1, 29);
+        assert_parser_err!(input, expected("AS file-number"), 1, 29);
     }
 
     #[test]

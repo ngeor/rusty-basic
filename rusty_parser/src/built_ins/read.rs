@@ -12,10 +12,10 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserEr
 
 #[cfg(test)]
 mod tests {
-    use crate::{ParserErrorKind, assert_parser_err};
+    use crate::assert_parser_err;
 
     #[test]
     fn parse_must_have_at_least_one_argument() {
-        assert_parser_err!("READ", ParserErrorKind::expected("variable"));
+        assert_parser_err!("READ", expected("variable"));
     }
 }

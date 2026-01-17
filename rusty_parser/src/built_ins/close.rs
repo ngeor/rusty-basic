@@ -113,29 +113,19 @@ mod tests {
     #[test]
     fn test_one_file_number_with_hash_no_leading_space() {
         let input = "CLOSE#1";
-        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 1, 7);
+        assert_parser_err!(input, expected("end-of-statement"), 1, 7);
     }
 
     #[test]
     fn test_one_file_number_with_hash_parenthesis_leading_space() {
         let input = "CLOSE (#1)";
-        assert_parser_err!(
-            input,
-            ParserErrorKind::expected("expression inside parenthesis"),
-            1,
-            8
-        );
+        assert_parser_err!(input, expected("expression inside parenthesis"), 1, 8);
     }
 
     #[test]
     fn test_one_file_number_with_hash_parenthesis_no_leading_space() {
         let input = "CLOSE(#1)";
-        assert_parser_err!(
-            input,
-            ParserErrorKind::expected("expression inside parenthesis"),
-            1,
-            7
-        );
+        assert_parser_err!(input, expected("expression inside parenthesis"), 1, 7);
     }
 
     #[test]

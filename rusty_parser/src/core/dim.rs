@@ -98,7 +98,7 @@ mod tests {
         let input = "DIM X AS AS";
         assert_parser_err!(
             input,
-            ParserErrorKind::SyntaxError(
+            ParserError::SyntaxError(
                 "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier".to_string()
             )
         );
@@ -109,14 +109,14 @@ mod tests {
         let input = "DIM A$ AS STRING";
         assert_parser_err!(
             input,
-            ParserErrorKind::syntax_error("Identifier cannot end with %, &, !, #, or $")
+            ParserError::syntax_error("Identifier cannot end with %, &, !, #, or $")
         );
     }
 
     #[test]
     fn test_parse_dim_user_defined_too_long() {
         let input = "DIM A AS ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO";
-        assert_parser_err!(input, ParserErrorKind::IdentifierTooLong);
+        assert_parser_err!(input, ParserError::IdentifierTooLong);
     }
 
     #[test]
@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn test_parse_dim_user_defined_type_cannot_include_period() {
         let input = "DIM Card AS A.B";
-        assert_parser_err!(input, ParserErrorKind::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, ParserError::IdentifierCannotIncludePeriod);
     }
 
     #[test]
@@ -241,7 +241,7 @@ mod tests {
             let left_sides = ["DIM", "DIM%", "DIM&", "DIM!", "DIM#"];
             for left_side in &left_sides {
                 let input = format!("DIM {}", left_side);
-                assert!(matches!(parse_err(&input), ParserErrorKind::SyntaxError(_)));
+                assert!(matches!(parse_err(&input), ParserError::SyntaxError(_)));
             }
         }
     }

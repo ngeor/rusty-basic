@@ -172,7 +172,7 @@ pub fn user_defined_type_p()
 fn elements_p() -> impl Parser<RcStringView, Output = Vec<ElementPos>, Error = ParserError> {
     element_pos_p()
         .one_or_more()
-        .or_fail(ParserError::fatal(ParserErrorKind::ElementNotDefined))
+        .or_fail(ParserError::ElementNotDefined)
 }
 
 fn element_pos_p() -> impl Parser<RcStringView, Output = ElementPos, Error = ParserError> {
@@ -286,7 +286,7 @@ mod tests {
         TYPE Card
         END TYPE
         ";
-        assert_parser_err!(input, ParserErrorKind::ElementNotDefined);
+        assert_parser_err!(input, ParserError::ElementNotDefined);
     }
 
     #[test]
@@ -297,7 +297,7 @@ mod tests {
             Value AS INTEGER
         END TYPE
         ";
-        assert_parser_err!(input, ParserErrorKind::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, ParserError::IdentifierCannotIncludePeriod);
     }
 
     #[test]
@@ -308,6 +308,6 @@ mod tests {
             Value AS INTEGER
         END TYPE
         ";
-        assert_parser_err!(input, ParserErrorKind::IdentifierCannotIncludePeriod);
+        assert_parser_err!(input, ParserError::IdentifierCannotIncludePeriod);
     }
 }

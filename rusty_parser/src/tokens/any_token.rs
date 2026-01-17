@@ -1,14 +1,13 @@
 use rusty_pc::text::any_char;
 use rusty_pc::*;
 
-use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::pc_specific::WithExpected;
 use crate::tokens::TokenType;
 use crate::tokens::any_char::AnyCharOrEof;
 use crate::tokens::any_symbol::any_symbol;
 use crate::tokens::string_parsers::*;
-use crate::{Keyword, ParserErrorKind};
+use crate::{Keyword, ParserError};
 
 /// Parses any token.
 pub fn any_token() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
@@ -172,7 +171,7 @@ struct LengthValidator;
 impl FilterPredicate<String, ParserError> for LengthValidator {
     fn filter(&self, value: String) -> Result<String, ParserError> {
         if value.len() > MAX_LENGTH {
-            Err(ParserError::fatal(ParserErrorKind::IdentifierTooLong))
+            Err(ParserError::IdentifierTooLong)
         } else {
             Ok(value)
         }

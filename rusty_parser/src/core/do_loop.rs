@@ -12,9 +12,7 @@ pub fn do_loop_p() -> impl Parser<RcStringView, Output = Statement, Error = Pars
         .and_keep_right(
             do_condition_top()
                 .or(do_condition_bottom())
-                .or_fail(ParserError::fatal(ParserErrorKind::syntax_error(
-                    "Syntax error in DO loop",
-                ))),
+                .or_fail(ParserError::syntax_error("Syntax error in DO loop")),
         )
         .map(Statement::DoLoop)
 }

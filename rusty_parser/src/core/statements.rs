@@ -4,14 +4,13 @@ use rusty_pc::*;
 
 use crate::core::statement::statement_p;
 use crate::core::statement_separator::{comment_separator, common_separator};
-use crate::error::ParserError;
 use crate::input::RcStringView;
 use crate::pc_specific::*;
 use crate::*;
 
 macro_rules! zero_or_more_statements {
     ($exit:expr, ParserErrorKind::$err:ident) => {
-        $crate::core::statements::zero_or_more_statements_p([$exit], Some(ParserError::fatal(ParserErrorKind::$err)))
+        $crate::core::statements::zero_or_more_statements_p([$exit], Some(ParserError::$err))
     };
     ($($exit:expr),+) => {
         $crate::core::statements::zero_or_more_statements_p( [$($exit),+], None)

@@ -17,7 +17,7 @@ pub fn for_loop_p() -> impl Parser<RcStringView, Output = Statement, Error = Par
     seq4(
         parse_for_step_p(),
         zero_or_more_statements!(Keyword::Next),
-        keyword(Keyword::Next).or_fail(ParserError::fatal(ParserErrorKind::ForWithoutNext)),
+        keyword(Keyword::Next).or_fail(ParserError::ForWithoutNext),
         next_counter_p().to_option(),
         |(variable_name, lower_bound, upper_bound, opt_step), statements, _, opt_next_name_pos| {
             Statement::ForLoop(ForLoop {
@@ -247,6 +247,6 @@ mod tests {
         FOR I = 0 TO 2STEP 1
         NEXT I
         ";
-        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 2, 23);
+        assert_parser_err!(input, expected("end-of-statement"), 2, 23);
     }
 }

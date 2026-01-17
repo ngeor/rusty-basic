@@ -4,7 +4,7 @@ use rusty_pc::*;
 
 use crate::input::RcStringView;
 use crate::tokens::{TokenType, any_token, keyword_ignoring, whitespace_ignoring};
-use crate::{Keyword, ParserError, ParserErrorKind};
+use crate::{Keyword, ParserError};
 
 // TODO review usages of TokenType::Keyword
 
@@ -143,11 +143,10 @@ impl<P> KeywordParser<P> {
             msg.push_str(&k.to_string());
         }
 
-        let err_kind = ParserErrorKind::SyntaxError(msg);
         let err = if fatal {
-            ParserError::fatal(err_kind)
+            ParserError::SyntaxError(msg)
         } else {
-            ParserError::soft(err_kind)
+            ParserError::Expected(msg)
         };
 
         Err((input, err))

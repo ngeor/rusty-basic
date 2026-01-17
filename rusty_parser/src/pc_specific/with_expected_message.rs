@@ -1,6 +1,6 @@
 use rusty_pc::{MapErr, Parser};
 
-use crate::{ParserError, ParserErrorKind};
+use crate::ParserError;
 
 pub trait WithExpected<I, C>: Parser<I, C, Error = ParserError>
 where
@@ -13,7 +13,7 @@ where
     where
         F: MessageProvider,
     {
-        self.map_non_fatal_err(move |_| ParserError::soft(ParserErrorKind::SyntaxError(f.to_str())))
+        self.map_non_fatal_err(move |_| ParserError::Expected(f.to_str()))
     }
 }
 

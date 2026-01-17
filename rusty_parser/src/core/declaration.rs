@@ -130,13 +130,13 @@ mod tests {
     #[test]
     fn test_string_fixed_length_function_param_not_allowed() {
         let input = "DECLARE FUNCTION Echo(X AS STRING * 5)";
-        assert_parser_err!(input, ParserErrorKind::expected(")"));
+        assert_parser_err!(input, expected(")"));
     }
 
     #[test]
     fn test_string_fixed_length_sub_param_not_allowed() {
         let input = "DECLARE SUB Echo(X AS STRING * 5)";
-        assert_parser_err!(input, ParserErrorKind::expected(")"));
+        assert_parser_err!(input, expected(")"));
     }
 
     #[test]
@@ -161,7 +161,7 @@ mod tests {
             "DECLARE SUB Echo(XY AS Ca.rd)",
         ];
         for input in inputs {
-            assert_parser_err!(input, ParserErrorKind::IdentifierCannotIncludePeriod);
+            assert_parser_err!(input, ParserError::IdentifierCannotIncludePeriod);
         }
     }
 

@@ -148,7 +148,7 @@ mod tests {
         let input = "
         FUNCTION Echo(X AS STRING * 5)
         END FUNCTION";
-        assert_parser_err!(input, ParserErrorKind::expected(")"));
+        assert_parser_err!(input, expected(")"));
     }
 
     #[test]
@@ -156,7 +156,7 @@ mod tests {
         let input = "
         SUB Echo(X AS STRING * 5)
         END SUB";
-        assert_parser_err!(input, ParserErrorKind::expected(")"));
+        assert_parser_err!(input, expected(")"));
     }
 
     #[test]

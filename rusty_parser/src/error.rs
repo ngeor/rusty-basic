@@ -2,56 +2,16 @@ use rusty_common::Positioned;
 use rusty_pc::ParserErrorTrait;
 
 /// Represents parser errors.
+/// All errors except `Miss` and `Expected` are fatal.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub struct ParserError {
-    fatal: bool,
-    kind: ParserErrorKind,
-}
+pub enum ParserError {
+    /// Indicates a generic miss in parsing (soft error).
+    #[default]
+    Miss,
 
-impl ParserError {
-    pub fn soft(kind: ParserErrorKind) -> Self {
-        Self { fatal: false, kind }
-    }
+    /// A soft error with a description of what was expected.
+    Expected(String),
 
-    pub fn fatal(kind: ParserErrorKind) -> Self {
-        Self { fatal: true, kind }
-    }
-
-    pub fn kind(&self) -> &ParserErrorKind {
-        &self.kind
-    }
-
-    pub fn to_kind(self) -> ParserErrorKind {
-        self.kind
-    }
-
-    /// Creates a soft syntax error that starts with "Expected: "
-    /// followed by the given string.
-    pub fn expected(expectation: &str) -> Self {
-        Self::soft(ParserErrorKind::expected(expectation))
-    }
-
-    /// Creates a fatal syntax error.
-    pub fn syntax_error(msg: &str) -> Self {
-        Self::fatal(ParserErrorKind::syntax_error(msg))
-    }
-}
-
-impl ParserErrorTrait for ParserError {
-    fn is_fatal(&self) -> bool {
-        self.fatal
-    }
-
-    fn to_fatal(self) -> Self {
-        Self {
-            fatal: true,
-            ..self
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub enum ParserErrorKind {
     // 1
     NextWithoutFor,
 
@@ -82,7 +42,6 @@ pub enum ParserErrorKind {
     DeviceIOError(String),
 
     // 62
-    #[default]
     InputPastEndOfFile,
 
     ElseWithoutIf,
@@ -96,7 +55,7 @@ pub enum ParserErrorKind {
     LoopWithoutDo,
 }
 
-impl ParserErrorKind {
+impl ParserError {
     pub fn syntax_error(msg: &str) -> Self {
         Self::SyntaxError(msg.to_string())
     }
@@ -104,32 +63,37 @@ impl ParserErrorKind {
     /// Creates a syntax error that starts with "Expected: "
     /// followed by the given string.
     pub fn expected(expectation: &str) -> Self {
-        Self::SyntaxError(format!("Expected: {}", expectation))
+        Self::Expected(format!("Expected: {}", expectation))
+    }
+}
+
+impl ParserErrorTrait for ParserError {
+    fn is_fatal(&self) -> bool {
+        match self {
+            Self::Miss | Self::Expected(_) => false,
+            _ => true,
+        }
+    }
+
+    fn to_fatal(self) -> Self {
+        match self {
+            Self::Expected(msg) => Self::SyntaxError(msg),
+            Self::Miss => Self::SyntaxError("Unknown error".to_string()),
+            _ => self,
+        }
     }
 }
 
 pub type ParseErrorPos = Positioned<ParserError>;
 
-impl From<&str> for ParserErrorKind {
-    fn from(s: &str) -> Self {
-        Self::SyntaxError(format!("Expected: {}", s))
-    }
-}
-
-impl From<String> for ParserErrorKind {
-    fn from(s: String) -> Self {
-        Self::SyntaxError(format!("Expected: {}", s))
-    }
-}
-
 impl From<std::num::ParseFloatError> for ParserError {
     fn from(e: std::num::ParseFloatError) -> Self {
-        Self::fatal(ParserErrorKind::ParseNumError(e.to_string()))
+        Self::ParseNumError(e.to_string())
     }
 }
 
 impl From<std::num::ParseIntError> for ParserError {
     fn from(e: std::num::ParseIntError) -> Self {
-        Self::fatal(ParserErrorKind::ParseNumError(e.to_string()))
+        Self::ParseNumError(e.to_string())
     }
 }

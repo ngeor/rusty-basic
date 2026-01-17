@@ -3,7 +3,7 @@ use std::fs::File;
 use rusty_common::*;
 use rusty_pc::ParserErrorTrait;
 
-use crate::error::ParserErrorKind;
+use crate::error::ParserError;
 use crate::{parse, parse_main_file, parse_main_str, *};
 
 pub fn parse_str_no_pos(input: &str) -> Vec<GlobalStatement> {
@@ -31,10 +31,10 @@ pub fn parse_file_no_pos(filename: &str) -> Vec<GlobalStatement> {
 /// # Panics
 ///
 /// If the parser does not have an error.
-pub fn parse_err_pos(input: &str) -> Positioned<ParserErrorKind> {
+pub fn parse_err_pos(input: &str) -> Positioned<ParserError> {
     let positioned_err = parse_main_str(input.to_owned()).expect_err("Parser should have failed");
     assert!(positioned_err.element.is_fatal());
-    positioned_err.map(|e| e.kind().clone())
+    positioned_err
 }
 
 /// Parses the given string, expecting that it will fail.
@@ -43,7 +43,7 @@ pub fn parse_err_pos(input: &str) -> Positioned<ParserErrorKind> {
 /// # Panics
 ///
 /// If the parser does not have an error.
-pub fn parse_err(input: &str) -> ParserErrorKind {
+pub fn parse_err(input: &str) -> ParserError {
     parse_err_pos(input).element()
 }
 
@@ -254,7 +254,14 @@ macro_rules! assert_parser_err {
     ($input:expr, $expected_err:literal) => {
         $crate::assert_parser_err!(
             $input,
-            $crate::error::ParserErrorKind::syntax_error($expected_err)
+            $crate::error::ParserError::syntax_error($expected_err)
+        );
+    };
+
+    ($input:expr, expected($expected_err:literal)) => {
+        $crate::assert_parser_err!(
+            $input,
+            $crate::error::ParserError::SyntaxError(format!("Expected: {}", $expected_err))
         );
     };
 
@@ -264,6 +271,15 @@ macro_rules! assert_parser_err {
             $expected_err,
             "testing input {}",
             $input
+        );
+    };
+
+    ($input:expr, expected($expected_err:literal), $row:expr, $col:expr) => {
+        $crate::assert_parser_err!(
+            $input,
+            $crate::error::ParserError::SyntaxError(format!("Expected: {}", $expected_err)),
+            $row,
+            $col
         );
     };
 

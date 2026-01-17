@@ -51,13 +51,13 @@ mod tests {
     #[test]
     fn test_no_whitespace_ignoring_after_input() {
         let input = "INPUT";
-        assert_parser_err!(input, ParserErrorKind::expected("whitespace"));
+        assert_parser_err!(input, expected("whitespace"));
     }
 
     #[test]
     fn test_no_variable() {
         let input = "INPUT ";
-        assert_parser_err!(input, ParserErrorKind::expected("#file-number or variable"));
+        assert_parser_err!(input, expected("#file-number or variable"));
     }
 
     #[test]

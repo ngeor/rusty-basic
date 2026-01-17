@@ -39,13 +39,10 @@ fn resume_label() -> impl Parser<RcStringView, Output = ResumeOption, Error = Pa
 
 #[cfg(test)]
 mod tests {
-    use crate::{ParserErrorKind, assert_parser_err};
+    use crate::assert_parser_err;
 
     #[test]
     fn resume_with_invalid_option() {
-        assert_parser_err!(
-            "RESUME FOR",
-            ParserErrorKind::expected("label or NEXT or end-of-statement")
-        );
+        assert_parser_err!("RESUME FOR", expected("label or NEXT or end-of-statement"));
     }
 }

@@ -66,7 +66,7 @@ mod tests {
     fn cannot_have_trailing_comma() {
         assert_parser_err!(
             "WIDTH 1, 2,",
-            ParserErrorKind::syntax_error("Error: trailing comma")
+            ParserError::syntax_error("Error: trailing comma")
         );
     }
 }

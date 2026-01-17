@@ -322,7 +322,7 @@ mod tests {
         let input = "
         SELECT CASE1
         END SELECT";
-        assert_parser_err!(input, ParserErrorKind::expected("CASE"), 2, 16);
+        assert_parser_err!(input, expected("CASE"), 2, 16);
     }
 
     #[test]
@@ -331,7 +331,7 @@ mod tests {
         SELECT CASE X
         CASE1
         END SELECT";
-        assert_parser_err!(input, ParserErrorKind::expected("END"), 3, 9);
+        assert_parser_err!(input, expected("END"), 3, 9);
     }
 
     #[test]
@@ -340,12 +340,7 @@ mod tests {
         SELECT CASE X
         CASE 1 TO
         END SELECT";
-        assert_parser_err!(
-            input,
-            ParserErrorKind::expected("expression after TO"),
-            3,
-            18
-        );
+        assert_parser_err!(input, expected("expression after TO"), 3, 18);
     }
 
     #[test]
@@ -354,7 +349,7 @@ mod tests {
         SELECT CASE X
         CASE 1TO
         END SELECT";
-        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 3, 15);
+        assert_parser_err!(input, expected("end-of-statement"), 3, 15);
     }
 
     #[test]
@@ -363,7 +358,7 @@ mod tests {
         SELECT CASE X
         CASE 1TO2
         END SELECT";
-        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 3, 15);
+        assert_parser_err!(input, expected("end-of-statement"), 3, 15);
     }
 
     #[test]
@@ -372,7 +367,7 @@ mod tests {
         SELECT CASE X
         CASE 1 TO2
         END SELECT";
-        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 3, 15);
+        assert_parser_err!(input, expected("end-of-statement"), 3, 15);
     }
 
     #[test]
@@ -381,6 +376,6 @@ mod tests {
         SELECT CASE X
         CASE 1TO 2
         END SELECT";
-        assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"), 3, 15);
+        assert_parser_err!(input, expected("end-of-statement"), 3, 15);
     }
 }

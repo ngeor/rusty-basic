@@ -11,7 +11,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserEr
 #[cfg(test)]
 mod tests {
     use crate::test_utils::*;
-    use crate::{BuiltInSub, ParserErrorKind, Statement, assert_parser_err, parse};
+    use crate::{BuiltInSub, Statement, assert_parser_err, parse};
 
     #[test]
     fn parse_foreground_only() {
@@ -59,6 +59,6 @@ mod tests {
     #[test]
     fn parse_no_args() {
         let input = "COLOR";
-        assert_parser_err!(input, ParserErrorKind::expected("whitespace"), 1, 6);
+        assert_parser_err!(input, expected("whitespace"), 1, 6);
     }
 }

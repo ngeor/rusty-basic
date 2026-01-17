@@ -24,10 +24,10 @@ pub fn statement_return_p() -> impl Parser<RcStringView, Output = Statement, Err
 
 #[cfg(test)]
 mod tests {
-    use crate::{ParserErrorKind, assert_parser_err};
+    use crate::assert_parser_err;
 
     #[test]
     fn go_sub_without_label() {
-        assert_parser_err!("GOSUB ", ParserErrorKind::expected("label"));
+        assert_parser_err!("GOSUB ", expected("label"));
     }
 }

@@ -696,7 +696,7 @@ mod integer_or_long_literal {
         // remove H
         s.remove(0);
         if s.starts_with('-') {
-            Err(ParserError::fatal(ParserErrorKind::Overflow))
+            Err(ParserError::Overflow)
         } else {
             let mut result: BitVec = BitVec::new();
             for digit in s.chars().skip_while(|ch| *ch == '0') {
@@ -726,7 +726,7 @@ mod integer_or_long_literal {
         // remove O
         s.remove(0);
         if s.starts_with('-') {
-            Err(ParserError::fatal(ParserErrorKind::Overflow))
+            Err(ParserError::Overflow)
         } else {
             let mut result: BitVec = BitVec::new();
             for digit in s.chars().skip_while(|ch| *ch == '0') {
@@ -752,7 +752,7 @@ mod integer_or_long_literal {
                 BitVecIntOrLong::Int(i) => Expression::IntegerLiteral(i),
                 BitVecIntOrLong::Long(l) => Expression::LongLiteral(l),
             })
-            .map_err(|_| ParserError::fatal(ParserErrorKind::Overflow))
+            .map_err(|_| ParserError::Overflow)
     }
 }
 
@@ -1217,10 +1217,7 @@ pub mod file_handle {
             .flat_map(
                 |input, (pound, digits)| match digits.as_str().parse::<u8>() {
                     Ok(d) if d > 0 => Ok((input, FileHandle::from(d).at_pos(pound.pos))),
-                    _ => Err((
-                        input,
-                        ParserError::fatal(ParserErrorKind::BadFileNameOrNumber),
-                    )),
+                    _ => Err((input, ParserError::BadFileNameOrNumber)),
                 },
             )
     }
@@ -1895,10 +1892,7 @@ mod tests {
                 ExpressionType::Unresolved
             )
         );
-        assert_parser_err!(
-            "PRINT 1AND 2",
-            ParserErrorKind::expected("parenthesis before operator And")
-        );
+        assert_parser_err!("PRINT 1AND 2", expected("parenthesis before operator And"));
         assert_expression!(
             "(1 OR 2)AND 3",
             Expression::BinaryExpression(
@@ -1928,10 +1922,7 @@ mod tests {
                 ExpressionType::Unresolved
             )
         );
-        assert_parser_err!(
-            "PRINT 1OR 2",
-            ParserErrorKind::expected("parenthesis before operator Or")
-        );
+        assert_parser_err!("PRINT 1OR 2", expected("parenthesis before operator Or"));
         assert_expression!(
             "(1 AND 2)OR 3",
             Expression::BinaryExpression(
@@ -1984,19 +1975,19 @@ mod tests {
         #[test]
         fn test_file_handle_zero() {
             let input = "CLOSE #0";
-            assert_parser_err!(input, ParserErrorKind::BadFileNameOrNumber);
+            assert_parser_err!(input, ParserError::BadFileNameOrNumber);
         }
 
         #[test]
         fn test_file_handle_overflow() {
             let input = "CLOSE #256";
-            assert_parser_err!(input, ParserErrorKind::BadFileNameOrNumber);
+            assert_parser_err!(input, ParserError::BadFileNameOrNumber);
         }
 
         #[test]
         fn test_file_handle_negative() {
             let input = "CLOSE #-1";
-            assert_parser_err!(input, ParserErrorKind::expected("digits after #"));
+            assert_parser_err!(input, expected("digits after #"));
         }
     }
 
@@ -2005,8 +1996,8 @@ mod tests {
 
         #[test]
         fn test_overflow() {
-            assert_parser_err!("PRINT &H-10", ParserErrorKind::Overflow);
-            assert_parser_err!("PRINT &H100000000", ParserErrorKind::Overflow);
+            assert_parser_err!("PRINT &H-10", ParserError::Overflow);
+            assert_parser_err!("PRINT &H100000000", ParserError::Overflow);
         }
     }
 
@@ -2015,8 +2006,8 @@ mod tests {
 
         #[test]
         fn test_overflow() {
-            assert_parser_err!("PRINT &O-10", ParserErrorKind::Overflow);
-            assert_parser_err!("PRINT &O40000000000", ParserErrorKind::Overflow);
+            assert_parser_err!("PRINT &O-10", ParserError::Overflow);
+            assert_parser_err!("PRINT &O40000000000", ParserError::Overflow);
         }
     }
 
@@ -2026,13 +2017,13 @@ mod tests {
         #[test]
         fn len_in_print_must_be_unqualified() {
             let program = r#"PRINT LEN!("hello")"#;
-            assert_parser_err!(program, ParserErrorKind::expected("("), 1, 10);
+            assert_parser_err!(program, expected("("), 1, 10);
         }
 
         #[test]
         fn len_in_assignment_must_be_unqualified() {
             let program = r#"A = LEN!("hello")"#;
-            assert_parser_err!(program, ParserErrorKind::expected("("), 1, 8);
+            assert_parser_err!(program, expected("("), 1, 8);
         }
     }
 
@@ -2118,7 +2109,7 @@ mod tests {
                 "A(1).Suits$% = 42",
             ];
             for input in inputs {
-                assert_parser_err!(input, ParserErrorKind::expected("="));
+                assert_parser_err!(input, expected("="));
             }
         }
 
@@ -2135,7 +2126,7 @@ mod tests {
                 "Help A(1).Suits$%",
             ];
             for input in inputs {
-                assert_parser_err!(input, ParserErrorKind::expected("end-of-statement"));
+                assert_parser_err!(input, expected("end-of-statement"));
             }
         }
 

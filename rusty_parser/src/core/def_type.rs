@@ -146,16 +146,16 @@ mod tests {
 
     #[test]
     fn test_parse_def_int_word_instead_of_letter() {
-        assert_parser_err!("DEFINT HELLO", ParserErrorKind::expected("letter"));
-        assert_parser_err!("DEFINT HELLO,Z", ParserErrorKind::expected("letter"));
-        assert_parser_err!("DEFINT A,HELLO", ParserErrorKind::expected("letter"));
+        assert_parser_err!("DEFINT HELLO", expected("letter"));
+        assert_parser_err!("DEFINT HELLO,Z", expected("letter"));
+        assert_parser_err!("DEFINT A,HELLO", expected("letter"));
     }
 
     #[test]
     fn test_parse_def_int_reverse_range() {
         assert_parser_err!(
             "DEFINT Z-A",
-            ParserErrorKind::syntax_error("Invalid letter range")
+            ParserError::syntax_error("Invalid letter range")
         );
     }
 

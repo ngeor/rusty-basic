@@ -17,10 +17,10 @@ pub fn statement_exit_p() -> impl Parser<RcStringView, Output = Statement, Error
 
 #[cfg(test)]
 mod tests {
-    use crate::{ParserErrorKind, assert_parser_err};
+    use crate::assert_parser_err;
 
     #[test]
     fn exit_without_object() {
-        assert_parser_err!("EXIT ", ParserErrorKind::expected("FUNCTION or SUB"));
+        assert_parser_err!("EXIT ", expected("FUNCTION or SUB"));
     }
 }

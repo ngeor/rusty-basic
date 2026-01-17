@@ -18,7 +18,10 @@ pub trait Parser<I, C = ()> {
 }
 
 pub trait ParserErrorTrait: Clone + Default {
+    /// Gets a value indicating whether this is a fatal error or not.
+    /// Returns true if the error is fatal, false is the error is soft.
     fn is_fatal(&self) -> bool;
 
+    /// Converts this error into a fatal.
     fn to_fatal(self) -> Self;
 }

@@ -111,7 +111,7 @@ fn digits() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
 
 fn any_keyword() -> impl Parser<RcStringView, Output = Token, Error = ParseError> {
     many(char::is_ascii_alphabetic)
-        .filter(|text| Keyword::try_from(text.as_str()).is_ok())
+        .filter(|text: &String| Keyword::try_from(text.as_str()).is_ok())
         .and_keep_left(ensure_no_illegal_char_after_keyword())
         .with_expected_message("Expected: Keyword")
         .to_token(TokenType::Keyword)

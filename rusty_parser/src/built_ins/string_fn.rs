@@ -7,7 +7,7 @@ use crate::{BuiltInFunction, ParseError, *};
 pub fn parse() -> impl Parser<RcStringView, Output = Expression, Error = ParseError> {
     seq2(
         any_token_of!(TokenType::Identifier)
-            .filter(|token| token.as_str().eq_ignore_ascii_case("STRING"))
+            .filter(|token: &Token| token.as_str().eq_ignore_ascii_case("STRING"))
             .and(dollar_sign(), IgnoringBothCombiner),
         in_parenthesis_csv_expressions_non_opt("expression"),
         |_, v| Expression::BuiltInFunctionCall(BuiltInFunction::String, v),

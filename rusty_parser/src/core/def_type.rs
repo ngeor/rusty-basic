@@ -58,7 +58,6 @@ fn letter_ranges() -> impl Parser<RcStringView, Output = Vec<LetterRange>, Error
 
 fn letter_range() -> impl Parser<RcStringView, Output = LetterRange, Error = ParseError> {
     letter()
-        .no_incomplete()
         .and_opt_tuple(minus_sign().and_tuple(letter()))
         .flat_map(|input, (l, opt_r)| match opt_r {
             Some((_, r)) => {
@@ -78,8 +77,20 @@ fn letter_range() -> impl Parser<RcStringView, Output = LetterRange, Error = Par
 
 fn letter() -> impl Parser<RcStringView, Output = char, Error = ParseError> {
     any_token_of!(TokenType::Identifier)
-        .filter_or_err(|token| token.as_str().chars().count() == 1, "letter")
+        .filter(ExpectedLetter)
         .map(token_to_char)
+}
+
+struct ExpectedLetter;
+
+impl FilterPredicate<Token, ParseError> for ExpectedLetter {
+    fn filter(&self, token: Token) -> Result<Token, (bool, ParseError)> {
+        if token.len() == 1 {
+            Ok(token)
+        } else {
+            Err((true, ParseError::expected("letter")))
+        }
+    }
 }
 
 fn token_to_char(token: Token) -> char {

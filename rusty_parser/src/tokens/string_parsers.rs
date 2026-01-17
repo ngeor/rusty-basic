@@ -1,5 +1,5 @@
 use rusty_pc::text::any_char;
-use rusty_pc::{Filter, IgnoringManyCombiner, Many, ManyCombiner, Map, Parser, StringManyCombiner};
+use rusty_pc::{IgnoringManyCombiner, Many, ManyCombiner, Map, Parser, StringManyCombiner};
 
 use crate::ParseError;
 use crate::input::RcStringView;
@@ -43,7 +43,9 @@ where
 }
 
 pub(super) fn one(ch: char) -> impl Parser<RcStringView, Output = String, Error = ParseError> {
-    any_char().filter(move |c| *c == ch).map(String::from)
+    any_char()
+        .filter(move |c: &char| *c == ch)
+        .map(String::from)
 }
 
 /// Parses the specific string, case insensitive.

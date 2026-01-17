@@ -3,7 +3,7 @@ use crate::{ParseResult, Parser, SetContext};
 pub trait Filter<I, C>: Parser<I, C>
 where
     Self: Sized,
-    Self::Error: Clone + Default,
+    Self::Error: Default,
     I: Clone,
 {
     fn filter<F>(self, predicate: F) -> FilterParser<Self, F, Self::Error>
@@ -13,9 +13,11 @@ where
         FilterParser::new(self, predicate, None)
     }
 
-    fn filter_or_err<F>(self, predicate: F, err: Self::Error) -> FilterParser<Self, F, Self::Error>
+    fn filter_or_err<F, E>(self, predicate: F, err: E) -> FilterParser<Self, F, E>
     where
         F: Fn(&Self::Output) -> bool,
+        E: Clone,
+        Self::Error: From<E>,
     {
         FilterParser::new(self, predicate, Some(err))
     }
@@ -24,7 +26,7 @@ where
 impl<I, C, P> Filter<I, C> for P
 where
     P: Parser<I, C>,
-    P::Error: Clone + Default,
+    P::Error: Default,
     I: Clone,
 {
 }
@@ -32,43 +34,41 @@ where
 pub struct FilterParser<P, F, E> {
     parser: P,
     predicate: F,
-    err: Option<E>,
+    err_msg: Option<E>,
 }
 
 impl<P, F, E> FilterParser<P, F, E> {
-    pub fn new(parser: P, predicate: F, err: Option<E>) -> Self {
+    pub fn new(parser: P, predicate: F, err_msg: Option<E>) -> Self {
         Self {
             parser,
             predicate,
-            err,
+            err_msg,
         }
     }
 }
 
 impl<I, C, P, F, E> Parser<I, C> for FilterParser<P, F, E>
 where
-    P: Parser<I, C, Error = E>,
-    E: Clone + Default,
     I: Clone,
+    P: Parser<I, C>,
+    P::Error: Default + From<E>,
     F: Fn(&P::Output) -> bool,
+    E: Clone,
 {
     type Output = P::Output;
-    type Error = E;
-    fn parse(&mut self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
-        match self.parser.parse(tokenizer.clone()) {
-            Ok((input, value)) => {
-                if (self.predicate)(&value) {
-                    Ok((input, value))
-                } else {
-                    let err = match &self.err {
-                        Some(err) => err.clone(),
-                        None => E::default(),
-                    };
+    type Error = P::Error;
+    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+        let original_input = input.clone();
+        let (input, value) = self.parser.parse(input)?;
+        if (self.predicate)(&value) {
+            Ok((input, value))
+        } else {
+            let err = match &self.err_msg {
+                Some(err) => P::Error::from(err.clone()),
+                None => P::Error::default(),
+            };
 
-                    Err((false, tokenizer, err))
-                }
-            }
-            Err(err) => Err(err),
+            Err((false, original_input, err))
         }
     }
 }

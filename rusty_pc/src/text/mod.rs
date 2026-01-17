@@ -3,7 +3,6 @@ use std::marker::PhantomData;
 use crate::Parser;
 
 pub trait CharInput: Clone {
-
     fn char(&self) -> char;
 
     fn inc_position_by(self, amount: usize) -> Self;

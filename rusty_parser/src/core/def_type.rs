@@ -78,10 +78,7 @@ fn letter_range() -> impl Parser<RcStringView, Output = LetterRange, Error = Par
 
 fn letter() -> impl Parser<RcStringView, Output = char, Error = ParseError> {
     any_token_of!(TokenType::Identifier)
-        .filter_or_err(
-            |token| token.as_str().chars().count() == 1,
-            ParseError::expected("letter"),
-        )
+        .filter_or_err(|token| token.as_str().chars().count() == 1, "letter")
         .map(token_to_char)
 }
 

@@ -61,6 +61,18 @@ impl ParseError {
 
 pub type ParseErrorPos = Positioned<ParseError>;
 
+impl From<&str> for ParseError {
+    fn from(s: &str) -> Self {
+        Self::SyntaxError(format!("Expected: {}", s))
+    }
+}
+
+impl From<String> for ParseError {
+    fn from(s: String) -> Self {
+        Self::SyntaxError(format!("Expected: {}", s))
+    }
+}
+
 impl From<std::io::Error> for ParseError {
     fn from(e: std::io::Error) -> Self {
         if e.kind() == std::io::ErrorKind::NotFound {

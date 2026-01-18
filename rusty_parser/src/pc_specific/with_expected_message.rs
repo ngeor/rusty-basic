@@ -1,10 +1,11 @@
-use rusty_pc::{MapErr, Parser};
+use rusty_pc::{InputTrait, MapErr, Parser};
 
 use crate::ParserError;
 
 pub trait WithExpected<I, C>: Parser<I, C, Error = ParserError>
 where
     Self: Sized,
+    I: InputTrait,
 {
     fn with_expected_message<F>(
         self,
@@ -17,7 +18,12 @@ where
     }
 }
 
-impl<I, C, P> WithExpected<I, C> for P where P: Parser<I, C, Error = ParserError> {}
+impl<I, C, P> WithExpected<I, C> for P
+where
+    P: Parser<I, C, Error = ParserError>,
+    I: InputTrait,
+{
+}
 
 pub trait MessageProvider {
     fn to_str(&self) -> String;

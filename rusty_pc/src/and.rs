@@ -1,15 +1,14 @@
 use std::marker::PhantomData;
 
-use crate::{ParseResult, Parser, ParserErrorTrait, SetContext, ToOption, ToOptionParser};
+use crate::{InputTrait, Parser, ParserErrorTrait, SetContext, ToOption, ToOptionParser};
 
 //
 // And (with undo)
 //
 
-pub trait And<I, C>: Parser<I, C>
+pub trait And<I: InputTrait, C>: Parser<I, C>
 where
     Self: Sized,
-    I: Clone,
 {
     /// Parses both the left and the right side.
     /// If the right side fails with a soft error, parsing of the left side is undone.
@@ -91,7 +90,7 @@ where
 
 impl<I, C, L> And<I, C> for L
 where
-    I: Clone,
+    I: InputTrait,
     L: Parser<I, C>,
 {
 }
@@ -116,7 +115,7 @@ impl<L, R, F, O> AndParser<L, R, F, O> {
 
 impl<I, C, L, R, F, O> Parser<I, C> for AndParser<L, R, F, O>
 where
-    I: Clone,
+    I: InputTrait,
     L: Parser<I, C>,
     R: Parser<I, C, Error = L::Error>,
     F: Combiner<L::Output, R::Output, O>,
@@ -124,13 +123,17 @@ where
     type Output = O;
     type Error = L::Error;
 
-    fn parse(&mut self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
-        match self.left.parse(tokenizer.clone()) {
-            Ok((input, left)) => match self.right.parse(input) {
-                Ok((input, right)) => Ok((input, self.combiner.combine(left, right))),
-                Err((input, err)) => Err((if err.is_fatal() { input } else { tokenizer }, err)),
-            },
-            Err(err) => Err(err),
+    fn parse(&mut self, tokenizer: &mut I) -> Result<Self::Output, Self::Error> {
+        let original_position = tokenizer.get_position();
+        let left = self.left.parse(tokenizer)?;
+        match self.right.parse(tokenizer) {
+            Ok(right) => Ok(self.combiner.combine(left, right)),
+            Err(err) => {
+                if !err.is_fatal() {
+                    tokenizer.set_position(original_position);
+                }
+                Err(err)
+            }
         }
     }
 }
@@ -156,7 +159,7 @@ pub fn opt_and<I, L, R, E, F, O>(
     combiner: F,
 ) -> impl Parser<I, Output = O, Error = E>
 where
-    I: Clone,
+    I: InputTrait,
     E: ParserErrorTrait,
     F: Combiner<Option<L>, R, O>,
 {
@@ -171,7 +174,7 @@ pub fn opt_and_tuple<I, L, R, E>(
     right: impl Parser<I, Output = R, Error = E>,
 ) -> impl Parser<I, Output = (Option<L>, R), Error = E>
 where
-    I: Clone,
+    I: InputTrait,
     E: ParserErrorTrait,
 {
     opt_and(left, right, TupleCombiner)
@@ -185,7 +188,7 @@ pub fn opt_and_keep_right<I, L, R, E>(
     right: impl Parser<I, Output = R, Error = E>,
 ) -> impl Parser<I, Output = R, Error = E>
 where
-    I: Clone,
+    I: InputTrait,
     E: ParserErrorTrait,
 {
     opt_and(left, right, KeepRightCombiner)

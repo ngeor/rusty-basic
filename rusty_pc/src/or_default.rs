@@ -1,6 +1,6 @@
-use crate::{ParseResult, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
 
-pub trait OrDefault<I, C>: Parser<I, C>
+pub trait OrDefault<I: InputTrait, C>: Parser<I, C>
 where
     Self: Sized,
     Self::Output: Default,
@@ -11,6 +11,7 @@ where
 }
 impl<I, C, P> OrDefault<I, C> for P
 where
+    I: InputTrait,
     P: Parser<I, C>,
     P::Output: Default,
 {
@@ -26,15 +27,16 @@ impl<P> OrDefaultParser<P> {
 }
 impl<I, C, P> Parser<I, C> for OrDefaultParser<P>
 where
+    I: InputTrait,
     P: Parser<I, C>,
     P::Output: Default,
 {
     type Output = P::Output;
     type Error = P::Error;
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.parser.parse(input) {
-            Ok((input, value)) => Ok((input, value)),
-            Err((input, err)) if !err.is_fatal() => Ok((input, P::Output::default())),
+            Ok(value) => Ok(value),
+            Err(err) if !err.is_fatal() => Ok(P::Output::default()),
             Err(err) => Err(err),
         }
     }

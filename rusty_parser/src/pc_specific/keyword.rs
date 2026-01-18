@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use rusty_pc::*;
 
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::tokens::{TokenType, any_token, keyword_ignoring, whitespace_ignoring};
 use crate::{Keyword, ParserError};
 
@@ -12,9 +12,7 @@ use crate::{Keyword, ParserError};
 ///
 /// Ensures that it is not followed by a dollar sign, in which case it is a valid identifier.
 /// Example: `NAME$` is a valid variable name, even though `NAME` is a keyword.
-pub fn keyword(
-    keyword: Keyword,
-) -> impl Parser<RcStringView, Output = Keyword, Error = ParserError> {
+pub fn keyword(keyword: Keyword) -> impl Parser<StringView, Output = Keyword, Error = ParserError> {
     keyword_of!(keyword)
 }
 
@@ -35,12 +33,12 @@ pub(crate) use keyword_of;
 pub fn keyword_p(
     keywords: impl IntoIterator<Item = Keyword>,
     eof_is_fatal: bool,
-) -> impl Parser<RcStringView, Output = Keyword, Error = ParserError> {
+) -> impl Parser<StringView, Output = Keyword, Error = ParserError> {
     KeywordParser::new(any_token(), keywords, eof_is_fatal)
 }
 
 /// Parses the given keyword, followed by mandatory whitespace.
-pub fn keyword_ws_p(k: Keyword) -> impl Parser<RcStringView, Output = (), Error = ParserError> {
+pub fn keyword_ws_p(k: Keyword) -> impl Parser<StringView, Output = (), Error = ParserError> {
     keyword_ignoring(k).and(whitespace_ignoring().no_incomplete(), IgnoringBothCombiner)
 }
 
@@ -51,7 +49,7 @@ pub fn keyword_ws_p(k: Keyword) -> impl Parser<RcStringView, Output = (), Error 
 pub fn keyword_pair(
     first: Keyword,
     second: Keyword,
-) -> impl Parser<RcStringView, Output = (), Error = ParserError> {
+) -> impl Parser<StringView, Output = (), Error = ParserError> {
     keyword_ws_p(first).and(
         keyword_ignoring(second).no_incomplete(),
         IgnoringBothCombiner,
@@ -85,21 +83,25 @@ impl<P> KeywordParser<P> {
 
 impl<I, C, P> Parser<I, C> for KeywordParser<P>
 where
-    I: Clone,
+    I: InputTrait,
     P: Parser<I, C, Output = Token, Error = ParserError>,
 {
     type Output = Keyword;
     type Error = ParserError;
 
-    fn parse(&mut self, input: I) -> ParseResult<I, Keyword, ParserError> {
-        let original_input = input.clone();
+    fn parse(&mut self, input: &mut I) -> Result<Keyword, ParserError> {
+        let original_input = input.get_position();
         match self.parser.parse(input) {
-            Ok((input, token)) => match self.accept_token(&token) {
-                Some(keyword) => Ok((input, keyword)),
-                None => self.to_syntax_err(original_input, false),
+            Ok(token) => match self.accept_token(&token) {
+                Some(keyword) => Ok(keyword),
+                None => {
+                    input.set_position(original_input);
+                    self.to_syntax_err(false)
+                }
             },
-            Err((_, err)) if !err.is_fatal() => {
-                self.to_syntax_err(original_input, self.eof_is_fatal)
+            Err(err) if !err.is_fatal() => {
+                input.set_position(original_input);
+                self.to_syntax_err(self.eof_is_fatal)
             }
             Err(err) => Err(err),
         }
@@ -129,7 +131,7 @@ impl<P> KeywordParser<P> {
         }
     }
 
-    fn to_syntax_err<I, O>(&self, input: I, fatal: bool) -> ParseResult<I, O, ParserError> {
+    fn to_syntax_err<O>(&self, fatal: bool) -> Result<O, ParserError> {
         let mut msg = String::from("Expected: ");
         let mut is_first = true;
         for k in &self.keywords {
@@ -149,6 +151,6 @@ impl<P> KeywordParser<P> {
             ParserError::Expected(msg)
         };
 
-        Err((input, err))
+        Err(err)
     }
 }

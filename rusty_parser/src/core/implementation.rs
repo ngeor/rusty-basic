@@ -2,7 +2,7 @@ use rusty_pc::*;
 
 use crate::core::declaration::{function_declaration_p, sub_declaration_p};
 use crate::core::statements::zero_or_more_statements;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::whitespace_ignoring;
 use crate::{ParserError, *};
@@ -10,13 +10,13 @@ use crate::{ParserError, *};
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
 
-pub fn implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParserError>
+pub fn implementation_p() -> impl Parser<StringView, Output = GlobalStatement, Error = ParserError>
 {
     function_implementation_p().or(sub_implementation_p())
 }
 
 fn function_implementation_p()
--> impl Parser<RcStringView, Output = GlobalStatement, Error = ParserError> {
+-> impl Parser<StringView, Output = GlobalStatement, Error = ParserError> {
     seq3(
         static_declaration_p(function_declaration_p()),
         zero_or_more_statements!(Keyword::End),
@@ -32,7 +32,7 @@ fn function_implementation_p()
     )
 }
 
-fn sub_implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParserError>
+fn sub_implementation_p() -> impl Parser<StringView, Output = GlobalStatement, Error = ParserError>
 {
     seq3(
         static_declaration_p(sub_declaration_p()),
@@ -51,9 +51,9 @@ fn sub_implementation_p() -> impl Parser<RcStringView, Output = GlobalStatement,
 
 fn static_declaration_p<P, T>(
     parser: P,
-) -> impl Parser<RcStringView, Output = (T, bool), Error = ParserError>
+) -> impl Parser<StringView, Output = (T, bool), Error = ParserError>
 where
-    P: Parser<RcStringView, Output = T, Error = ParserError>,
+    P: Parser<StringView, Output = T, Error = ParserError>,
 {
     parser.and_opt(
         opt_and(

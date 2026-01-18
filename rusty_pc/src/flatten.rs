@@ -1,6 +1,6 @@
-use crate::{ParseResult, Parser, SetContext};
+use crate::{InputTrait, Parser, SetContext};
 
-pub trait Flatten<I, C>: Parser<I, C>
+pub trait Flatten<I: InputTrait, C>: Parser<I, C>
 where
     Self: Sized,
 {
@@ -11,7 +11,12 @@ where
         FlattenParser::new(self)
     }
 }
-impl<I, C, P> Flatten<I, C> for P where P: Parser<I, C> {}
+impl<I, C, P> Flatten<I, C> for P
+where
+    I: InputTrait,
+    P: Parser<I, C>,
+{
+}
 
 pub struct FlattenParser<P> {
     parser: P,
@@ -23,14 +28,15 @@ impl<P> FlattenParser<P> {
 }
 impl<I, C, P> Parser<I, C> for FlattenParser<P>
 where
+    I: InputTrait,
     P: Parser<I, C>,
     P::Output: Parser<I, C, Error = P::Error>,
 {
     type Output = <P::Output as Parser<I, C>>::Output;
     type Error = P::Error;
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.parser.parse(input) {
-            Ok((i, mut new_parser)) => new_parser.parse(i),
+            Ok(mut new_parser) => new_parser.parse(input),
             Err(err) => Err(err),
         }
     }

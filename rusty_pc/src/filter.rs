@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
 
 pub struct FilterParser<P, F> {
     parser: P,
@@ -13,25 +13,24 @@ impl<P, F> FilterParser<P, F> {
 
 impl<I, C, P, F> Parser<I, C> for FilterParser<P, F>
 where
-    I: Clone,
+    I: InputTrait,
+    I: InputTrait,
     P: Parser<I, C>,
     F: FilterPredicate<P::Output, P::Error>,
 {
     type Output = P::Output;
     type Error = P::Error;
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
-        let original_input = input.clone();
-        let (input, value) = self.parser.parse(input)?;
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
+        let original_input = input.get_position();
+        let value = self.parser.parse(input)?;
         match self.predicate.filter(value) {
-            Ok(value) => Ok((input, value)),
-            Err(err) => Err((
-                if err.is_fatal() {
-                    input
-                } else {
-                    original_input
-                },
-                err,
-            )),
+            Ok(value) => Ok(value),
+            Err(err) => {
+                if !err.is_fatal() {
+                    input.set_position(original_input);
+                }
+                Err(err)
+            }
         }
     }
 }

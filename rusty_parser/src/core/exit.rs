@@ -1,10 +1,10 @@
 use rusty_pc::*;
 
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::{ExitObject, Keyword, ParserError, Statement};
 
-pub fn statement_exit_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn statement_exit_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     seq2(
         keyword_ws_p(Keyword::Exit),
         keyword_map(&[

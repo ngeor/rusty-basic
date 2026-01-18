@@ -1,33 +1,26 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::rc::Rc;
 
 use rusty_common::{HasPos, Position};
-use rusty_pc::text::CharInput;
+use rusty_pc::InputTrait;
 
 use super::row_col_view::*;
 
 pub struct StringView {
     chars: Vec<char>,
     row_col: Vec<Position>,
-}
-
-impl StringView {
-    pub fn eof_row_col(&self) -> Position {
-        if self.row_col.is_empty() {
-            Position::start()
-        } else {
-            let final_pos = self.row_col[self.row_col.len() - 1];
-            final_pos.inc_col()
-        }
-    }
+    index: usize,
 }
 
 impl From<&str> for StringView {
     fn from(value: &str) -> Self {
         let chars: Vec<char> = value.chars().collect();
         let row_col = create_row_col_view(&chars);
-        Self { chars, row_col }
+        Self {
+            chars,
+            row_col,
+            index: 0,
+        }
     }
 }
 
@@ -53,43 +46,9 @@ impl TryFrom<File> for StringView {
     }
 }
 
-/// A shared immutable view of the contents to be parsed.
-/// Needs to be light to be cloned, as in some operations
-/// we need to rollback to the previous state.
-#[derive(Clone)]
-pub struct RcStringView {
-    buffer: Rc<StringView>,
-    index: usize,
-}
-
-impl<S> From<S> for RcStringView
-where
-    S: Into<StringView>,
-{
-    fn from(value: S) -> Self {
-        Self::new(value.into())
-    }
-}
-
-impl TryFrom<File> for RcStringView {
-    type Error = std::io::Error;
-
-    fn try_from(value: File) -> Result<Self, Self::Error> {
-        let string_view = StringView::try_from(value)?;
-        Ok(string_view.into())
-    }
-}
-
-impl RcStringView {
-    pub fn new(buffer: StringView) -> Self {
-        Self {
-            buffer: Rc::new(buffer),
-            index: 0,
-        }
-    }
-
+impl StringView {
     pub fn len(&self) -> usize {
-        self.buffer.chars.len()
+        self.chars.len()
     }
 
     pub fn index(&self) -> usize {
@@ -97,28 +56,50 @@ impl RcStringView {
     }
 
     pub fn char_at(&self, index: usize) -> char {
-        self.buffer.chars[index]
+        self.chars[index]
     }
 
     pub fn position(&self) -> Position {
         if self.is_eof() {
-            self.buffer.eof_row_col()
+            self.eof_row_col()
         } else {
-            self.buffer.row_col[self.index]
+            self.row_col[self.index]
+        }
+    }
+
+    fn eof_row_col(&self) -> Position {
+        if self.row_col.is_empty() {
+            Position::start()
+        } else {
+            let final_pos = self.row_col[self.row_col.len() - 1];
+            final_pos.inc_col()
         }
     }
 }
 
-impl CharInput for RcStringView {
-    fn char(&self) -> char {
+impl InputTrait for StringView {
+    type Output = char;
+
+    fn get_position(&self) -> usize {
+        self.index
+    }
+
+    fn set_position(&mut self, position: usize) {
+        self.index = position;
+    }
+
+    fn peek(&self) -> char {
         self.char_at(self.index)
     }
 
-    fn inc_position_by(self, amount: usize) -> Self {
-        Self {
-            index: self.index + amount,
-            ..self
-        }
+    fn read(&mut self) -> char {
+        let c = self.char_at(self.index);
+        self.index += 1;
+        c
+    }
+
+    fn inc_position_by(&mut self, amount: usize) {
+        self.index += amount;
     }
 
     fn is_eof(&self) -> bool {
@@ -126,7 +107,7 @@ impl CharInput for RcStringView {
     }
 }
 
-impl HasPos for RcStringView {
+impl HasPos for StringView {
     fn pos(&self) -> Position {
         self.position()
     }

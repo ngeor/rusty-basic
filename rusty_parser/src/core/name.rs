@@ -2,7 +2,7 @@ use rusty_common::Positioned;
 use rusty_pc::*;
 
 use crate::error::ParserError;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::tokens::{TokenMatcher, TokenType, any_symbol_of, any_token_of, peek_token};
 use crate::{AsBareName, BareName, ExpressionType, HasExpressionType, ToBareName, TypeQualifier};
 
@@ -174,8 +174,7 @@ mod type_tests {
 /// Errors if it exceeds the maximum length of identifiers.
 ///
 /// Use case: user defined type elements or types.
-pub fn bare_name_without_dots() -> impl Parser<RcStringView, Output = BareName, Error = ParserError>
-{
+pub fn bare_name_without_dots() -> impl Parser<StringView, Output = BareName, Error = ParserError> {
     ensure_no_dots_or_trailing_qualifier(identifier()).map(|token| BareName::new(token.to_string()))
 }
 
@@ -188,12 +187,12 @@ pub fn bare_name_without_dots() -> impl Parser<RcStringView, Output = BareName, 
 /// of the name (e.g. `VIEW.PRINT` is a valid result).
 ///
 /// Usage: label declaration (but also used internally in the module).
-pub fn identifier() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
+pub fn identifier() -> impl Parser<StringView, Output = Token, Error = ParserError> {
     any_token_of!(TokenType::Identifier)
 }
 
 /// Parses a type qualifier character.
-pub fn type_qualifier() -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
+pub fn type_qualifier() -> impl Parser<StringView, Output = Token, Error = ParserError> {
     any_symbol_of!('!', '#', '$', '%', '&')
 }
 
@@ -217,7 +216,7 @@ fn is_type_qualifier(token: &Token) -> bool {
 /// of the name (e.g. `VIEW.PRINT` is a valid result).
 ///
 /// Usages: SUB name and labels.
-pub fn bare_name_p() -> impl Parser<RcStringView, Output = BareName, Error = ParserError> {
+pub fn bare_name_p() -> impl Parser<StringView, Output = BareName, Error = ParserError> {
     ensure_no_trailing_qualifier(identifier()).map(|token| BareName::new(token.text()))
 }
 
@@ -226,30 +225,30 @@ pub fn bare_name_p() -> impl Parser<RcStringView, Output = BareName, Error = Par
 /// If a type qualifier exists, it cannot be followed by a dot or a second type qualifier.
 ///
 /// It can also be a keyword followed by the dollar sign (e.g. `END$` is a valid result).
-pub fn name_p() -> impl Parser<RcStringView, Output = Name, Error = ParserError> {
+pub fn name_p() -> impl Parser<StringView, Output = Name, Error = ParserError> {
     name_as_tokens_p().map(Name::from)
 }
 
-pub fn name_as_tokens_p() -> impl Parser<RcStringView, Output = NameAsTokens, Error = ParserError> {
+pub fn name_as_tokens_p() -> impl Parser<StringView, Output = NameAsTokens, Error = ParserError> {
     identifier().and_opt_tuple(type_qualifier())
 }
 
 fn ensure_no_dots_or_trailing_qualifier(
-    parser: impl Parser<RcStringView, Output = Token, Error = ParserError>,
-) -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
+    parser: impl Parser<StringView, Output = Token, Error = ParserError>,
+) -> impl Parser<StringView, Output = Token, Error = ParserError> {
     ensure_no_trailing_qualifier(ensure_no_dots(parser))
 }
 
 /// Returns the result of the given parser,
 /// but it gives an error if the identifier has dots.
 fn ensure_no_dots(
-    parser: impl Parser<RcStringView, Output = Token, Error = ParserError>,
-) -> impl Parser<RcStringView, Output = Token, Error = ParserError> {
-    parser.flat_map(|input, token| {
+    parser: impl Parser<StringView, Output = Token, Error = ParserError>,
+) -> impl Parser<StringView, Output = Token, Error = ParserError> {
+    parser.flat_map(|token| {
         if token.as_str().contains('.') {
-            Err((input, ParserError::IdentifierCannotIncludePeriod))
+            Err(ParserError::IdentifierCannotIncludePeriod)
         } else {
-            Ok((input, token))
+            Ok(token)
         }
     })
 }
@@ -257,16 +256,15 @@ fn ensure_no_dots(
 /// Returns the result of the given parser,
 /// but it gives an error if it is followed by a type qualifier character.
 fn ensure_no_trailing_qualifier<P>(
-    parser: impl Parser<RcStringView, Output = P, Error = ParserError>,
-) -> impl Parser<RcStringView, Output = P, Error = ParserError> {
-    parser.and_opt_keep_left(peek_token().flat_map_negate_none(|input, token| {
+    parser: impl Parser<StringView, Output = P, Error = ParserError>,
+) -> impl Parser<StringView, Output = P, Error = ParserError> {
+    parser.and_opt_keep_left(peek_token().flat_map_negate_none(|token| {
         if is_type_qualifier(&token) {
-            Err((
-                input,
-                ParserError::syntax_error("Identifier cannot end with %, &, !, #, or $"),
+            Err(ParserError::syntax_error(
+                "Identifier cannot end with %, &, !, #, or $",
             ))
         } else {
-            Ok((input, ()))
+            Ok(())
         }
     }))
 }
@@ -302,16 +300,15 @@ pub fn token_to_type_qualifier(token: &Token) -> TypeQualifier {
 
 #[cfg(test)]
 mod parse_tests {
-    use rusty_pc::Parser;
-    use rusty_pc::text::CharInput;
+    use rusty_pc::{InputTrait, Parser};
 
     use super::*;
     use crate::input::create_string_tokenizer;
     use crate::parametric_test;
 
-    fn assert_fully_parsed<T, E>(result: &ParseResult<RcStringView, T, E>, input: &str) {
+    fn assert_fully_parsed<T, E>(input: &str, result: &Result<T, E>, tokenizer: &StringView) {
         match result {
-            Ok((tokenizer, _)) => {
+            Ok(_) => {
                 assert!(
                     tokenizer.is_eof(),
                     "Should have parsed {} completely",
@@ -324,20 +321,16 @@ mod parse_tests {
         }
     }
 
-    fn assert_result<T, E>(input: &str, result: ParseResult<RcStringView, T, E>) -> T {
+    fn assert_result<T, E>(input: &str, result: Result<T, E>) -> T {
         match result {
-            Ok((_, x)) => x,
+            Ok(x) => x,
             _ => panic!("Should have succeeded for {}", input),
         }
     }
 
-    fn assert_err<T>(
-        input: &str,
-        result: ParseResult<RcStringView, T, ParserError>,
-        expected_err: ParserError,
-    ) {
+    fn assert_err<T>(input: &str, result: Result<T, ParserError>, expected_err: ParserError) {
         match result {
-            Err((_, err)) => {
+            Err(err) => {
                 assert!(err.is_fatal());
                 assert_eq!(err, expected_err);
             }
@@ -351,9 +344,9 @@ mod parse_tests {
         use super::*;
 
         fn parse_something_completely(input: &str) -> BareName {
-            let tokenizer = create_string_tokenizer(input.to_owned());
-            let result = bare_name_without_dots().parse(tokenizer);
-            assert_fully_parsed(&result, input);
+            let mut tokenizer = create_string_tokenizer(input.to_owned());
+            let result = bare_name_without_dots().parse(&mut tokenizer);
+            assert_fully_parsed(input, &result, &tokenizer);
             assert_result(input, result)
         }
 
@@ -365,8 +358,8 @@ mod parse_tests {
         #[test]
         fn cannot_have_dots() {
             for input in ["Hell.o", "Hello."] {
-                let result =
-                    bare_name_without_dots().parse(create_string_tokenizer(String::from(input)));
+                let mut reader = create_string_tokenizer(String::from(input));
+                let result = bare_name_without_dots().parse(&mut reader);
                 assert_err(input, result, ParserError::IdentifierCannotIncludePeriod);
             }
         }
@@ -374,7 +367,8 @@ mod parse_tests {
         #[test]
         fn cannot_have_trailing_qualifier() {
             for input in ["Hello!", "Hello#", "Hello$", "Hello%", "Hello&"] {
-                let result = bare_name_p().parse(create_string_tokenizer(String::from(input)));
+                let mut reader = create_string_tokenizer(String::from(input));
+                let result = bare_name_p().parse(&mut reader);
                 assert_err(
                     input,
                     result,
@@ -387,7 +381,8 @@ mod parse_tests {
         fn cannot_exceed_max_length() {
             let input = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO".to_owned();
             assert_eq!(input.len(), 41);
-            let result = bare_name_p().parse(create_string_tokenizer(input.clone()));
+            let mut reader = create_string_tokenizer(String::from(input.clone()));
+            let result = bare_name_p().parse(&mut reader);
             assert_err(&input, result, ParserError::IdentifierTooLong);
         }
     }
@@ -396,9 +391,9 @@ mod parse_tests {
         use super::*;
 
         fn parse_something_completely(input: &str) -> Token {
-            let tokenizer = create_string_tokenizer(input.to_owned());
-            let result = identifier().parse(tokenizer);
-            assert_fully_parsed(&result, input);
+            let mut tokenizer = create_string_tokenizer(input.to_owned());
+            let result = identifier().parse(&mut tokenizer);
+            assert_fully_parsed(input, &result, &tokenizer);
             assert_result(input, result)
         }
 
@@ -413,7 +408,8 @@ mod parse_tests {
         fn cannot_exceed_max_length() {
             let input = "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNO".to_owned();
             assert_eq!(input.len(), 41);
-            let result = identifier().parse(create_string_tokenizer(input.clone()));
+            let mut reader = create_string_tokenizer(String::from(input.clone()));
+            let result = identifier().parse(&mut reader);
             assert_err(&input, result, ParserError::IdentifierTooLong);
         }
     }
@@ -422,9 +418,9 @@ mod parse_tests {
         use super::*;
 
         fn parse_something_completely(input: &str) -> BareName {
-            let tokenizer = create_string_tokenizer(input.to_owned());
-            let result = bare_name_p().parse(tokenizer);
-            assert_fully_parsed(&result, input);
+            let mut tokenizer = create_string_tokenizer(input.to_owned());
+            let result = bare_name_p().parse(&mut tokenizer);
+            assert_fully_parsed(input, &result, &tokenizer);
             assert_result(input, result)
         }
 
@@ -456,9 +452,9 @@ mod parse_tests {
         use super::*;
 
         fn parse_something_completely(input: &str) -> Name {
-            let tokenizer = create_string_tokenizer(input.to_owned());
-            let result = name_p().parse(tokenizer);
-            assert_fully_parsed(&result, input);
+            let mut tokenizer = create_string_tokenizer(input.to_owned());
+            let result = name_p().parse(&mut tokenizer);
+            assert_fully_parsed(input, &result, &tokenizer);
             assert_result(input, result)
         }
 

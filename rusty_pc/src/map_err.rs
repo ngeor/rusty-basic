@@ -1,21 +1,31 @@
-use crate::{ParseResult, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
 
-pub trait NoIncomplete<I, C>: Parser<I, C> + Sized {
+pub trait NoIncomplete<I: InputTrait, C>: Parser<I, C> + Sized {
     fn no_incomplete(self) -> ToFatalParser<Self, Self::Error> {
         ToFatalParser::new(self, None)
     }
 }
 
-impl<I, C, P> NoIncomplete<I, C> for P where P: Parser<I, C> + Sized {}
+impl<I, C, P> NoIncomplete<I, C> for P
+where
+    I: InputTrait,
+    P: Parser<I, C> + Sized,
+{
+}
 
-pub trait OrFail<I, C>: Parser<I, C> + Sized {
+pub trait OrFail<I: InputTrait, C>: Parser<I, C> + Sized {
     fn or_fail(self, err: Self::Error) -> ToFatalParser<Self, Self::Error> {
         debug_assert!(err.is_fatal());
         ToFatalParser::new(self, Some(err))
     }
 }
 
-impl<I, C, P> OrFail<I, C> for P where P: Parser<I, C> + Sized {}
+impl<I, C, P> OrFail<I, C> for P
+where
+    I: InputTrait,
+    P: Parser<I, C> + Sized,
+{
+}
 
 pub struct ToFatalParser<P, E> {
     parser: P,
@@ -33,21 +43,22 @@ impl<P, E> ToFatalParser<P, E> {
 
 impl<I, C, P, E> Parser<I, C> for ToFatalParser<P, E>
 where
+    I: InputTrait,
     P: Parser<I, C, Error = E>,
     E: ParserErrorTrait,
 {
     type Output = P::Output;
     type Error = E;
 
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok(value) => Ok(value),
-            Err((i, err)) if !err.is_fatal() => {
+            Err(err) if !err.is_fatal() => {
                 let err = match &self.override_non_fatal_error {
                     Some(e) => e.clone(),
                     _ => err.to_fatal(),
                 };
-                Err((i, err))
+                Err(err)
             }
             Err(e) => Err(e),
         }
@@ -63,7 +74,7 @@ where
     }
 }
 
-pub trait MapErr<I, C>: Parser<I, C> + Sized {
+pub trait MapErr<I: InputTrait, C>: Parser<I, C> + Sized {
     fn map_fatal_err<F>(self, mapper: F) -> MapErrParser<Self, F> {
         MapErrParser::new(self, mapper, true, false)
     }
@@ -72,7 +83,12 @@ pub trait MapErr<I, C>: Parser<I, C> + Sized {
     }
 }
 
-impl<I, C, P> MapErr<I, C> for P where P: Parser<I, C> + Sized {}
+impl<I, C, P> MapErr<I, C> for P
+where
+    I: InputTrait,
+    P: Parser<I, C> + Sized,
+{
+}
 
 pub struct MapErrParser<P, F> {
     parser: P,
@@ -94,23 +110,23 @@ impl<P, F> MapErrParser<P, F> {
 
 impl<I, C, P, F> Parser<I, C> for MapErrParser<P, F>
 where
+    I: InputTrait,
     P: Parser<I, C>,
     F: Fn(P::Error) -> P::Error,
 {
     type Output = P::Output;
     type Error = P::Error;
 
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok(value) => Ok(value),
-            Err((i, err)) => Err((
-                i,
+            Err(err) => Err(
                 if self.map_non_fatal && !err.is_fatal() || self.map_fatal && err.is_fatal() {
                     (self.mapper)(err)
                 } else {
                     err
                 },
-            )),
+            ),
         }
     }
 }

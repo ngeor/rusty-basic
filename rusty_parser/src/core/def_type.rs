@@ -1,7 +1,7 @@
 use rusty_pc::*;
 
 use crate::error::ParserError;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{TokenType, any_token_of, minus_sign, whitespace_ignoring};
 use crate::{Keyword, LetterRange, TypeQualifier};
@@ -33,7 +33,7 @@ impl DefType {
 // LetterRange  ::= <Letter> | <Letter>-<Letter>
 // Letter       ::= [a-zA-Z]
 
-pub fn def_type_p() -> impl Parser<RcStringView, Output = DefType, Error = ParserError> {
+pub fn def_type_p() -> impl Parser<StringView, Output = DefType, Error = ParserError> {
     seq3(
         def_keyword_p(),
         whitespace_ignoring(),
@@ -42,7 +42,7 @@ pub fn def_type_p() -> impl Parser<RcStringView, Output = DefType, Error = Parse
     )
 }
 
-fn def_keyword_p() -> impl Parser<RcStringView, Output = TypeQualifier, Error = ParserError> {
+fn def_keyword_p() -> impl Parser<StringView, Output = TypeQualifier, Error = ParserError> {
     keyword_map(&[
         (Keyword::DefInt, TypeQualifier::PercentInteger),
         (Keyword::DefLng, TypeQualifier::AmpersandLong),
@@ -52,26 +52,26 @@ fn def_keyword_p() -> impl Parser<RcStringView, Output = TypeQualifier, Error = 
     ])
 }
 
-fn letter_ranges() -> impl Parser<RcStringView, Output = Vec<LetterRange>, Error = ParserError> {
+fn letter_ranges() -> impl Parser<StringView, Output = Vec<LetterRange>, Error = ParserError> {
     csv_non_opt(letter_range(), "letter ranges")
 }
 
-fn letter_range() -> impl Parser<RcStringView, Output = LetterRange, Error = ParserError> {
+fn letter_range() -> impl Parser<StringView, Output = LetterRange, Error = ParserError> {
     letter()
         .and_opt_tuple(minus_sign().and_tuple(letter()))
-        .flat_map(|input, (l, opt_r)| match opt_r {
+        .flat_map(|(l, opt_r)| match opt_r {
             Some((_, r)) => {
                 if l < r {
-                    Ok((input, LetterRange::Range(l, r)))
+                    Ok(LetterRange::Range(l, r))
                 } else {
-                    Err((input, ParserError::syntax_error("Invalid letter range")))
+                    Err(ParserError::syntax_error("Invalid letter range"))
                 }
             }
-            None => Ok((input, LetterRange::Single(l))),
+            None => Ok(LetterRange::Single(l)),
         })
 }
 
-fn letter() -> impl Parser<RcStringView, Output = char, Error = ParserError> {
+fn letter() -> impl Parser<StringView, Output = char, Error = ParserError> {
     any_token_of!(TokenType::Identifier)
         .filter(ExpectedLetter)
         .map(token_to_char)

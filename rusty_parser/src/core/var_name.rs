@@ -1,7 +1,7 @@
 use rusty_pc::*;
 
 use crate::core::name::{bare_name_without_dots, name_p};
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{keyword_ignoring, whitespace_ignoring};
 use crate::{ParserError, *};
@@ -111,13 +111,13 @@ pub(super) type VarNameCtx = (Option<TypeQualifier>, bool);
 pub(super) fn var_name<T, A, B, AP, BP>(
     opt_array_parser_factory: A,
     extended_type_parser_factory: B,
-) -> impl Parser<RcStringView, Output = TypedName<T>, Error = ParserError>
+) -> impl Parser<StringView, Output = TypedName<T>, Error = ParserError>
 where
     T: Default + VarType + CreateArray<ArrayDimensions = AP::Output>,
     A: Fn() -> AP,
-    AP: Parser<RcStringView, Error = ParserError> + 'static,
+    AP: Parser<StringView, Error = ParserError> + 'static,
     B: Fn() -> BP + 'static,
-    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError>
+    BP: Parser<StringView, VarNameCtx, Output = T, Error = ParserError>
         + SetContext<VarNameCtx>
         + 'static,
 {
@@ -132,10 +132,10 @@ where
 
 fn var_type_parser<T, BP>(
     extended_type_parser: BP,
-) -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
+) -> impl Parser<StringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
 where
     T: Default + VarType,
-    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError>
+    BP: Parser<StringView, VarNameCtx, Output = T, Error = ParserError>
         + SetContext<VarNameCtx>
         + 'static,
 {
@@ -143,7 +143,7 @@ where
 }
 
 fn qualified<T>()
--> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
+-> impl Parser<StringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
 where
     T: Default + VarType,
 {
@@ -151,33 +151,32 @@ where
     ctx_parser()
         // if the parsed name is qualified, return the result, otherwise soft error,
         // so that the next option (extended) can be invoked
-        .flat_map(|i, (opt_q, _)| match opt_q {
-            Some(q) => Ok((i, T::new_built_in_compact(q))),
-            None => Err((i, ParserError::default())),
+        .flat_map(|(opt_q, _)| match opt_q {
+            Some(q) => Ok(T::new_built_in_compact(q)),
+            None => Err(ParserError::default()),
         })
         // the following `and` will be invoked only if we had a result
         // we want to validate that a qualified variable is not
         // followed by an `AS` clause, in order to simulate the error that QBasic
         // throws when that happens
         .and_tuple(PeekParser::new(as_clause()).to_option().no_context())
-        .flat_map(|i, (result, has_opt_clause)| {
+        .flat_map(|(result, has_opt_clause)| {
             if has_opt_clause.is_some() {
-                Err((
-                    i,
-                    ParserError::syntax_error("Identifier cannot end with %, &, !, #, or $"),
+                Err(ParserError::syntax_error(
+                    "Identifier cannot end with %, &, !, #, or $",
                 ))
             } else {
-                Ok((i, result))
+                Ok(result)
             }
         })
 }
 
 fn extended<T, BP>(
     extended_type_parser: BP,
-) -> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
+) -> impl Parser<StringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
 where
     T: Default + VarType,
-    BP: Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>,
+    BP: Parser<StringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>,
 {
     let extended_type_parser = extended_type_parser.no_incomplete();
     as_clause()
@@ -186,7 +185,7 @@ where
 }
 
 fn bare<T>()
--> impl Parser<RcStringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
+-> impl Parser<StringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
 where
     T: Default + VarType,
 {
@@ -195,9 +194,9 @@ where
 
 fn name_with_opt_array<P>(
     opt_array_parser: P,
-) -> impl Parser<RcStringView, Output = (Name, P::Output), Error = ParserError>
+) -> impl Parser<StringView, Output = (Name, P::Output), Error = ParserError>
 where
-    P: Parser<RcStringView, Error = ParserError> + 'static,
+    P: Parser<StringView, Error = ParserError> + 'static,
 {
     seq2(name_p(), opt_array_parser, |name, array| (name, array))
 }
@@ -242,13 +241,13 @@ impl CreateArray for ParamType {
     }
 }
 
-fn as_clause() -> impl Parser<RcStringView, Output = (), Error = ParserError> {
+fn as_clause() -> impl Parser<StringView, Output = (), Error = ParserError> {
     whitespace_ignoring()
         .and_keep_right(keyword_ignoring(Keyword::As))
         .and_keep_left(whitespace_ignoring())
 }
 
-pub(crate) fn user_defined_type<T>() -> impl Parser<RcStringView, Output = T, Error = ParserError>
+pub(crate) fn user_defined_type<T>() -> impl Parser<StringView, Output = T, Error = ParserError>
 where
     T: VarType,
 {

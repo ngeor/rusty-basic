@@ -2,7 +2,7 @@ use rusty_pc::*;
 
 use crate::core::name::{bare_name_p, name_p};
 use crate::core::param_name::parameter_pos_p;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::whitespace_ignoring;
 use crate::{ParserError, *};
@@ -18,7 +18,7 @@ use crate::{ParserError, *};
 // ExtendedBuiltIn       ::= <BareName><ws+>AS<ws+>(SINGLE|DOUBLE|STRING|INTEGER|LONG)
 // UserDefined           ::= <BareName><ws+>AS<ws+><BareName>
 
-pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement, Error = ParserError> {
+pub fn declaration_p() -> impl Parser<StringView, Output = GlobalStatement, Error = ParserError> {
     keyword_ws_p(Keyword::Declare).and_keep_right(
         OrParser::new(vec![
             Box::new(
@@ -31,7 +31,7 @@ pub fn declaration_p() -> impl Parser<RcStringView, Output = GlobalStatement, Er
 }
 
 pub fn function_declaration_p()
--> impl Parser<RcStringView, Output = (NamePos, Parameters), Error = ParserError> {
+-> impl Parser<StringView, Output = (NamePos, Parameters), Error = ParserError> {
     seq3(
         keyword_ws_p(Keyword::Function),
         name_p().with_pos().or_expected("function name"),
@@ -41,7 +41,7 @@ pub fn function_declaration_p()
 }
 
 pub fn sub_declaration_p()
--> impl Parser<RcStringView, Output = (BareNamePos, Parameters), Error = ParserError> {
+-> impl Parser<StringView, Output = (BareNamePos, Parameters), Error = ParserError> {
     seq3(
         keyword_ws_p(Keyword::Sub),
         bare_name_p().with_pos().or_expected("sub name"),
@@ -51,8 +51,7 @@ pub fn sub_declaration_p()
 }
 
 // result ::= "" | "(" ")" | "(" parameter (,parameter)* ")"
-fn declaration_parameters_p() -> impl Parser<RcStringView, Output = Parameters, Error = ParserError>
-{
+fn declaration_parameters_p() -> impl Parser<StringView, Output = Parameters, Error = ParserError> {
     // TODO remove the need for the double .or_default()
     opt_and_keep_right(
         whitespace_ignoring(),

@@ -1,10 +1,10 @@
 use rusty_pc::*;
 
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::{BuiltInSub, ParserError, *};
 
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     keyword(Keyword::Read)
         .and_keep_right(csv_expressions_first_guarded().or_expected("variable"))
         .map(|args| Statement::built_in_sub_call(BuiltInSub::Read, args))

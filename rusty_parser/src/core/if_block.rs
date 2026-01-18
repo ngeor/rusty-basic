@@ -6,12 +6,12 @@ use crate::core::single_line_statements::{
     single_line_non_comment_statements_p, single_line_statements_p
 };
 use crate::core::statements::zero_or_more_statements;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::whitespace_ignoring;
 use crate::{ParserError, *};
 
-pub fn if_block_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn if_block_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     seq2(
         if_expr_then_p(),
         single_line_if_else_p()
@@ -35,7 +35,7 @@ pub fn if_block_p() -> impl Parser<RcStringView, Output = Statement, Error = Par
 // single line else ::= ELSE non-comment-statements-separated-by-colon comment-statement
 // multi line if    ::= statements else-if-blocks else-block END IF
 
-fn if_expr_then_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
+fn if_expr_then_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     seq3(
         keyword(Keyword::If),
         ws_expr_pos_ws_p().or_expected("expression after IF"),
@@ -45,7 +45,7 @@ fn if_expr_then_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error =
 }
 
 fn single_line_if_else_p() -> impl Parser<
-    RcStringView,
+    StringView,
     Output = (Statements, Vec<ConditionalBlock>, Option<Statements>),
     Error = ParserError,
 > {
@@ -58,14 +58,14 @@ fn single_line_if_else_p() -> impl Parser<
     )
 }
 
-fn single_line_else_p() -> impl Parser<RcStringView, Output = Statements, Error = ParserError> {
+fn single_line_else_p() -> impl Parser<StringView, Output = Statements, Error = ParserError> {
     whitespace_ignoring()
         .and(keyword(Keyword::Else), IgnoringBothCombiner)
         .and_keep_right(single_line_statements_p().or_expected("Statements for single line ELSE"))
 }
 
 fn multi_line_if_p() -> impl Parser<
-    RcStringView,
+    StringView,
     Output = (Statements, Vec<ConditionalBlock>, Option<Statements>),
     Error = ParserError,
 > {
@@ -78,7 +78,7 @@ fn multi_line_if_p() -> impl Parser<
     )
 }
 
-fn else_if_expr_then_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
+fn else_if_expr_then_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     seq3(
         keyword(Keyword::ElseIf),
         ws_expr_pos_ws_p().or_expected("expression after ELSEIF"),
@@ -87,7 +87,7 @@ fn else_if_expr_then_p() -> impl Parser<RcStringView, Output = ExpressionPos, Er
     )
 }
 
-fn else_if_block_p() -> impl Parser<RcStringView, Output = ConditionalBlock, Error = ParserError> {
+fn else_if_block_p() -> impl Parser<StringView, Output = ConditionalBlock, Error = ParserError> {
     seq2(
         else_if_expr_then_p(),
         zero_or_more_statements!(Keyword::End, Keyword::Else, Keyword::ElseIf),
@@ -98,7 +98,7 @@ fn else_if_block_p() -> impl Parser<RcStringView, Output = ConditionalBlock, Err
     )
 }
 
-fn else_block_p() -> impl Parser<RcStringView, Output = Statements, Error = ParserError> {
+fn else_block_p() -> impl Parser<StringView, Output = Statements, Error = ParserError> {
     keyword(Keyword::Else).and_keep_right(zero_or_more_statements!(Keyword::End))
 }
 

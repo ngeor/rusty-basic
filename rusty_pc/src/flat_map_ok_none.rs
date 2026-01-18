@@ -1,9 +1,9 @@
-use crate::{ParseResult, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
 
 /// Flat map the result of this parser for successful and incomplete results.
 /// Mapping is done by the given closures.
 /// Other errors are never allowed to be re-mapped.
-pub trait FlatMapOkNone<I, C>: Parser<I, C>
+pub trait FlatMapOkNone<I: InputTrait, C>: Parser<I, C>
 where
     Self: Sized,
 {
@@ -13,14 +13,19 @@ where
         incomplete_mapper: G,
     ) -> FlatMapOkNoneParser<Self, F, G>
     where
-        F: Fn(I, Self::Output) -> ParseResult<I, U, Self::Error>,
-        G: Fn(I) -> ParseResult<I, U, Self::Error>,
+        F: Fn(Self::Output) -> Result<U, Self::Error>,
+        G: Fn() -> Result<U, Self::Error>,
     {
         FlatMapOkNoneParser::new(self, ok_mapper, incomplete_mapper)
     }
 }
 
-impl<I, C, P> FlatMapOkNone<I, C> for P where P: Parser<I, C> {}
+impl<I, C, P> FlatMapOkNone<I, C> for P
+where
+    I: InputTrait,
+    P: Parser<I, C>,
+{
+}
 
 pub struct FlatMapOkNoneParser<P, F, G> {
     parser: P,
@@ -40,16 +45,17 @@ impl<P, F, G> FlatMapOkNoneParser<P, F, G> {
 
 impl<I, C, P, F, G, U> Parser<I, C> for FlatMapOkNoneParser<P, F, G>
 where
+    I: InputTrait,
     P: Parser<I, C>,
-    F: Fn(I, P::Output) -> ParseResult<I, U, P::Error>,
-    G: Fn(I) -> ParseResult<I, U, P::Error>,
+    F: Fn(P::Output) -> Result<U, P::Error>,
+    G: Fn() -> Result<U, P::Error>,
 {
     type Output = U;
     type Error = P::Error;
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.parser.parse(input) {
-            Ok((input, value)) => (self.ok_mapper)(input, value),
-            Err((i, err)) if !err.is_fatal() => (self.incomplete_mapper)(i),
+            Ok(value) => (self.ok_mapper)(value),
+            Err(err) if !err.is_fatal() => (self.incomplete_mapper)(),
             Err(err) => Err(err),
         }
     }
@@ -67,6 +73,7 @@ where
 pub trait FlatMapNegateNone<I, C>: FlatMapOkNone<I, C>
 where
     Self: Sized,
+    I: InputTrait,
 {
     /// Flat map the successful of this parser into an empty result.
     /// The Failed result is negated and mapped into an empty successful result (i.e. `None` becomes `Ok(())`).
@@ -75,10 +82,15 @@ where
         ok_mapper: F,
     ) -> impl Parser<I, C, Output = (), Error = Self::Error>
     where
-        F: Fn(I, Self::Output) -> ParseResult<I, (), Self::Error>,
+        F: Fn(Self::Output) -> Result<(), Self::Error>,
     {
-        self.flat_map_ok_none(ok_mapper, |input| Ok((input, ())))
+        self.flat_map_ok_none(ok_mapper, || Ok(()))
     }
 }
 
-impl<I, C, P> FlatMapNegateNone<I, C> for P where P: FlatMapOkNone<I, C> {}
+impl<I, C, P> FlatMapNegateNone<I, C> for P
+where
+    P: FlatMapOkNone<I, C>,
+    I: InputTrait,
+{
+}

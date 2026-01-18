@@ -1,6 +1,9 @@
-use crate::{ParseResult, Parser, SetContext};
+use crate::{InputTrait, Parser, SetContext};
 
-pub trait InitContext<I, CInner>: Parser<I, CInner> + SetContext<CInner> + Sized {
+pub trait InitContext<I, CInner>: Parser<I, CInner> + SetContext<CInner> + Sized
+where
+    I: InputTrait,
+{
     /// Creates a parser that will initialize the context of the underlying parser
     /// to the given value before parsing starts.
     fn init_context(self, value: CInner) -> InitContextParser<Self, CInner>
@@ -11,7 +14,12 @@ pub trait InitContext<I, CInner>: Parser<I, CInner> + SetContext<CInner> + Sized
     }
 }
 
-impl<I, CInner, P> InitContext<I, CInner> for P where P: Parser<I, CInner> + SetContext<CInner> {}
+impl<I, CInner, P> InitContext<I, CInner> for P
+where
+    I: InputTrait,
+    P: Parser<I, CInner> + SetContext<CInner>,
+{
+}
 
 /// Initializes the context of the underlying parser to the given value
 /// before parsing starts.
@@ -31,12 +39,13 @@ impl<P, CInner> InitContextParser<P, CInner> {
 
 impl<I, COuter, CInner, P> Parser<I, COuter> for InitContextParser<P, CInner>
 where
+    I: InputTrait,
     P: Parser<I, CInner> + SetContext<CInner>,
     CInner: Clone,
 {
     type Output = P::Output;
     type Error = P::Error;
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         self.parser.set_context(self.value.clone());
         self.parser.parse(input)
     }

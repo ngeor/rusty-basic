@@ -1,24 +1,23 @@
 #[cfg(debug_assertions)]
-use rusty_pc::ParseResult;
 use rusty_pc::{Parser, SetContext};
 
 use crate::error::ParserError;
-use crate::input::RcStringView;
+use crate::input::StringView;
 
 #[allow(dead_code)]
-pub trait Logging: Parser<RcStringView, Error = ParserError>
+pub trait Logging: Parser<StringView, Error = ParserError>
 where
     Self: Sized,
     Self::Output: std::fmt::Debug,
 {
-    fn logging(self, tag: &str) -> impl Parser<RcStringView, Output = Self::Output> {
+    fn logging(self, tag: &str) -> impl Parser<StringView, Output = Self::Output> {
         LoggingParser::new(self, tag.to_owned())
     }
 }
 
 impl<P> Logging for P
 where
-    P: Parser<RcStringView, Error = ParserError>,
+    P: Parser<StringView, Error = ParserError>,
     P::Output: std::fmt::Debug,
 {
 }
@@ -45,18 +44,15 @@ fn indentation() -> String {
     s
 }
 
-impl<P> Parser<RcStringView> for LoggingParser<P>
+impl<P> Parser<StringView> for LoggingParser<P>
 where
-    P: Parser<RcStringView, Error = ParserError>,
+    P: Parser<StringView, Error = ParserError>,
     P::Output: std::fmt::Debug,
 {
     type Output = P::Output;
     type Error = ParserError;
 
-    fn parse(
-        &mut self,
-        tokenizer: RcStringView,
-    ) -> ParseResult<RcStringView, Self::Output, ParserError> {
+    fn parse(&mut self, tokenizer: &mut StringView) -> Result<Self::Output, ParserError> {
         println!(
             "{}{} Parsing at position {:?}",
             indentation(),
@@ -71,25 +67,25 @@ where
             INDENTATION_LEVEL -= 1;
         }
         match result {
-            Ok((input, value)) => {
+            Ok(value) => {
                 println!(
                     "{}{} Success. value={:?}, current position {:?}",
                     indentation(),
                     self.tag,
                     value,
-                    input.position(),
+                    tokenizer.position(),
                 );
-                Ok((input, value))
+                Ok(value)
             }
-            Err((i, err)) => {
+            Err(err) => {
                 println!(
                     "{}{} Err {:?}, current position {:?}",
                     indentation(),
                     self.tag,
                     err,
-                    i.position()
+                    tokenizer.position()
                 );
-                Err((i, err))
+                Err(err)
             }
         }
     }

@@ -2,7 +2,7 @@ use rusty_pc::*;
 
 use crate::core::name::bare_name_p;
 use crate::core::statement_separator::peek_eof_or_statement_separator;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{keyword_ignoring, whitespace_ignoring};
 use crate::{Keyword, ParserError, ResumeOption, Statement};
@@ -11,13 +11,13 @@ use crate::{Keyword, ParserError, ResumeOption, Statement};
 // RESUME NEXT
 // RESUME label
 
-pub fn statement_resume_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn statement_resume_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     keyword(Keyword::Resume)
         .and_keep_right(resume_option_p().or_expected("label or NEXT or end-of-statement"))
         .map(Statement::Resume)
 }
 
-fn resume_option_p() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParserError> {
+fn resume_option_p() -> impl Parser<StringView, Output = ResumeOption, Error = ParserError> {
     OrParser::new(vec![
         Box::new(blank_resume()),
         Box::new(resume_next()),
@@ -25,15 +25,15 @@ fn resume_option_p() -> impl Parser<RcStringView, Output = ResumeOption, Error =
     ])
 }
 
-fn blank_resume() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParserError> {
+fn blank_resume() -> impl Parser<StringView, Output = ResumeOption, Error = ParserError> {
     peek_eof_or_statement_separator().map(|_| ResumeOption::Bare)
 }
 
-fn resume_next() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParserError> {
+fn resume_next() -> impl Parser<StringView, Output = ResumeOption, Error = ParserError> {
     whitespace_ignoring().and(keyword_ignoring(Keyword::Next), |_, _| ResumeOption::Next)
 }
 
-fn resume_label() -> impl Parser<RcStringView, Output = ResumeOption, Error = ParserError> {
+fn resume_label() -> impl Parser<StringView, Output = ResumeOption, Error = ParserError> {
     whitespace_ignoring().and(bare_name_p(), |_, r| ResumeOption::Label(r))
 }
 

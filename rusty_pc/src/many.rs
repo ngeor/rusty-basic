@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
-use crate::{ParseResult, Parser, ParserErrorTrait, SetContext, Token};
+use crate::{InputTrait, Parser, ParserErrorTrait, SetContext, Token};
 
 /// Collects multiple values from the underlying parser as long as parsing succeeds.
-pub trait Many<I, C>: Parser<I, C>
+pub trait Many<I: InputTrait, C>: Parser<I, C>
 where
     Self: Sized,
 {
@@ -26,7 +26,12 @@ where
     }
 }
 
-impl<I, C, P> Many<I, C> for P where P: Parser<I, C> {}
+impl<I, C, P> Many<I, C> for P
+where
+    I: InputTrait,
+    P: Parser<I, C>,
+{
+}
 
 pub struct ManyParser<P, F, O> {
     parser: P,
@@ -48,38 +53,37 @@ impl<P, F, O> ManyParser<P, F, O> {
 
 impl<I, C, P, F, O> Parser<I, C> for ManyParser<P, F, O>
 where
+    I: InputTrait,
     P: Parser<I, C>,
     F: ManyCombiner<P::Output, O>,
     O: Default,
 {
     type Output = O;
     type Error = P::Error;
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.parser.parse(input) {
-            Ok((mut input, first_value)) => {
+            Ok(first_value) => {
                 let mut result = self.combiner.seed(first_value);
                 loop {
                     match self.parser.parse(input) {
-                        Ok((i, value)) => {
-                            input = i;
+                        Ok(value) => {
                             result = self.combiner.accumulate(result, value);
                         }
-                        Err((i, err)) if !err.is_fatal() => {
-                            input = i;
+                        Err(err) if !err.is_fatal() => {
                             break;
                         }
-                        Err(e) => {
-                            return Err(e);
+                        Err(err) => {
+                            return Err(err);
                         }
                     }
                 }
-                Ok((input, result))
+                Ok(result)
             }
-            Err((input, err)) if !err.is_fatal() => {
+            Err(err) if !err.is_fatal() => {
                 if self.allow_none {
-                    Ok((input, O::default()))
+                    Ok(O::default())
                 } else {
-                    Err((input, err))
+                    Err(err)
                 }
             }
             Err(err) => Err(err),
@@ -99,6 +103,7 @@ where
 pub trait ManyVec<I, C>: Many<I, C>
 where
     Self: Sized,
+    I: InputTrait,
 {
     fn one_or_more(self) -> ManyParser<Self, VecManyCombiner, Vec<Self::Output>> {
         self.many(VecManyCombiner)
@@ -109,7 +114,12 @@ where
     }
 }
 
-impl<I, C, P> ManyVec<I, C> for P where P: Many<I, C> {}
+impl<I, C, P> ManyVec<I, C> for P
+where
+    P: Many<I, C>,
+    I: InputTrait,
+{
+}
 
 /// Combines multiple values into a single result.
 ///

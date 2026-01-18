@@ -36,7 +36,8 @@ macro_rules! seq_pc {
             pub fn new(
                 _mapper: _F,
                 $first_type: impl Parser<_I, _C, Output = $first_type, Error = _E> + 'static,
-                $($generic_type: impl Parser<_I, _C, Output = $generic_type, Error = _E> +'static ),+) -> Self {
+                $($generic_type: impl Parser<_I, _C, Output = $generic_type, Error = _E> +'static ),+) -> Self
+                where _I: InputTrait {
                 Self {
                     _mapper,
                     $first_type : Box::new($first_type),
@@ -54,6 +55,7 @@ macro_rules! seq_pc {
         $name
         <_I, _C, _E, _F, $first_type, $($generic_type),+>
         where
+            _I: $crate::InputTrait,
             _C: Clone,
             _E: $crate::ParserErrorTrait,
             _F : Fn($first_type, $($generic_type),+) -> _O
@@ -62,23 +64,20 @@ macro_rules! seq_pc {
             type Error = _E;
 
             #[allow(non_snake_case)]
-            fn parse(&mut self, tokenizer: _I) -> ParseResult<_I, Self::Output, _E> {
+            fn parse(&mut self, tokenizer: &mut _I) -> Result<Self::Output, _E> {
                 // the first is allowed to return incomplete
-                let (tokenizer, $first_type) = self.$first_type.parse(tokenizer)?;
+                let $first_type = self.$first_type.parse(tokenizer)?;
 
                 $(
                     // but the rest are not...
-                    let (tokenizer, $generic_type) = match self.$generic_type.parse(tokenizer) {
+                    let $generic_type = match self.$generic_type.parse(tokenizer) {
                         Ok(x) => x,
                         // ... so convert any error to fatal
-                        Err((input, err)) => return Err((input, err.to_fatal())),
+                        Err(err) => return Err(err.to_fatal()),
                     };
                 )+
                 Ok(
-                    (
-                        tokenizer,
-                        (self._mapper)($first_type, $($generic_type),+)
-                    )
+                    (self._mapper)($first_type, $($generic_type),+)
                 )
             }
         }
@@ -90,6 +89,7 @@ macro_rules! seq_pc {
             mapper: _F
         ) -> impl Parser<_I, _C, Output = _O, Error = _E>
         where
+            _I: $crate::InputTrait,
             _C: Clone,
             _E: $crate::ParserErrorTrait,
             _F: Fn($first_type, $($generic_type),+) -> _O

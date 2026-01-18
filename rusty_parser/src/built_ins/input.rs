@@ -1,13 +1,13 @@
 use rusty_pc::*;
 
 use crate::built_ins::common::{encode_opt_file_handle_arg, opt_file_handle_comma_p};
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::{BuiltInSub, ParserError, *};
 
 // INPUT variable-list
 // INPUT #file-number%, variable-list
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     seq3(
         keyword_ws_p(Keyword::Input),
         opt_file_handle_comma_p(),

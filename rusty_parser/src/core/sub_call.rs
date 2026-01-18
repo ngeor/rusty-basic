@@ -3,7 +3,7 @@ use rusty_pc::*;
 
 use crate::core::expression::{csv_expressions_first_guarded, expression_pos_p, property};
 use crate::error::ParserError;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::equal_sign_ws;
 use crate::*;
@@ -13,28 +13,22 @@ use crate::*;
 // SubCallArgsNoParenthesis ::= BareName<ws+>Expressions
 // SubCallArgsParenthesis   ::= BareName(Expressions)
 
-pub fn sub_call_or_assignment_p()
--> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn sub_call_or_assignment_p() -> impl Parser<StringView, Output = Statement, Error = ParserError>
+{
     SubCallOrAssignment
 }
 
 struct SubCallOrAssignment;
 
-impl Parser<RcStringView> for SubCallOrAssignment {
+impl Parser<StringView> for SubCallOrAssignment {
     type Output = Statement;
     type Error = ParserError;
-    fn parse(
-        &mut self,
-        tokenizer: RcStringView,
-    ) -> ParseResult<RcStringView, Self::Output, ParserError> {
+    fn parse(&mut self, tokenizer: &mut StringView) -> Result<Self::Output, ParserError> {
         let (
-            tokenizer,
-            (
-                Positioned {
-                    element: name_expr, ..
-                },
-                opt_equal_sign,
-            ),
+            Positioned {
+                element: name_expr, ..
+            },
+            opt_equal_sign,
         ) = Self::name_and_opt_eq_sign().parse(tokenizer)?;
 
         if opt_equal_sign.is_some() {
@@ -42,20 +36,20 @@ impl Parser<RcStringView> for SubCallOrAssignment {
             expression_pos_p()
                 .or_expected("variable=expression")
                 .parse(tokenizer)
-                .map_ok(|right_side_expr| Statement::assignment(name_expr, right_side_expr))
+                .map(|right_side_expr| Statement::assignment(name_expr, right_side_expr))
         } else if property::is_qualified(&name_expr) {
             // a left-side qualified variable can only be assigned to,
             // i.e. SUBs can't be qualified
-            Err((tokenizer, ParserError::expected("=").to_fatal()))
+            Err(ParserError::expected("=").to_fatal())
         } else {
             // it's a sub call
             let (bare_name, opt_args) = expr_to_bare_name_args(name_expr);
             match opt_args {
-                Some(args) => Ok((tokenizer, Statement::sub_call(bare_name, args))),
+                Some(args) => Ok(Statement::sub_call(bare_name, args)),
                 _ => csv_expressions_first_guarded()
                     .or_default()
                     .parse(tokenizer)
-                    .map_ok(|args| Statement::sub_call(bare_name, args)),
+                    .map(|args| Statement::sub_call(bare_name, args)),
             }
         }
     }
@@ -63,7 +57,7 @@ impl Parser<RcStringView> for SubCallOrAssignment {
 
 impl SubCallOrAssignment {
     fn name_and_opt_eq_sign()
-    -> impl Parser<RcStringView, Output = (ExpressionPos, Option<Token>), Error = ParserError> {
+    -> impl Parser<StringView, Output = (ExpressionPos, Option<Token>), Error = ParserError> {
         property::parser().and_opt_tuple(equal_sign_ws())
     }
 }

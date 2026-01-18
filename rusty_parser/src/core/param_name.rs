@@ -3,7 +3,7 @@ use rusty_pc::boxed::boxed;
 use rusty_pc::*;
 
 use crate::core::{VarNameCtx, var_name};
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{any_symbol_of, any_token_of};
 use crate::{Keyword, ParserError, *};
@@ -81,22 +81,23 @@ impl HasExpressionType for ParamType {
 /// A AS UserDefinedType // not dots no qualifiers
 /// A() empty array
 /// A.B() as INTEGER
-pub fn parameter_pos_p() -> impl Parser<RcStringView, Output = ParameterPos, Error = ParserError> {
+pub fn parameter_pos_p() -> impl Parser<StringView, Output = ParameterPos, Error = ParserError> {
     parameter_p().with_pos()
 }
 
-fn parameter_p() -> impl Parser<RcStringView, Output = Parameter, Error = ParserError> {
+fn parameter_p() -> impl Parser<StringView, Output = Parameter, Error = ParserError> {
     var_name(array_indicator, extended_type)
 }
 
-fn array_indicator()
--> impl Parser<RcStringView, Output = Option<(Token, Token)>, Error = ParserError> {
+fn array_indicator() -> impl Parser<StringView, Output = Option<(Token, Token)>, Error = ParserError>
+{
     // TODO support ignoring token to avoid allocation
     seq2(any_symbol_of!('('), any_symbol_of!(')'), |l, r| (l, r)).to_option()
 }
 
-fn extended_type() -> impl Parser<RcStringView, VarNameCtx, Output = ParamType, Error = ParserError>
-+ SetContext<VarNameCtx> {
+fn extended_type()
+-> impl Parser<StringView, VarNameCtx, Output = ParamType, Error = ParserError> + SetContext<VarNameCtx>
+{
     ctx_parser()
         .map(|(_, allow_user_defined)| {
             if allow_user_defined {
@@ -115,7 +116,7 @@ fn extended_type() -> impl Parser<RcStringView, VarNameCtx, Output = ParamType, 
         .flatten()
 }
 
-fn built_in_extended_type() -> impl Parser<RcStringView, Output = ParamType, Error = ParserError> {
+fn built_in_extended_type() -> impl Parser<StringView, Output = ParamType, Error = ParserError> {
     keyword_map(&[
         (
             Keyword::Single,

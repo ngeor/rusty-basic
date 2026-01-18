@@ -1,18 +1,18 @@
 use rusty_pc::*;
 
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::comma_ws;
 use crate::{BuiltInSub, ParserError, *};
 
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     parse_get_or_put(Keyword::Get, BuiltInSub::Get)
 }
 
 pub fn parse_get_or_put(
     k: Keyword,
     built_in_sub: BuiltInSub,
-) -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+) -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     seq4(
         keyword_ws_p(k),
         file_handle_p().or_expected("file-number"),

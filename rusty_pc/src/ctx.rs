@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{ParseResult, Parser, ParserErrorTrait};
+use crate::{InputTrait, Parser, ParserErrorTrait};
 
 /// Indicates the support of context and allows for setting the context value.
 pub trait SetContext<C> {
@@ -14,6 +14,7 @@ pub trait SetContext<C> {
 /// Access the context as a parser.
 pub fn ctx_parser<I, C, E>() -> impl Parser<I, C, Output = C, Error = E> + SetContext<C>
 where
+    I: InputTrait,
     C: Clone,
     E: ParserErrorTrait,
 {
@@ -30,15 +31,16 @@ impl<C, E> CtxParser<C, E> {
 
 impl<I, C, E> Parser<I, C> for CtxParser<C, E>
 where
+    I: InputTrait,
     C: Clone,
     E: ParserErrorTrait,
 {
     type Output = C;
     type Error = E;
 
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, _input: &mut I) -> Result<Self::Output, Self::Error> {
         match &self.0 {
-            Some(ctx) => Ok((input, ctx.clone())),
+            Some(ctx) => Ok(ctx.clone()),
             None => panic!("context was not set"),
         }
     }
@@ -54,15 +56,22 @@ impl<C, E> SetContext<C> for CtxParser<C, E> {
     }
 }
 
-pub trait NoContext<I, C>: Parser<I, C>
+pub trait NoContext<I: InputTrait, C>: Parser<I, C>
 where
     Self: Sized,
+    I: InputTrait,
 {
     fn no_context<C2>(self) -> NoContextParser<Self, C, C2> {
         NoContextParser::new(self)
     }
 }
-impl<I, C, P> NoContext<I, C> for P where P: Parser<I, C> {}
+impl<I, C, P> NoContext<I, C> for P
+where
+    I: InputTrait,
+    P: Parser<I, C>,
+    I: InputTrait,
+{
+}
 
 pub struct NoContextParser<P, C1, C2> {
     parser: P,
@@ -80,10 +89,11 @@ impl<P, C1, C2> NoContextParser<P, C1, C2> {
 impl<I, C1, C2, P> Parser<I, C2> for NoContextParser<P, C1, C2>
 where
     P: Parser<I, C1>,
+    I: InputTrait,
 {
     type Output = P::Output;
     type Error = P::Error;
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         self.parser.parse(input)
     }
 }

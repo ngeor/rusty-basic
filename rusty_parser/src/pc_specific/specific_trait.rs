@@ -1,10 +1,10 @@
 use rusty_pc::{OrFail, Parser, ParserErrorTrait, SurroundMode, ToFatalParser, surround};
 
 use crate::error::ParserError;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::tokens::whitespace_ignoring;
 
-pub trait OrExpected<C>: Parser<RcStringView, C, Error = ParserError>
+pub trait OrExpected<C>: Parser<StringView, C, Error = ParserError>
 where
     Self: Sized,
 {
@@ -16,13 +16,13 @@ where
     }
 }
 
-impl<P, C> OrExpected<C> for P where P: Parser<RcStringView, C, Error = ParserError> {}
+impl<P, C> OrExpected<C> for P where P: Parser<StringView, C, Error = ParserError> {}
 
-pub trait PaddedByWs: Parser<RcStringView, Error = ParserError>
+pub trait PaddedByWs: Parser<StringView, Error = ParserError>
 where
     Self: Sized,
 {
-    fn padded_by_ws(self) -> impl Parser<RcStringView, Output = Self::Output, Error = Self::Error> {
+    fn padded_by_ws(self) -> impl Parser<StringView, Output = Self::Output, Error = Self::Error> {
         surround(
             whitespace_ignoring(),
             self,
@@ -32,4 +32,4 @@ where
     }
 }
 
-impl<P> PaddedByWs for P where P: Parser<RcStringView, Error = ParserError> {}
+impl<P> PaddedByWs for P where P: Parser<StringView, Error = ParserError> {}

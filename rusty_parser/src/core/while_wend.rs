@@ -4,11 +4,11 @@ use crate::core::expression::ws_expr_pos_p;
 use crate::core::statement::ConditionalBlock;
 use crate::core::statements::zero_or_more_statements;
 use crate::error::ParserError;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::*;
 
-pub fn while_wend_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn while_wend_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     seq4(
         keyword(Keyword::While),
         ws_expr_pos_p().or_expected("expression after WHILE"),

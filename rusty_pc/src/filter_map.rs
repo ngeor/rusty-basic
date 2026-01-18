@@ -1,9 +1,9 @@
-use crate::{ParseResult, ParseResultTrait, Parser, SetContext, default_parse_error};
+use crate::{InputTrait, Parser, SetContext, default_parse_error};
 
-pub trait FilterMap<I, C>: Parser<I, C>
+pub trait FilterMap<I: InputTrait, C>: Parser<I, C>
 where
     Self: Sized,
-    I: Clone,
+    I: InputTrait,
     Self::Error: Default,
 {
     fn filter_map<F, U>(self, predicate: F) -> impl Parser<I, C, Output = U, Error = Self::Error>
@@ -15,8 +15,9 @@ where
 }
 impl<I, C, P> FilterMap<I, C> for P
 where
+    I: InputTrait,
     P: Parser<I, C>,
-    I: Clone,
+    I: InputTrait,
     P::Error: Default,
 {
 }
@@ -32,19 +33,23 @@ impl<P, F> FilterMapParser<P, F> {
 }
 impl<I, C, P, F, U> Parser<I, C> for FilterMapParser<P, F>
 where
+    I: InputTrait,
     P: Parser<I, C>,
-    I: Clone,
     P::Error: Default,
     F: Fn(&P::Output) -> Option<U>,
 {
     type Output = U;
     type Error = P::Error;
-    fn parse(&mut self, tokenizer: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, tokenizer: &mut I) -> Result<Self::Output, Self::Error> {
+        let original_input = tokenizer.get_position();
         self.parser
-            .parse(tokenizer.clone())
-            .flat_map(|input, result| match (self.predicate)(&result) {
-                Some(value) => Ok((input, value)),
-                None => default_parse_error(tokenizer),
+            .parse(tokenizer)
+            .and_then(|result| match (self.predicate)(&result) {
+                Some(value) => Ok(value),
+                None => {
+                    tokenizer.set_position(original_input);
+                    default_parse_error()
+                }
             })
     }
 }

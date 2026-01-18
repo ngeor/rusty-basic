@@ -1,8 +1,8 @@
-use crate::{ParseResult, Parser, ParserErrorTrait, default_parse_error};
+use crate::{InputTrait, Parser, ParserErrorTrait, default_parse_error};
 
 /// Creates a parser that can parse a list of element
 /// separated by a delimiter.
-pub trait DelimitedBy<I, C>: Parser<I, C> + Sized {
+pub trait DelimitedBy<I: InputTrait, C>: Parser<I, C> + Sized {
     /// Creates a new parser that uses this parser to parse elements
     /// that are separated by the given delimiter.
     ///
@@ -67,6 +67,7 @@ pub trait DelimitedBy<I, C>: Parser<I, C> + Sized {
 
 impl<I, C, P> DelimitedBy<I, C> for P
 where
+    I: InputTrait,
     P: Parser<I, C>,
     P::Error: Clone + Default,
 {
@@ -144,6 +145,7 @@ impl<E> ElementCollector<E> for OptionalElementCollector {
 
 impl<I, C, P, D, E, A> Parser<I, C> for DelimitedParser<P, D, E, A>
 where
+    I: InputTrait,
     P: Parser<I, C, Error = E>,
     D: Parser<I, C, Error = E>,
     E: ParserErrorTrait,
@@ -156,35 +158,33 @@ where
     type Output = Vec<A::CollectedElement>;
     type Error = E;
 
-    fn parse(&mut self, mut input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         let mut result: Self::Output = vec![];
         let mut state = State::Initial;
         let mut last_parsed = LastParsed::Nothing;
         loop {
             match self.parser.parse(input) {
-                Ok((remaining, value)) => {
+                Ok(value) => {
                     // collect value
                     debug_assert!(state != State::AfterValue);
                     state = State::AfterValue;
                     result.push(self.element_collector.map(value));
-                    input = remaining;
                     last_parsed = LastParsed::Value;
                 }
-                Err((remaining, err)) => {
+                Err(err) => {
                     if err.is_fatal() {
                         // always return on fatal errors
-                        return Err((remaining, err));
+                        return Err(err);
                     }
                     // maybe get delimiter
                     state = State::AfterNoValue;
-                    input = remaining;
                 }
             }
 
             debug_assert!(state == State::AfterValue || state == State::AfterNoValue);
 
             match self.delimiter.parse(input) {
-                Ok((remaining, _)) => {
+                Ok(_) => {
                     if state == State::AfterNoValue {
                         match self.element_collector.map_missing_element() {
                             Some(value) => {
@@ -193,30 +193,28 @@ where
                             }
                             None => {
                                 // missing elements are not allowed and we found a delimiter
-                                return Err((remaining, self.trailing_error.clone()));
+                                return Err(self.trailing_error.clone());
                             }
                         }
                     }
 
                     state = State::AfterDelimiter;
-                    input = remaining;
                     last_parsed = LastParsed::Delimiter;
                 }
-                Err((remaining, err)) => {
+                Err(err) => {
                     if err.is_fatal() {
                         // always return on fatal errors
-                        return Err((remaining, err));
+                        return Err(err);
                     }
-                    input = remaining;
                     break;
                 }
             }
         }
 
         match last_parsed {
-            LastParsed::Nothing => default_parse_error(input),
-            LastParsed::Value => Ok((input, result)),
-            LastParsed::Delimiter => Err((input, self.trailing_error.clone())),
+            LastParsed::Nothing => default_parse_error(),
+            LastParsed::Value => Ok(result),
+            LastParsed::Delimiter => Err(self.trailing_error.clone()),
         }
     }
 }

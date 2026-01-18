@@ -1,6 +1,6 @@
 use rusty_pc::*;
 
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::comma_ws;
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
 // next_file_handles ::= <file_handle> | <file_handle> <opt-ws> "," <opt-ws> <next_file_handles>
 // first_file_handle ::= "(" <file_handle> ")" | <ws> <file_handle>
 // file_handle ::= "#" <digits> | <expr>
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     seq2(
         keyword(Keyword::Close),
         file_handles(),
@@ -20,7 +20,7 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserEr
     )
 }
 
-fn file_handles() -> impl Parser<RcStringView, Output = Expressions, Error = ParserError> {
+fn file_handles() -> impl Parser<StringView, Output = Expressions, Error = ParserError> {
     guarded_file_handle_or_expression_p()
         .map(|first| vec![first])
         .and(
@@ -33,7 +33,7 @@ fn file_handles() -> impl Parser<RcStringView, Output = Expressions, Error = Par
 }
 
 fn file_handle_or_expression_p()
--> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
+-> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     OrParser::new(vec![
         Box::new(file_handle_as_expression_pos_p()),
         Box::new(expression_pos_p()),

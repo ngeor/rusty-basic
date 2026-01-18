@@ -1,4 +1,4 @@
-use crate::{ParseResult, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
 
 pub struct OrParser<I, C, O, E>
 where
@@ -18,18 +18,20 @@ where
 
 impl<I, C, O, E> Parser<I, C> for OrParser<I, C, O, E>
 where
+    I: InputTrait,
     C: Clone,
     E: ParserErrorTrait,
 {
     type Output = O;
     type Error = E;
 
-    fn parse(&mut self, mut input: I) -> ParseResult<I, O, Self::Error> {
+    fn parse(&mut self, input: &mut I) -> Result<O, Self::Error> {
+        let original_position = input.get_position();
         for i in 0..self.parsers.len() - 1 {
             match self.parsers[i].parse(input) {
                 Ok(x) => return Ok(x),
-                Err((i, err)) if !err.is_fatal() => {
-                    input = i;
+                Err(err) if !err.is_fatal() => {
+                    input.set_position(original_position);
                     continue;
                 }
                 Err(err) => return Err(err),
@@ -61,7 +63,7 @@ where
     }
 }
 
-pub trait Or<I, C>: Parser<I, C>
+pub trait Or<I: InputTrait, C>: Parser<I, C>
 where
     Self: Sized,
 {
@@ -73,20 +75,26 @@ where
     }
 }
 
-impl<I, C, P> Or<I, C> for P where P: Parser<I, C> {}
+impl<I, C, P> Or<I, C> for P
+where
+    I: InputTrait,
+    P: Parser<I, C>,
+{
+}
 
 impl<I, C, L, R> Parser<I, C> for OrParserNoBox<L, R>
 where
+    I: InputTrait,
     L: Parser<I, C>,
     R: Parser<I, C, Output = L::Output, Error = L::Error>,
 {
     type Output = L::Output;
     type Error = L::Error;
 
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.left.parse(input) {
             Ok(x) => Ok(x),
-            Err((input, err)) if !err.is_fatal() => self.right.parse(input),
+            Err(err) if !err.is_fatal() => self.right.parse(input),
             Err(err) => Err(err),
         }
     }

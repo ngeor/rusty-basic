@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{Combiner, ParseResult, Parser, ParserErrorTrait, SetContext};
+use crate::{Combiner, InputTrait, Parser, ParserErrorTrait, SetContext};
 
 /// A binary parser that sets the context of the right-side parser
 /// based on the value returned by the left-side parser.
@@ -9,7 +9,7 @@ use crate::{Combiner, ParseResult, Parser, ParserErrorTrait, SetContext};
 ///
 /// As the right-side context is always set before parsing
 /// the right-side, there is no need to use `init_context`.
-pub trait ThenWithContext<I, C>: Parser<I, C> {
+pub trait ThenWithContext<I: InputTrait, C>: Parser<I, C> {
     /// Combines this parser with another parser,
     /// setting the other parser's context before parsing
     /// based on the result of this parser.
@@ -38,7 +38,12 @@ pub trait ThenWithContext<I, C>: Parser<I, C> {
     }
 }
 
-impl<I, C, P> ThenWithContext<I, C> for P where P: Parser<I, C> {}
+impl<I, C, P> ThenWithContext<I, C> for P
+where
+    I: InputTrait,
+    P: Parser<I, C>,
+{
+}
 
 pub struct ThenWithContextParser<L, R, F, A, O> {
     left: L,
@@ -62,6 +67,7 @@ impl<L, R, F, A, O> ThenWithContextParser<L, R, F, A, O> {
 
 impl<I, C, L, R, F, A, O, CR> Parser<I, C> for ThenWithContextParser<L, R, F, A, O>
 where
+    I: InputTrait,
     L: Parser<I, C>,
     R: Parser<I, CR, Error = L::Error> + SetContext<CR>,
     F: Fn(&L::Output) -> CR,
@@ -70,14 +76,14 @@ where
     type Output = O;
     type Error = L::Error;
 
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
-        let (input, left) = self.left.parse(input)?;
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
+        let left = self.left.parse(input)?;
         let ctx = (self.ctx_projection)(&left);
         self.right.set_context(ctx);
         match self.right.parse(input) {
-            Ok((input, right)) => Ok((input, self.combiner.combine(left, right))),
+            Ok(right) => Ok(self.combiner.combine(left, right)),
             // right-side error is always fatal
-            Err((input, err)) => Err((input, err.to_fatal())),
+            Err(err) => Err(err.to_fatal()),
         }
     }
 }

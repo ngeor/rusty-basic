@@ -2,10 +2,10 @@ use rusty_common::*;
 use rusty_pc::*;
 
 use crate::built_ins::common::csv_allow_missing;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::{BuiltInSub, ParserError, *};
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     keyword_ws_p(Keyword::Width)
         .and_keep_right(csv_allow_missing())
         .map(|opt_args| Statement::built_in_sub_call(BuiltInSub::Width, map_args(opt_args)))

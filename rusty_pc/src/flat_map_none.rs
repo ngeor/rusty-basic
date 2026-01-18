@@ -1,21 +1,26 @@
-use crate::{ParseResult, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
 
 /// Flat map the result of this parser for successful and incomplete results.
 /// Mapping is done by the given closures.
 /// Other errors are never allowed to be re-mapped.
-pub trait FlatMapNone<I, C>: Parser<I, C>
+pub trait FlatMapNone<I: InputTrait, C>: Parser<I, C>
 where
     Self: Sized,
 {
     fn flat_map_none<F>(self, incomplete_mapper: F) -> FlatMapNoneParser<Self, F>
     where
-        F: Fn(I) -> ParseResult<I, Self::Output, Self::Error>,
+        F: Fn() -> Result<Self::Output, Self::Error>,
     {
         FlatMapNoneParser::new(self, incomplete_mapper)
     }
 }
 
-impl<I, C, P> FlatMapNone<I, C> for P where P: Parser<I, C> {}
+impl<I, C, P> FlatMapNone<I, C> for P
+where
+    I: InputTrait,
+    P: Parser<I, C>,
+{
+}
 
 pub struct FlatMapNoneParser<P, F> {
     parser: P,
@@ -33,15 +38,16 @@ impl<P, F> FlatMapNoneParser<P, F> {
 
 impl<I, C, P, F> Parser<I, C> for FlatMapNoneParser<P, F>
 where
+    I: InputTrait,
     P: Parser<I, C>,
-    F: Fn(I) -> ParseResult<I, P::Output, P::Error>,
+    F: Fn() -> Result<P::Output, P::Error>,
 {
     type Output = P::Output;
     type Error = P::Error;
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok(o) => Ok(o),
-            Err((i, err)) if !err.is_fatal() => (self.incomplete_mapper)(i),
+            Err(err) if !err.is_fatal() => (self.incomplete_mapper)(),
             Err(err) => Err(err),
         }
     }

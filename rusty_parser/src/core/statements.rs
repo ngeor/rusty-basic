@@ -4,7 +4,7 @@ use rusty_pc::*;
 
 use crate::core::statement::statement_p;
 use crate::core::statement_separator::{comment_separator, common_separator};
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::*;
 
@@ -29,7 +29,7 @@ pub(crate) use zero_or_more_statements;
 pub fn zero_or_more_statements_p(
     exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
     custom_err: Option<ParserError>,
-) -> impl Parser<RcStringView, Output = Statements, Error = ParserError> {
+) -> impl Parser<StringView, Output = Statements, Error = ParserError> {
     one_statement_p(exit_keywords, custom_err)
         .zero_or_more()
         // Initialize the context before the loop of "zero_or_more" starts.
@@ -41,14 +41,13 @@ pub fn zero_or_more_statements_p(
 fn one_statement_p(
     exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
     custom_err: Option<ParserError>,
-) -> impl Parser<RcStringView, bool, Output = StatementPos, Error = ParserError> + SetContext<bool>
-{
+) -> impl Parser<StringView, bool, Output = StatementPos, Error = ParserError> + SetContext<bool> {
     one_statement_or_exit_keyword_p(exit_keywords, custom_err).flat_map(
-        |i, statement_or_exit_keyword| match statement_or_exit_keyword {
+        |statement_or_exit_keyword| match statement_or_exit_keyword {
             // we parsed a statement, return it
-            StatementOrExitKeyword::Statement(s) => Ok((i, s)),
+            StatementOrExitKeyword::Statement(s) => Ok(s),
             // we detected an exit keyword, stop parsing
-            StatementOrExitKeyword::ExitKeyword(_keyword) => default_parse_error(i),
+            StatementOrExitKeyword::ExitKeyword(_keyword) => default_parse_error(),
         },
     )
 }
@@ -60,8 +59,8 @@ fn one_statement_p(
 fn one_statement_or_exit_keyword_p(
     exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
     custom_err: Option<ParserError>,
-) -> impl Parser<RcStringView, bool, Output = StatementOrExitKeyword, Error = ParserError>
-+ SetContext<bool> {
+) -> impl Parser<StringView, bool, Output = StatementOrExitKeyword, Error = ParserError> + SetContext<bool>
+{
     ThenWithLeftParser::new(
         // must parse the separator
         ctx_demand_separator_p(),
@@ -87,7 +86,7 @@ fn is_comment(statement_or_exit_keyword: &StatementOrExitKeyword) -> bool {
 /// A statement separator that is aware if the previously parsed statement
 /// was a comment or not.
 fn ctx_demand_separator_p()
--> impl Parser<RcStringView, bool, Output = (), Error = ParserError> + SetContext<bool> {
+-> impl Parser<StringView, bool, Output = (), Error = ParserError> + SetContext<bool> {
     // TODO consolidate the two separate separator functions, they are almost never used elsewhere
     ctx_parser()
         .map(|last_statement_was_comment| {
@@ -104,14 +103,14 @@ fn ctx_demand_separator_p()
 fn find_exit_keyword_or_demand_statement_p(
     exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
     custom_err: Option<ParserError>,
-) -> impl Parser<RcStringView, Output = StatementOrExitKeyword, Error = ParserError> {
+) -> impl Parser<StringView, Output = StatementOrExitKeyword, Error = ParserError> {
     find_exit_keyword_p(exit_keywords, custom_err).or(demand_statement_p())
 }
 
 fn find_exit_keyword_p(
     exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
     custom_err: Option<ParserError>,
-) -> impl Parser<RcStringView, Output = StatementOrExitKeyword, Error = ParserError> {
+) -> impl Parser<StringView, Output = StatementOrExitKeyword, Error = ParserError> {
     // the first parser will return:
     // Ok if it finds the keyword (peeking)
     // Err(false) if it finds something else
@@ -127,7 +126,7 @@ fn find_exit_keyword_p(
 }
 
 fn demand_statement_p()
--> impl Parser<RcStringView, Output = StatementOrExitKeyword, Error = ParserError> {
+-> impl Parser<StringView, Output = StatementOrExitKeyword, Error = ParserError> {
     // needs to be lazy otherwise stackoverflow
     lazy(statement_p)
         .with_pos()

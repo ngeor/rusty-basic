@@ -2,12 +2,12 @@ use rusty_pc::*;
 
 use crate::core::expression::expression_pos_p;
 use crate::core::name::name_p;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::equal_sign_ws;
 use crate::{Keyword, ParserError, Statement};
 
-pub fn constant_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn constant_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     seq4(
         keyword_ws_p(Keyword::Const),
         name_p().with_pos().or_expected("const name"),

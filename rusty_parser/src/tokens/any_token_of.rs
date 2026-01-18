@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use rusty_pc::{ParseResult, Parser, ParserErrorTrait, Token, TokenKind};
+use rusty_pc::{InputTrait, Parser, ParserErrorTrait, Token, TokenKind};
 
 use crate::ParserError;
 use crate::tokens::TokenType;
@@ -186,35 +186,39 @@ impl<P> AnyTokenOf<P> {
 
 impl<I, C, P> Parser<I, C> for AnyTokenOf<P>
 where
-    I: Clone,
+    I: InputTrait<Output = char>,
     P: Parser<I, C, Output = Token, Error = ParserError>,
 {
     type Output = Token;
     type Error = ParserError;
 
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         self.parse_token(input)
     }
 }
 
 impl<P> AnyTokenOf<P> {
     /// Parses the token we're looking for.
-    fn parse_token<I, C>(&mut self, input: I) -> ParseResult<I, Token, ParserError>
+    fn parse_token<I, C>(&mut self, input: &mut I) -> Result<Token, ParserError>
     where
-        I: Clone,
+        I: InputTrait<Output = char>,
         P: Parser<I, C, Output = Token, Error = ParserError>,
     {
-        let original_input = input.clone();
+        let original_input = input.get_position();
         match self.parser.parse(input) {
-            Ok((input, token)) => {
+            Ok(token) => {
                 if self.accept_token(&token) {
                     // found it
-                    Ok((input, token))
+                    Ok(token)
                 } else {
-                    self.to_syntax_err(original_input)
+                    input.set_position(original_input);
+                    self.to_syntax_err()
                 }
             }
-            Err((_, err)) if !err.is_fatal() => self.to_syntax_err(original_input),
+            Err(err) if !err.is_fatal() => {
+                input.set_position(original_input);
+                self.to_syntax_err()
+            }
             Err(err) => Err(err),
         }
     }
@@ -240,7 +244,7 @@ impl<P> AnyTokenOf<P> {
     }
 
     /// Creates the syntax error when the desired token kinds are not found.
-    fn to_syntax_err<I, O>(&self, input: I) -> ParseResult<I, O, ParserError> {
-        Err((input, ParserError::expected(&self.err_msg)))
+    fn to_syntax_err<O>(&self) -> Result<O, ParserError> {
+        Err(ParserError::expected(&self.err_msg))
     }
 }

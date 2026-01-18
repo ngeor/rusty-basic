@@ -18,7 +18,7 @@ use crate::core::resume::statement_resume_p;
 use crate::core::select_case::select_case_p;
 use crate::core::sub_call::sub_call_or_assignment_p;
 use crate::core::while_wend::while_wend_p;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::colon;
 use crate::{
@@ -290,7 +290,7 @@ impl Statement {
     }
 }
 
-pub fn statement_p() -> OrParser<RcStringView, (), Statement, ParserError> {
+pub fn statement_p() -> OrParser<StringView, (), Statement, ParserError> {
     OrParser::new(vec![
         Box::new(statement_label_p()),
         Box::new(single_line_statement_p()),
@@ -305,7 +305,7 @@ pub fn statement_p() -> OrParser<RcStringView, (), Statement, ParserError> {
 
 // Tries to read a statement that is allowed to be on a single line IF statement,
 // excluding comments.
-pub fn single_line_non_comment_statement_p() -> OrParser<RcStringView, (), Statement, ParserError> {
+pub fn single_line_non_comment_statement_p() -> OrParser<StringView, (), Statement, ParserError> {
     OrParser::new(vec![
         Box::new(dim_p()),
         Box::new(redim_p()),
@@ -327,44 +327,43 @@ pub fn single_line_non_comment_statement_p() -> OrParser<RcStringView, (), State
 
 /// Tries to read a statement that is allowed to be on a single line IF statement,
 /// including comments.
-pub fn single_line_statement_p()
--> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn single_line_statement_p() -> impl Parser<StringView, Output = Statement, Error = ParserError>
+{
     comment_p().or(single_line_non_comment_statement_p())
 }
 
-fn statement_label_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+fn statement_label_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     // labels can have dots
     identifier()
         .and_keep_left(colon())
         .map(|token| Statement::Label(CaseInsensitiveString::new(token.text())))
 }
 
-fn statement_go_to_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+fn statement_go_to_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     keyword_ws_p(Keyword::GoTo)
         .and_keep_right(bare_name_p().or_expected("label"))
         .map(Statement::GoTo)
 }
 
 /// A parser that fails if an illegal starting keyword is found.
-fn illegal_starting_keywords() -> impl Parser<RcStringView, Output = Statement, Error = ParserError>
-{
+fn illegal_starting_keywords() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     keyword_map(&[
         (Keyword::Wend, ParserError::WendWithoutWhile),
         (Keyword::Else, ParserError::ElseWithoutIf),
         (Keyword::Loop, ParserError::LoopWithoutDo),
         (Keyword::Next, ParserError::NextWithoutFor),
     ])
-    .flat_map(|input, err| Err((input, err)))
+    .flat_map(|err| Err(err))
 }
 
 mod end {
     use rusty_pc::*;
 
-    use crate::input::RcStringView;
+    use crate::input::StringView;
     use crate::pc_specific::*;
     use crate::{Keyword, ParserError, Statement};
 
-    pub fn parse_end_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+    pub fn parse_end_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
         keyword(Keyword::End).map(|_| Statement::End)
     }
 
@@ -390,12 +389,12 @@ mod system {
     use rusty_pc::*;
 
     use crate::core::statement_separator::peek_eof_or_statement_separator;
-    use crate::input::RcStringView;
+    use crate::input::StringView;
     use crate::pc_specific::*;
     use crate::tokens::{keyword_ignoring, whitespace_ignoring};
     use crate::{Keyword, ParserError, Statement};
 
-    pub fn parse_system_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+    pub fn parse_system_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
         keyword_ignoring(Keyword::System).and(
             opt_and_tuple(whitespace_ignoring(), peek_eof_or_statement_separator())
                 .or_expected("end-of-statement"),

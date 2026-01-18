@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{Combiner, ParseResult, Parser, ParserErrorTrait, SetContext};
+use crate::{Combiner, InputTrait, Parser, ParserErrorTrait, SetContext};
 
 /// This parser is a binary parser that sets
 /// the context of the left-side parser
@@ -47,6 +47,7 @@ impl<L, R, X, F, A, O> ThenWithLeftParser<L, R, X, F, A, O> {
 
 impl<I, C, L, R, X, F, A, O> Parser<I, C> for ThenWithLeftParser<L, R, X, F, A, O>
 where
+    I: InputTrait,
     L: Parser<I, C> + SetContext<C>,
     R: Parser<I, X, Error = L::Error>,
     F: Fn(&R::Output) -> C,
@@ -55,19 +56,19 @@ where
     type Output = O;
     type Error = L::Error;
 
-    fn parse(&mut self, input: I) -> ParseResult<I, Self::Output, Self::Error> {
-        let (input, left) = self.left.parse(input)?;
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
+        let left = self.left.parse(input)?;
         match self.right.parse(input) {
-            Ok((input, right)) => {
+            Ok(right) => {
                 // create context from right
                 let left_context = (self.right_context_mapper)(&right);
                 // pass it back to left
                 self.left.set_context(left_context);
                 // return the result
-                Ok((input, self.combiner.combine(left, right)))
+                Ok(self.combiner.combine(left, right))
             }
             // right-side error is always fatal
-            Err((i, err)) => Err((i, err.to_fatal())),
+            Err(err) => Err(err.to_fatal()),
         }
     }
 }

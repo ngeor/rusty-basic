@@ -1,11 +1,11 @@
 use rusty_common::*;
 use rusty_pc::*;
 
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{equal_sign_ws, keyword_ignoring, whitespace_ignoring};
 use crate::{BuiltInSub, ParserError, *};
-pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     seq6(
         keyword(Keyword::Open),
         ws_expr_pos_ws_p().or_expected("file name after OPEN"),
@@ -29,8 +29,8 @@ pub fn parse() -> impl Parser<RcStringView, Output = Statement, Error = ParserEr
 }
 
 // FOR <ws+> INPUT <ws+>
-fn parse_open_mode_p()
--> impl Parser<RcStringView, Output = Positioned<FileMode>, Error = ParserError> {
+fn parse_open_mode_p() -> impl Parser<StringView, Output = Positioned<FileMode>, Error = ParserError>
+{
     seq3(
         keyword_ws_p(Keyword::For),
         keyword_map(&[
@@ -47,7 +47,7 @@ fn parse_open_mode_p()
 
 // ACCESS <ws+> READ <ws+>
 fn parse_open_access_p()
--> impl Parser<RcStringView, Output = Positioned<FileAccess>, Error = ParserError> {
+-> impl Parser<StringView, Output = Positioned<FileAccess>, Error = ParserError> {
     seq2(
         keyword_ws_p(Keyword::Access),
         keyword_ws_p(Keyword::Read).with_pos(),
@@ -57,12 +57,12 @@ fn parse_open_access_p()
 
 // AS <ws+> expression
 // AS ( expression )
-fn parse_file_number_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
+fn parse_file_number_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     keyword(Keyword::As)
         .and_keep_right(guarded_file_handle_or_expression_p().or_expected("#file-number%"))
 }
 
-fn parse_len_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
+fn parse_len_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     seq3(
         whitespace_ignoring().and(keyword_ignoring(Keyword::Len), IgnoringBothCombiner),
         equal_sign_ws(),

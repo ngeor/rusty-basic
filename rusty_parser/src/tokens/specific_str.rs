@@ -1,10 +1,9 @@
 use std::marker::PhantomData;
 
-use rusty_pc::text::CharInput;
-use rusty_pc::{ManyCombiner, ParseResult, Parser};
+use rusty_pc::{InputTrait, ManyCombiner, Parser};
 
 use crate::ParserError;
-use crate::input::RcStringView;
+use crate::input::StringView;
 
 /// Wraps an [str] so that it can be used as a specific parser.
 pub(super) struct SpecificStr<'a, A, O> {
@@ -23,7 +22,7 @@ impl<'a, A, O> SpecificStr<'a, A, O> {
     }
 }
 
-impl<'a, A, O> Parser<RcStringView> for SpecificStr<'a, A, O>
+impl<'a, A, O> Parser<StringView> for SpecificStr<'a, A, O>
 where
     A: ManyCombiner<char, O>,
     O: Default,
@@ -31,7 +30,7 @@ where
     type Output = O;
     type Error = ParserError;
 
-    fn parse(&mut self, input: RcStringView) -> ParseResult<RcStringView, O, ParserError> {
+    fn parse(&mut self, input: &mut StringView) -> Result<O, ParserError> {
         parse_specific_str(self.needle, &self.combiner, input)
     }
 }
@@ -53,7 +52,7 @@ impl<A, O> SpecificString<A, O> {
     }
 }
 
-impl<A, O> Parser<RcStringView> for SpecificString<A, O>
+impl<A, O> Parser<StringView> for SpecificString<A, O>
 where
     A: ManyCombiner<char, O>,
     O: Default,
@@ -61,7 +60,7 @@ where
     type Output = O;
     type Error = ParserError;
 
-    fn parse(&mut self, input: RcStringView) -> ParseResult<RcStringView, O, ParserError> {
+    fn parse(&mut self, input: &mut StringView) -> Result<O, ParserError> {
         parse_specific_str(&self.needle, &self.combiner, input)
     }
 }
@@ -69,8 +68,8 @@ where
 fn parse_specific_str<O>(
     needle: &str,
     combiner: &impl ManyCombiner<char, O>,
-    input: RcStringView,
-) -> ParseResult<RcStringView, O, ParserError>
+    input: &mut StringView,
+) -> Result<O, ParserError>
 where
     O: Default,
 {
@@ -105,8 +104,9 @@ where
     }
 
     if success {
-        Ok((input.inc_position_by(read), buffer))
+        input.inc_position_by(read);
+        Ok(buffer)
     } else {
-        Err((input, ParserError::expected(needle)))
+        Err(ParserError::expected(needle))
     }
 }

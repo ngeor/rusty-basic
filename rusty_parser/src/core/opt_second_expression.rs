@@ -4,7 +4,7 @@ use rusty_pc::{
 
 use crate::core::expression::ws_expr_pos_p;
 use crate::error::ParserError;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::keyword;
 use crate::tokens::whitespace;
 use crate::{ExpressionPos, Keyword};
@@ -19,9 +19,9 @@ pub fn opt_second_expression_after_keyword<P, F>(
     first_parser: P,
     keyword: Keyword,
     is_first_wrapped_in_parenthesis: F,
-) -> impl Parser<RcStringView, Output = (P::Output, Option<ExpressionPos>), Error = ParserError>
+) -> impl Parser<StringView, Output = (P::Output, Option<ExpressionPos>), Error = ParserError>
 where
-    P: Parser<RcStringView, Error = ParserError>,
+    P: Parser<StringView, Error = ParserError>,
     F: Fn(&P::Output) -> bool + 'static,
 {
     first_parser.then_with_in_context(
@@ -34,8 +34,8 @@ where
 // first_parser AND [ cond_ws(is_first_paren) KEYWORD !AND! ws_expr ]
 fn parse_second(
     k: Keyword,
-) -> impl Parser<RcStringView, bool, Output = Option<ExpressionPos>, Error = ParserError>
-+ SetContext<bool> {
+) -> impl Parser<StringView, bool, Output = Option<ExpressionPos>, Error = ParserError> + SetContext<bool>
+{
     // the left side needs the context
     ws_keyword(k)
         .and_keep_right(
@@ -46,9 +46,7 @@ fn parse_second(
         .to_option()
 }
 
-fn ws_keyword(
-    k: Keyword,
-) -> impl Parser<RcStringView, bool, Error = ParserError> + SetContext<bool> {
+fn ws_keyword(k: Keyword) -> impl Parser<StringView, bool, Error = ParserError> + SetContext<bool> {
     // the left side has the context
     conditionally_opt_whitespace().and_tuple(
         // but the right side does not
@@ -72,17 +70,17 @@ fn err(keyword: Keyword) -> ParserError {
 /// * `(1 + 2)AND` no whitespace is required before `AND`
 /// * `1 + 2AND` the lack of whitespace before `AND` is an error
 pub(super) fn conditionally_opt_whitespace()
--> impl Parser<RcStringView, bool, Output = Option<Token>, Error = ParserError> + SetContext<bool> {
+-> impl Parser<StringView, bool, Output = Option<Token>, Error = ParserError> + SetContext<bool> {
     ctx_parser()
         .map(|allow_none| {
             whitespace()
                 .flat_map_ok_none(
-                    |i, ok| Ok((i, Some(ok))),
-                    move |i| {
+                    |ok| Ok(Some(ok)),
+                    move || {
                         if allow_none {
-                            Ok((i, None))
+                            Ok(None)
                         } else {
-                            Err((i, ParserError::default()))
+                            Err(ParserError::default())
                         }
                     },
                 )

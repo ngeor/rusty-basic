@@ -4,7 +4,7 @@ use rusty_common::AtPos;
 use rusty_pc::*;
 
 use crate::error::ParseErrorPos;
-use crate::input::{RcStringView, create_file_tokenizer, create_string_tokenizer};
+use crate::input::{StringView, create_file_tokenizer, create_string_tokenizer};
 use crate::{Program, program_parser_p};
 
 /// Parses a QBasic file.
@@ -20,14 +20,14 @@ use crate::{Program, program_parser_p};
 /// <digit> ::= "0".."9"
 /// ```
 pub fn parse_main_file(f: File) -> Result<Program, ParseErrorPos> {
-    let reader = create_file_tokenizer(f).unwrap();
-    program_parser(reader)
+    let mut reader = create_file_tokenizer(f).unwrap();
+    program_parser(&mut reader)
 }
 
-pub fn program_parser(reader: RcStringView) -> Result<Program, ParseErrorPos> {
+pub fn program_parser(reader: &mut StringView) -> Result<Program, ParseErrorPos> {
     match program_parser_p().parse(reader) {
-        Ok((_, program)) => Ok(program),
-        Err((input, err)) => Err(err.at_pos(input.position())),
+        Ok(program) => Ok(program),
+        Err(err) => Err(err.at_pos(reader.position())),
     }
 }
 
@@ -45,8 +45,8 @@ where
 }
 
 pub fn parse_main_str(input: String) -> Result<Program, ParseErrorPos> {
-    let reader = create_string_tokenizer(input);
-    program_parser(reader)
+    let mut reader = create_string_tokenizer(input);
+    program_parser(&mut reader)
 }
 
 #[cfg(test)]

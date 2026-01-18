@@ -4,7 +4,7 @@ use crate::core::expression::{expr_pos_ws_p, property, ws_expr_pos_p};
 use crate::core::opt_second_expression::opt_second_expression_after_keyword;
 use crate::core::statements::zero_or_more_statements;
 use crate::error::ParserError;
-use crate::input::RcStringView;
+use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{equal_sign_ws, whitespace_ignoring};
 use crate::*;
@@ -13,7 +13,7 @@ use crate::*;
 // statements
 // NEXT (I)
 
-pub fn for_loop_p() -> impl Parser<RcStringView, Output = Statement, Error = ParserError> {
+pub fn for_loop_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     seq4(
         parse_for_step_p(),
         zero_or_more_statements!(Keyword::Next),
@@ -34,7 +34,7 @@ pub fn for_loop_p() -> impl Parser<RcStringView, Output = Statement, Error = Par
 
 /// Parses the "FOR I = 1 TO 2 [STEP X]" part
 fn parse_for_step_p() -> impl Parser<
-    RcStringView,
+    StringView,
     Output = (
         ExpressionPos,
         ExpressionPos,
@@ -51,7 +51,7 @@ fn parse_for_step_p() -> impl Parser<
 
 /// Parses the "FOR I = 1 TO 2" part
 fn parse_for_p()
--> impl Parser<RcStringView, Output = (ExpressionPos, ExpressionPos, ExpressionPos), Error = ParserError>
+-> impl Parser<StringView, Output = (ExpressionPos, ExpressionPos, ExpressionPos), Error = ParserError>
 {
     seq6(
         keyword_ws_p(Keyword::For),
@@ -64,7 +64,7 @@ fn parse_for_p()
     )
 }
 
-fn next_counter_p() -> impl Parser<RcStringView, Output = ExpressionPos, Error = ParserError> {
+fn next_counter_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     whitespace_ignoring().and_keep_right(property::parser())
 }
 

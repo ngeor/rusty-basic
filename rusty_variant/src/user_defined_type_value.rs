@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use rusty_common::{CaseInsensitiveStr, CaseInsensitiveString};
+use rusty_common::CaseInsensitiveString;
 
 use crate::Variant;
 
@@ -43,8 +43,8 @@ impl UserDefinedTypeValue {
         self.name_to_value.get_mut(name)
     }
 
-    pub fn names(&self) -> impl Iterator<Item = &CaseInsensitiveStr> + '_ {
-        self.ordered_property_names.iter().map(|s| s.borrow())
+    pub fn names(&self) -> impl Iterator<Item = &CaseInsensitiveString> {
+        self.ordered_property_names.iter()
     }
 
     pub fn values(&self) -> impl Iterator<Item = &Variant> + '_ {
@@ -57,13 +57,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_by_case_insensitive_str() {
-        let name = CaseInsensitiveStr::new("Card");
-        let u = UserDefinedTypeValue::new(vec![(name.to_owned(), Variant::VInteger(42))]);
-        assert_eq!(u.get(name), Some(&Variant::VInteger(42)));
-    }
-
-    #[test]
     fn test_get_by_case_insensitive_string() {
         let name = CaseInsensitiveString::from("Card");
         let u = UserDefinedTypeValue::new(vec![(name.clone(), Variant::VInteger(42))]);
@@ -72,13 +65,13 @@ mod tests {
 
     #[test]
     fn test_get_mut() {
-        let name = CaseInsensitiveStr::new("Address");
+        let name = CaseInsensitiveString::from("Address");
         let mut u =
             UserDefinedTypeValue::new(vec![(name.to_owned(), Variant::VString("home".to_owned()))]);
-        if let Some(v) = u.get_mut(name) {
+        if let Some(v) = u.get_mut(&name) {
             *v = Variant::VString("work".to_owned());
         }
-        assert_eq!(u.get(name), Some(&Variant::VString("work".to_owned())));
+        assert_eq!(u.get(&name), Some(&Variant::VString("work".to_owned())));
     }
 
     #[test]
@@ -87,12 +80,12 @@ mod tests {
             (CaseInsensitiveString::from("Row"), Variant::VInteger(1)),
             (CaseInsensitiveString::from("Col"), Variant::VInteger(2)),
         ]);
-        let names: Vec<&CaseInsensitiveStr> = u.names().collect();
+        let names: Vec<&CaseInsensitiveString> = u.names().collect();
         assert_eq!(
             names,
             vec![
-                CaseInsensitiveStr::new("Row"),
-                CaseInsensitiveStr::new("Col")
+                &CaseInsensitiveString::from("Row"),
+                &CaseInsensitiveString::from("Col")
             ]
         );
     }

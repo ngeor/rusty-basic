@@ -1,12 +1,14 @@
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 
+/// Creates a hash for a [str] ignoring case.
 pub fn hash_str<H: Hasher>(s: &str, state: &mut H) {
     for byte in s.as_bytes() {
         byte.to_ascii_uppercase().hash(state);
     }
 }
 
+/// Compares two [str] ignoring case.
 pub fn cmp_str(left: &str, right: &str) -> Ordering {
     cmp_bytes(left.as_bytes(), right.as_bytes())
 }

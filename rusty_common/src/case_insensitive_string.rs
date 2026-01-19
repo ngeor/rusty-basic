@@ -1,10 +1,8 @@
-use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 
-use crate::CaseInsensitiveStr;
 use crate::case_insensitive_utils::{cmp_str, hash_str};
 
 /// A string that is case insensitive when comparing or checking for equality.
@@ -42,17 +40,16 @@ impl CaseInsensitiveString {
     /// # Examples
     ///
     /// ```
-    /// use rusty_common::CaseInsensitiveStr;
     /// use rusty_common::CaseInsensitiveString;
-    /// assert_eq!(CaseInsensitiveString::from("a.b").prefix('.'), Some(CaseInsensitiveStr::new("a")));
+    /// assert_eq!(CaseInsensitiveString::from("a.b").prefix('.'), Some(CaseInsensitiveString::from("a")));
     /// assert_eq!(CaseInsensitiveString::from("ab").prefix('.'), None);
     /// ```
-    pub fn prefix(&self, delimiter: char) -> Option<&CaseInsensitiveStr> {
+    pub fn prefix(&self, delimiter: char) -> Option<CaseInsensitiveString> {
         if self.contains(delimiter) {
             let parts: Vec<&str> = self.0.split('.').collect();
             debug_assert!(!parts.is_empty());
             let first = parts[0];
-            Some(CaseInsensitiveStr::new(first))
+            Some(CaseInsensitiveString::from(first))
         } else {
             None
         }
@@ -92,12 +89,6 @@ impl PartialEq for CaseInsensitiveString {
 }
 
 impl Eq for CaseInsensitiveString {}
-
-impl Borrow<CaseInsensitiveStr> for CaseInsensitiveString {
-    fn borrow(&self) -> &CaseInsensitiveStr {
-        CaseInsensitiveStr::new(&self.0)
-    }
-}
 
 impl From<String> for CaseInsensitiveString {
     fn from(x: String) -> Self {

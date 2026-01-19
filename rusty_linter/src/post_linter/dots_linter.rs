@@ -86,7 +86,7 @@ impl NoDotNamesCheck<BareName, LintError> for DotsLinter {
     fn ensure_no_dots(&self, x: &BareName) -> Result<(), LintError> {
         match x.prefix('.') {
             Some(part_before_dot) => {
-                if self.user_defined_names.contains(part_before_dot) {
+                if self.user_defined_names.contains(&part_before_dot) {
                     Err(LintError::DotClash)
                 } else {
                     Ok(())

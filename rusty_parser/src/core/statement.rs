@@ -353,7 +353,7 @@ fn illegal_starting_keywords() -> impl Parser<StringView, Output = Statement, Er
         (Keyword::Loop, ParserError::LoopWithoutDo),
         (Keyword::Next, ParserError::NextWithoutFor),
     ])
-    .flat_map(|err| Err(err))
+    .flat_map(Err)
 }
 
 mod end {

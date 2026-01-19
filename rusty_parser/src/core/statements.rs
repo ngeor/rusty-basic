@@ -74,13 +74,13 @@ fn one_statement_or_exit_keyword_p(
 }
 
 fn is_comment(statement_or_exit_keyword: &StatementOrExitKeyword) -> bool {
-    match statement_or_exit_keyword {
+    matches!(
+        statement_or_exit_keyword,
         StatementOrExitKeyword::Statement(Positioned {
             element: Statement::Comment(_),
             ..
-        }) => true,
-        _ => false,
-    }
+        })
+    )
 }
 
 /// A statement separator that is aware if the previously parsed statement

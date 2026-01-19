@@ -1,27 +1,27 @@
 use crate::{MAX_INTEGER, MAX_LONG, MIN_INTEGER, MIN_LONG, Variant};
 
 trait IsInRange {
-    fn is_in_integer_range(self) -> bool;
-    fn is_in_long_range(self) -> bool;
+    fn is_in_integer_range(&self) -> bool;
+    fn is_in_long_range(&self) -> bool;
 }
 
 impl IsInRange for i32 {
-    fn is_in_integer_range(self) -> bool {
-        (MIN_INTEGER..=MAX_INTEGER).contains(&self)
+    fn is_in_integer_range(&self) -> bool {
+        (MIN_INTEGER..=MAX_INTEGER).contains(self)
     }
 
-    fn is_in_long_range(self) -> bool {
-        (self as i64).is_in_long_range()
+    fn is_in_long_range(&self) -> bool {
+        (*self as i64).is_in_long_range()
     }
 }
 
 impl IsInRange for i64 {
-    fn is_in_integer_range(self) -> bool {
-        self >= (MIN_INTEGER as Self) && self <= (MAX_INTEGER as Self)
+    fn is_in_integer_range(&self) -> bool {
+        *self >= (MIN_INTEGER as Self) && *self <= (MAX_INTEGER as Self)
     }
 
-    fn is_in_long_range(self) -> bool {
-        (MIN_LONG..=MAX_LONG).contains(&self)
+    fn is_in_long_range(&self) -> bool {
+        (MIN_LONG..=MAX_LONG).contains(self)
     }
 }
 

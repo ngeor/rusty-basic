@@ -656,15 +656,11 @@ mod integer_or_long_literal {
     }
 
     fn process_token(token: Token) -> Result<Expression, ParserError> {
-        let res = match TokenType::from_token(&token) {
+        match TokenType::from_token(&token) {
             TokenType::Digits => process_dec(token),
             TokenType::HexDigits => process_hex(token),
             TokenType::OctDigits => process_oct(token),
             _ => panic!("Should not have processed {}", token),
-        };
-        match res {
-            Ok(expr) => Ok(expr),
-            Err(err) => Err(err),
         }
     }
 
@@ -1034,21 +1030,18 @@ mod binary_expression {
                     element: op,
                     pos: op_pos,
                 }) => {
-                    let is_keyword_op =
-                        op == Operator::And || op == Operator::Or || op == Operator::Modulo;
-                    match guard::parser().parse(tokenizer) {
-                        Ok(_) => (),
-                        Err(err) if err.is_soft() => {
+                    if let Err(err) = guard::parser().parse(tokenizer) {
+                        if err.is_soft() {
+                            let is_keyword_op =
+                                op == Operator::And || op == Operator::Or || op == Operator::Modulo;
                             if is_keyword_op {
                                 return Err(ParserError::expected("whitespace or (").to_fatal());
-                            } else {
-                                ()
                             }
-                        }
-                        Err(err) => {
+                        } else {
                             return Err(err);
                         }
-                    };
+                    }
+
                     expression_pos_p()
                         .or_expected("expression after operator")
                         .parse(tokenizer)

@@ -95,6 +95,6 @@ impl TokenMatcher for TokenType {
 impl TokenMatcher for char {
     /// Checks if this is a Symbol token containing this character.
     fn matches_token(&self, token: &Token) -> bool {
-        TokenType::Symbol.matches_token(token) && token.as_char() == *self
+        TokenType::Symbol.matches_token(token) && token.demand_single_char() == *self
     }
 }

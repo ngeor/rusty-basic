@@ -236,7 +236,7 @@ impl<P> AnyTokenOf<P> {
 
     fn test_char(&self, token: &Token) -> bool {
         if token.kind() == TokenType::Symbol.get_index() {
-            let ch = token.as_char();
+            let ch = token.demand_single_char();
             self.symbols.contains(&ch)
         } else {
             false

@@ -1109,7 +1109,7 @@ mod binary_expression {
                     Keyword::Or => Some(Operator::Or),
                     _ => None,
                 },
-                TokenType::Symbol => match token.as_char() {
+                TokenType::Symbol => match token.demand_single_char() {
                     '+' => Some(Operator::Plus),
                     '-' => Some(Operator::Minus),
                     '*' => Some(Operator::Multiply),

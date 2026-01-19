@@ -81,10 +81,9 @@ struct ExpectedLetter;
 
 impl FilterPredicate<Token, ParserError> for ExpectedLetter {
     fn filter(&self, token: Token) -> Result<Token, ParserError> {
-        if token.len() == 1 {
-            Ok(token)
-        } else {
-            Err(ParserError::expected("letter").to_fatal())
+        match token.try_as_single_char() {
+            Some(_) => Ok(token),
+            _ => Err(ParserError::expected("letter").to_fatal()),
         }
     }
 }

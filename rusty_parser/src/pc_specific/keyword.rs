@@ -99,7 +99,7 @@ where
                     self.to_syntax_err(false)
                 }
             },
-            Err(err) if !err.is_fatal() => {
+            Err(err) if err.is_soft() => {
                 input.set_position(original_input);
                 self.to_syntax_err(self.eof_is_fatal)
             }

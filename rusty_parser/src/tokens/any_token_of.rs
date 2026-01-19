@@ -215,7 +215,7 @@ impl<P> AnyTokenOf<P> {
                     self.to_syntax_err()
                 }
             }
-            Err(err) if !err.is_fatal() => {
+            Err(err) if err.is_soft() => {
                 input.set_position(original_input);
                 self.to_syntax_err()
             }

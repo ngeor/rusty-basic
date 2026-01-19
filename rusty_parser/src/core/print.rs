@@ -192,7 +192,7 @@ impl Parser<StringView> for PrintArgsParser {
                     last_one_was_expression = next.is_expression();
                     result.push(next);
                 }
-                Err(err) if !err.is_fatal() => {
+                Err(err) if err.is_soft() => {
                     break;
                 }
                 Err(err) => {

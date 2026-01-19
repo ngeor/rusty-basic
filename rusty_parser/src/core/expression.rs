@@ -1038,7 +1038,7 @@ mod binary_expression {
                         op == Operator::And || op == Operator::Or || op == Operator::Modulo;
                     match guard::parser().parse(tokenizer) {
                         Ok(_) => (),
-                        Err(err) if !err.is_fatal() => {
+                        Err(err) if err.is_soft() => {
                             if is_keyword_op {
                                 return Err(ParserError::expected("whitespace or (").to_fatal());
                             } else {
@@ -1054,7 +1054,7 @@ mod binary_expression {
                         .parse(tokenizer)
                         .map(|right| first.apply_priority_order(right, op, op_pos))
                 }
-                Err(err) if !err.is_fatal() => Ok(first),
+                Err(err) if err.is_soft() => Ok(first),
                 Err(err) => Err(err),
             }
         }

@@ -69,7 +69,7 @@ where
                         Ok(value) => {
                             result = self.combiner.accumulate(result, value);
                         }
-                        Err(err) if !err.is_fatal() => {
+                        Err(err) if err.is_soft() => {
                             break;
                         }
                         Err(err) => {
@@ -79,7 +79,7 @@ where
                 }
                 Ok(result)
             }
-            Err(err) if !err.is_fatal() => {
+            Err(err) if err.is_soft() => {
                 if self.allow_none {
                     Ok(O::default())
                 } else {

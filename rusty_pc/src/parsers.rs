@@ -54,6 +54,12 @@ pub trait ParserErrorTrait: Clone + Default {
     /// Returns true if the error is fatal, false is the error is soft.
     fn is_fatal(&self) -> bool;
 
+    /// Gets a value indicating whether this is a soft error or not.
+    /// Returns true if the error is soft, false is the error is fatal.
+    fn is_soft(&self) -> bool {
+        !self.is_fatal()
+    }
+
     /// Converts this error into a fatal.
     fn to_fatal(self) -> Self;
 }

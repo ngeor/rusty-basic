@@ -68,11 +68,12 @@ impl ParserError {
 }
 
 impl ParserErrorTrait for ParserError {
+    fn is_soft(&self) -> bool {
+        matches!(self, Self::Miss | Self::Expected(_))
+    }
+
     fn is_fatal(&self) -> bool {
-        match self {
-            Self::Miss | Self::Expected(_) => false,
-            _ => true,
-        }
+        !self.is_soft()
     }
 
     fn to_fatal(self) -> Self {

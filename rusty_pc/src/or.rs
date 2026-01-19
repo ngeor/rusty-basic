@@ -30,7 +30,7 @@ where
         for i in 0..self.parsers.len() - 1 {
             match self.parsers[i].parse(input) {
                 Ok(x) => return Ok(x),
-                Err(err) if !err.is_fatal() => {
+                Err(err) if err.is_soft() => {
                     input.set_position(original_position);
                     continue;
                 }
@@ -94,7 +94,7 @@ where
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.left.parse(input) {
             Ok(x) => Ok(x),
-            Err(err) if !err.is_fatal() => self.right.parse(input),
+            Err(err) if err.is_soft() => self.right.parse(input),
             Err(err) => Err(err),
         }
     }

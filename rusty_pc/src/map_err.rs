@@ -53,7 +53,7 @@ where
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok(value) => Ok(value),
-            Err(err) if !err.is_fatal() => {
+            Err(err) if err.is_soft() => {
                 let err = match &self.override_non_fatal_error {
                     Some(e) => e.clone(),
                     _ => err.to_fatal(),
@@ -121,7 +121,7 @@ where
         match self.parser.parse(input) {
             Ok(value) => Ok(value),
             Err(err) => Err(
-                if self.map_non_fatal && !err.is_fatal() || self.map_fatal && err.is_fatal() {
+                if self.map_non_fatal && err.is_soft() || self.map_fatal && err.is_fatal() {
                     (self.mapper)(err)
                 } else {
                     err

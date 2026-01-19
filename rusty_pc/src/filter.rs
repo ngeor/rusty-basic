@@ -26,7 +26,7 @@ where
         match self.predicate.filter(value) {
             Ok(value) => Ok(value),
             Err(err) => {
-                if !err.is_fatal() {
+                if err.is_soft() {
                     input.set_position(original_input);
                 }
                 Err(err)

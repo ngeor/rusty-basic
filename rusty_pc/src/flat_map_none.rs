@@ -47,7 +47,7 @@ where
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok(o) => Ok(o),
-            Err(err) if !err.is_fatal() => (self.incomplete_mapper)(),
+            Err(err) if err.is_soft() => (self.incomplete_mapper)(),
             Err(err) => Err(err),
         }
     }

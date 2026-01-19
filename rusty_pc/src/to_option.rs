@@ -33,7 +33,7 @@ where
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok(value) => Ok(Some(value)),
-            Err(err) if !err.is_fatal() => Ok(None),
+            Err(err) if err.is_soft() => Ok(None),
             Err(err) => Err(err),
         }
     }

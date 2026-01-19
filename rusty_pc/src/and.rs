@@ -129,7 +129,7 @@ where
         match self.right.parse(tokenizer) {
             Ok(right) => Ok(self.combiner.combine(left, right)),
             Err(err) => {
-                if !err.is_fatal() {
+                if err.is_soft() {
                     tokenizer.set_position(original_position);
                 }
                 Err(err)

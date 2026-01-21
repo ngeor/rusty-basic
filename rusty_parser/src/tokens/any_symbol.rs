@@ -1,5 +1,5 @@
 use rusty_pc::text::any_char;
-use rusty_pc::{InputTrait, Map, Parser, ParserErrorTrait, Token};
+use rusty_pc::{InputTrait, Parser, ParserErrorTrait, Token};
 
 use crate::tokens::TokenType;
 

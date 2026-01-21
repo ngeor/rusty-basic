@@ -1,5 +1,4 @@
 use rusty_common::Positioned;
-use rusty_pc::boxed::boxed;
 use rusty_pc::*;
 
 use crate::core::{VarNameCtx, var_name};
@@ -101,16 +100,15 @@ fn extended_type()
     ctx_parser()
         .map(|(_, allow_user_defined)| {
             if allow_user_defined {
-                boxed(
-                    built_in_extended_type()
-                        .or(user_defined_type())
-                        .with_expected_message(
-                            "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-                        ),
-                )
-                .no_context()
+                built_in_extended_type()
+                    .or(user_defined_type())
+                    .with_expected_message(
+                        "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
+                    )
+                    .boxed()
+                    .no_context()
             } else {
-                boxed(built_in_extended_type()).no_context()
+                built_in_extended_type().boxed().no_context()
             }
         })
         .flatten()

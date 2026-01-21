@@ -1,78 +1,5 @@
 use crate::{InputTrait, Parser, ParserErrorTrait, default_parse_error};
 
-/// Creates a parser that can parse a list of element
-/// separated by a delimiter.
-pub trait DelimitedBy<I: InputTrait, C>: Parser<I, C> + Sized {
-    /// Creates a new parser that uses this parser to parse elements
-    /// that are separated by the given delimiter.
-    ///
-    /// Trailing delimiters are not allowed, in which case the given
-    /// error will be returned (fatal error).
-    ///
-    /// # Arguments
-    ///
-    /// * self - The current parser, that is used to parse an element of the list
-    /// * delimiter - THe parser that parses a delimiter (e.g. a comma, semicolon, etc.)
-    /// * trailing_error - The error to return if a trailing delimiter is found
-    fn delimited_by<D>(
-        self,
-        delimiter: D,
-        trailing_error: Self::Error,
-    ) -> DelimitedParser<Self, D, Self::Error, NormalElementCollector>
-    where
-        D: Parser<I, C, Error = Self::Error>,
-    {
-        debug_assert!(trailing_error.is_fatal());
-        DelimitedParser {
-            parser: self,
-            delimiter,
-            trailing_error,
-            element_collector: NormalElementCollector,
-        }
-    }
-
-    /// Creates a new parser that uses this parser to parse elements
-    /// that are separated by the given delimiter.
-    ///
-    /// It is possible to have continuous delimiters with no element
-    /// in between. That is why the output type is a Vec of Option elements.
-    ///
-    /// Trailing delimiters are not allowed, in which case the given
-    /// error will be returned (fatal error).
-    ///
-    /// # Arguments
-    ///
-    /// * self - The current parser, that is used to parse an element of the list
-    /// * delimiter - THe parser that parses a delimiter (e.g. a comma, semicolon, etc.)
-    /// * trailing_error - The error to return if a trailing delimiter is found
-    fn delimited_by_allow_missing<D>(
-        self,
-        delimiter: D,
-        trailing_error: Self::Error,
-    ) -> DelimitedParser<Self, D, Self::Error, OptionalElementCollector>
-    where
-        D: Parser<I, C, Error = Self::Error>,
-    {
-        debug_assert!(trailing_error.is_fatal());
-        DelimitedParser {
-            parser: self,
-            delimiter,
-            trailing_error,
-            element_collector: OptionalElementCollector,
-        }
-    }
-}
-
-// blanket implementation of the DelimitedBy trait
-
-impl<I, C, P> DelimitedBy<I, C> for P
-where
-    I: InputTrait,
-    P: Parser<I, C>,
-    P::Error: Clone + Default,
-{
-}
-
 /// A parser that can parse a list of elements separated by a delimiter
 pub struct DelimitedParser<P, D, E, A> {
     /// The parser that is used to parse the elements
@@ -83,6 +10,21 @@ pub struct DelimitedParser<P, D, E, A> {
     trailing_error: E,
     /// Collects the elements into the final result
     element_collector: A,
+}
+
+impl<P, D, E, A> DelimitedParser<P, D, E, A>
+where
+    E: ParserErrorTrait,
+{
+    pub(crate) fn new(parser: P, delimiter: D, trailing_error: E, element_collector: A) -> Self {
+        debug_assert!(trailing_error.is_fatal());
+        Self {
+            parser,
+            delimiter,
+            trailing_error,
+            element_collector,
+        }
+    }
 }
 
 /// Collects the elements into the final result

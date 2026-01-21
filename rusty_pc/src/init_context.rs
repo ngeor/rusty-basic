@@ -1,26 +1,5 @@
 use crate::{InputTrait, Parser, SetContext};
 
-pub trait InitContext<I, CInner>: Parser<I, CInner> + SetContext<CInner> + Sized
-where
-    I: InputTrait,
-{
-    /// Creates a parser that will initialize the context of the underlying parser
-    /// to the given value before parsing starts.
-    fn init_context(self, value: CInner) -> InitContextParser<Self, CInner>
-    where
-        CInner: Clone,
-    {
-        InitContextParser::new(self, value)
-    }
-}
-
-impl<I, CInner, P> InitContext<I, CInner> for P
-where
-    I: InputTrait,
-    P: Parser<I, CInner> + SetContext<CInner>,
-{
-}
-
 /// Initializes the context of the underlying parser to the given value
 /// before parsing starts.
 pub struct InitContextParser<P, CInner> {
@@ -32,7 +11,7 @@ pub struct InitContextParser<P, CInner> {
 
 impl<P, CInner> InitContextParser<P, CInner> {
     /// Creates a new instance.
-    pub fn new(parser: P, value: CInner) -> Self {
+    pub(crate) fn new(parser: P, value: CInner) -> Self {
         Self { parser, value }
     }
 }

@@ -41,7 +41,7 @@ pub fn any_token() -> impl Parser<StringView, Output = Token, Error = ParserErro
 
 /// Peeks the next token without consuming it.
 pub fn peek_token() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    PeekParser::new(any_token())
+    any_token().peek()
 }
 
 fn eol() -> impl Parser<StringView, Output = Token, Error = ParserError> {
@@ -124,7 +124,7 @@ pub fn keyword_ignoring(k: Keyword) -> impl Parser<StringView, Output = (), Erro
 
 fn ensure_no_illegal_char_after_keyword()
 -> impl Parser<StringView, Output = char, Error = ParserError> {
-    PeekParser::new(AnyCharOrEof.filter(is_allowed_char_after_keyword))
+    AnyCharOrEof.filter(is_allowed_char_after_keyword).peek()
 }
 
 /// Checks if the given character is illegal after a keyword,

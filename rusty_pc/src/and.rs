@@ -1,100 +1,8 @@
 use std::marker::PhantomData;
 
-use crate::{InputTrait, Parser, ParserErrorTrait, SetContext, ToOption, ToOptionParser};
+use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
 
-//
-// And (with undo)
-//
-
-pub trait And<I: InputTrait, C>: Parser<I, C>
-where
-    Self: Sized,
-{
-    /// Parses both the left and the right side.
-    /// If the right side fails with a soft error, parsing of the left side is undone.
-    fn and<R, F, O>(self, right: R, combiner: F) -> AndParser<Self, R, F, O>
-    where
-        R: Parser<I, C, Error = Self::Error>,
-        F: Combiner<Self::Output, R::Output, O>,
-    {
-        AndParser::new(self, right, combiner)
-    }
-
-    fn and_tuple<R>(self, right: R) -> AndParser<Self, R, TupleCombiner, (Self::Output, R::Output)>
-    where
-        R: Parser<I, C, Error = Self::Error>,
-    {
-        self.and(right, TupleCombiner)
-    }
-
-    fn and_keep_left<R>(self, right: R) -> AndParser<Self, R, KeepLeftCombiner, Self::Output>
-    where
-        R: Parser<I, C, Error = Self::Error>,
-    {
-        self.and(right, KeepLeftCombiner)
-    }
-
-    fn and_keep_right<R>(self, right: R) -> AndParser<Self, R, KeepRightCombiner, R::Output>
-    where
-        R: Parser<I, C, Error = Self::Error>,
-    {
-        self.and(right, KeepRightCombiner)
-    }
-
-    /// Parses the left side and optionally the right side.
-    /// The combiner function maps the left and (optional) right output to the final result.
-    fn and_opt<R, F, O>(self, right: R, combiner: F) -> AndParser<Self, ToOptionParser<R>, F, O>
-    where
-        R: Parser<I, C, Error = Self::Error>,
-        F: Combiner<Self::Output, Option<R::Output>, O>,
-    {
-        self.and(right.to_option(), combiner)
-    }
-
-    /// Parses the left side and optionally the right side.
-    /// The result is a tuple of both sides.
-    fn and_opt_tuple<R>(
-        self,
-        right: R,
-    ) -> AndParser<Self, ToOptionParser<R>, TupleCombiner, (Self::Output, Option<R::Output>)>
-    where
-        R: Parser<I, C, Error = Self::Error>,
-    {
-        self.and_opt(right, TupleCombiner)
-    }
-
-    /// Parses the left side and optionally the right side.
-    /// The result is only the left side's output.
-    fn and_opt_keep_left<R>(
-        self,
-        right: R,
-    ) -> AndParser<Self, ToOptionParser<R>, KeepLeftCombiner, Self::Output>
-    where
-        R: Parser<I, C, Error = Self::Error>,
-    {
-        self.and_opt(right, KeepLeftCombiner)
-    }
-
-    /// Parses the left side and optionally the right side.
-    /// The result is only the right side's output.
-    fn and_opt_keep_right<R>(
-        self,
-        right: R,
-    ) -> AndParser<Self, ToOptionParser<R>, KeepRightCombiner, Option<R::Output>>
-    where
-        R: Parser<I, C, Error = Self::Error>,
-    {
-        self.and_opt(right, KeepRightCombiner)
-    }
-}
-
-impl<I, C, L> And<I, C> for L
-where
-    I: InputTrait,
-    L: Parser<I, C>,
-{
-}
-
+/// And (with undo)
 pub struct AndParser<L, R, F, O> {
     left: L,
     right: R,
@@ -103,7 +11,7 @@ pub struct AndParser<L, R, F, O> {
 }
 
 impl<L, R, F, O> AndParser<L, R, F, O> {
-    pub fn new(left: L, right: R, combiner: F) -> Self {
+    pub(crate) fn new(left: L, right: R, combiner: F) -> Self {
         Self {
             left,
             right,

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rusty_pc::{Map, Parser};
+use rusty_pc::Parser;
 
 use crate::input::StringView;
 use crate::pc_specific::keyword_p;

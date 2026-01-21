@@ -159,7 +159,7 @@ where
         // we want to validate that a qualified variable is not
         // followed by an `AS` clause, in order to simulate the error that QBasic
         // throws when that happens
-        .and_tuple(PeekParser::new(as_clause()).to_option().no_context())
+        .and_tuple(as_clause().peek().to_option().no_context())
         .flat_map(|(result, has_opt_clause)| {
             if has_opt_clause.is_some() {
                 Err(ParserError::syntax_error(
@@ -178,7 +178,7 @@ where
     T: Default + VarType,
     BP: Parser<StringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>,
 {
-    let extended_type_parser = extended_type_parser.no_incomplete();
+    let extended_type_parser = extended_type_parser.to_fatal();
     as_clause()
         .no_context()
         .and_keep_right(extended_type_parser)

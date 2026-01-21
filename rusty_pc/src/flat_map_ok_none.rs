@@ -1,32 +1,5 @@
 use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
 
-/// Flat map the result of this parser for successful and incomplete results.
-/// Mapping is done by the given closures.
-/// Other errors are never allowed to be re-mapped.
-pub trait FlatMapOkNone<I: InputTrait, C>: Parser<I, C>
-where
-    Self: Sized,
-{
-    fn flat_map_ok_none<F, G, U>(
-        self,
-        ok_mapper: F,
-        incomplete_mapper: G,
-    ) -> FlatMapOkNoneParser<Self, F, G>
-    where
-        F: Fn(Self::Output) -> Result<U, Self::Error>,
-        G: Fn() -> Result<U, Self::Error>,
-    {
-        FlatMapOkNoneParser::new(self, ok_mapper, incomplete_mapper)
-    }
-}
-
-impl<I, C, P> FlatMapOkNone<I, C> for P
-where
-    I: InputTrait,
-    P: Parser<I, C>,
-{
-}
-
 pub struct FlatMapOkNoneParser<P, F, G> {
     parser: P,
     ok_mapper: F,
@@ -34,7 +7,7 @@ pub struct FlatMapOkNoneParser<P, F, G> {
 }
 
 impl<P, F, G> FlatMapOkNoneParser<P, F, G> {
-    pub fn new(parser: P, ok_mapper: F, incomplete_mapper: G) -> Self {
+    pub(crate) fn new(parser: P, ok_mapper: F, incomplete_mapper: G) -> Self {
         Self {
             parser,
             ok_mapper,
@@ -68,29 +41,4 @@ where
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)
     }
-}
-
-pub trait FlatMapNegateNone<I, C>: FlatMapOkNone<I, C>
-where
-    Self: Sized,
-    I: InputTrait,
-{
-    /// Flat map the successful of this parser into an empty result.
-    /// The Failed result is negated and mapped into an empty successful result (i.e. `None` becomes `Ok(())`).
-    fn flat_map_negate_none<F>(
-        self,
-        ok_mapper: F,
-    ) -> impl Parser<I, C, Output = (), Error = Self::Error>
-    where
-        F: Fn(Self::Output) -> Result<(), Self::Error>,
-    {
-        self.flat_map_ok_none(ok_mapper, || Ok(()))
-    }
-}
-
-impl<I, C, P> FlatMapNegateNone<I, C> for P
-where
-    P: FlatMapOkNone<I, C>,
-    I: InputTrait,
-{
 }

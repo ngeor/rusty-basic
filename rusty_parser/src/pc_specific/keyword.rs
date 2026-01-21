@@ -39,7 +39,7 @@ pub fn keyword_p(
 
 /// Parses the given keyword, followed by mandatory whitespace.
 pub fn keyword_ws_p(k: Keyword) -> impl Parser<StringView, Output = (), Error = ParserError> {
-    keyword_ignoring(k).and(whitespace_ignoring().no_incomplete(), IgnoringBothCombiner)
+    keyword_ignoring(k).and(whitespace_ignoring().to_fatal(), IgnoringBothCombiner)
 }
 
 // TODO add keyword_pair_ws
@@ -50,10 +50,7 @@ pub fn keyword_pair(
     first: Keyword,
     second: Keyword,
 ) -> impl Parser<StringView, Output = (), Error = ParserError> {
-    keyword_ws_p(first).and(
-        keyword_ignoring(second).no_incomplete(),
-        IgnoringBothCombiner,
-    )
+    keyword_ws_p(first).and(keyword_ignoring(second).to_fatal(), IgnoringBothCombiner)
 }
 
 /// Parses the specific keyword, ensuring it's not followed by a dollar sign.

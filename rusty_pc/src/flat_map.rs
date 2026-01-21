@@ -1,29 +1,11 @@
 use crate::{InputTrait, Parser, SetContext};
 
-pub trait FlatMap<I: InputTrait, C>: Parser<I, C>
-where
-    Self: Sized,
-{
-    fn flat_map<F, U>(self, mapper: F) -> FlatMapParser<Self, F>
-    where
-        F: Fn(Self::Output) -> Result<U, Self::Error>,
-    {
-        FlatMapParser::new(self, mapper)
-    }
-}
-impl<I, C, P> FlatMap<I, C> for P
-where
-    I: InputTrait,
-    P: Parser<I, C>,
-{
-}
-
 pub struct FlatMapParser<P, F> {
     parser: P,
     mapper: F,
 }
 impl<P, F> FlatMapParser<P, F> {
-    pub fn new(parser: P, mapper: F) -> Self {
+    pub(crate) fn new(parser: P, mapper: F) -> Self {
         Self { parser, mapper }
     }
 }

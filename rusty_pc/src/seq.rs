@@ -33,7 +33,7 @@ macro_rules! seq_pc {
         <_I, _C, _E, _F, $first_type, $($generic_type),+>
         {
             #[allow(non_snake_case)]
-            pub fn new(
+            pub(crate) fn new(
                 _mapper: _F,
                 $first_type: impl Parser<_I, _C, Output = $first_type, Error = _E> + 'static,
                 $($generic_type: impl Parser<_I, _C, Output = $generic_type, Error = _E> +'static ),+) -> Self

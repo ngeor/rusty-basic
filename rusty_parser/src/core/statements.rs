@@ -1,5 +1,4 @@
 use rusty_common::Positioned;
-use rusty_pc::boxed::boxed;
 use rusty_pc::*;
 
 use crate::core::statement::statement_p;
@@ -9,7 +8,7 @@ use crate::pc_specific::*;
 use crate::*;
 
 macro_rules! zero_or_more_statements {
-    ($exit:expr, ParserErrorKind::$err:ident) => {
+    ($exit:expr, ParserError::$err:ident) => {
         $crate::core::statements::zero_or_more_statements_p([$exit], Some(ParserError::$err))
     };
     ($($exit:expr),+) => {
@@ -91,9 +90,9 @@ fn ctx_demand_separator_p()
     ctx_parser()
         .map(|last_statement_was_comment| {
             if last_statement_was_comment {
-                boxed(comment_separator()).no_context()
+                comment_separator().boxed().no_context()
             } else {
-                boxed(common_separator()).no_context()
+                common_separator().boxed().no_context()
             }
         })
         .flatten()
@@ -115,13 +114,14 @@ fn find_exit_keyword_p(
     // Ok if it finds the keyword (peeking)
     // Err(false) if it finds something else
     // Err(true) if it finds EOF
-    let p = PeekParser::new(keyword_p(exit_keywords, true))
+    let p = keyword_p(exit_keywords, true)
+        .peek()
         // Ok(None) if it finds the keyword
         .map(StatementOrExitKeyword::ExitKeyword);
 
     match custom_err {
-        Some(err) => boxed(p.map_fatal_err(move |_| err.clone())),
-        None => boxed(p),
+        Some(err) => p.with_fatal_err(err).boxed(),
+        None => p.boxed(),
     }
 }
 

@@ -35,7 +35,7 @@ pub enum SurroundMode {
 }
 
 impl<P, L, R> SurroundParser<P, L, R> {
-    pub fn new(parser: P, left: L, right: R, mode: SurroundMode) -> Self {
+    pub(crate) fn new(parser: P, left: L, right: R, mode: SurroundMode) -> Self {
         Self {
             parser,
             left,

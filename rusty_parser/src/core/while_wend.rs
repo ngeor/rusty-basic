@@ -12,7 +12,7 @@ pub fn while_wend_p() -> impl Parser<StringView, Output = Statement, Error = Par
     seq4(
         keyword(Keyword::While),
         ws_expr_pos_p().or_expected("expression after WHILE"),
-        zero_or_more_statements!(Keyword::Wend, ParserErrorKind::WhileWithoutWend),
+        zero_or_more_statements!(Keyword::Wend, ParserError::WhileWithoutWend),
         keyword(Keyword::Wend).or_fail(ParserError::WhileWithoutWend),
         |_, condition, statements, _| {
             Statement::While(ConditionalBlock {

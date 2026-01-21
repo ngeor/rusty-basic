@@ -457,7 +457,7 @@ impl ExpressionTrait for Box<ExpressionPos> {
 pub fn in_parenthesis_csv_expressions_non_opt(
     expectation: &str,
 ) -> impl Parser<StringView, Output = Expressions, Error = ParserError> + '_ {
-    in_parenthesis(csv_expressions_non_opt(expectation)).no_incomplete()
+    in_parenthesis(csv_expressions_non_opt(expectation)).to_fatal()
 }
 
 /// Parses one or more expressions separated by comma.
@@ -575,7 +575,7 @@ mod single_or_double_literal {
             // read dot and demand digits after decimal point
             // if dot is missing, the parser returns an empty result
             // the "deal breaker" is therefore the dot
-            dot().and_keep_right(digits().no_incomplete()),
+            dot().and_keep_right(digits().to_fatal()),
         )
         // and parse optionally a type qualifier such as `#`
         .and_opt_tuple(pound())
@@ -1141,7 +1141,7 @@ mod unary_expression {
         minus_sign()
             .map(|_| UnaryOperator::Minus)
             .or(keyword(Keyword::Not)
-                .and_keep_right(guard::parser().no_incomplete())
+                .and_keep_right(guard::parser().to_fatal())
                 .map(|_| UnaryOperator::Not))
             .with_pos()
     }

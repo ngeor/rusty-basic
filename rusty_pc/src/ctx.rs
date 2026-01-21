@@ -56,29 +56,12 @@ impl<C, E> SetContext<C> for CtxParser<C, E> {
     }
 }
 
-pub trait NoContext<I: InputTrait, C>: Parser<I, C>
-where
-    Self: Sized,
-    I: InputTrait,
-{
-    fn no_context<C2>(self) -> NoContextParser<Self, C, C2> {
-        NoContextParser::new(self)
-    }
-}
-impl<I, C, P> NoContext<I, C> for P
-where
-    I: InputTrait,
-    P: Parser<I, C>,
-    I: InputTrait,
-{
-}
-
 pub struct NoContextParser<P, C1, C2> {
     parser: P,
     _marker: PhantomData<(C1, C2)>,
 }
 impl<P, C1, C2> NoContextParser<P, C1, C2> {
-    pub fn new(parser: P) -> Self {
+    pub(crate) fn new(parser: P) -> Self {
         Self {
             parser,
             _marker: PhantomData,

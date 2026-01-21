@@ -5,7 +5,7 @@ pub struct PeekParser<P> {
 }
 
 impl<P> PeekParser<P> {
-    pub fn new(parser: P) -> Self {
+    pub(crate) fn new(parser: P) -> Self {
         Self { parser }
     }
 }

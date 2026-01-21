@@ -1,33 +1,11 @@
 use crate::{InputTrait, Parser, SetContext, default_parse_error};
 
-pub trait FilterMap<I: InputTrait, C>: Parser<I, C>
-where
-    Self: Sized,
-    I: InputTrait,
-    Self::Error: Default,
-{
-    fn filter_map<F, U>(self, predicate: F) -> impl Parser<I, C, Output = U, Error = Self::Error>
-    where
-        F: Fn(&Self::Output) -> Option<U>,
-    {
-        FilterMapParser::new(self, predicate)
-    }
-}
-impl<I, C, P> FilterMap<I, C> for P
-where
-    I: InputTrait,
-    P: Parser<I, C>,
-    I: InputTrait,
-    P::Error: Default,
-{
-}
-
-struct FilterMapParser<P, F> {
+pub struct FilterMapParser<P, F> {
     parser: P,
     predicate: F,
 }
 impl<P, F> FilterMapParser<P, F> {
-    pub fn new(parser: P, predicate: F) -> Self {
+    pub(crate) fn new(parser: P, predicate: F) -> Self {
         Self { parser, predicate }
     }
 }

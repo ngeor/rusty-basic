@@ -1,4 +1,6 @@
-use rusty_pc::{OrFail, Parser, ParserErrorTrait, SurroundMode, ToFatalParser, surround};
+use rusty_pc::{
+    MapErrParser, Parser, ParserErrorTrait, SoftErrorOverrider, SurroundMode, surround
+};
 
 use crate::error::ParserError;
 use crate::input::StringView;
@@ -11,7 +13,7 @@ where
     /// Demands a successful result or returns a fatal syntax error
     /// with an error message like "Expected: " followed by the
     /// given expectation message.
-    fn or_expected(self, expectation: &str) -> ToFatalParser<Self, ParserError> {
+    fn or_expected(self, expectation: &str) -> MapErrParser<Self, SoftErrorOverrider<Self::Error>> {
         self.or_fail(ParserError::expected(expectation).to_fatal())
     }
 }

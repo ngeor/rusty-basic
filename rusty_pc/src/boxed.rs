@@ -1,19 +1,19 @@
 use crate::{InputTrait, Parser, ParserErrorTrait};
 
-pub fn boxed<I, C, O, E>(
-    parser: impl Parser<I, C, Output = O, Error = E> + 'static,
-) -> BoxedParser<I, C, O, E>
+pub struct BoxedParser<I, C, O, E> {
+    parser: Box<dyn Parser<I, C, Output = O, Error = E>>,
+}
+
+impl<I, C, O, E> BoxedParser<I, C, O, E>
 where
     I: InputTrait,
     E: ParserErrorTrait,
 {
-    BoxedParser {
-        parser: Box::new(parser),
+    pub(crate) fn new(parser: impl Parser<I, C, Output = O, Error = E> + 'static) -> Self {
+        BoxedParser {
+            parser: Box::new(parser),
+        }
     }
-}
-
-pub struct BoxedParser<I, C, O, E> {
-    parser: Box<dyn Parser<I, C, Output = O, Error = E>>,
 }
 
 impl<I, C, O, E> Parser<I, C> for BoxedParser<I, C, O, E>

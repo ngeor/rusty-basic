@@ -6,7 +6,7 @@ pub struct FilterParser<P, F> {
 }
 
 impl<P, F> FilterParser<P, F> {
-    pub fn new(parser: P, predicate: F) -> Self {
+    pub(crate) fn new(parser: P, predicate: F) -> Self {
         Self { parser, predicate }
     }
 }

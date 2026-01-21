@@ -1,4 +1,4 @@
-use rusty_pc::{InputTrait, MapErr, Parser};
+use rusty_pc::{InputTrait, Parser};
 
 use crate::ParserError;
 
@@ -14,7 +14,7 @@ where
     where
         F: MessageProvider,
     {
-        self.map_non_fatal_err(move |_| ParserError::Expected(f.to_str()))
+        self.with_soft_err(ParserError::Expected(f.to_str()))
     }
 }
 

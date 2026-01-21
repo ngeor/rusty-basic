@@ -1,110 +1,13 @@
 use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
 
-pub trait NoIncomplete<I: InputTrait, C>: Parser<I, C> + Sized {
-    fn no_incomplete(self) -> ToFatalParser<Self, Self::Error> {
-        ToFatalParser::new(self, None)
-    }
-}
-
-impl<I, C, P> NoIncomplete<I, C> for P
-where
-    I: InputTrait,
-    P: Parser<I, C> + Sized,
-{
-}
-
-pub trait OrFail<I: InputTrait, C>: Parser<I, C> + Sized {
-    fn or_fail(self, err: Self::Error) -> ToFatalParser<Self, Self::Error> {
-        debug_assert!(err.is_fatal());
-        ToFatalParser::new(self, Some(err))
-    }
-}
-
-impl<I, C, P> OrFail<I, C> for P
-where
-    I: InputTrait,
-    P: Parser<I, C> + Sized,
-{
-}
-
-pub struct ToFatalParser<P, E> {
-    parser: P,
-    override_non_fatal_error: Option<E>,
-}
-
-impl<P, E> ToFatalParser<P, E> {
-    pub fn new(parser: P, override_non_fatal_error: Option<E>) -> Self {
-        Self {
-            parser,
-            override_non_fatal_error,
-        }
-    }
-}
-
-impl<I, C, P, E> Parser<I, C> for ToFatalParser<P, E>
-where
-    I: InputTrait,
-    P: Parser<I, C, Error = E>,
-    E: ParserErrorTrait,
-{
-    type Output = P::Output;
-    type Error = E;
-
-    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
-        match self.parser.parse(input) {
-            Ok(value) => Ok(value),
-            Err(err) if err.is_soft() => {
-                let err = match &self.override_non_fatal_error {
-                    Some(e) => e.clone(),
-                    _ => err.to_fatal(),
-                };
-                Err(err)
-            }
-            Err(e) => Err(e),
-        }
-    }
-}
-
-impl<C, P, E> SetContext<C> for ToFatalParser<P, E>
-where
-    P: SetContext<C>,
-{
-    fn set_context(&mut self, ctx: C) {
-        self.parser.set_context(ctx)
-    }
-}
-
-pub trait MapErr<I: InputTrait, C>: Parser<I, C> + Sized {
-    fn map_fatal_err<F>(self, mapper: F) -> MapErrParser<Self, F> {
-        MapErrParser::new(self, mapper, true, false)
-    }
-    fn map_non_fatal_err<F>(self, mapper: F) -> MapErrParser<Self, F> {
-        MapErrParser::new(self, mapper, false, true)
-    }
-}
-
-impl<I, C, P> MapErr<I, C> for P
-where
-    I: InputTrait,
-    P: Parser<I, C> + Sized,
-{
-}
-
 pub struct MapErrParser<P, F> {
     parser: P,
     mapper: F,
-    map_fatal: bool,
-    map_non_fatal: bool,
 }
 
 impl<P, F> MapErrParser<P, F> {
-    pub fn new(parser: P, mapper: F, map_fatal: bool, map_non_fatal: bool) -> Self {
-        Self {
-            parser,
-            mapper,
-            map_fatal,
-            map_non_fatal,
-        }
+    pub(crate) fn new(parser: P, mapper: F) -> Self {
+        Self { parser, mapper }
     }
 }
 
@@ -112,7 +15,7 @@ impl<I, C, P, F> Parser<I, C> for MapErrParser<P, F>
 where
     I: InputTrait,
     P: Parser<I, C>,
-    F: Fn(P::Error) -> P::Error,
+    F: ErrorMapper<P::Error>,
 {
     type Output = P::Output;
     type Error = P::Error;
@@ -120,13 +23,7 @@ where
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.parser.parse(input) {
             Ok(value) => Ok(value),
-            Err(err) => Err(
-                if self.map_non_fatal && err.is_soft() || self.map_fatal && err.is_fatal() {
-                    (self.mapper)(err)
-                } else {
-                    err
-                },
-            ),
+            Err(err) => Err(self.mapper.map(err)),
         }
     }
 }
@@ -137,5 +34,57 @@ where
 {
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)
+    }
+}
+
+pub trait ErrorMapper<E>
+where
+    E: ParserErrorTrait,
+{
+    fn map(&self, err: E) -> E;
+}
+
+pub struct ToFatalErrorMapper;
+
+impl<E> ErrorMapper<E> for ToFatalErrorMapper
+where
+    E: ParserErrorTrait,
+{
+    fn map(&self, err: E) -> E {
+        err.to_fatal()
+    }
+}
+
+pub struct SoftErrorOverrider<E>(E);
+
+impl<E> SoftErrorOverrider<E> {
+    pub fn new(err: E) -> Self {
+        Self(err)
+    }
+}
+
+impl<E> ErrorMapper<E> for SoftErrorOverrider<E>
+where
+    E: ParserErrorTrait,
+{
+    fn map(&self, err: E) -> E {
+        if err.is_soft() { self.0.clone() } else { err }
+    }
+}
+
+pub struct FatalErrorOverrider<E>(E);
+
+impl<E> FatalErrorOverrider<E> {
+    pub fn new(err: E) -> Self {
+        Self(err)
+    }
+}
+
+impl<E> ErrorMapper<E> for FatalErrorOverrider<E>
+where
+    E: ParserErrorTrait,
+{
+    fn map(&self, err: E) -> E {
+        if err.is_fatal() { self.0.clone() } else { err }
     }
 }

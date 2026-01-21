@@ -3,36 +3,6 @@ use std::marker::PhantomData;
 use crate::{InputTrait, Parser, ParserErrorTrait, SetContext, Token};
 
 /// Collects multiple values from the underlying parser as long as parsing succeeds.
-pub trait Many<I: InputTrait, C>: Parser<I, C>
-where
-    Self: Sized,
-{
-    /// Collects multiple values from the underlying parser as long as parsing succeeds.
-    /// The combiner trait combines the multiple values into the final result.
-    fn many<F, O>(self, combiner: F) -> ManyParser<Self, F, O>
-    where
-        F: ManyCombiner<Self::Output, O>,
-        O: Default,
-    {
-        ManyParser::new(self, combiner, false)
-    }
-
-    fn many_allow_none<F, O>(self, combiner: F) -> ManyParser<Self, F, O>
-    where
-        F: ManyCombiner<Self::Output, O>,
-        O: Default,
-    {
-        ManyParser::new(self, combiner, true)
-    }
-}
-
-impl<I, C, P> Many<I, C> for P
-where
-    I: InputTrait,
-    P: Parser<I, C>,
-{
-}
-
 pub struct ManyParser<P, F, O> {
     parser: P,
     combiner: F,
@@ -41,7 +11,7 @@ pub struct ManyParser<P, F, O> {
 }
 
 impl<P, F, O> ManyParser<P, F, O> {
-    pub fn new(parser: P, combiner: F, allow_none: bool) -> Self {
+    pub(crate) fn new(parser: P, combiner: F, allow_none: bool) -> Self {
         Self {
             parser,
             combiner,
@@ -98,27 +68,6 @@ where
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)
     }
-}
-
-pub trait ManyVec<I, C>: Many<I, C>
-where
-    Self: Sized,
-    I: InputTrait,
-{
-    fn one_or_more(self) -> ManyParser<Self, VecManyCombiner, Vec<Self::Output>> {
-        self.many(VecManyCombiner)
-    }
-
-    fn zero_or_more(self) -> ManyParser<Self, VecManyCombiner, Vec<Self::Output>> {
-        self.many_allow_none(VecManyCombiner)
-    }
-}
-
-impl<I, C, P> ManyVec<I, C> for P
-where
-    P: Many<I, C>,
-    I: InputTrait,
-{
 }
 
 /// Combines multiple values into a single result.

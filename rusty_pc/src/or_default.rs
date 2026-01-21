@@ -1,27 +1,10 @@
 use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
 
-pub trait OrDefault<I: InputTrait, C>: Parser<I, C>
-where
-    Self: Sized,
-    Self::Output: Default,
-{
-    fn or_default(self) -> OrDefaultParser<Self> {
-        OrDefaultParser::new(self)
-    }
-}
-impl<I, C, P> OrDefault<I, C> for P
-where
-    I: InputTrait,
-    P: Parser<I, C>,
-    P::Output: Default,
-{
-}
-
 pub struct OrDefaultParser<P> {
     parser: P,
 }
 impl<P> OrDefaultParser<P> {
-    pub fn new(parser: P) -> Self {
+    pub(crate) fn new(parser: P) -> Self {
         Self { parser }
     }
 }

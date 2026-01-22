@@ -1,3 +1,4 @@
+use rusty_pc::and::opt_and_keep_right;
 use rusty_pc::*;
 
 use crate::core::expression::ws_expr_pos_p;
@@ -107,6 +108,7 @@ fn case_expression_list()
 
 mod case_expression_parser {
     use rusty_common::Positioned;
+    use rusty_pc::and::opt_and_keep_right;
     use rusty_pc::*;
 
     use crate::core::expression::expression_pos_p;

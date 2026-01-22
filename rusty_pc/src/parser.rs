@@ -1,7 +1,20 @@
+use crate::and::{AndParser, Combiner, KeepLeftCombiner, KeepRightCombiner, TupleCombiner};
 use crate::boxed::BoxedParser;
-use crate::{
-    AndParser, Combiner, DelimitedParser, ErrorMapper, FatalErrorOverrider, FilterMapParser, FilterParser, FilterPredicate, FlatMapOkNoneParser, FlatMapParser, FlattenParser, InitContextParser, KeepLeftCombiner, KeepRightCombiner, ManyCombiner, ManyParser, MapErrParser, MapParser, NoContextParser, NormalElementCollector, OptionalElementCollector, OrDefaultParser, PeekParser, SoftErrorOverrider, ThenWithContextParser, ToFatalErrorMapper, ToOptionParser, TupleCombiner, VecManyCombiner
+use crate::delimited::{DelimitedParser, NormalElementCollector, OptionalElementCollector};
+use crate::filter::{FilterParser, FilterPredicate};
+use crate::filter_map::FilterMapParser;
+use crate::flat_map::FlatMapParser;
+use crate::flat_map_ok_none::FlatMapOkNoneParser;
+use crate::flatten::FlattenParser;
+use crate::many::{ManyCombiner, ManyParser, VecManyCombiner};
+use crate::map::MapParser;
+use crate::map_err::{
+    ErrorMapper, FatalErrorOverrider, MapErrParser, SoftErrorOverrider, ToFatalErrorMapper
 };
+use crate::or_default::OrDefaultParser;
+use crate::peek::PeekParser;
+use crate::to_option::ToOptionParser;
+use crate::{InitContextParser, NoContextParser, ThenWithContextParser};
 
 /// A parser uses the given input in order to produce a result.
 pub trait Parser<I, C = ()>
@@ -314,6 +327,10 @@ where
     // MapErr
     // =======================================================================
 
+    /// Maps the error of this parser.
+    /// If the parser is successful, the value is returned as-is.
+    /// If the parser returns an error, the given mapper is used to map the error
+    /// to a new error.
     fn map_err<F>(self, mapper: F) -> MapErrParser<Self, F>
     where
         Self: Sized,
@@ -322,6 +339,8 @@ where
         MapErrParser::new(self, mapper)
     }
 
+    /// If this parser returns a soft error, the soft error will be replaced by
+    /// the given error (which might be soft or fatal).
     fn with_soft_err(self, err: Self::Error) -> MapErrParser<Self, SoftErrorOverrider<Self::Error>>
     where
         Self: Sized,
@@ -329,14 +348,18 @@ where
         self.map_err(SoftErrorOverrider::new(err))
     }
 
+    /// If this parser returns a soft error, the soft error will be replaced by
+    /// the given error, which must be fatal.
     fn or_fail(self, err: Self::Error) -> MapErrParser<Self, SoftErrorOverrider<Self::Error>>
     where
         Self: Sized,
     {
-        debug_assert!(err.is_fatal());
+        assert!(err.is_fatal());
         self.with_soft_err(err)
     }
 
+    /// If this parser returns a fatal error, the fatal error will be replaced by the given error
+    /// (which must be fatal too).
     fn with_fatal_err(
         self,
         err: Self::Error,
@@ -344,9 +367,11 @@ where
     where
         Self: Sized,
     {
+        assert!(err.is_fatal());
         self.map_err(FatalErrorOverrider::new(err))
     }
 
+    /// If this parser returns a soft error, it will be converted to a fatal error.
     fn to_fatal(self) -> MapErrParser<Self, ToFatalErrorMapper>
     where
         Self: Sized,
@@ -472,4 +497,12 @@ pub trait ParserErrorTrait: Clone + Default {
 
     /// Converts this error into a fatal.
     fn to_fatal(self) -> Self;
+}
+
+/// Creates a failed result containing the default parse error (soft).
+pub fn default_parse_error<O, E>() -> Result<O, E>
+where
+    E: ParserErrorTrait,
+{
+    Err(E::default())
 }

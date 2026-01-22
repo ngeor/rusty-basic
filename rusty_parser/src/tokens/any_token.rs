@@ -1,3 +1,6 @@
+use rusty_pc::and::StringCombiner;
+use rusty_pc::filter::FilterPredicate;
+use rusty_pc::many::{IgnoringManyCombiner, ManyCombiner, StringManyCombiner};
 use rusty_pc::text::any_char;
 use rusty_pc::*;
 

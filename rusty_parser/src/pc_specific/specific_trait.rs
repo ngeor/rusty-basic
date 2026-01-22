@@ -1,6 +1,5 @@
-use rusty_pc::{
-    MapErrParser, Parser, ParserErrorTrait, SoftErrorOverrider, SurroundMode, surround
-};
+use rusty_pc::map_err::{MapErrParser, SoftErrorOverrider};
+use rusty_pc::{Parser, ParserErrorTrait, SurroundMode, surround};
 
 use crate::error::ParserError;
 use crate::input::StringView;

@@ -1,4 +1,5 @@
 use rusty_common::*;
+use rusty_pc::and::{KeepLeftCombiner, VecCombiner};
 use rusty_pc::*;
 use rusty_variant::{MIN_INTEGER, MIN_LONG};
 
@@ -553,6 +554,7 @@ fn eager_expression_pos_p() -> impl Parser<StringView, Output = ExpressionPos, E
 }
 
 mod single_or_double_literal {
+    use rusty_pc::and::opt_and_tuple;
     use rusty_pc::*;
 
     use crate::input::StringView;
@@ -602,6 +604,7 @@ mod single_or_double_literal {
 }
 
 mod string_literal {
+    use rusty_pc::many::StringManyCombiner;
     use rusty_pc::*;
 
     use crate::input::StringView;
@@ -861,6 +864,7 @@ mod function_call_or_array_element {
 }
 
 pub mod property {
+    use rusty_pc::and::TupleCombiner;
     use rusty_pc::*;
 
     use crate::core::name::{name_as_tokens_p, token_to_type_qualifier};
@@ -992,6 +996,7 @@ mod built_in_function_call {
 
 mod binary_expression {
     use rusty_common::Positioned;
+    use rusty_pc::and::opt_and_tuple;
     use rusty_pc::*;
 
     use super::{

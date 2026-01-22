@@ -1,3 +1,4 @@
+use rusty_pc::filter::FilterPredicate;
 use rusty_pc::*;
 
 use crate::error::ParserError;

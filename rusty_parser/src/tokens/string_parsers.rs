@@ -1,5 +1,6 @@
+use rusty_pc::Parser;
+use rusty_pc::many::{IgnoringManyCombiner, ManyCombiner, StringManyCombiner};
 use rusty_pc::text::any_char;
-use rusty_pc::{IgnoringManyCombiner, ManyCombiner, Parser, StringManyCombiner};
 
 use crate::ParserError;
 use crate::input::StringView;

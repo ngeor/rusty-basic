@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 
-use rusty_pc::{InputTrait, ManyCombiner, Parser};
+use rusty_pc::many::ManyCombiner;
+use rusty_pc::{InputTrait, Parser};
 
 use crate::ParserError;
 use crate::input::StringView;

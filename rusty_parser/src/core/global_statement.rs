@@ -1,4 +1,6 @@
 use rusty_common::*;
+use rusty_pc::and::opt_and_keep_right;
+use rusty_pc::many::IgnoringManyCombiner;
 use rusty_pc::*;
 
 use crate::core::declaration::declaration_p;

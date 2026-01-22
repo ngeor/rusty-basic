@@ -1,5 +1,7 @@
 use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
 
+/// A parser that maps the error of the decorated parser
+/// using the given mapper.
 pub struct MapErrParser<P, F> {
     parser: P,
     mapper: F,
@@ -37,6 +39,7 @@ where
     }
 }
 
+/// Maps the error of the parser into a different error.
 pub trait ErrorMapper<E>
 where
     E: ParserErrorTrait,
@@ -44,6 +47,7 @@ where
     fn map(&self, err: E) -> E;
 }
 
+/// Converts a soft error into a fatal equivalent.
 pub struct ToFatalErrorMapper;
 
 impl<E> ErrorMapper<E> for ToFatalErrorMapper
@@ -55,6 +59,7 @@ where
     }
 }
 
+/// Overrides a soft error with the given value.
 pub struct SoftErrorOverrider<E>(E);
 
 impl<E> SoftErrorOverrider<E> {
@@ -72,6 +77,7 @@ where
     }
 }
 
+/// Overrides a fatal error with the given value.
 pub struct FatalErrorOverrider<E>(E);
 
 impl<E> FatalErrorOverrider<E> {

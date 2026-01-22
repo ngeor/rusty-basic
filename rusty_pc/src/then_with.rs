@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 
-use crate::{Combiner, InputTrait, Parser, ParserErrorTrait, SetContext};
+use crate::and::Combiner;
+use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
 
 /// A binary parser that sets the context of the right-side parser
 /// based on the value returned by the left-side parser.

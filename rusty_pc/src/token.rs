@@ -14,7 +14,7 @@ pub struct Token {
 
 impl Token {
     pub fn new(kind: TokenKind, text: String) -> Self {
-        debug_assert!(!text.is_empty(), "Token text cannot be empty");
+        assert!(!text.is_empty(), "Token text cannot be empty");
         Self { kind, text }
     }
 

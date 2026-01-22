@@ -17,7 +17,7 @@ impl Default for TypeResolverImpl {
 
 fn char_to_alphabet_index(ch: char) -> usize {
     let upper = ch.to_ascii_uppercase();
-    if ('A'..='Z').contains(&upper) {
+    if upper.is_ascii_uppercase() {
         ((upper as u8) - b'A') as usize
     } else {
         panic!("Not a latin letter {}", ch)

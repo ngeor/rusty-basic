@@ -25,10 +25,10 @@ impl Visitor<Statement> for PrintLinter {
 
 impl Visitor<Print> for PrintLinter {
     fn visit(&mut self, print: &Print) -> VisitResult {
-        if let Some(f) = &print.format_string {
-            if f.expression_type() != ExpressionType::BuiltIn(TypeQualifier::DollarString) {
-                return Err(LintError::TypeMismatch.at(f));
-            }
+        if let Some(f) = &print.format_string
+            && f.expression_type() != ExpressionType::BuiltIn(TypeQualifier::DollarString)
+        {
+            return Err(LintError::TypeMismatch.at(f));
         }
         for print_arg in &print.args {
             if let PrintArg::Expression(expr_pos) = print_arg {

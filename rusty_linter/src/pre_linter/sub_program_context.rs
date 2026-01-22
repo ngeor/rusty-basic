@@ -1,3 +1,5 @@
+use std::collections::hash_map;
+
 use rusty_common::*;
 use rusty_parser::BareName;
 
@@ -76,7 +78,6 @@ impl Declarations {
             if !exists {
                 self.0.insert(bare_name, signature);
             }
-            ()
         })
     }
 
@@ -92,11 +93,11 @@ impl Implementations {
         signature: Positioned<Signature>,
     ) -> Result<(), LintErrorPos> {
         // add if doesn't already exist, do not tolerate multiple implementations
-        if self.0.contains_key(&bare_name) {
-            Err(LintError::DuplicateDefinition.at_pos(signature.pos))
-        } else {
-            self.0.insert(bare_name, signature);
+        if let hash_map::Entry::Vacant(e) = self.0.entry(bare_name) {
+            e.insert(signature);
             Ok(())
+        } else {
+            Err(LintError::DuplicateDefinition.at_pos(signature.pos))
         }
     }
 

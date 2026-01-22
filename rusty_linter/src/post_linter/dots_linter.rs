@@ -176,9 +176,8 @@ impl PostConversionLinter for DotsLinter {
         self.ensure_no_dots(&f.variable_name)?;
         self.visit_expression(&f.lower_bound)?;
         self.visit_expression(&f.upper_bound)?;
-        match &f.step {
-            Some(s) => self.visit_expression(s)?,
-            None => (),
+        if let Some(s) = &f.step {
+            self.visit_expression(s)?;
         }
         self.visit_statements(&f.statements)
     }

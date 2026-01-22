@@ -809,8 +809,11 @@ mod variable {
 
     fn map_to_property(name_as_tokens: NameAsTokens) -> Expression {
         let (name_token, opt_q_token) = name_as_tokens;
-        let mut property_names: VecDeque<String> =
-            name_token.as_str().split('.').map(|s| s.to_owned()).collect();
+        let mut property_names: VecDeque<String> = name_token
+            .as_str()
+            .split('.')
+            .map(|s| s.to_owned())
+            .collect();
         let mut result = Expression::Variable(
             Name::bare(BareName::new(property_names.pop_front().unwrap())),
             VariableInfo::unresolved(),

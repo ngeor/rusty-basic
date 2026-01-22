@@ -164,9 +164,8 @@ pub trait PostConversionLinter {
     fn visit_for_loop(&mut self, f: &ForLoop) -> Result<(), LintErrorPos> {
         self.visit_expression(&f.lower_bound)?;
         self.visit_expression(&f.upper_bound)?;
-        match &f.step {
-            Some(s) => self.visit_expression(s)?,
-            None => (),
+        if let Some(s) = &f.step {
+            self.visit_expression(s)?;
         }
         self.visit_statements(&f.statements)
     }
@@ -239,10 +238,9 @@ pub trait PostConversionLinter {
     }
 
     fn visit_print(&mut self, print: &Print) -> Result<(), LintErrorPos> {
-        match &print.format_string {
-            Some(f) => self.visit_expression(f)?,
-            None => {}
-        };
+        if let Some(f) = &print.format_string {
+            self.visit_expression(f)?;
+        }
         for print_arg in &print.args {
             if let PrintArg::Expression(e) = print_arg {
                 self.visit_expression(e)?;

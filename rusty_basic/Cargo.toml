@@ -1,6 +1,6 @@
 [package]
 name = "rusty_basic"
-version = "0.8.0"
+version = "0.10.0"
 authors = ["Nikolaos Georgiou <nikolaos.georgiou@gmail.com>"]
 edition = "2024"
 

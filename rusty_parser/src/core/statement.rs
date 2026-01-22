@@ -336,7 +336,7 @@ fn statement_label_p() -> impl Parser<StringView, Output = Statement, Error = Pa
     // labels can have dots
     identifier()
         .and_keep_left(colon())
-        .map(|token| Statement::Label(CaseInsensitiveString::new(token.text())))
+        .map(|token| Statement::Label(CaseInsensitiveString::new(token.to_text())))
 }
 
 fn statement_go_to_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {

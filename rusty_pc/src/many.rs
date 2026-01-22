@@ -98,7 +98,7 @@ impl ManyCombiner<char, String> for StringManyCombiner {
 
 impl ManyCombiner<Token, String> for StringManyCombiner {
     fn seed(&self, element: Token) -> String {
-        element.text()
+        element.to_string()
     }
 
     fn accumulate(&self, mut result: String, element: Token) -> String {

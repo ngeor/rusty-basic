@@ -217,7 +217,7 @@ fn is_type_qualifier(token: &Token) -> bool {
 ///
 /// Usages: SUB name and labels.
 pub fn bare_name_p() -> impl Parser<StringView, Output = BareName, Error = ParserError> {
-    ensure_no_trailing_qualifier(identifier()).map(|token| BareName::new(token.text()))
+    ensure_no_trailing_qualifier(identifier()).map(|token| BareName::new(token.to_text()))
 }
 
 /// Parses a name that might be qualified and might have dots.
@@ -275,7 +275,7 @@ impl From<NameAsTokens> for Name {
     fn from(name_as_tokens: NameAsTokens) -> Self {
         let (name_token, opt_q) = name_as_tokens;
         Self::new(
-            BareName::new(name_token.text()),
+            BareName::new(name_token.to_text()),
             opt_q.as_ref().map(token_to_type_qualifier),
         )
     }

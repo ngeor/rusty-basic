@@ -4,7 +4,7 @@ pub type TokenKind = u8;
 
 /// Represents a recognized token.
 ///
-/// The [kind] field could have been a generic parameter, but that would require
+/// The `kind` field could have been a generic parameter, but that would require
 /// propagating the type too much.
 #[derive(Debug)]
 pub struct Token {
@@ -18,22 +18,32 @@ impl Token {
         Self { kind, text }
     }
 
+    /// Gets the token kind.
     pub fn kind(&self) -> TokenKind {
         self.kind
     }
 
-    pub fn text(self) -> String {
+    /// Gets the token text (owned).
+    pub fn to_text(self) -> String {
         self.text
     }
 
+    /// Gets the token text (reference).
     pub fn as_str(&self) -> &str {
         &self.text
     }
 
+    /// Demands that the token's text consist of a single character
+    /// and returns that character. Panics if the token consists of
+    /// multiple characters.
     pub fn demand_single_char(&self) -> char {
         self.try_as_single_char().expect("Token is not single char")
     }
 
+    /// If the token's text consists of a single character,
+    /// it returns that character.
+    /// If the token's text has multiple characters,
+    /// it returns `None`.
     pub fn try_as_single_char(&self) -> Option<char> {
         let mut iter = self.text.chars();
         match iter.next() {
@@ -62,7 +72,8 @@ mod tests {
         assert_eq!(token.kind(), 42);
         assert_eq!(token.as_str(), "abc");
         assert_eq!(token.try_as_single_char(), None);
-        assert_eq!(token.text(), "abc");
+        assert_eq!(token.to_string(), "abc");
+        assert_eq!(token.to_text(), "abc");
     }
 
     #[test]
@@ -79,7 +90,8 @@ mod tests {
         assert_eq!(token.as_str(), "a");
         assert_eq!(token.demand_single_char(), 'a');
         assert_eq!(token.try_as_single_char(), Some('a'));
-        assert_eq!(token.text(), "a");
+        assert_eq!(token.to_string(), "a");
+        assert_eq!(token.to_text(), "a");
     }
 
     #[test]

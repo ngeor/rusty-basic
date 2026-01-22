@@ -2,11 +2,113 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.10.0] - 2026-01-22
+
+### 🚀 Features
+
+- *(pc)* Implement `no_incomplete` directly into `and` parser
+- *(Makefile)* Print the size of the types
+- *(parser)* Implement `no_incomplete` directly into `WithExpectedMessage` parser
+- *(Makefile)* Print longest type length
+- *(pc)* Introducing context for parsers
+- *(pc)* Add flatten parser
+- *(pc)* Support contextual parsers
+- *(pc)* Added `PeekParser`
+- *(pc)* Support custom error in FilterParser
+- *(parser)* Implement specific string parser
+- *(parser)* Moved the dollar sign check for keywords into the `any_token` parser
+- *(pc)* Combine `char` with `Vec<char>` into a `String`
+- *(pc)* Added `Token.text()` method to return the ownership of the String
+- *(parser)* Make identifier token include dots
+- *(pc)* Added `map_fatal_err`, `map_non_fatal_err` and `flat_map_none`
+- *(parser)* Support treating EOF as fatal in keyword parser
+- *(pc)* Introducing `init_context` parser
+- *(pc)* Introducing `then_with_left` parser
+- *(pc)* Support `many` without closures
+- *(pc)* Added `surround` parser
+- *(parser)* Introducing `whitespace_ignoring`, parse whitespace but ignore the result
+- *(parser)* Support parsing specific string and ignoring the output
+- *(parser)* Support parsing a specific keyword and ignoring the output
+- *(pc)* Start support for text (char and string) parsing
+- *(pc)* Support error messages in `filter_or_err`
+- *(pc)* Changed the filter predicate into its own trait, embedding error management in it
+- *(pc)* Add `is_soft` method to error trait
+
+### 🐛 Bug Fixes
+
+- *(parser)* Comment separator must start with EOL
+- *(parser)* QBasic names cannot contain underscores
+- *(parser)* `comment_separator` should read any number of extra EOL or whitespace tokens
+- *(pc)* Fix broken build for release mode
 
 ### 🚜 Refactor
 
 - *(pc)* Implement `or_default` directly on `many` parser
+- *(pc)* Merge the types `NoIncomplete` and `OrFail` into one parser, `MapErr`
+- *(parser)* Remove `specific` module
+- *(pc)* Re-introduce the `OrDefault` trait
+- *(pc)* Remove all extra methods from `Parser` trait
+- *(pc)* Improve macros for parsers
+- *(pc)* Support more complex parsers in macros
+- *(pc)* Merge `parser1_decl` and `parser1_impl` into one macro `parser`
+- *(pc)* Re-working macro support
+- Remove the `lazy_parser` macro and add a `lazy` function
+- *(parser)* Add dedicated `struct` for `any_token_of` parser
+- *(parser)* Support padded whitespace in `any_token_of`
+- *(parser)* Support negative maches in `any_token_of`
+- *(pc)* Split `set_context` into a separate trait
+- *(pc)* Make `Seq2`, `Seq3`, etc structs private
+- *(parser)* Move token-level logic to a new `tokens` module
+- *(parser)* Move `detect_eof` to `global_statement`
+- *(parser)* Implement the Parser trait directly on the char type
+- *(parser)* Add `or_expected` as a shortcut for `or_syntax_error("Expected: ")`
+- *(parser)* Remove single-char token types
+- *(pc)* Improve code readability for single char Token
+- *(parser)* Add `AnySymbolParser`
+- *(parser)* Strengthen module visibility and rename modules
+- *(parser)* Create dedicated struct parser for keyword
+- *(parser)* Removed `keyword_choice` and improved `keyword_map`
+- *(parser)* Improvements to `statements` parser
+- *(pc)* Align `then_with` to use RefCell just like `then_with_right`
+- *(pc)* Implement `delimited_by` and `delimited_by_allow_missing`
+- *(pc)* Remove OptZip parser
+- *(pc)* Introduce `ParserErrorTrait` trait
+- *(parser)* Remove the explicit fatal designation on ParserError
+- *(pc)* Switch to a mutable input
+- *(common)* Deleted `CaseInsensitiveStr` for simplicity
+
+### 📚 Documentation
+
+- *(pc)* Improve `Token` documentation
+
+### ⚡ Performance
+
+- *(parser)* Improve `TokenType` lookup performance
+
+### ⚙️ Miscellaneous Tasks
+
+- *(Makefile)* Show only parser types in `print-type-size`
+- *(parser)* Add `_ws` suffix to `token_kind_parser` functions that are surrounded by optional whitespace
+- *(parser)* Move `char_parsers` to top-level module
+- *(parser)* Move `string_parsers` to top-level module
+- *(parser)* Use `AnyChar` struct directly
+- *(parser)* Use `filter_or_err`
+- *(pc)* Do not use macro in `many`
+- *(pc)* Removed `TokenList` and `token_list_to_string`
+- *(pc)* Removed unused Clone trait from Token
+- *(pc)* Removed macros
+- *(parser)* Reuse `eol_ws_zero_or_more` function
+- *(parser)* Simplify implementation of any_token_ws in favor of padded_by_ws
+- *(pc)* Change `parse` to mut
+- *(pc)* Fix various clippy warnings
+- *(pc)* Strengthen Token invariants
+- *(parser)* Fix some clippy issues
+- *(pc)* Move helper methods into the main Parser trait
+- *(pc)* Make private modules public for better visibility in the docs
+
+### ◀️ Revert
+
+- Revert the specialized `no_incomplete` and `or_default` implementations due to code duplication
 
 ## [0.9.1] - 2025-12-30
 

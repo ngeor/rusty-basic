@@ -1,24 +1,23 @@
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::slice::{Iter, IterMut};
 
 /// A key-value map that can also access values by their insertion order.
 #[derive(Debug)]
 pub struct IndexedMap<K, V>
 where
-    K: Eq + Hash,
+    K: Clone + Eq + Hash,
 {
-    values: Vec<V>,
+    entries: Vec<(K, V)>,
     keys_to_indices: HashMap<K, usize>,
 }
 
 impl<K, V> IndexedMap<K, V>
 where
-    K: Eq + Hash,
+    K: Clone + Eq + Hash,
 {
     pub fn new() -> Self {
         Self {
-            values: vec![],
+            entries: vec![],
             keys_to_indices: HashMap::new(),
         }
     }
@@ -26,11 +25,11 @@ where
     pub fn insert(&mut self, key: K, value: V) {
         match self.keys_to_indices.get(&key) {
             Some(existing_index) => {
-                self.values[*existing_index] = value;
+                self.entries[*existing_index] = (key, value);
             }
             _ => {
-                let index = self.values.len();
-                self.values.push(value);
+                let index = self.entries.len();
+                self.entries.push((key.clone(), value));
                 self.keys_to_indices.insert(key, index);
             }
         }
@@ -39,89 +38,52 @@ where
     pub fn get(&self, key: &K) -> Option<&V> {
         self.keys_to_indices
             .get(key)
-            .and_then(|index| self.values.get(*index))
+            .and_then(|index| self.get_by_index(*index))
     }
 
     pub fn get_by_index(&self, index: usize) -> Option<&V> {
-        self.values.get(index)
+        self.entries.get(index).map(|(_, v)| v)
     }
 
     pub fn get_by_index_mut(&mut self, index: usize) -> Option<&mut V> {
-        self.values.get_mut(index)
+        self.entries.get_mut(index).map(|(_, v)| v)
     }
 
     pub fn get_or_create<F>(&mut self, key: K, creator: F) -> &mut V
     where
         F: FnOnce(&K) -> V,
     {
-        match self.keys_to_indices.get(&key) {
-            Some(existing_index) => self.values.get_mut(*existing_index).unwrap(),
+        let opt_value = match self.keys_to_indices.get(&key) {
+            Some(existing_index) => self.get_by_index_mut(*existing_index),
             _ => {
                 let v = creator(&key);
                 self.insert(key, v);
-                self.values.last_mut().unwrap()
+                self.entries.last_mut().map(|(_, v)| v)
             }
-        }
+        };
+        // guaranteed to be present
+        opt_value.unwrap()
     }
 
-    pub fn values(&self) -> Iter<'_, V> {
-        self.values.iter()
+    pub fn entries(&self) -> impl Iterator<Item = &(K, V)> {
+        self.entries.iter()
     }
 
-    pub fn values_mut(&mut self) -> IterMut<'_, V> {
-        self.values.iter_mut()
+    pub fn values(&self) -> impl Iterator<Item = &V> {
+        self.entries.iter().map(|(_, v)| v)
     }
 
-    pub fn keys(&self) -> impl Iterator<Item = &K> + '_ {
-        KeysIterator::new(self)
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> {
+        self.entries.iter_mut().map(|(_, v)| v)
     }
 
     pub fn len(&self) -> usize {
-        self.values.len()
+        self.entries.len()
     }
 }
 
-impl<K: Eq + Hash, V> Default for IndexedMap<K, V> {
+impl<K: Clone + Eq + Hash, V> Default for IndexedMap<K, V> {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-struct KeysIterator<'a, K, V>
-where
-    K: Eq + Hash,
-{
-    owner: &'a IndexedMap<K, V>,
-    index: usize,
-}
-
-impl<'a, K, V> KeysIterator<'a, K, V>
-where
-    K: Eq + Hash,
-{
-    pub fn new(owner: &'a IndexedMap<K, V>) -> Self {
-        Self { owner, index: 0 }
-    }
-}
-
-impl<'a, K, V> Iterator for KeysIterator<'a, K, V>
-where
-    K: Eq + Hash,
-{
-    type Item = &'a K;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index < self.owner.len() {
-            let result = self
-                .owner
-                .keys_to_indices
-                .iter()
-                .find(|(_, index)| **index == self.index)
-                .map(|(key, _)| key);
-            self.index += 1;
-            result
-        } else {
-            None
-        }
     }
 }

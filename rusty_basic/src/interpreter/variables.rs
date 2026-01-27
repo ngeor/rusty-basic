@@ -204,21 +204,26 @@ impl Variables {
     pub fn calculate_var_ptr(&self, name: &Name) -> usize {
         debug_assert!(self.map.get(name).is_some());
         self.map
-            .keys()
-            .take_while(|k| *k != name)
-            .map(|k| self.get_by_name(k).unwrap())
+            .entries()
+            .take_while(|(k, _)| k != name)
+            .map(|(_, v)| &v.value)
             .map(Variant::byte_size)
             .sum()
     }
 
     pub fn array_names(&self) -> impl Iterator<Item = &Name> {
-        self.map.keys().filter(move |key| match self.map.get(*key) {
-            Some(RuntimeVariableInfo {
-                value: Variant::VArray(_),
-                ..
-            }) => true,
-            _ => false,
-        })
+        self.map
+            .entries()
+            .filter(move |(_, value)| {
+                matches!(
+                    value,
+                    RuntimeVariableInfo {
+                        value: Variant::VArray(_),
+                        ..
+                    }
+                )
+            })
+            .map(|(key, _)| key)
     }
 }
 

@@ -1,6 +1,7 @@
 use std::io::{ErrorKind, Read};
 
 use crate::interpreter::io::Input;
+use crate::interpreter::is_cr_lf;
 
 pub struct ReadInputSource<T: Read> {
     read: T,
@@ -58,12 +59,12 @@ impl<T: Read> ReadInputSource<T> {
         let mut found = true;
         while found {
             found = false;
-            if let Some(ch) = self.peek()? {
-                if predicate(ch as char) {
-                    buf.push(ch);
-                    self.read()?;
-                    found = true;
-                }
+            if let Some(ch) = self.peek()?
+                && predicate(ch as char)
+            {
+                buf.push(ch);
+                self.read()?;
+                found = true;
             }
         }
         Ok(String::from_utf8(buf).unwrap())
@@ -81,10 +82,10 @@ impl<T: Read> ReadInputSource<T> {
                 if predicate(ch as char) {
                     // if it was '\r', try to also get the next '\n', if exists
                     if ch as char == '\r' {
-                        if let Some(next_ch) = self.peek()? {
-                            if next_ch as char == '\n' {
-                                self.read()?;
-                            }
+                        if let Some(next_ch) = self.peek()?
+                            && next_ch as char == '\n'
+                        {
+                            self.read()?;
                         }
                     }
                 } else {
@@ -110,7 +111,7 @@ impl<T: Read> Input for ReadInputSource<T> {
         // skip leading whitespace
         self.skip_while(|ch| ch == ' ')?;
         // read until comma or eol
-        self.read_until(|ch| ch == ',' || ch == '\r' || ch == '\n')
+        self.read_until(|ch| ch == ',' || is_cr_lf(ch))
             .map(|s| s.trim().to_owned())
     }
 
@@ -118,6 +119,6 @@ impl<T: Read> Input for ReadInputSource<T> {
         if self.eof()? {
             return Err(std::io::Error::from(ErrorKind::UnexpectedEof));
         }
-        self.read_until(|ch| ch == '\r' || ch == '\n')
+        self.read_until(is_cr_lf)
     }
 }

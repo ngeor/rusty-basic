@@ -1,6 +1,7 @@
 use std::io::Write;
 
 use crate::interpreter::io::Printer;
+use crate::interpreter::is_cr_lf;
 
 pub struct WritePrinter<T: Write> {
     writer: T,
@@ -33,7 +34,7 @@ impl<T: Write> Printer for WritePrinter<T> {
         // This isn't a bug: it seems QBasic does not split on CRLF,
         // but separately on CR and LF for this particular case.
         // Might be a bug on QBasic side arguably.
-        let split = s.split(|ch| ch == '\r' || ch == '\n');
+        let split = s.split(is_cr_lf);
         let mut is_first = true;
         let mut bytes_written: usize = 0;
         for part in split {

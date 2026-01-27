@@ -30,3 +30,7 @@ mod tests;
 pub use self::interpreter::new_default_interpreter;
 pub use self::interpreter_trait::InterpreterTrait;
 pub use self::stdlib::*;
+
+fn is_cr_lf(ch: char) -> bool {
+    ch == '\r' || ch == '\n'
+}

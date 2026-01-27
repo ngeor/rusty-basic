@@ -18,7 +18,8 @@ impl<T> ErrorEnvelope<T> {
         if stacktrace.len() == 1 {
             Self::new(err, stacktrace.pop().unwrap())
         } else {
-            let new_stacktrace = stacktrace.drain(0..stacktrace.len()).collect();
+            let mut new_stacktrace: Vec<Position> = Vec::with_capacity(stacktrace.len());
+            new_stacktrace.append(stacktrace);
             Self(err, new_stacktrace)
         }
     }

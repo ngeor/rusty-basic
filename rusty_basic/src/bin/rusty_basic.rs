@@ -55,7 +55,7 @@ fn get_filename(is_running_in_apache: bool) -> String {
 }
 
 fn get_filename_from_args() -> String {
-    env::args().skip(1).take(1).last().unwrap_or_default()
+    env::args().nth(1).unwrap_or_default()
 }
 
 fn get_filename_from_env_var() -> String {

@@ -211,7 +211,7 @@ mod numeric_formatting {
             // leading dot
             return Err(RuntimeError::IllegalFunctionCall);
         }
-        (match decimal_split.next() {
+        match decimal_split.next() {
             Some(fractional_part) => {
                 if fractional_part.is_empty() {
                     // trailing dot
@@ -221,8 +221,7 @@ mod numeric_formatting {
                 }
             }
             _ => fmt_without_fractional_part(integer_part, v),
-        })
-        .map_err(RuntimeError::from)
+        }
     }
 
     fn fmt_with_fractional_part(

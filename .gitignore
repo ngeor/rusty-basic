@@ -3,3 +3,9 @@ target/
 tarpaulin-report.html
 .vscode/settings.json
 money.*
+
+# Mac files
+.DS_Store
+
+# Samba related issues
+.smbdelete*

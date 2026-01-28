@@ -92,7 +92,7 @@ impl FileInfo {
         let offset = ((record_number - 1) * self.rec_len) as u64;
         let file = self.random.as_mut().expect("Should have file");
         file.seek(SeekFrom::Start(offset))?;
-        let mut buffer: Vec<u8> = std::iter::repeat(0_u8).take(self.rec_len).collect();
+        let mut buffer: Vec<u8> = std::iter::repeat_n(0_u8, self.rec_len).collect();
         let bytes_read = file.read(&mut buffer)?;
         if bytes_read < buffer.len() {
             // zero out missing bytes

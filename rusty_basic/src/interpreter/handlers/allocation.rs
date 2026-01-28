@@ -4,7 +4,7 @@ use rusty_variant::{UserDefinedTypeValue, VArray, Variant};
 
 use crate::RuntimeError;
 
-/// TODO add unit tests
+// TODO add unit tests
 
 /// Creates the default variant for the given type.
 pub fn allocate_built_in(type_qualifier: TypeQualifier) -> Variant {

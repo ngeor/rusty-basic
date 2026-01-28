@@ -8,10 +8,7 @@ impl Stdlib for DefaultStdlib {
     }
 
     fn get_env_var(&self, name: &str) -> String {
-        match std::env::var(name) {
-            Ok(x) => x,
-            Err(_) => String::new(),
-        }
+        std::env::var(name).unwrap_or_default()
     }
 
     fn set_env_var(&mut self, name: String, value: String) {

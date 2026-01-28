@@ -81,12 +81,11 @@ impl<T: Read> ReadInputSource<T> {
             if let Some(ch) = self.read()? {
                 if predicate(ch as char) {
                     // if it was '\r', try to also get the next '\n', if exists
-                    if ch as char == '\r' {
-                        if let Some(next_ch) = self.peek()?
-                            && next_ch as char == '\n'
-                        {
-                            self.read()?;
-                        }
+                    if ch as char == '\r'
+                        && let Some(next_ch) = self.peek()?
+                        && next_ch as char == '\n'
+                    {
+                        self.read()?;
                     }
                 } else {
                     buf.push(ch);

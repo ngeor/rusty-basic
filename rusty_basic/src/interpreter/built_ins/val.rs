@@ -27,7 +27,7 @@ fn val(s: &str) -> Result<Variant, VariantError> {
     let mut state: u8 = STATE_INITIAL;
 
     for c in s.chars() {
-        if ('0'..='9').contains(&c) {
+        if c.is_ascii_digit() {
             if state == STATE_INITIAL || state == STATE_SIGN {
                 state = STATE_INT;
             } else if state == STATE_DOT {

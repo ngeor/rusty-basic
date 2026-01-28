@@ -40,7 +40,7 @@ fn run_with_ascii_code_argument(count: usize, ascii: i32) -> Result<String, Runt
 }
 
 fn run_with_char(count: usize, ch: char) -> Result<String, RuntimeError> {
-    Ok(std::iter::repeat(ch).take(count).collect())
+    Ok(std::iter::repeat_n(ch, count).collect())
 }
 
 #[cfg(test)]

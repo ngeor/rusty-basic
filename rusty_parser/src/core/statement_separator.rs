@@ -70,14 +70,22 @@ pub fn no_separator_needed_before_comment()
 
 pub fn peek_eof_or_statement_separator() -> impl Parser<StringView, Output = (), Error = ParserError>
 {
-    peek_token().flat_map_negate_none(|token| {
-        if ':'.matches_token(&token)
-            || '\''.matches_token(&token)
-            || TokenType::Eol.matches_token(&token)
-        {
-            Ok(())
-        } else {
-            default_parse_error()
+    peek_token().to_option().and_then(|opt_token| {
+        match opt_token {
+            Some(token) => {
+                if ':'.matches_token(&token)
+                    || '\''.matches_token(&token)
+                    || TokenType::Eol.matches_token(&token)
+                {
+                    Ok(())
+                } else {
+                    default_parse_error()
+                }
+            }
+            None => {
+                // EOF
+                Ok(())
+            }
         }
     })
 }

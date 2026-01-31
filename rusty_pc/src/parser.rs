@@ -1,10 +1,10 @@
 use crate::and::{AndParser, Combiner, KeepLeftCombiner, KeepRightCombiner, TupleCombiner};
 use crate::and_then::AndThenParser;
+use crate::and_then_err::AndThenErrParser;
 use crate::boxed::BoxedParser;
 use crate::delimited::{DelimitedParser, NormalElementCollector, OptionalElementCollector};
 use crate::filter::{FilterParser, FilterPredicate};
 use crate::filter_map::FilterMapParser;
-use crate::flat_map_ok_none::FlatMapOkNoneParser;
 use crate::flatten::FlattenParser;
 use crate::many::{ManyCombiner, ManyParser, VecManyCombiner};
 use crate::map::MapParser;
@@ -120,12 +120,34 @@ where
     // AndThen
     // =======================================================================
 
+    /// Creates a new parser that maps the successful result of this parser
+    /// with the given function that returns a new result.
+    ///
+    /// Note that even if the mapper function returns a soft error,
+    /// the input is not backtracked to the original position.
     fn and_then<F, U>(self, mapper: F) -> AndThenParser<Self, F>
     where
         Self: Sized,
         F: Fn(Self::Output) -> Result<U, Self::Error>,
     {
         AndThenParser::new(self, mapper)
+    }
+
+    // =======================================================================
+    // AndThenErr
+    // =======================================================================
+
+    /// Creates a new parser that maps the sort error result of this parser
+    /// with the given function that returns a new result.
+    ///
+    /// Note that even if the mapper function returns a soft error,
+    /// the input is not backtracked to the original position.
+    fn and_then_err<F>(self, mapper: F) -> AndThenErrParser<Self, F>
+    where
+        Self: Sized,
+        F: Fn(Self::Error) -> Result<Self::Output, Self::Error>,
+    {
+        AndThenErrParser::new(self, mapper)
     }
 
     // =======================================================================
@@ -214,37 +236,6 @@ where
         F: Fn(&Self::Output) -> Option<U>,
     {
         FilterMapParser::new(self, predicate)
-    }
-
-    // =======================================================================
-    // FlatMapOkNone
-    // =======================================================================
-
-    /// Flat map the result of this parser for successful and incomplete results.
-    /// Mapping is done by the given closures.
-    /// Other errors are never allowed to be re-mapped.
-    fn flat_map_ok_none<F, G, U>(
-        self,
-        ok_mapper: F,
-        incomplete_mapper: G,
-    ) -> FlatMapOkNoneParser<Self, F, G>
-    where
-        Self: Sized,
-        F: Fn(Self::Output) -> Result<U, Self::Error>,
-        G: Fn() -> Result<U, Self::Error>,
-    {
-        FlatMapOkNoneParser::new(self, ok_mapper, incomplete_mapper)
-    }
-
-    fn flat_map_negate_none<F>(
-        self,
-        ok_mapper: F,
-    ) -> impl Parser<I, C, Output = (), Error = Self::Error>
-    where
-        Self: Sized,
-        F: Fn(Self::Output) -> Result<(), Self::Error>,
-    {
-        self.flat_map_ok_none(ok_mapper, || Ok(()))
     }
 
     // =======================================================================

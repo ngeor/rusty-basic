@@ -188,7 +188,23 @@ fn next_statement() -> impl Parser<StringView, Output = GlobalStatementPos, Erro
 /// otherwise an incomplete result,
 /// without modifying the input.
 fn detect_eof() -> impl Parser<StringView, Output = (), Error = ParserError> {
-    peek_token().flat_map_negate_none(|_| default_parse_error())
+    peek_token()
+        .to_option()
+        .and_then(|opt_token| match opt_token {
+            Some(token) => Err(ParserError::Expected(format!(
+                "Expected EOF, found {:?}",
+                token
+            ))),
+            None => Ok(()),
+        })
+}
+
+/// Fails unless the input is fully consumed.
+/// If we're at EOF, the parser returns a happy empty result.
+/// Otherwise it returns a syntax error.
+/// This is a failsafe to ensure we have parsed the entire input.
+fn demand_eof() -> impl Parser<StringView, Output = (), Error = ParserError> {
+    detect_eof().to_fatal()
 }
 
 mod separator {
@@ -224,19 +240,6 @@ fn eol_col_one_or_more() -> impl Parser<StringView, Output = (), Error = ParserE
 fn ws_eol_col_zero_or_more() -> impl Parser<StringView, Output = (), Error = ParserError> {
     any_token_of!(TokenType::Whitespace, TokenType::Eol ; symbols = ':')
         .many_allow_none(IgnoringManyCombiner)
-}
-
-/// Fails unless the input is fully consumed.
-/// If we're at EOF, the parser returns a happy empty result.
-/// Otherwise it returns a syntax error.
-/// This is a failsafe to ensure we have parsed the entire input.
-fn demand_eof() -> impl Parser<StringView, Output = (), Error = ParserError> {
-    any_token().flat_map_negate_none(|t| {
-        Err(ParserError::syntax_error(&format!(
-            "Cannot parse, expected EOF {:?}",
-            t
-        )))
-    })
 }
 
 /// Parses a global statement.

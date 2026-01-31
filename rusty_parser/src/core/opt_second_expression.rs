@@ -73,16 +73,8 @@ pub(super) fn conditionally_opt_whitespace()
     ctx_parser()
         .map(|allow_none| {
             whitespace()
-                .flat_map_ok_none(
-                    |ok| Ok(Some(ok)),
-                    move || {
-                        if allow_none {
-                            Ok(None)
-                        } else {
-                            Err(ParserError::default())
-                        }
-                    },
-                )
+                .map(Some)
+                .and_then_err(move |err| if allow_none { Ok(None) } else { Err(err) })
                 .no_context()
         })
         .flatten()

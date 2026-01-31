@@ -258,8 +258,10 @@ fn ensure_no_dots(
 fn ensure_no_trailing_qualifier<P>(
     parser: impl Parser<StringView, Output = P, Error = ParserError>,
 ) -> impl Parser<StringView, Output = P, Error = ParserError> {
-    parser.and_opt_keep_left(peek_token().flat_map_negate_none(|token| {
-        if is_type_qualifier(&token) {
+    parser.and_opt_keep_left(peek_token().to_option().and_then(|opt_token| {
+        if let Some(token) = opt_token
+            && is_type_qualifier(&token)
+        {
             Err(ParserError::syntax_error(
                 "Identifier cannot end with %, &, !, #, or $",
             ))

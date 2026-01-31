@@ -2,22 +2,22 @@ use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
 
 /// A parser that maps the error of the decorated parser
 /// using the given mapper.
-pub struct MapErrParser<P, F> {
+pub struct MapErrParser<P, M> {
     parser: P,
-    mapper: F,
+    mapper: M,
 }
 
-impl<P, F> MapErrParser<P, F> {
-    pub(crate) fn new(parser: P, mapper: F) -> Self {
+impl<P, M> MapErrParser<P, M> {
+    pub(crate) fn new(parser: P, mapper: M) -> Self {
         Self { parser, mapper }
     }
 }
 
-impl<I, C, P, F> Parser<I, C> for MapErrParser<P, F>
+impl<I, C, P, M> Parser<I, C> for MapErrParser<P, M>
 where
     I: InputTrait,
     P: Parser<I, C>,
-    F: ErrorMapper<P::Error>,
+    M: ErrorMapper<P::Error>,
 {
     type Output = P::Output;
     type Error = P::Error;
@@ -30,7 +30,7 @@ where
     }
 }
 
-impl<C, P, E> SetContext<C> for MapErrParser<P, E>
+impl<C, P, M> SetContext<C> for MapErrParser<P, M>
 where
     P: SetContext<C>,
 {

@@ -59,7 +59,7 @@ fn eol_or_col_separator() -> impl Parser<StringView, Output = (), Error = Parser
 pub fn no_separator_needed_before_comment()
 -> impl Parser<StringView, Output = (), Error = ParserError> {
     // warning: cannot use filter_map because it will undo and we've already "undo" via "peek"
-    peek_token().flat_map(|t| {
+    peek_token().and_then(|t| {
         if '\''.matches_token(&t) {
             Ok(())
         } else {

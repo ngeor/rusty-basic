@@ -207,7 +207,7 @@ impl Parser<StringView> for PrintArgsParser {
 fn print_boundary() -> impl Parser<StringView, Output = Guard, Error = ParserError> {
     whitespace_ignoring()
         .map(|_| Guard::Whitespace)
-        .or(peek_token().flat_map(|token| {
+        .or(peek_token().and_then(|token| {
             // TODO improve performance
             if ','.matches_token(&token) || ';'.matches_token(&token) || '('.matches_token(&token) {
                 Ok(Guard::Peeked)

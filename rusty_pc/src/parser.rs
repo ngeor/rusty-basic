@@ -1,9 +1,9 @@
 use crate::and::{AndParser, Combiner, KeepLeftCombiner, KeepRightCombiner, TupleCombiner};
+use crate::and_then::AndThenParser;
 use crate::boxed::BoxedParser;
 use crate::delimited::{DelimitedParser, NormalElementCollector, OptionalElementCollector};
 use crate::filter::{FilterParser, FilterPredicate};
 use crate::filter_map::FilterMapParser;
-use crate::flat_map::FlatMapParser;
 use crate::flat_map_ok_none::FlatMapOkNoneParser;
 use crate::flatten::FlattenParser;
 use crate::many::{ManyCombiner, ManyParser, VecManyCombiner};
@@ -117,6 +117,18 @@ where
     }
 
     // =======================================================================
+    // AndThen
+    // =======================================================================
+
+    fn and_then<F, U>(self, mapper: F) -> AndThenParser<Self, F>
+    where
+        Self: Sized,
+        F: Fn(Self::Output) -> Result<U, Self::Error>,
+    {
+        AndThenParser::new(self, mapper)
+    }
+
+    // =======================================================================
     // Boxed
     // =======================================================================
 
@@ -202,18 +214,6 @@ where
         F: Fn(&Self::Output) -> Option<U>,
     {
         FilterMapParser::new(self, predicate)
-    }
-
-    // =======================================================================
-    // FlatMap
-    // =======================================================================
-
-    fn flat_map<F, U>(self, mapper: F) -> FlatMapParser<Self, F>
-    where
-        Self: Sized,
-        F: Fn(Self::Output) -> Result<U, Self::Error>,
-    {
-        FlatMapParser::new(self, mapper)
     }
 
     // =======================================================================

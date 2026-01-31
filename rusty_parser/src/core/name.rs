@@ -244,7 +244,7 @@ fn ensure_no_dots_or_trailing_qualifier(
 fn ensure_no_dots(
     parser: impl Parser<StringView, Output = Token, Error = ParserError>,
 ) -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    parser.flat_map(|token| {
+    parser.and_then(|token| {
         if token.as_str().contains('.') {
             Err(ParserError::IdentifierCannotIncludePeriod)
         } else {

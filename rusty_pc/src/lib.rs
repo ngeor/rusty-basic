@@ -1,12 +1,12 @@
 //! base module contains functionality that can be extracted into a library,
 //! it's generic and not specific to QBasic
 pub mod and;
+pub mod and_then;
 pub mod boxed;
 mod ctx;
 pub mod delimited;
 pub mod filter;
 pub mod filter_map;
-pub mod flat_map;
 pub mod flat_map_ok_none;
 pub mod flatten;
 mod init_context;

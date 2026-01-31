@@ -176,7 +176,7 @@ fn next_statement() -> impl Parser<StringView, Output = GlobalStatementPos, Erro
             // otherwise it must be a statement
             Box::new(global_statement_pos_p().or_expected("Statement").map(Some)),
         ]))
-        .flat_map(|opt| match opt {
+        .and_then(|opt| match opt {
             // map the statement
             Some(s) => Ok(s),
             // map the EOF back to an incomplete result
@@ -211,7 +211,7 @@ mod separator {
     }
 
     fn raise_err() -> impl Parser<StringView, Output = (), Error = ParserError> {
-        any_token().flat_map(|_t| Err(ParserError::expected("end-of-statement").to_fatal()))
+        any_token().and_then(|_t| Err(ParserError::expected("end-of-statement").to_fatal()))
     }
 }
 

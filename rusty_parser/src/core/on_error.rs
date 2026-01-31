@@ -35,7 +35,7 @@ fn goto_label() -> impl Parser<StringView, Output = OnErrorOption, Error = Parse
 }
 
 fn goto_zero() -> impl Parser<StringView, Output = OnErrorOption, Error = ParserError> {
-    expression_pos_p().flat_map(|Positioned { element, .. }| match element {
+    expression_pos_p().and_then(|Positioned { element, .. }| match element {
         Expression::IntegerLiteral(0) => Ok(OnErrorOption::Zero),
         _ => Err(ParserError::expected("label or 0").to_fatal()),
     })

@@ -1,15 +1,17 @@
 use crate::{InputTrait, Parser, SetContext};
 
-pub struct FlatMapParser<P, F> {
+pub struct AndThenParser<P, F> {
     parser: P,
     mapper: F,
 }
-impl<P, F> FlatMapParser<P, F> {
+
+impl<P, F> AndThenParser<P, F> {
     pub(crate) fn new(parser: P, mapper: F) -> Self {
         Self { parser, mapper }
     }
 }
-impl<I, C, P, F, U> Parser<I, C> for FlatMapParser<P, F>
+
+impl<I, C, P, F, U> Parser<I, C> for AndThenParser<P, F>
 where
     I: InputTrait,
     P: Parser<I, C>,
@@ -21,7 +23,8 @@ where
         self.parser.parse(tokenizer).and_then(&self.mapper)
     }
 }
-impl<C, P, F> SetContext<C> for FlatMapParser<P, F>
+
+impl<C, P, F> SetContext<C> for AndThenParser<P, F>
 where
     P: SetContext<C>,
 {

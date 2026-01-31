@@ -152,7 +152,7 @@ where
     ctx_parser()
         // if the parsed name is qualified, return the result, otherwise soft error,
         // so that the next option (extended) can be invoked
-        .flat_map(|(opt_q, _)| match opt_q {
+        .and_then(|(opt_q, _)| match opt_q {
             Some(q) => Ok(T::new_built_in_compact(q)),
             None => Err(ParserError::default()),
         })
@@ -161,7 +161,7 @@ where
         // followed by an `AS` clause, in order to simulate the error that QBasic
         // throws when that happens
         .and_tuple(as_clause().peek().to_option().no_context())
-        .flat_map(|(result, has_opt_clause)| {
+        .and_then(|(result, has_opt_clause)| {
             if has_opt_clause.is_some() {
                 Err(ParserError::syntax_error(
                     "Identifier cannot end with %, &, !, #, or $",

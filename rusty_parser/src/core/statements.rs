@@ -42,7 +42,7 @@ fn one_statement_p(
     exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
     custom_err: Option<ParserError>,
 ) -> impl Parser<StringView, bool, Output = StatementPos, Error = ParserError> + SetContext<bool> {
-    one_statement_or_exit_keyword_p(exit_keywords, custom_err).flat_map(
+    one_statement_or_exit_keyword_p(exit_keywords, custom_err).and_then(
         |statement_or_exit_keyword| match statement_or_exit_keyword {
             // we parsed a statement, return it
             StatementOrExitKeyword::Statement(s) => Ok(s),

@@ -60,7 +60,7 @@ fn letter_ranges() -> impl Parser<StringView, Output = Vec<LetterRange>, Error =
 fn letter_range() -> impl Parser<StringView, Output = LetterRange, Error = ParserError> {
     letter()
         .and_opt_tuple(minus_sign().and_tuple(letter()))
-        .flat_map(|(l, opt_r)| match opt_r {
+        .and_then(|(l, opt_r)| match opt_r {
             Some((_, r)) => {
                 if l < r {
                     Ok(LetterRange::Range(l, r))

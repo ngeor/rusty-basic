@@ -582,7 +582,7 @@ mod single_or_double_literal {
         // and parse optionally a type qualifier such as `#`
         .and_opt_tuple(pound())
         // done parsing, flat map everything
-        .flat_map(|((opt_integer_digits, frac_digits), opt_pound)| {
+        .and_then(|((opt_integer_digits, frac_digits), opt_pound)| {
             let left = opt_integer_digits
                 .map(|token| token.to_string())
                 .unwrap_or_else(|| "0".to_owned());
@@ -654,7 +654,7 @@ mod integer_or_long_literal {
             TokenType::HexDigits,
             TokenType::OctDigits
         )
-        .flat_map(process_token)
+        .and_then(process_token)
         .with_pos()
     }
 
@@ -890,7 +890,7 @@ pub mod property {
                 |first_expr_pos| is_qualified(&first_expr_pos.element),
                 TupleCombiner,
             )
-            .flat_map(|(first_expr_pos, properties)| {
+            .and_then(|(first_expr_pos, properties)| {
                 // not possible to have properties for qualified first expr
                 // therefore either we don't have properties
                 // or if we do then the first expr is bare
@@ -940,7 +940,7 @@ pub mod property {
     -> impl Parser<StringView, bool, Output = Option<NameAsTokens>, Error = ParserError>
     + SetContext<bool> {
         ctx_parser()
-            .flat_map(|was_first_expr_qualified| {
+            .and_then(|was_first_expr_qualified| {
                 if was_first_expr_qualified {
                     // fine, don't parse anything further
                     // i.e. A$(1).Name won't attempt to parse the .Name part
@@ -1082,7 +1082,7 @@ mod binary_expression {
                     .filter_map(Self::map_token_to_operator)
                     .with_pos(),
             )
-            .flat_map(move |(leading_ws, op_pos)| {
+            .and_then(move |(leading_ws, op_pos)| {
                 let had_whitespace = leading_ws.is_some();
                 let needs_whitespace = matches!(
                     &op_pos.element,
@@ -1191,7 +1191,7 @@ pub mod file_handle {
         pound()
             .with_pos()
             .and_tuple(any_token_of!(TokenType::Digits).or_expected("digits after #"))
-            .flat_map(|(pound, digits)| match digits.as_str().parse::<u8>() {
+            .and_then(|(pound, digits)| match digits.as_str().parse::<u8>() {
                 Ok(d) if d > 0 => Ok(FileHandle::from(d).at_pos(pound.pos)),
                 _ => Err(ParserError::BadFileNameOrNumber),
             })
@@ -1239,7 +1239,7 @@ pub mod guard {
     }
 
     fn lparen_guard() -> impl Parser<StringView, Output = Guard, Error = ParserError> {
-        peek_token().flat_map(|token| {
+        peek_token().and_then(|token| {
             if '('.matches_token(&token) {
                 Ok(Guard::Peeked)
             } else {

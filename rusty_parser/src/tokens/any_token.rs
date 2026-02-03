@@ -1,13 +1,12 @@
 use rusty_pc::and::StringCombiner;
 use rusty_pc::filter::FilterPredicate;
 use rusty_pc::many::{IgnoringManyCombiner, ManyCombiner, StringManyCombiner};
-use rusty_pc::text::any_char;
+use rusty_pc::text::{any_char, peek_char};
 use rusty_pc::*;
 
 use crate::input::StringView;
 use crate::pc_specific::WithExpected;
 use crate::tokens::TokenType;
-use crate::tokens::any_char::AnyCharOrEof;
 use crate::tokens::any_symbol::any_symbol;
 use crate::tokens::string_parsers::*;
 use crate::{Keyword, ParserError};
@@ -126,8 +125,12 @@ pub fn keyword_ignoring(k: Keyword) -> impl Parser<StringView, Output = (), Erro
 }
 
 fn ensure_no_illegal_char_after_keyword()
--> impl Parser<StringView, Output = char, Error = ParserError> {
-    AnyCharOrEof.filter(is_allowed_char_after_keyword).peek()
+-> impl Parser<StringView, Output = (), Error = ParserError> {
+    peek_char().to_option().and_then(|opt_ch| match opt_ch {
+        Some(ch) if is_allowed_char_after_keyword(ch) => Ok(()),
+        None => Ok(()),
+        _ => default_parse_error(),
+    })
 }
 
 /// Checks if the given character is illegal after a keyword,
@@ -142,15 +145,13 @@ fn ensure_no_illegal_char_after_keyword()
 ///
 /// Note that the dollar sign is the only type qualifier for
 /// which this is allowed to happen.
-///
-/// The parameter is '\0' if we encountered EOF, which is allowed.
-fn is_allowed_char_after_keyword(char_or_eof: &char) -> bool {
+fn is_allowed_char_after_keyword(ch: char) -> bool {
     // The is_ascii_alphanumeric used to be is_ascii_digit, to detect numbers.
     // With the introduction of keyword_ignoring, which stops parsing as soon
     // as the keyword is detected and not when we stop detecting letters,
     // it needed to switch to is_ascii_alphanumeric to ignore words that start
     // with keywords, e.g. GetName.
-    *char_or_eof != '.' && *char_or_eof != '$' && !char_or_eof.is_ascii_alphanumeric()
+    ch != '.' && ch != '$' && !ch.is_ascii_alphanumeric()
 }
 
 // TODO validate the max length in `zero_or_more` e.g. `between(0, MAX_LENGTH - 1)`

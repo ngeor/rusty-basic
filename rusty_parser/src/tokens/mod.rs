@@ -1,4 +1,3 @@
-mod any_char;
 mod any_symbol;
 mod any_token;
 mod any_token_of;

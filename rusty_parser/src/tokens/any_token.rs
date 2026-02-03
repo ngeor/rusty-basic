@@ -1,7 +1,7 @@
 use rusty_pc::and::StringCombiner;
 use rusty_pc::filter::FilterPredicate;
 use rusty_pc::many::{IgnoringManyCombiner, ManyCombiner, StringManyCombiner};
-use rusty_pc::text::{any_char, one, peek_char};
+use rusty_pc::text::{any_char, many_str, many_str_with_combiner, one_char_to_str, peek_char};
 use rusty_pc::*;
 
 use crate::input::StringView;
@@ -67,11 +67,11 @@ fn not_equal() -> impl Parser<StringView, Output = Token, Error = ParserError> {
 }
 
 fn cr() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    one('\r').to_token(TokenType::Eol)
+    one_char_to_str('\r').to_token(TokenType::Eol)
 }
 
 fn lf() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    one('\n').to_token(TokenType::Eol)
+    one_char_to_str('\n').to_token(TokenType::Eol)
 }
 
 /// Parses any number of whitespace characters,
@@ -99,7 +99,7 @@ where
     C: ManyCombiner<char, O>,
     O: Default,
 {
-    many_collecting(is_whitespace, combiner).with_expected_message("Expected: whitespace")
+    many_str_with_combiner(is_whitespace, combiner).with_expected_message("Expected: whitespace")
 }
 
 fn is_whitespace(ch: &char) -> bool {
@@ -107,11 +107,11 @@ fn is_whitespace(ch: &char) -> bool {
 }
 
 fn digits() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    many(char::is_ascii_digit).to_token(TokenType::Digits)
+    many_str(char::is_ascii_digit).to_token(TokenType::Digits)
 }
 
 fn any_keyword() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    many(char::is_ascii_alphabetic)
+    many_str(char::is_ascii_alphabetic)
         .filter(|text: &String| Keyword::try_from(text.as_str()).is_ok())
         .and_keep_left(ensure_no_illegal_char_after_keyword())
         .with_expected_message("Expected: Keyword")
@@ -205,7 +205,9 @@ where
     let prefix = format!("&{}", radix);
     specific_owned(prefix)
         .and(
-            one('-').to_option().and(many(predicate), StringCombiner),
+            one_char_to_str('-')
+                .to_option()
+                .and(many_str(predicate), StringCombiner),
             StringCombiner,
         )
         .to_token(token_type)

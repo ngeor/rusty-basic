@@ -1,45 +1,9 @@
 use rusty_pc::Parser;
-use rusty_pc::many::{IgnoringManyCombiner, ManyCombiner, StringManyCombiner};
-use rusty_pc::text::any_char;
+use rusty_pc::many::{IgnoringManyCombiner, StringManyCombiner};
 
 use crate::ParserError;
 use crate::input::StringView;
 use crate::tokens::specific_str::{SpecificStr, SpecificString};
-
-/// Parses one or more characters that match the given predicate
-/// and returns a String.
-pub(super) fn many<F>(predicate: F) -> impl Parser<StringView, Output = String, Error = ParserError>
-where
-    F: Fn(&char) -> bool,
-{
-    many_collecting(predicate, StringManyCombiner)
-}
-
-/// Parses one or more characters that match the given predicate,
-/// but ignores them, returning just `()`.
-#[allow(dead_code)]
-pub(super) fn many_ignoring<F>(
-    predicate: F,
-) -> impl Parser<StringView, Output = (), Error = ParserError>
-where
-    F: Fn(&char) -> bool,
-{
-    many_collecting(predicate, IgnoringManyCombiner)
-}
-
-/// Parses one or more characters that match the given predicate,
-/// collecting them with the given combiner.
-pub(super) fn many_collecting<F, C, O>(
-    predicate: F,
-    combiner: C,
-) -> impl Parser<StringView, Output = O, Error = ParserError>
-where
-    F: Fn(&char) -> bool,
-    C: ManyCombiner<char, O>,
-    O: Default,
-{
-    any_char().filter(predicate).many(combiner)
-}
 
 /// Parses the specific string, case insensitive.
 pub(super) fn specific(

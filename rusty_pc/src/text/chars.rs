@@ -63,3 +63,12 @@ where
         }
     }
 }
+
+/// Parses one specific character.
+pub fn one_char<I, E>(ch: char) -> impl Parser<I, Output = char, Error = E>
+where
+    I: InputTrait<Output = char>,
+    E: ParserErrorTrait,
+{
+    any_char().filter(move |c: &char| *c == ch)
+}

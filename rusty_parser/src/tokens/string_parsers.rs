@@ -41,12 +41,6 @@ where
     any_char().filter(predicate).many(combiner)
 }
 
-pub(super) fn one(ch: char) -> impl Parser<StringView, Output = String, Error = ParserError> {
-    any_char()
-        .filter(move |c: &char| *c == ch)
-        .map(String::from)
-}
-
 /// Parses the specific string, case insensitive.
 pub(super) fn specific(
     needle: &str,

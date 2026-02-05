@@ -6,36 +6,6 @@ use rusty_pc::{InputTrait, Parser};
 use crate::ParserError;
 use crate::input::StringView;
 
-/// Wraps an [str] so that it can be used as a specific parser.
-pub(super) struct SpecificStr<'a, A, O> {
-    needle: &'a str,
-    combiner: A,
-    _marker: PhantomData<O>,
-}
-
-impl<'a, A, O> SpecificStr<'a, A, O> {
-    pub fn new(needle: &'a str, combiner: A) -> Self {
-        Self {
-            needle,
-            combiner,
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<'a, A, O> Parser<StringView> for SpecificStr<'a, A, O>
-where
-    A: ManyCombiner<char, O>,
-    O: Default,
-{
-    type Output = O;
-    type Error = ParserError;
-
-    fn parse(&mut self, input: &mut StringView) -> Result<O, ParserError> {
-        parse_specific_str(self.needle, &self.combiner, input)
-    }
-}
-
 /// Wraps a [String] so that it can be used as a specific parser.
 pub(super) struct SpecificString<A, O> {
     needle: String,

@@ -51,19 +51,19 @@ fn eol() -> impl Parser<StringView, Output = Token, Error = ParserError> {
 }
 
 fn crlf() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    specific("\r\n").to_token(TokenType::Eol)
+    specific_str("\r\n".to_owned()).to_token(TokenType::Eol)
 }
 
 fn greater_or_equal() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    specific(">=").to_token(TokenType::GreaterEquals)
+    specific_str(">=".to_owned()).to_token(TokenType::GreaterEquals)
 }
 
 fn less_or_equal() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    specific("<=").to_token(TokenType::LessEquals)
+    specific_str("<=".to_owned()).to_token(TokenType::LessEquals)
 }
 
 fn not_equal() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    specific("<>").to_token(TokenType::NotEquals)
+    specific_str("<>".to_owned()).to_token(TokenType::NotEquals)
 }
 
 fn cr() -> impl Parser<StringView, Output = Token, Error = ParserError> {
@@ -119,7 +119,7 @@ fn any_keyword() -> impl Parser<StringView, Output = Token, Error = ParserError>
 }
 
 pub fn keyword_ignoring(k: Keyword) -> impl Parser<StringView, Output = (), Error = ParserError> {
-    specific_ignoring(k.to_string())
+    specific_str_ignoring(k.to_string())
         .and_keep_left(ensure_no_illegal_char_after_keyword())
         .with_expected_message(format!("Expected: {}", k))
 }
@@ -203,7 +203,7 @@ where
     F: Fn(&char) -> bool,
 {
     let prefix = format!("&{}", radix);
-    specific_owned(prefix)
+    specific_str(prefix)
         .and(
             one_char_to_str('-')
                 .to_option()

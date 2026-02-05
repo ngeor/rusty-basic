@@ -1,14 +1,15 @@
 use rusty_pc::and::StringCombiner;
 use rusty_pc::filter::FilterPredicate;
 use rusty_pc::many::{IgnoringManyCombiner, ManyCombiner, StringManyCombiner};
-use rusty_pc::text::{any_char, many_str, many_str_with_combiner, one_char_to_str, peek_char};
+use rusty_pc::text::{
+    any_char, many_str, many_str_with_combiner, one_char_to_str, peek_char, specific_str, specific_str_ignoring
+};
 use rusty_pc::*;
 
 use crate::input::StringView;
 use crate::pc_specific::WithExpected;
 use crate::tokens::TokenType;
 use crate::tokens::any_symbol::any_symbol;
-use crate::tokens::string_parsers::*;
 use crate::{Keyword, ParserError};
 
 /// Parses any token.

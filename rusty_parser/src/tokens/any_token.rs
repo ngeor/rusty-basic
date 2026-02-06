@@ -47,11 +47,17 @@ pub fn peek_token() -> impl Parser<StringView, Output = Token, Error = ParserErr
 }
 
 fn eol() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    OrParser::new(vec![Box::new(crlf()), Box::new(cr()), Box::new(lf())])
+    OrParser::new(vec![Box::new(cr_or_crlf()), Box::new(lf())])
 }
 
-fn crlf() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    specific_str("\r\n".to_owned()).to_token(TokenType::Eol)
+fn cr_or_crlf() -> impl Parser<StringView, Output = Token, Error = ParserError> {
+    one_p('\r')
+        .and_opt(one_p('\n'), StringCombiner)
+        .to_token(TokenType::Eol)
+}
+
+fn lf() -> impl Parser<StringView, Output = Token, Error = ParserError> {
+    one_char_to_str('\n').to_token(TokenType::Eol)
 }
 
 fn greater_or_equal() -> impl Parser<StringView, Output = Token, Error = ParserError> {
@@ -64,14 +70,6 @@ fn less_or_equal() -> impl Parser<StringView, Output = Token, Error = ParserErro
 
 fn not_equal() -> impl Parser<StringView, Output = Token, Error = ParserError> {
     specific_str("<>".to_owned()).to_token(TokenType::NotEquals)
-}
-
-fn cr() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    one_char_to_str('\r').to_token(TokenType::Eol)
-}
-
-fn lf() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    one_char_to_str('\n').to_token(TokenType::Eol)
 }
 
 /// Parses any number of whitespace characters,
@@ -154,7 +152,6 @@ fn is_allowed_char_after_keyword(ch: char) -> bool {
     ch != '.' && ch != '$' && !ch.is_ascii_alphanumeric()
 }
 
-// TODO validate the max length in `zero_or_more` e.g. `between(0, MAX_LENGTH - 1)`
 const MAX_LENGTH: usize = 40;
 
 fn identifier() -> impl Parser<StringView, Output = Token, Error = ParserError> {

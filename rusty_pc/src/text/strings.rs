@@ -1,8 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::many::{IgnoringManyCombiner, ManyCombiner, StringManyCombiner};
-use crate::text::one_char;
-use crate::{InputTrait, Parser, ParserErrorTrait, read_p};
+use crate::{InputTrait, Parser, ParserErrorTrait, one_p, read_p};
 
 /// Parses one specific character and returns it as a string.
 pub fn one_char_to_str<I, E>(ch: char) -> impl Parser<I, Output = String, Error = E>
@@ -10,7 +9,7 @@ where
     I: InputTrait<Output = char>,
     E: ParserErrorTrait,
 {
-    one_char(ch).map(String::from)
+    one_p(ch).map(String::from)
 }
 
 /// Parses one or more characters that match the given predicate

@@ -64,3 +64,13 @@ where
         }
     }
 }
+
+/// Parses one specific element.
+pub fn one_p<I, O, E>(needle: O) -> impl Parser<I, Output = O, Error = E>
+where
+    I: InputTrait<Output = O>,
+    O: PartialEq,
+    E: ParserErrorTrait,
+{
+    read_p().filter(move |x: &O| *x == needle)
+}

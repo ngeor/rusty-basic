@@ -44,6 +44,7 @@ fn indentation() -> String {
     s
 }
 
+// TODO review impl Parser outside of pc
 impl<P> Parser<StringView> for LoggingParser<P>
 where
     P: Parser<StringView, Error = ParserError>,

@@ -1018,6 +1018,7 @@ mod binary_expression {
 
     struct BinaryExprParser;
 
+    // TODO review impl Parser outside of pc
     impl Parser<StringView> for BinaryExprParser {
         type Output = ExpressionPos;
         type Error = ParserError;

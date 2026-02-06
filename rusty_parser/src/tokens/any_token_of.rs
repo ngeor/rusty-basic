@@ -184,6 +184,7 @@ impl<P> AnyTokenOf<P> {
     }
 }
 
+// TODO review impl Parser outside of pc
 impl<I, C, P> Parser<I, C> for AnyTokenOf<P>
 where
     I: InputTrait<Output = char>,

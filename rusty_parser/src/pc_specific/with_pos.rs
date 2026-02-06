@@ -20,11 +20,14 @@ where
 struct WithPosMapper<P> {
     parser: P,
 }
+
 impl<P> WithPosMapper<P> {
     pub fn new(parser: P) -> Self {
         Self { parser }
     }
 }
+
+// TODO review impl Parser outside of pc
 impl<I, C, P> Parser<I, C> for WithPosMapper<P>
 where
     P: Parser<I, C>,
@@ -37,6 +40,7 @@ where
         self.parser.parse(tokenizer).map(|x| x.at_pos(pos))
     }
 }
+
 impl<C, P> SetContext<C> for WithPosMapper<P>
 where
     P: SetContext<C>,

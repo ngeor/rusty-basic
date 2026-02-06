@@ -98,10 +98,6 @@ impl InputTrait for StringView {
         c
     }
 
-    fn inc_position_by(&mut self, amount: usize) {
-        self.index += amount;
-    }
-
     fn is_eof(&self) -> bool {
         self.index >= self.len()
     }

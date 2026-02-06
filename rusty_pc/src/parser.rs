@@ -449,30 +449,22 @@ where
 pub trait InputTrait {
     type Output;
 
-    /// Returns the next character.
+    /// Returns the next element.
     /// Does not advance the position.
     fn peek(&self) -> Self::Output;
 
-    /// Returns the next character.
+    /// Returns the next element.
     /// Advances the position.
     fn read(&mut self) -> Self::Output;
 
     /// Gets the current position within the source.
     fn get_position(&self) -> usize;
 
-    /// Increase the current position by the given amount.
-    fn inc_position_by(&mut self, amount: usize);
-
     /// Is the input at the end of file.
     fn is_eof(&self) -> bool;
 
     /// Sets the current position within the source.
     fn set_position(&mut self, position: usize);
-
-    /// Increase the current position by one character.
-    fn inc_position(&mut self) {
-        self.inc_position_by(1)
-    }
 }
 
 pub trait ParserErrorTrait: Clone + Default {

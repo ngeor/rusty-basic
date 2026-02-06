@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
 use crate::many::{IgnoringManyCombiner, ManyCombiner, StringManyCombiner};
-use crate::text::{any_char, one_char};
-use crate::{InputTrait, Parser, ParserErrorTrait};
+use crate::text::one_char;
+use crate::{InputTrait, Parser, ParserErrorTrait, read_p};
 
 /// Parses one specific character and returns it as a string.
 pub fn one_char_to_str<I, E>(ch: char) -> impl Parser<I, Output = String, Error = E>
@@ -37,7 +37,7 @@ where
     F: Fn(&char) -> bool,
     C: ManyCombiner<char, O>,
 {
-    any_char().filter(predicate).many(combiner)
+    read_p().filter(predicate).many(combiner)
 }
 
 /// Parses the specific string, case insensitive.

@@ -1,5 +1,4 @@
-use rusty_pc::text::any_char;
-use rusty_pc::{InputTrait, Parser, ParserErrorTrait, Token};
+use rusty_pc::{InputTrait, Parser, ParserErrorTrait, Token, read_p};
 
 use crate::tokens::TokenType;
 
@@ -9,5 +8,5 @@ where
     I: InputTrait<Output = char>,
     E: ParserErrorTrait,
 {
-    any_char().map(|ch| Token::new(TokenType::Symbol.get_index(), ch.to_string()))
+    read_p().map(|ch: char| Token::new(TokenType::Symbol.get_index(), ch.to_string()))
 }

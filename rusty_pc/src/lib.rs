@@ -26,6 +26,7 @@ mod then_with;
 mod then_with_left;
 pub mod to_option;
 mod token;
+mod top_level;
 
 pub use ctx::*;
 pub use init_context::*;
@@ -37,3 +38,4 @@ pub use surround::*;
 pub use then_with::*;
 pub use then_with_left::*;
 pub use token::*;
+pub use top_level::*;

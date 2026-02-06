@@ -2,7 +2,7 @@ use rusty_pc::and::StringCombiner;
 use rusty_pc::filter::FilterPredicate;
 use rusty_pc::many::{IgnoringManyCombiner, ManyCombiner, StringManyCombiner};
 use rusty_pc::text::{
-    any_char, many_str, many_str_with_combiner, one_char_to_str, peek_char, specific_str, specific_str_ignoring
+    many_str, many_str_with_combiner, one_char_to_str, specific_str, specific_str_ignoring
 };
 use rusty_pc::*;
 
@@ -127,7 +127,7 @@ pub fn keyword_ignoring(k: Keyword) -> impl Parser<StringView, Output = (), Erro
 
 fn ensure_no_illegal_char_after_keyword()
 -> impl Parser<StringView, Output = (), Error = ParserError> {
-    peek_char().to_option().and_then(|opt_ch| match opt_ch {
+    peek_p().to_option().and_then(|opt_ch| match opt_ch {
         Some(ch) if is_allowed_char_after_keyword(ch) => Ok(()),
         None => Ok(()),
         _ => default_parse_error(),
@@ -159,10 +159,10 @@ fn is_allowed_char_after_keyword(ch: char) -> bool {
 const MAX_LENGTH: usize = 40;
 
 fn identifier() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    any_char()
+    read_p()
         .filter(char::is_ascii_alphabetic)
         .and(
-            any_char()
+            read_p()
                 .filter(is_allowed_char_in_identifier)
                 .zero_or_more(),
             StringCombiner,

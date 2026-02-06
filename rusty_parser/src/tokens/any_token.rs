@@ -1,5 +1,4 @@
 use rusty_pc::and::StringCombiner;
-use rusty_pc::filter::FilterPredicate;
 use rusty_pc::many::{IgnoringManyCombiner, ManyCombiner, StringManyCombiner};
 use rusty_pc::text::{
     many_str, many_str_with_combiner, one_char_to_str, specific_str, specific_str_ignoring
@@ -167,20 +166,14 @@ fn identifier() -> impl Parser<StringView, Output = Token, Error = ParserError> 
                 .zero_or_more(),
             StringCombiner,
         )
-        .filter(LengthValidator)
+        .and_then(|value| {
+            if value.len() > MAX_LENGTH {
+                Err(ParserError::IdentifierTooLong)
+            } else {
+                Ok(value)
+            }
+        })
         .to_token(TokenType::Identifier)
-}
-
-struct LengthValidator;
-
-impl FilterPredicate<String, ParserError> for LengthValidator {
-    fn filter(&self, value: String) -> Result<String, ParserError> {
-        if value.len() > MAX_LENGTH {
-            Err(ParserError::IdentifierTooLong)
-        } else {
-            Ok(value)
-        }
-    }
 }
 
 fn is_allowed_char_in_identifier(ch: &char) -> bool {

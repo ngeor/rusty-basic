@@ -1,4 +1,3 @@
-use rusty_pc::filter::FilterPredicate;
 use rusty_pc::*;
 
 use crate::error::ParserError;
@@ -73,24 +72,11 @@ fn letter_range() -> impl Parser<StringView, Output = LetterRange, Error = Parse
 }
 
 fn letter() -> impl Parser<StringView, Output = char, Error = ParserError> {
-    any_token_of!(TokenType::Identifier)
-        .filter(ExpectedLetter)
-        .map(token_to_char)
-}
-
-struct ExpectedLetter;
-
-impl FilterPredicate<Token, ParserError> for ExpectedLetter {
-    fn filter(&self, token: Token) -> Result<Token, ParserError> {
-        match token.try_as_single_char() {
-            Some(_) => Ok(token),
-            _ => Err(ParserError::expected("letter").to_fatal()),
-        }
-    }
-}
-
-fn token_to_char(token: Token) -> char {
-    token.as_str().chars().next().unwrap()
+    any_token_of!(TokenType::Identifier).and_then(|token| {
+        token
+            .try_as_single_char()
+            .ok_or(ParserError::expected("letter").to_fatal())
+    })
 }
 
 #[cfg(test)]

@@ -3,7 +3,7 @@ use crate::and_then::AndThenParser;
 use crate::and_then_err::AndThenErrParser;
 use crate::boxed::BoxedParser;
 use crate::delimited::{DelimitedParser, NormalElementCollector, OptionalElementCollector};
-use crate::filter::{FilterParser, FilterPredicate};
+use crate::filter::FilterParser;
 use crate::filter_map::FilterMapParser;
 use crate::flatten::FlattenParser;
 use crate::many::{ManyCombiner, ManyParser, VecManyCombiner};
@@ -221,7 +221,7 @@ where
     fn filter<F>(self, predicate: F) -> FilterParser<Self, F>
     where
         Self: Sized,
-        F: FilterPredicate<Self::Output, Self::Error>,
+        F: Fn(&Self::Output) -> bool,
     {
         FilterParser::new(self, predicate)
     }

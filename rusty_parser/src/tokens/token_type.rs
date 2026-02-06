@@ -57,7 +57,10 @@ token_type_enum!(
         Whitespace("whitespace"),
         Digits,
         GreaterEquals,
+        Greater,
         LessEquals,
+        Less,
+        Equals,
         NotEquals,
         // keyword needs to be before Identifier, because the first one wins
         Keyword,

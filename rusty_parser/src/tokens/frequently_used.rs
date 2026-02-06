@@ -9,7 +9,7 @@ use crate::tokens::{TokenType, any_symbol_of, any_symbol_of_ws, any_token_of};
 ///
 /// `<ws>? = <ws>?`
 pub fn equal_sign_ws() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    any_symbol_of_ws!('=')
+    any_token_of!(TokenType::Equals).padded_by_ws()
 }
 
 /// Comma, surrounded by optional whitespace.

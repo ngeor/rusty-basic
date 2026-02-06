@@ -30,12 +30,15 @@ pub fn any_token() -> impl Parser<StringView, Output = Token, Error = ParserErro
         Box::new(oct_digits()),
         // HexDigits
         Box::new(hex_digits()),
-        // GreaterEquals,
-        Box::new(greater_or_equal()),
-        // LessEquals,
-        Box::new(less_or_equal()),
-        // NotEquals,
-        Box::new(not_equal()),
+        // GreaterEquals >=
+        // Greater       >
+        Box::new(gt_or_ge()),
+        // LessEquals    <=
+        // NotEquals     <>
+        // Less          <
+        Box::new(lt_or_le_or_ne()),
+        // Equals =
+        Box::new(equals()),
         // Symbol must be last,
         Box::new(any_symbol()),
     ])
@@ -60,16 +63,32 @@ fn lf() -> impl Parser<StringView, Output = Token, Error = ParserError> {
     one_char_to_str('\n').to_token(TokenType::Eol)
 }
 
-fn greater_or_equal() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    specific_str(">=".to_owned()).to_token(TokenType::GreaterEquals)
+fn gt_or_ge() -> impl Parser<StringView, Output = Token, Error = ParserError> {
+    one_p('>').and_opt(one_p('='), StringCombiner).map(|text| {
+        if text.len() == 1 {
+            Token::new(TokenType::Greater.get_index(), text)
+        } else {
+            Token::new(TokenType::GreaterEquals.get_index(), text)
+        }
+    })
 }
 
-fn less_or_equal() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    specific_str("<=".to_owned()).to_token(TokenType::LessEquals)
+fn lt_or_le_or_ne() -> impl Parser<StringView, Output = Token, Error = ParserError> {
+    one_p('<')
+        .and_opt(one_p('>').or(one_p('=')), StringCombiner)
+        .map(|text| {
+            if text.len() == 1 {
+                Token::new(TokenType::Less.get_index(), text)
+            } else if text.ends_with('=') {
+                Token::new(TokenType::LessEquals.get_index(), text)
+            } else {
+                Token::new(TokenType::NotEquals.get_index(), text)
+            }
+        })
 }
 
-fn not_equal() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    specific_str("<>".to_owned()).to_token(TokenType::NotEquals)
+fn equals() -> impl Parser<StringView, Output = Token, Error = ParserError> {
+    one_char_to_str('=').to_token(TokenType::Equals)
 }
 
 /// Parses any number of whitespace characters,

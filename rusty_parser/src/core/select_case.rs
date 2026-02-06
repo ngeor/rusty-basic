@@ -138,14 +138,11 @@ mod case_expression_parser {
         any_token()
             .filter_map(|token| match TokenType::from_token(token) {
                 TokenType::LessEquals => Some(Operator::LessOrEqual),
+                TokenType::Less => Some(Operator::Less),
                 TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
+                TokenType::Greater => Some(Operator::Greater),
+                TokenType::Equals => Some(Operator::Equal),
                 TokenType::NotEquals => Some(Operator::NotEqual),
-                TokenType::Symbol => match token.demand_single_char() {
-                    '<' => Some(Operator::Less),
-                    '>' => Some(Operator::Greater),
-                    '=' => Some(Operator::Equal),
-                    _ => None,
-                },
                 _ => None,
             })
             .with_pos()

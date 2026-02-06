@@ -1102,7 +1102,10 @@ mod binary_expression {
         fn map_token_to_operator(token: &Token) -> Option<Operator> {
             match TokenType::from_token(token) {
                 TokenType::LessEquals => Some(Operator::LessOrEqual),
+                TokenType::Less => Some(Operator::Less),
                 TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
+                TokenType::Greater => Some(Operator::Greater),
+                TokenType::Equals => Some(Operator::Equal),
                 TokenType::NotEquals => Some(Operator::NotEqual),
                 TokenType::Keyword => match Keyword::try_from(token.as_str()).unwrap() {
                     Keyword::Mod => Some(Operator::Modulo),
@@ -1115,9 +1118,6 @@ mod binary_expression {
                     '-' => Some(Operator::Minus),
                     '*' => Some(Operator::Multiply),
                     '/' => Some(Operator::Divide),
-                    '>' => Some(Operator::Greater),
-                    '<' => Some(Operator::Less),
-                    '=' => Some(Operator::Equal),
                     _ => None,
                 },
                 _ => None,

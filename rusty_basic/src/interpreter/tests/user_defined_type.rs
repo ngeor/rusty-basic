@@ -35,7 +35,7 @@ fn test_user_defined_type_nested() {
 
     DIM A AS Address
     A.PostCode.Prefix = 1234
-    A.PostCode.Suffix =  "CZ"
+    A.PostCode.Suffix = "CZ"
 
     PRINT A.PostCode.Prefix
     PRINT A.PostCode.Suffix

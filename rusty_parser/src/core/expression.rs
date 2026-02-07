@@ -999,7 +999,7 @@ mod built_in_function_call {
 
 mod binary_expression {
     use rusty_common::Positioned;
-    use rusty_pc::and::opt_and_tuple;
+    use rusty_pc::and::{TupleCombiner, opt_and_tuple};
     use rusty_pc::*;
 
     use super::{
@@ -1013,116 +1013,118 @@ mod binary_expression {
 
     // result ::= <non-bin-expr> <operator> <expr>
     pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-        BinaryExprParser
-    }
-
-    struct BinaryExprParser;
-
-    // TODO review impl Parser outside of pc
-    impl Parser<StringView> for BinaryExprParser {
-        type Output = ExpressionPos;
-        type Error = ParserError;
-
-        fn parse(&mut self, tokenizer: &mut StringView) -> Result<Self::Output, ParserError> {
-            self.do_parse(tokenizer)
-                .map(ExpressionPos::simplify_unary_minus_literals)
-        }
-    }
-
-    impl BinaryExprParser {
-        fn do_parse(&self, tokenizer: &mut StringView) -> Result<ExpressionPos, ParserError> {
-            let first = Self::non_bin_expr().parse(tokenizer)?;
-
-            let is_paren = first.is_parenthesis();
-            match Self::operator(is_paren).parse(tokenizer) {
-                Ok(Positioned {
-                    element: op,
-                    pos: op_pos,
-                }) => {
-                    if let Err(err) = guard::parser().parse(tokenizer) {
-                        if err.is_soft() {
-                            let is_keyword_op =
-                                op == Operator::And || op == Operator::Or || op == Operator::Modulo;
-                            if is_keyword_op {
-                                return Err(ParserError::expected("whitespace or (").to_fatal());
-                            }
-                        } else {
-                            return Err(err);
-                        }
-                    }
-
-                    expression_pos_p()
-                        .or_expected("expression after operator")
-                        .parse(tokenizer)
-                        .map(|right| first.apply_priority_order(right, op, op_pos))
-                }
-                Err(err) if err.is_soft() => Ok(first),
-                Err(err) => Err(err),
-            }
-        }
-
-        fn non_bin_expr() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-            OrParser::new(vec![
-                Box::new(single_or_double_literal::parser()),
-                Box::new(string_literal::parser()),
-                Box::new(integer_or_long_literal::parser()),
-                // property internally uses variable and function_call_or_array_element so they can be skipped
-                Box::new(property::parser()),
-                Box::new(built_in_function_call::parser()),
-                Box::new(parenthesis::parser()),
-                Box::new(unary_expression::parser()),
-            ])
-        }
-
-        fn operator(
-            is_paren: bool,
-        ) -> impl Parser<StringView, Output = Positioned<Operator>, Error = ParserError> {
-            opt_and_tuple(
-                whitespace_ignoring(),
-                any_token()
-                    .filter_map(Self::map_token_to_operator)
-                    .with_pos(),
+        non_bin_expr()
+            .then_with_in_context(
+                second_parser(),
+                |first| first.is_parenthesis(),
+                TupleCombiner,
             )
-            .and_then(move |(leading_ws, op_pos)| {
-                let had_whitespace = leading_ws.is_some();
-                let needs_whitespace = matches!(
-                    &op_pos.element,
-                    Operator::Modulo | Operator::And | Operator::Or
-                );
-                if had_whitespace || is_paren || !needs_whitespace {
-                    Ok(op_pos)
-                } else {
-                    Err(ParserError::syntax_error(&format!(
-                        "Expected: parenthesis before operator {:?}",
-                        op_pos.element()
-                    )))
-                }
+            .map(|(l, r)| match r {
+                Some((op, r)) => l.apply_priority_order(r, op.element, op.pos),
+                None => l,
             })
-        }
+            .map(ExpressionPos::simplify_unary_minus_literals)
+    }
 
-        fn map_token_to_operator(token: &Token) -> Option<Operator> {
-            match TokenType::from_token(token) {
-                TokenType::LessEquals => Some(Operator::LessOrEqual),
-                TokenType::Less => Some(Operator::Less),
-                TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
-                TokenType::Greater => Some(Operator::Greater),
-                TokenType::Equals => Some(Operator::Equal),
-                TokenType::NotEquals => Some(Operator::NotEqual),
-                TokenType::Keyword => match Keyword::try_from(token.as_str()).unwrap() {
-                    Keyword::Mod => Some(Operator::Modulo),
-                    Keyword::And => Some(Operator::And),
-                    Keyword::Or => Some(Operator::Or),
-                    _ => None,
-                },
-                TokenType::Symbol => match token.demand_single_char() {
-                    '+' => Some(Operator::Plus),
-                    '-' => Some(Operator::Minus),
-                    '*' => Some(Operator::Multiply),
-                    '/' => Some(Operator::Divide),
-                    _ => None,
-                },
-                _ => None,
+    fn second_parser() -> impl Parser<
+        StringView,
+        bool,
+        Output = Option<(Positioned<Operator>, ExpressionPos)>,
+        Error = ParserError,
+    > + SetContext<bool> {
+        FnCtxParser::new(|is_paren| operator(*is_paren))
+            .then_with_in_context(third_parser(), |op| is_keyword_op(op), TupleCombiner)
+            .to_option()
+    }
+
+    fn is_keyword_op(op: &Positioned<Operator>) -> bool {
+        op.element == Operator::And || op.element == Operator::Or || op.element == Operator::Modulo
+    }
+
+    fn third_parser()
+    -> impl Parser<StringView, bool, Output = ExpressionPos, Error = ParserError> + SetContext<bool>
+    {
+        FnCtxParser::new(|ctx| guard_before_right_side_expr(*ctx))
+            .and_keep_right(right_side_expr().no_context())
+    }
+
+    fn guard_before_right_side_expr(
+        is_required: bool,
+    ) -> impl Parser<StringView, Output = (), Error = ParserError> {
+        if is_required {
+            guard::parser().to_fatal().map(|_| ()).boxed()
+        } else {
+            guard::parser().to_option().map(|_| ()).boxed()
+        }
+    }
+
+    /// Parses the right side expression, after having parsed the binary operator
+    fn right_side_expr() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+        // boxed breaks apart the recursive type evaluation
+        expression_pos_p()
+            .or_expected("expression after operator")
+            .boxed()
+    }
+
+    fn non_bin_expr() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+        OrParser::new(vec![
+            Box::new(single_or_double_literal::parser()),
+            Box::new(string_literal::parser()),
+            Box::new(integer_or_long_literal::parser()),
+            // property internally uses variable and function_call_or_array_element so they can be skipped
+            Box::new(property::parser()),
+            Box::new(built_in_function_call::parser()),
+            Box::new(parenthesis::parser()),
+            Box::new(unary_expression::parser()),
+        ])
+    }
+
+    fn operator(
+        is_paren: bool,
+    ) -> impl Parser<StringView, Output = Positioned<Operator>, Error = ParserError> {
+        opt_and_tuple(
+            whitespace_ignoring(),
+            any_token().filter_map(map_token_to_operator).with_pos(),
+        )
+        .and_then(move |(leading_ws, op_pos)| {
+            let had_whitespace = leading_ws.is_some();
+            let needs_whitespace = matches!(
+                &op_pos.element,
+                Operator::Modulo | Operator::And | Operator::Or
+            );
+            if had_whitespace || is_paren || !needs_whitespace {
+                Ok(op_pos)
+            } else {
+                Err(ParserError::syntax_error(&format!(
+                    "Expected: parenthesis before operator {:?}",
+                    op_pos.element()
+                )))
             }
+        })
+    }
+
+    fn map_token_to_operator(token: &Token) -> Option<Operator> {
+        match TokenType::from_token(token) {
+            TokenType::LessEquals => Some(Operator::LessOrEqual),
+            TokenType::Less => Some(Operator::Less),
+            TokenType::GreaterEquals => Some(Operator::GreaterOrEqual),
+            TokenType::Greater => Some(Operator::Greater),
+            TokenType::Equals => Some(Operator::Equal),
+            TokenType::NotEquals => Some(Operator::NotEqual),
+            TokenType::Keyword => match Keyword::try_from(token.as_str()).unwrap() {
+                Keyword::Mod => Some(Operator::Modulo),
+                Keyword::And => Some(Operator::And),
+                Keyword::Or => Some(Operator::Or),
+                _ => None,
+            },
+            TokenType::Symbol => match token.demand_single_char() {
+                '+' => Some(Operator::Plus),
+                '-' => Some(Operator::Minus),
+                '*' => Some(Operator::Multiply),
+                '/' => Some(Operator::Divide),
+                _ => None,
+            },
+            _ => None,
         }
     }
 }
@@ -1219,6 +1221,7 @@ pub mod guard {
 
     use crate::ParserError;
     use crate::input::StringView;
+    use crate::pc_specific::WithExpected;
     use crate::tokens::{TokenMatcher, peek_token, whitespace_ignoring};
 
     #[derive(Default)]
@@ -1232,7 +1235,9 @@ pub mod guard {
     ///
     /// The "(" will be undone.
     pub fn parser() -> impl Parser<StringView, Output = Guard, Error = ParserError> {
-        whitespace_guard().or(lparen_guard())
+        whitespace_guard()
+            .or(lparen_guard())
+            .with_expected_message("Expected: '(' or whitespace")
     }
 
     fn whitespace_guard() -> impl Parser<StringView, Output = Guard, Error = ParserError> {

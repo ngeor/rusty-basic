@@ -52,3 +52,12 @@ where
         }
     }
 }
+
+impl<C, L, R, F, A, O> SetContext<C> for ThenWithContextParser<L, R, F, A, O>
+where
+    L: SetContext<C>,
+{
+    fn set_context(&mut self, ctx: C) {
+        self.left.set_context(ctx);
+    }
+}

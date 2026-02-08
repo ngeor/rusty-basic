@@ -72,7 +72,7 @@ pub(super) fn conditionally_opt_whitespace()
 -> impl Parser<StringView, bool, Output = (), Error = ParserError> + SetContext<bool> {
     IifParser::new(
         // allow none
-        whitespace_ignoring().to_option().map(|_| ()),
+        whitespace_ignoring().to_option().map_to_unit(),
         // whitespace is required
         whitespace_ignoring(),
     )

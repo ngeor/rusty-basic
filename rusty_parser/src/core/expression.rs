@@ -1046,7 +1046,7 @@ mod binary_expression {
     {
         IifParser::new(
             guard::parser().to_fatal(),
-            guard::parser().to_option().map(|_| ()),
+            guard::parser().to_option().map_to_unit(),
         )
         .and_keep_right(right_side_expr().no_context())
     }
@@ -1259,7 +1259,7 @@ pub mod guard {
     }
 
     fn lparen_guard() -> impl Parser<StringView, Output = (), Error = ParserError> {
-        any_symbol_of!('(').map(|_| ()).peek()
+        any_symbol_of!('(').map_to_unit().peek()
     }
 }
 

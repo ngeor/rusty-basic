@@ -183,7 +183,7 @@ fn delimiter_print_arg() -> impl Parser<StringView, Output = PrintArg, Error = P
 }
 
 fn print_boundary() -> impl Parser<StringView, Output = (), Error = ParserError> {
-    whitespace_ignoring().or(any_symbol_of!(',', ';', '(').map(|_| ()).peek())
+    whitespace_ignoring().or(any_symbol_of!(',', ';', '(').map_to_unit().peek())
 }
 
 #[cfg(test)]

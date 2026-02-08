@@ -1052,7 +1052,7 @@ mod binary_expression {
         is_required: bool,
     ) -> impl Parser<StringView, Output = (), Error = ParserError> {
         if is_required {
-            guard::parser().to_fatal().map(|_| ()).boxed()
+            guard::parser().to_fatal().boxed()
         } else {
             guard::parser().to_option().map(|_| ()).boxed()
         }
@@ -1252,36 +1252,23 @@ pub mod guard {
     use crate::ParserError;
     use crate::input::StringView;
     use crate::pc_specific::WithExpected;
-    use crate::tokens::{TokenMatcher, peek_token, whitespace_ignoring};
-
-    #[derive(Default)]
-    pub enum Guard {
-        #[default]
-        Peeked,
-        Whitespace,
-    }
+    use crate::tokens::{any_symbol_of, any_token_of, whitespace_ignoring};
 
     /// `result ::= " " | "("`
     ///
     /// The "(" will be undone.
-    pub fn parser() -> impl Parser<StringView, Output = Guard, Error = ParserError> {
+    pub fn parser() -> impl Parser<StringView, Output = (), Error = ParserError> {
         whitespace_guard()
             .or(lparen_guard())
             .with_expected_message("Expected: '(' or whitespace")
     }
 
-    fn whitespace_guard() -> impl Parser<StringView, Output = Guard, Error = ParserError> {
-        whitespace_ignoring().map(|_| Guard::Whitespace)
+    fn whitespace_guard() -> impl Parser<StringView, Output = (), Error = ParserError> {
+        whitespace_ignoring()
     }
 
-    fn lparen_guard() -> impl Parser<StringView, Output = Guard, Error = ParserError> {
-        peek_token().and_then(|token| {
-            if '('.matches_token(&token) {
-                Ok(Guard::Peeked)
-            } else {
-                default_parse_error()
-            }
-        })
+    fn lparen_guard() -> impl Parser<StringView, Output = (), Error = ParserError> {
+        any_symbol_of!('(').map(|_| ()).peek()
     }
 }
 

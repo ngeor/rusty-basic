@@ -2,13 +2,12 @@ use rusty_common::*;
 use rusty_pc::*;
 
 use crate::core::expression::file_handle::file_handle_p;
-use crate::core::expression::guard::Guard;
 use crate::core::expression::{expression_pos_p, ws_expr_pos_p};
 use crate::error::ParserError;
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{
-    TokenMatcher, any_symbol_of_ws, any_token_of, comma_ws, peek_token, semicolon_ws, whitespace_ignoring
+    TokenMatcher, any_symbol_of, any_symbol_of_ws, any_token_of, comma_ws, semicolon_ws, whitespace_ignoring
 };
 use crate::*;
 
@@ -205,17 +204,8 @@ impl Parser<StringView> for PrintArgsParser {
     }
 }
 
-fn print_boundary() -> impl Parser<StringView, Output = Guard, Error = ParserError> {
-    whitespace_ignoring()
-        .map(|_| Guard::Whitespace)
-        .or(peek_token().and_then(|token| {
-            // TODO improve performance
-            if ','.matches_token(&token) || ';'.matches_token(&token) || '('.matches_token(&token) {
-                Ok(Guard::Peeked)
-            } else {
-                default_parse_error()
-            }
-        }))
+fn print_boundary() -> impl Parser<StringView, Output = (), Error = ParserError> {
+    whitespace_ignoring().or(any_symbol_of!(',', ';', '(').map(|_| ()).peek())
 }
 
 #[cfg(test)]

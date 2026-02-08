@@ -1,14 +1,12 @@
 use rusty_pc::and::StringCombiner;
 use rusty_pc::many::{IgnoringManyCombiner, ManyCombiner, StringManyCombiner};
-use rusty_pc::text::{
-    many_str, many_str_with_combiner, one_char_to_str, specific_str, specific_str_ignoring
-};
+use rusty_pc::text::{many_str, many_str_with_combiner, one_char_to_str};
 use rusty_pc::*;
 
 use crate::input::StringView;
 use crate::pc_specific::WithExpected;
-use crate::tokens::TokenType;
 use crate::tokens::any_symbol::any_symbol;
+use crate::tokens::{TokenMatcher, TokenType};
 use crate::{Keyword, ParserError};
 
 /// Parses any token.
@@ -136,8 +134,9 @@ fn any_keyword() -> impl Parser<StringView, Output = Token, Error = ParserError>
 }
 
 pub fn keyword_ignoring(k: Keyword) -> impl Parser<StringView, Output = (), Error = ParserError> {
-    specific_str_ignoring(k.to_string())
-        .and_keep_left(ensure_no_illegal_char_after_keyword())
+    any_token()
+        .filter(move |t| k.matches_token(t))
+        .map_to_unit()
         .with_expected_message(format!("Expected: {}", k))
 }
 
@@ -212,8 +211,8 @@ fn oct_or_hex_digits<F>(
 where
     F: Fn(&char) -> bool,
 {
-    let prefix = format!("&{}", radix);
-    specific_str(prefix)
+    one_p('&')
+        .and(one_p(radix), StringCombiner)
         .and(
             one_char_to_str('-')
                 .to_option()

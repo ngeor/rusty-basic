@@ -183,6 +183,14 @@ impl Combiner<Option<String>, String, String> for StringCombiner {
     }
 }
 
+impl Combiner<char, char, String> for StringCombiner {
+    fn combine(&self, left: char, right: char) -> String {
+        let mut result = String::from(left);
+        result.push(right);
+        result
+    }
+}
+
 impl Combiner<char, Option<char>, String> for StringCombiner {
     fn combine(&self, left: char, right: Option<char>) -> String {
         match right {

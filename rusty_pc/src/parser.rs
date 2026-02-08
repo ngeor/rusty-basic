@@ -7,7 +7,7 @@ use crate::filter::FilterParser;
 use crate::filter_map::FilterMapParser;
 use crate::flatten::FlattenParser;
 use crate::many::{ManyCombiner, ManyParser, VecManyCombiner};
-use crate::map::MapParser;
+use crate::map::{MapParser, MapToUnitParser};
 use crate::map_err::{
     ErrorMapper, FatalErrorOverrider, MapErrParser, SoftErrorOverrider, ToFatalErrorMapper
 };
@@ -312,6 +312,14 @@ where
         F: Fn(Self::Output) -> U,
     {
         MapParser::new(self, mapper)
+    }
+
+    /// Maps the successful result of the underlying parser to the unit type (`()`).
+    fn map_to_unit(self) -> MapToUnitParser<Self>
+    where
+        Self: Sized,
+    {
+        MapToUnitParser::new(self)
     }
 
     // =======================================================================

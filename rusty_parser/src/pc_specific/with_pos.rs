@@ -27,7 +27,6 @@ impl<P> WithPosMapper<P> {
     }
 }
 
-// TODO review impl Parser outside of pc
 impl<I, C, P> Parser<I, C> for WithPosMapper<P>
 where
     P: Parser<I, C>,

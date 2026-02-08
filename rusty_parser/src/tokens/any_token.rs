@@ -5,8 +5,8 @@ use rusty_pc::*;
 
 use crate::input::StringView;
 use crate::pc_specific::WithExpected;
+use crate::tokens::TokenType;
 use crate::tokens::any_symbol::any_symbol;
-use crate::tokens::{TokenMatcher, TokenType};
 use crate::{Keyword, ParserError};
 
 /// Parses any token.
@@ -131,13 +131,6 @@ fn any_keyword() -> impl Parser<StringView, Output = Token, Error = ParserError>
         .and_keep_left(ensure_no_illegal_char_after_keyword())
         .with_expected_message("Expected: Keyword")
         .to_token(TokenType::Keyword)
-}
-
-pub fn keyword_ignoring(k: Keyword) -> impl Parser<StringView, Output = (), Error = ParserError> {
-    any_token()
-        .filter(move |t| k.matches_token(t))
-        .map_to_unit()
-        .with_expected_message(format!("Expected: {}", k))
 }
 
 fn ensure_no_illegal_char_after_keyword()

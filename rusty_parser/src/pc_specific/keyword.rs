@@ -4,7 +4,8 @@ use rusty_pc::and::IgnoringBothCombiner;
 use rusty_pc::*;
 
 use crate::input::StringView;
-use crate::tokens::{TokenType, any_token, keyword_ignoring, whitespace_ignoring};
+use crate::pc_specific::WithExpected;
+use crate::tokens::{TokenMatcher, TokenType, any_token, whitespace_ignoring};
 use crate::{Keyword, ParserError};
 
 // TODO review usages of TokenType::Keyword
@@ -36,6 +37,13 @@ pub fn keyword_p(
     eof_is_fatal: bool,
 ) -> impl Parser<StringView, Output = Keyword, Error = ParserError> {
     KeywordParser::new(any_token(), keywords, eof_is_fatal)
+}
+
+pub fn keyword_ignoring(k: Keyword) -> impl Parser<StringView, Output = (), Error = ParserError> {
+    any_token()
+        .filter(move |t| k.matches_token(t))
+        .map_to_unit()
+        .with_expected_message(format!("Expected: {}", k))
 }
 
 /// Parses the given keyword, followed by mandatory whitespace.

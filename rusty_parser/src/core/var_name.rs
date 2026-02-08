@@ -4,7 +4,7 @@ use rusty_pc::*;
 use crate::core::name::{bare_name_without_dots, name_p};
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::{keyword_ignoring, whitespace_ignoring};
+use crate::tokens::whitespace_ignoring;
 use crate::{ParserError, *};
 
 /// A variable name with a type.

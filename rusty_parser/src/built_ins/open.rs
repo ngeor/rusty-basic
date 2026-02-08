@@ -4,7 +4,7 @@ use rusty_pc::*;
 
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::{equal_sign_ws, keyword_ignoring, whitespace_ignoring};
+use crate::tokens::{equal_sign_ws, whitespace_ignoring};
 use crate::{BuiltInSub, ParserError, *};
 pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     seq6(

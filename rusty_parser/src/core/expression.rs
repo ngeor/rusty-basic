@@ -999,7 +999,7 @@ mod built_in_function_call {
 
 mod binary_expression {
     use rusty_common::Positioned;
-    use rusty_pc::and::{TupleCombiner, opt_and_tuple};
+    use rusty_pc::and::{TupleCombiner, opt_and_keep_right};
     use rusty_pc::*;
 
     use super::{
@@ -1079,31 +1079,52 @@ mod binary_expression {
         ])
     }
 
+    /// Parses an operator.
+    /// The parameter indicates if the previously parsed expression was wrapped in
+    /// parenthesis. If that is the case, leading whitespace is not required for
+    /// keyword based operators.
     fn operator(
-        is_paren: bool,
+        preceded_by_rparen: bool,
     ) -> impl Parser<StringView, Output = Positioned<Operator>, Error = ParserError> {
-        opt_and_tuple(
-            whitespace_ignoring(),
-            any_token().filter_map(map_token_to_operator).with_pos(),
-        )
-        .and_then(move |(leading_ws, op_pos)| {
-            let had_whitespace = leading_ws.is_some();
-            let needs_whitespace = matches!(
-                &op_pos.element,
-                Operator::Modulo | Operator::And | Operator::Or
-            );
-            if had_whitespace || is_paren || !needs_whitespace {
-                Ok(op_pos)
-            } else {
-                Err(ParserError::syntax_error(&format!(
-                    "Expected: parenthesis before operator {:?}",
-                    op_pos.element()
-                )))
-            }
-        })
+        if preceded_by_rparen {
+            // no whitespace needed
+            opt_and_keep_right(whitespace_ignoring(), operator_p()).boxed()
+        } else {
+            // whitespace needed
+            whitespace_ignoring()
+                .and_keep_right(operator_p())
+                .or(opt_and_keep_right(
+                    whitespace_ignoring(),
+                    symbol_operator_p(),
+                ))
+                .boxed()
+        }
     }
 
+    /// Parses an operator.
+    /// Does not check for leading whitespace, this needs to be done at the caller!
+    fn operator_p() -> impl Parser<StringView, Output = Positioned<Operator>, Error = ParserError> {
+        any_token().filter_map(map_token_to_operator).with_pos()
+    }
+
+    /// Parses a symbol operator (i.e. excludes keyword based operators).
+    /// Does not check for leading whitespace, this needs to be done at the caller!
+    fn symbol_operator_p()
+    -> impl Parser<StringView, Output = Positioned<Operator>, Error = ParserError> {
+        any_token()
+            .filter_map(map_token_to_symbol_operator)
+            .with_pos()
+    }
+
+    /// Maps the given token to an operator.
     fn map_token_to_operator(token: &Token) -> Option<Operator> {
+        map_token_to_symbol_operator(token).or_else(|| map_token_to_keyword_operator(token))
+    }
+
+    /// Maps the given token to an operator, considering only operators
+    /// that are based on symbols (i.e. excludes keywords).
+    /// Symbol based operators do not require leading whitespace.
+    fn map_token_to_symbol_operator(token: &Token) -> Option<Operator> {
         match TokenType::from_token(token) {
             TokenType::LessEquals => Some(Operator::LessOrEqual),
             TokenType::Less => Some(Operator::Less),
@@ -1111,17 +1132,26 @@ mod binary_expression {
             TokenType::Greater => Some(Operator::Greater),
             TokenType::Equals => Some(Operator::Equal),
             TokenType::NotEquals => Some(Operator::NotEqual),
-            TokenType::Keyword => match Keyword::try_from(token.as_str()).unwrap() {
-                Keyword::Mod => Some(Operator::Modulo),
-                Keyword::And => Some(Operator::And),
-                Keyword::Or => Some(Operator::Or),
-                _ => None,
-            },
             TokenType::Symbol => match token.demand_single_char() {
                 '+' => Some(Operator::Plus),
                 '-' => Some(Operator::Minus),
                 '*' => Some(Operator::Multiply),
                 '/' => Some(Operator::Divide),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// Maps the given token to an operator, considering only operators
+    /// that are based on keywords (i.e. excludes symbols).
+    /// Keyword based operators require leading whitespace.
+    fn map_token_to_keyword_operator(token: &Token) -> Option<Operator> {
+        match TokenType::from_token(token) {
+            TokenType::Keyword => match Keyword::try_from(token.as_str()).unwrap() {
+                Keyword::Mod => Some(Operator::Modulo),
+                Keyword::And => Some(Operator::And),
+                Keyword::Or => Some(Operator::Or),
                 _ => None,
             },
             _ => None,
@@ -1873,7 +1903,7 @@ mod tests {
                 ExpressionType::Unresolved
             )
         );
-        assert_parser_err!("PRINT 1AND 2", expected("parenthesis before operator And"));
+        assert_parser_err!("PRINT 1AND 2", expected("end-of-statement"));
         assert_expression!(
             "(1 OR 2)AND 3",
             Expression::BinaryExpression(
@@ -1903,7 +1933,7 @@ mod tests {
                 ExpressionType::Unresolved
             )
         );
-        assert_parser_err!("PRINT 1OR 2", expected("parenthesis before operator Or"));
+        assert_parser_err!("PRINT 1OR 2", expected("end-of-statement"));
         assert_expression!(
             "(1 AND 2)OR 3",
             Expression::BinaryExpression(

@@ -86,53 +86,43 @@ impl<C1, C2, P> SetContext<C2> for NoContextParser<P, C1, C2> {
     fn set_context(&mut self, _ctx: C2) {}
 }
 
-/// Stores the context and delegates parsing to the
-/// parser that is returned by a parser factory
-/// which uses the context to create the parser.
-pub struct FnCtxParser<C, F, C2> {
-    /// The context
-    context: Option<C>,
-
-    /// The parser factory
-    parser_factory: F,
-
-    /// Marker data storing the context type of the created parser
-    /// (different than the context type of this parser)
-    _marker: PhantomData<C2>,
+/// Based on the boolean context, parses using the left or the right parser.
+pub struct IifParser<L, R> {
+    left: L,
+    right: R,
+    context: bool,
 }
 
-impl<C, F, C2> FnCtxParser<C, F, C2> {
-    pub fn new<I, P>(parser_factory: F) -> Self
-    where
-        F: Fn(&C) -> P,
-        P: Parser<I, C2>,
-        I: InputTrait,
-    {
+impl<L, R> IifParser<L, R> {
+    pub fn new(left: L, right: R) -> Self {
         Self {
-            context: None,
-            parser_factory,
-            _marker: PhantomData,
+            left,
+            right,
+            context: false,
         }
     }
 }
 
-impl<C, F, C2> SetContext<C> for FnCtxParser<C, F, C2> {
-    fn set_context(&mut self, ctx: C) {
-        self.context = Some(ctx);
+impl<L, R, I> Parser<I, bool> for IifParser<L, R>
+where
+    I: InputTrait,
+    L: Parser<I>,
+    R: Parser<I, Output = L::Output, Error = L::Error>,
+{
+    type Output = L::Output;
+    type Error = L::Error;
+
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
+        if self.context {
+            self.left.parse(input)
+        } else {
+            self.right.parse(input)
+        }
     }
 }
 
-impl<I, C, F, P, C2> Parser<I, C> for FnCtxParser<C, F, C2>
-where
-    I: InputTrait,
-    F: Fn(&C) -> P,
-    P: Parser<I, C2>,
-{
-    type Output = P::Output;
-    type Error = P::Error;
-
-    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
-        let mut parser = (self.parser_factory)(&self.context.as_ref().unwrap());
-        parser.parse(input)
+impl<L, R> SetContext<bool> for IifParser<L, R> {
+    fn set_context(&mut self, ctx: bool) {
+        self.context = ctx;
     }
 }

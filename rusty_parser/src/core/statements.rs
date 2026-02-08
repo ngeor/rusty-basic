@@ -6,14 +6,15 @@ use crate::core::statement::statement_p;
 use crate::core::statement_separator::{comment_separator, common_separator};
 use crate::input::StringView;
 use crate::pc_specific::*;
+use crate::tokens::{TokenMatcher, peek_token};
 use crate::*;
 
 macro_rules! zero_or_more_statements {
     ($exit:expr, ParserError::$err:ident) => {
-        $crate::core::statements::zero_or_more_statements_p([$exit], Some(ParserError::$err))
+        $crate::core::statements::zero_or_more_statements_p(&[$exit], Some(ParserError::$err))
     };
     ($($exit:expr),+) => {
-        $crate::core::statements::zero_or_more_statements_p( [$($exit),+], None)
+        $crate::core::statements::zero_or_more_statements_p( &[$($exit),+], None)
     };
 }
 
@@ -27,7 +28,7 @@ pub(crate) use zero_or_more_statements;
 ///
 /// The custom error can be used to specify a custom error when the exit keyword is not found.
 pub fn zero_or_more_statements_p(
-    exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
+    exit_keywords: &[Keyword],
     custom_err: Option<ParserError>,
 ) -> impl Parser<StringView, Output = Statements, Error = ParserError> {
     one_statement_p(exit_keywords, custom_err)
@@ -39,7 +40,7 @@ pub fn zero_or_more_statements_p(
 
 /// Either parses one statement or detects the exit keyword and stops parsing.
 fn one_statement_p(
-    exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
+    exit_keywords: &[Keyword],
     custom_err: Option<ParserError>,
 ) -> impl Parser<StringView, bool, Output = StatementPos, Error = ParserError> + SetContext<bool> {
     one_statement_or_exit_keyword_p(exit_keywords, custom_err).and_then(
@@ -47,7 +48,7 @@ fn one_statement_p(
             // we parsed a statement, return it
             StatementOrExitKeyword::Statement(s) => Ok(s),
             // we detected an exit keyword, stop parsing
-            StatementOrExitKeyword::ExitKeyword(_keyword) => default_parse_error(),
+            StatementOrExitKeyword::ExitKeyword => default_parse_error(),
         },
     )
 }
@@ -57,7 +58,7 @@ fn one_statement_p(
 /// which depending on the context (previously parsed statement)
 /// is either the comment separator (EOL) or the regular separator (EOL or colon).
 fn one_statement_or_exit_keyword_p(
-    exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
+    exit_keywords: &[Keyword],
     custom_err: Option<ParserError>,
 ) -> impl Parser<StringView, bool, Output = StatementOrExitKeyword, Error = ParserError> + SetContext<bool>
 {
@@ -101,29 +102,43 @@ fn ctx_demand_separator_p()
 }
 
 fn find_exit_keyword_or_demand_statement_p(
-    exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
+    exit_keywords: &[Keyword],
     custom_err: Option<ParserError>,
 ) -> impl Parser<StringView, Output = StatementOrExitKeyword, Error = ParserError> {
     find_exit_keyword_p(exit_keywords, custom_err).or(demand_statement_p())
 }
 
 fn find_exit_keyword_p(
-    exit_keywords: impl IntoIterator<Item = Keyword> + 'static,
+    exit_keywords: &[Keyword],
     custom_err: Option<ParserError>,
 ) -> impl Parser<StringView, Output = StatementOrExitKeyword, Error = ParserError> {
-    // the first parser will return:
+    // the parser will return:
     // Ok if it finds the keyword (peeking)
-    // Err(false) if it finds something else
-    // Err(true) if it finds EOF
-    let p = keyword_p(exit_keywords, true)
-        .peek()
-        // Ok(None) if it finds the keyword
-        .map(StatementOrExitKeyword::ExitKeyword);
+    // Soft error if it finds something else
+    // Fatal error if it finds EOF
+    peek_token().to_option().and_then(move |opt_token| {
+        match opt_token {
+            Some(token) => {
+                for exit_keyword in exit_keywords {
+                    if exit_keyword.matches_token(&token) {
+                        return Ok(StatementOrExitKeyword::ExitKeyword);
+                    }
+                }
 
-    match custom_err {
-        Some(err) => p.with_fatal_err(err).boxed(),
-        None => p.boxed(),
-    }
+                Err(ParserError::expected(&to_syntax_err(exit_keywords.iter())))
+            }
+            None => {
+                // eof is fatal
+                match &custom_err {
+                    Some(err) => Err(err.clone()),
+                    None => {
+                        let s = to_syntax_err(exit_keywords.iter());
+                        Err(ParserError::expected(&s).to_fatal())
+                    }
+                }
+            }
+        }
+    })
 }
 
 fn demand_statement_p()
@@ -137,5 +152,5 @@ fn demand_statement_p()
 
 enum StatementOrExitKeyword {
     Statement(StatementPos),
-    ExitKeyword(Keyword),
+    ExitKeyword,
 }

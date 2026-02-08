@@ -14,6 +14,6 @@ where
     T: Clone,
 {
     let keyword_to_value: HashMap<Keyword, T> = mappings.iter().cloned().collect();
-    keyword_p(mappings.iter().map(|(k, _)| *k), false)
+    keyword_p(mappings.iter().map(|(k, _)| *k))
         .map(move |keyword| keyword_to_value.get(&keyword).unwrap().clone())
 }

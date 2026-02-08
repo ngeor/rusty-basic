@@ -25,7 +25,7 @@ macro_rules! keyword_of {
         $($keyword:expr),+
         $(,)?
     ) => {
-        $crate::pc_specific::keyword_p([ $($keyword),+ ], false)
+        $crate::pc_specific::keyword_p([ $($keyword),+ ])
     };
 }
 
@@ -34,9 +34,8 @@ pub(crate) use keyword_of;
 /// Parses on of the given keywords, possibly treating EOF as a fatal error.
 pub fn keyword_p(
     keywords: impl IntoIterator<Item = Keyword>,
-    eof_is_fatal: bool,
 ) -> impl Parser<StringView, Output = Keyword, Error = ParserError> {
-    KeywordParser::new(any_token(), keywords, eof_is_fatal)
+    KeywordParser::new(any_token(), keywords)
 }
 
 pub fn keyword_ignoring(k: Keyword) -> impl Parser<StringView, Output = (), Error = ParserError> {
@@ -68,13 +67,10 @@ pub struct KeywordParser<P> {
     parser: P,
     // using a BTreeSet so that the generated error message is predictable (keywords sorted)
     keywords: BTreeSet<Keyword>,
-
-    /// If true, EOF will be reported as a fatal error
-    eof_is_fatal: bool,
 }
 
 impl<P> KeywordParser<P> {
-    pub fn new(parser: P, keywords: impl IntoIterator<Item = Keyword>, eof_is_fatal: bool) -> Self {
+    pub fn new(parser: P, keywords: impl IntoIterator<Item = Keyword>) -> Self {
         let mut keyword_set: BTreeSet<Keyword> = BTreeSet::new();
         for keyword in keywords {
             keyword_set.insert(keyword);
@@ -82,7 +78,6 @@ impl<P> KeywordParser<P> {
         Self {
             parser,
             keywords: keyword_set,
-            eof_is_fatal,
         }
     }
 }
@@ -102,12 +97,12 @@ where
                 Some(keyword) => Ok(keyword),
                 None => {
                     input.set_position(original_input);
-                    self.to_syntax_err(false)
+                    self.to_syntax_err()
                 }
             },
             Err(err) if err.is_soft() => {
                 input.set_position(original_input);
-                self.to_syntax_err(self.eof_is_fatal)
+                self.to_syntax_err()
             }
             Err(err) => Err(err),
         }
@@ -137,26 +132,45 @@ impl<P> KeywordParser<P> {
         }
     }
 
-    fn to_syntax_err<O>(&self, fatal: bool) -> Result<O, ParserError> {
-        let mut msg = String::from("Expected: ");
-        let mut is_first = true;
-        for k in &self.keywords {
-            if is_first {
-                is_first = false;
-            } else {
-                msg.push_str(" or ");
-            }
+    fn to_syntax_err<O>(&self) -> Result<O, ParserError> {
+        let s = to_syntax_err(self.keywords.iter());
+        Err(ParserError::expected(&s))
+    }
+}
 
-            // doing &.to_string() to get it in uppercase
-            msg.push_str(&k.to_string());
-        }
+/// Concatenates the given keywords into a syntax error message.
+pub fn to_syntax_err<'a>(keywords: impl Iterator<Item = &'a Keyword>) -> String {
+    keywords
+        .map(|k| k.to_string())
+        .reduce(|a, b| a + " or " + &b)
+        .unwrap_or_default()
+}
 
-        let err = if fatal {
-            ParserError::SyntaxError(msg)
-        } else {
-            ParserError::Expected(msg)
-        };
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-        Err(err)
+    #[test]
+    fn test_to_syntax_err_zero_items() {
+        let keywords: Vec<Keyword> = vec![];
+        assert_eq!(to_syntax_err(keywords.iter()), "");
+    }
+
+    #[test]
+    fn test_to_syntax_err_one_item() {
+        let keywords = vec![Keyword::If];
+        assert_eq!(to_syntax_err(keywords.iter()), "IF");
+    }
+
+    #[test]
+    fn test_to_syntax_err_two_items() {
+        let keywords = vec![Keyword::If, Keyword::Then];
+        assert_eq!(to_syntax_err(keywords.iter()), "IF or THEN");
+    }
+
+    #[test]
+    fn test_to_syntax_err_three_items() {
+        let keywords = vec![Keyword::If, Keyword::Then, Keyword::Else];
+        assert_eq!(to_syntax_err(keywords.iter()), "IF or THEN or ELSE");
     }
 }

@@ -1,11 +1,11 @@
 use rusty_pc::and::TupleCombiner;
-use rusty_pc::{Parser, ParserErrorTrait, SetContext, Token, ctx_parser};
+use rusty_pc::{IifParser, Parser, ParserErrorTrait, SetContext};
 
 use crate::core::expression::ws_expr_pos_p;
 use crate::error::ParserError;
 use crate::input::StringView;
 use crate::pc_specific::keyword;
-use crate::tokens::whitespace;
+use crate::tokens::whitespace_ignoring;
 use crate::{ExpressionPos, Keyword};
 
 /// Parses an optional second expression that follows the first expression
@@ -69,12 +69,11 @@ fn err(keyword: Keyword) -> ParserError {
 /// * `(1 + 2)AND` no whitespace is required before `AND`
 /// * `1 + 2AND` the lack of whitespace before `AND` is an error
 pub(super) fn conditionally_opt_whitespace()
--> impl Parser<StringView, bool, Output = Option<Token>, Error = ParserError> + SetContext<bool> {
-    ctx_parser()
-        .map(|allow_none| {
-            whitespace()
-                .map(Some)
-                .and_then_err(move |err| if allow_none { Ok(None) } else { Err(err) })
-        })
-        .flatten()
+-> impl Parser<StringView, bool, Output = (), Error = ParserError> + SetContext<bool> {
+    IifParser::new(
+        // allow none
+        whitespace_ignoring().to_option().map(|_| ()),
+        // whitespace is required
+        whitespace_ignoring(),
+    )
 }

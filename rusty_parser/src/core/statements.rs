@@ -89,16 +89,13 @@ fn is_comment(statement_or_exit_keyword: &StatementOrExitKeyword) -> bool {
 fn ctx_demand_separator_p()
 -> impl Parser<StringView, bool, Output = (), Error = ParserError> + SetContext<bool> {
     // TODO consolidate the two separate separator functions, they are almost never used elsewhere
-    ctx_parser()
-        .map(|last_statement_was_comment| {
-            if last_statement_was_comment {
-                comment_separator().boxed()
-            } else {
-                common_separator().boxed()
-            }
-        })
-        .flatten()
-        .or_expected("end-of-statement")
+    IifParser::new(
+        // last statement was comment
+        comment_separator(),
+        // last statement was not comment
+        common_separator(),
+    )
+    .or_expected("end-of-statement")
 }
 
 fn find_exit_keyword_or_demand_statement_p(

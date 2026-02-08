@@ -1032,7 +1032,7 @@ mod binary_expression {
         Output = Option<(Positioned<Operator>, ExpressionPos)>,
         Error = ParserError,
     > + SetContext<bool> {
-        FnCtxParser::new(|is_paren| operator(*is_paren))
+        operator()
             .then_with_in_context(third_parser(), |op| is_keyword_op(op), TupleCombiner)
             .to_option()
     }
@@ -1044,18 +1044,11 @@ mod binary_expression {
     fn third_parser()
     -> impl Parser<StringView, bool, Output = ExpressionPos, Error = ParserError> + SetContext<bool>
     {
-        FnCtxParser::new(|ctx| guard_before_right_side_expr(*ctx))
-            .and_keep_right(right_side_expr().no_context())
-    }
-
-    fn guard_before_right_side_expr(
-        is_required: bool,
-    ) -> impl Parser<StringView, Output = (), Error = ParserError> {
-        if is_required {
-            guard::parser().to_fatal().boxed()
-        } else {
-            guard::parser().to_option().map(|_| ()).boxed()
-        }
+        IifParser::new(
+            guard::parser().to_fatal(),
+            guard::parser().to_option().map(|_| ()),
+        )
+        .and_keep_right(right_side_expr().no_context())
     }
 
     /// Parses the right side expression, after having parsed the binary operator
@@ -1083,22 +1076,20 @@ mod binary_expression {
     /// The parameter indicates if the previously parsed expression was wrapped in
     /// parenthesis. If that is the case, leading whitespace is not required for
     /// keyword based operators.
-    fn operator(
-        preceded_by_rparen: bool,
-    ) -> impl Parser<StringView, Output = Positioned<Operator>, Error = ParserError> {
-        if preceded_by_rparen {
+    fn operator()
+    -> impl Parser<StringView, bool, Output = Positioned<Operator>, Error = ParserError>
+    + SetContext<bool> {
+        IifParser::new(
             // no whitespace needed
-            opt_and_keep_right(whitespace_ignoring(), operator_p()).boxed()
-        } else {
+            opt_and_keep_right(whitespace_ignoring(), operator_p()),
             // whitespace needed
             whitespace_ignoring()
                 .and_keep_right(operator_p())
                 .or(opt_and_keep_right(
                     whitespace_ignoring(),
                     symbol_operator_p(),
-                ))
-                .boxed()
-        }
+                )),
+        )
     }
 
     /// Parses an operator.

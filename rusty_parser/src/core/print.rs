@@ -1,4 +1,6 @@
 use rusty_common::*;
+use rusty_pc::many::VecManyCombiner;
+use rusty_pc::many_ctx::ManyCtxParser;
 use rusty_pc::*;
 
 use crate::core::expression::file_handle::file_handle_p;
@@ -100,7 +102,7 @@ pub fn parse_print_p() -> impl Parser<StringView, Output = Statement, Error = Pa
         .and_opt_keep_right(print_boundary().and_tuple(seq3(
             opt_file_handle_comma_p(),
             opt_using(),
-            PrintArgsParser,
+            print_args_parser(),
             |a, b, c| (a, b, c),
         )))
         .map(|opt_args| opt_args.unwrap_or_default())
@@ -118,7 +120,7 @@ pub fn parse_lprint_p() -> impl Parser<StringView, Output = Statement, Error = P
     keyword(Keyword::LPrint)
         .and_opt_keep_right(print_boundary().and_tuple(seq2(
             opt_using(),
-            PrintArgsParser,
+            print_args_parser(),
             |l, r| (l, r),
         )))
         .map(|opt_args| opt_args.unwrap_or_default())
@@ -147,61 +149,43 @@ fn opt_file_handle_comma_p()
     seq2(file_handle_p(), comma_ws(), |file_handle, _| file_handle).to_option()
 }
 
-pub struct PrintArgsParser;
-
-impl PrintArgsParser {
-    fn next(tokenizer: &mut StringView, allow_expr: bool) -> Result<PrintArg, ParserError> {
-        if allow_expr {
-            Self::any_print_arg().parse(tokenizer)
-        } else {
-            Self::delimiter_print_arg().parse(tokenizer)
-        }
-    }
-
-    fn any_print_arg() -> impl Parser<StringView, Output = PrintArg, Error = ParserError> {
-        expression_pos_p()
-            .map(PrintArg::Expression)
-            .or(Self::delimiter_print_arg())
-    }
-
-    fn delimiter_print_arg() -> impl Parser<StringView, Output = PrintArg, Error = ParserError> {
-        // TODO support char based tokens or make the next mapping friendlier
-        any_symbol_of_ws!(';', ',').map(|t| {
-            if ';'.matches_token(&t) {
-                PrintArg::Semicolon
-            } else if ','.matches_token(&t) {
-                PrintArg::Comma
-            } else {
-                unreachable!()
-            }
-        })
-    }
+fn print_args_parser() -> impl Parser<StringView, Output = Vec<PrintArg>, Error = ParserError> {
+    ManyCtxParser::new(
+        print_arg_parser(),
+        VecManyCombiner,
+        PrintArg::is_expression,
+        true,
+    )
 }
 
-// TODO review impl Parser outside of pc
-impl Parser<StringView> for PrintArgsParser {
-    type Output = Vec<PrintArg>;
-    type Error = ParserError;
-
-    fn parse(&mut self, tokenizer: &mut StringView) -> Result<Self::Output, ParserError> {
-        let mut result: Vec<PrintArg> = vec![];
-        let mut last_one_was_expression = false;
-        loop {
-            match Self::next(tokenizer, !last_one_was_expression) {
-                Ok(next) => {
-                    last_one_was_expression = next.is_expression();
-                    result.push(next);
-                }
-                Err(err) if err.is_soft() => {
-                    break;
-                }
-                Err(err) => {
-                    return Err(err);
-                }
-            }
+fn print_arg_parser()
+-> impl Parser<StringView, bool, Output = PrintArg, Error = ParserError> + SetContext<bool> {
+    FnCtxParser::new(|last_one_was_expression| {
+        if *last_one_was_expression {
+            delimiter_print_arg().boxed()
+        } else {
+            any_print_arg().boxed()
         }
-        Ok(result)
-    }
+    })
+}
+
+fn any_print_arg() -> impl Parser<StringView, Output = PrintArg, Error = ParserError> {
+    expression_pos_p()
+        .map(PrintArg::Expression)
+        .or(delimiter_print_arg())
+}
+
+fn delimiter_print_arg() -> impl Parser<StringView, Output = PrintArg, Error = ParserError> {
+    // TODO support char based tokens or make the next mapping friendlier
+    any_symbol_of_ws!(';', ',').map(|t| {
+        if ';'.matches_token(&t) {
+            PrintArg::Semicolon
+        } else if ','.matches_token(&t) {
+            PrintArg::Comma
+        } else {
+            unreachable!()
+        }
+    })
 }
 
 fn print_boundary() -> impl Parser<StringView, Output = (), Error = ParserError> {

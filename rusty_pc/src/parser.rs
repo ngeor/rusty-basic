@@ -154,6 +154,7 @@ where
     // Boxed
     // =======================================================================
 
+    /// Boxes the given parser, erasing its type.
     fn boxed(self) -> BoxedParser<I, C, Self::Output, Self::Error>
     where
         Self: Sized + 'static,
@@ -242,10 +243,15 @@ where
     // Flatten
     // =======================================================================
 
-    fn flatten(self) -> FlattenParser<Self>
+    /// Similar to a flat map operation,
+    /// if the current parser's output is a parser,
+    /// it returns the result of that inner parser.
+    /// Typically used together with ctx_parser and map.
+    /// The context type of the inner parser can be different (`CIn` type).
+    fn flatten<CIn>(self) -> FlattenParser<Self, CIn>
     where
         Self: Sized,
-        Self::Output: Parser<I, C, Error = Self::Error>,
+        Self::Output: Parser<I, CIn, Error = Self::Error>,
     {
         FlattenParser::new(self)
     }

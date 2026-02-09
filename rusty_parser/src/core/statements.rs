@@ -92,9 +92,9 @@ fn ctx_demand_separator_p()
     ctx_parser()
         .map(|last_statement_was_comment| {
             if last_statement_was_comment {
-                comment_separator().boxed().no_context()
+                comment_separator().boxed()
             } else {
-                common_separator().boxed().no_context()
+                common_separator().boxed()
             }
         })
         .flatten()

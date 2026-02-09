@@ -185,9 +185,7 @@ mod type_definition {
                         "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier";
                 }
 
-                OrParser::new(parsers)
-                    .with_expected_message(expected_message)
-                    .no_context()
+                OrParser::new(parsers).with_expected_message(expected_message)
             })
             .flatten()
     }

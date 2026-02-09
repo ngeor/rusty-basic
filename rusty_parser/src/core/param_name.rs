@@ -106,9 +106,8 @@ fn extended_type()
                         "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
                     )
                     .boxed()
-                    .no_context()
             } else {
-                built_in_extended_type().boxed().no_context()
+                built_in_extended_type().boxed()
             }
         })
         .flatten()

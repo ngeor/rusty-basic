@@ -75,7 +75,6 @@ pub(super) fn conditionally_opt_whitespace()
             whitespace()
                 .map(Some)
                 .and_then_err(move |err| if allow_none { Ok(None) } else { Err(err) })
-                .no_context()
         })
         .flatten()
 }

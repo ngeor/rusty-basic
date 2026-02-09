@@ -82,7 +82,6 @@ impl<P> KeywordParser<P> {
     }
 }
 
-// TODO review impl Parser outside of pc
 impl<I, C, P> Parser<I, C> for KeywordParser<P>
 where
     I: InputTrait,

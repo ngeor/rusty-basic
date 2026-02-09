@@ -1,4 +1,4 @@
-use rusty_common::*;
+use rusty_pc::and::KeepRightCombiner;
 use rusty_pc::*;
 
 use crate::core::expression::{csv_expressions_first_guarded, expression_pos_p, property};
@@ -15,52 +15,48 @@ use crate::*;
 
 pub fn sub_call_or_assignment_p() -> impl Parser<StringView, Output = Statement, Error = ParserError>
 {
-    SubCallOrAssignment
+    // TODO review excessive use of clone and boxed
+    name_and_opt_eq_sign().then_with_in_context(
+        ctx_parser()
+            .map(|(name_expr, has_equal_sign): (Expression, bool)| {
+                if has_equal_sign {
+                    // we have the equal sign, it's an assignment
+                    expression_pos_p()
+                        .or_expected("variable=expression")
+                        .map(move |right_side_expr| {
+                            Statement::assignment(name_expr.clone(), right_side_expr)
+                        })
+                        .boxed()
+                } else if property::is_qualified(&name_expr) {
+                    // a left-side qualified variable can only be assigned to,
+                    // i.e. SUBs can't be qualified
+                    err_supplier(|| ParserError::expected("=").to_fatal()).boxed()
+                } else {
+                    // it's a sub call
+                    let (bare_name, opt_args) = expr_to_bare_name_args(name_expr);
+                    match opt_args {
+                        Some(args) => {
+                            supplier(move || Statement::sub_call(bare_name.clone(), args.clone()))
+                                .boxed()
+                        }
+                        _ => csv_expressions_first_guarded()
+                            .or_default()
+                            .map(move |args| Statement::sub_call(bare_name.clone(), args))
+                            .boxed(),
+                    }
+                }
+            })
+            .flatten(),
+        |x| x.clone(),
+        KeepRightCombiner,
+    )
 }
 
-struct SubCallOrAssignment;
-
-// TODO review impl Parser outside of pc
-impl Parser<StringView> for SubCallOrAssignment {
-    type Output = Statement;
-    type Error = ParserError;
-    fn parse(&mut self, tokenizer: &mut StringView) -> Result<Self::Output, ParserError> {
-        let (
-            Positioned {
-                element: name_expr, ..
-            },
-            opt_equal_sign,
-        ) = Self::name_and_opt_eq_sign().parse(tokenizer)?;
-
-        if opt_equal_sign.is_some() {
-            // we have the equal sign, it's an assignment
-            expression_pos_p()
-                .or_expected("variable=expression")
-                .parse(tokenizer)
-                .map(|right_side_expr| Statement::assignment(name_expr, right_side_expr))
-        } else if property::is_qualified(&name_expr) {
-            // a left-side qualified variable can only be assigned to,
-            // i.e. SUBs can't be qualified
-            Err(ParserError::expected("=").to_fatal())
-        } else {
-            // it's a sub call
-            let (bare_name, opt_args) = expr_to_bare_name_args(name_expr);
-            match opt_args {
-                Some(args) => Ok(Statement::sub_call(bare_name, args)),
-                _ => csv_expressions_first_guarded()
-                    .or_default()
-                    .parse(tokenizer)
-                    .map(|args| Statement::sub_call(bare_name, args)),
-            }
-        }
-    }
-}
-
-impl SubCallOrAssignment {
-    fn name_and_opt_eq_sign()
-    -> impl Parser<StringView, Output = (ExpressionPos, Option<Token>), Error = ParserError> {
-        property::parser().and_opt_tuple(equal_sign_ws())
-    }
+fn name_and_opt_eq_sign()
+-> impl Parser<StringView, Output = (Expression, bool), Error = ParserError> {
+    property::parser()
+        .map(|p| p.element)
+        .and_tuple(equal_sign_ws().to_option().map(|opt| opt.is_some()))
 }
 
 /// Converts a name expression into a sub bare name and optionally sub arguments.

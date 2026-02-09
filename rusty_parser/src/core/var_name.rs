@@ -190,7 +190,7 @@ fn bare<T>()
 where
     T: Default + VarType,
 {
-    supplier::supplier(|| T::default())
+    supplier(T::default)
 }
 
 fn name_with_opt_array<P>(

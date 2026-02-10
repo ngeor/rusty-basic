@@ -1,9 +1,9 @@
 mod compacts;
 mod implicit_vars;
+mod main;
 mod name_info;
-mod names;
 mod names_inner;
 mod traits;
 
 pub use implicit_vars::ImplicitVars;
-pub use names::Names;
+pub use main::Names;

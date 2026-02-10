@@ -48,10 +48,11 @@ impl ConvertibleIn<Position, Vec<GlobalStatementPos>> for GlobalStatement {
                 Ok(vec![])
             }
             Self::FunctionImplementation(f) => on_function_implementation(f, ctx)
-                .map(|f| vec![Self::FunctionImplementation(f).at_pos(pos.clone())]),
-            Self::SubImplementation(s) => on_sub_implementation(s, ctx)
-                .map(|s| vec![Self::SubImplementation(s).at_pos(pos.clone())]),
-            Self::Statement(s) => on_statement(s, ctx, pos.clone()),
+                .map(|f| vec![Self::FunctionImplementation(f).at_pos(pos)]),
+            Self::SubImplementation(s) => {
+                on_sub_implementation(s, ctx).map(|s| vec![Self::SubImplementation(s).at_pos(pos)])
+            }
+            Self::Statement(s) => on_statement(s, ctx, pos),
         }
     }
 }
@@ -161,7 +162,7 @@ fn on_statement(
 fn collect_implicit_vars_and_pop_name_scope(ctx: &mut Context) -> ImplicitVars {
     // collect implicit vars
     let mut implicit_vars = ImplicitVars::new();
-    implicit_vars.append(&mut ctx.names.get_implicit_vars_mut());
+    implicit_vars.append(ctx.names.get_implicit_vars_mut());
     // restore the global naming scope
     ctx.names.pop();
     implicit_vars

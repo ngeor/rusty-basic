@@ -94,11 +94,9 @@ impl FileInfo {
         file.seek(SeekFrom::Start(offset))?;
         let mut buffer: Vec<u8> = std::iter::repeat_n(0_u8, self.rec_len).collect();
         let bytes_read = file.read(&mut buffer)?;
-        if bytes_read < buffer.len() {
-            // zero out missing bytes
-            for i in bytes_read..buffer.len() {
-                buffer[i] = 0;
-            }
+        // zero out missing bytes
+        for item in buffer.iter_mut().skip(bytes_read) {
+            *item = 0;
         }
         Ok(buffer)
     }
@@ -162,6 +160,7 @@ impl FileManager {
                     .read(true)
                     .write(true)
                     .create(true)
+                    .truncate(true)
                     .open(file_name)?;
                 self.handle_map
                     .insert(handle, FileInfo::new_random(file, rec_len));

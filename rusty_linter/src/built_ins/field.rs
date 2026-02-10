@@ -11,7 +11,7 @@ pub fn lint(args: &Expressions, pos: Position) -> Result<(), LintErrorPos> {
     if args.len() < 4 {
         return Err(LintError::ArgumentCountMismatch.at_pos(pos));
     }
-    if (args.len() - 1) % 3 != 0 {
+    if !(args.len() - 1).is_multiple_of(3) {
         return Err(LintError::ArgumentCountMismatch.at_pos(pos));
     }
     args.require_integer_argument(0)?;

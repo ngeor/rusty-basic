@@ -25,6 +25,7 @@ impl QByteSize for Variant {
 
 impl QByteSize for VArray {
     fn byte_size(&self) -> usize {
+        // TODO: this breaks for String arrays because Strings have variable length (and what if the first element is empty)
         self.len() * self.first().byte_size()
     }
 }

@@ -32,18 +32,17 @@ impl<C: ConstLookup + ?Sized> ValidateStringLength<LintError, C> for Expression 
                 }
             }
             Self::Variable(name, _) => {
-                if let Some(qualifier) = name.qualifier() {
-                    if qualifier != TypeQualifier::PercentInteger {
-                        return Err(LintError::InvalidConstant);
-                    }
+                if let Some(qualifier) = name.qualifier()
+                    && qualifier != TypeQualifier::PercentInteger
+                {
+                    return Err(LintError::InvalidConstant);
                 }
 
                 if let Some(Variant::VInteger(i)) =
                     const_lookup.get_const_value(name.as_bare_name())
+                    && (1..=MAX_INTEGER).contains(i)
                 {
-                    if (1..=MAX_INTEGER).contains(i) {
-                        return Ok(*i as u16);
-                    }
+                    return Ok(*i as u16);
                 }
 
                 Err(LintError::InvalidConstant)

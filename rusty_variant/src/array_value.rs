@@ -71,6 +71,8 @@ impl VArray {
         self.dimensions.get(dimension_index)
     }
 
+    // allowing because empty arrays are not supported
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.elements.len()
     }

@@ -6,7 +6,7 @@ use crate::core::{
     ConstLookup, HasSubprograms, HasUserDefinedTypes, IntoTypeQualifier, LintError, LintErrorPos
 };
 
-pub fn validate<T: VarType>(
+pub fn validate<T>(
     var_name: &TypedName<T>,
     ctx: &Context,
     pos: Position,
@@ -90,7 +90,7 @@ impl CannotClashWithFunctions for Parameter {
     }
 }
 
-fn user_defined_type_must_exist<T: VarType>(
+fn user_defined_type_must_exist<T>(
     var_name: &TypedName<T>,
     ctx: &Context,
 ) -> Result<(), LintErrorPos>

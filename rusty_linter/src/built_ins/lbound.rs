@@ -13,7 +13,7 @@ pub fn lint(args: &Expressions, pos: Position) -> Result<(), LintErrorPos> {
     let Positioned {
         element: first,
         pos: first_pos,
-    } = args.get(0).unwrap();
+    } = args.first().unwrap();
     if let Expression::Variable(
         _,
         VariableInfo {

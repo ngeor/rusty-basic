@@ -7,11 +7,11 @@ mod default_stdlib;
 pub mod error;
 mod handlers;
 mod indexed_map;
-mod interpreter;
 mod interpreter_trait;
 mod io;
 mod keyboard;
 mod lpt1_write;
+mod main;
 mod print;
 mod read_input;
 mod registers;
@@ -27,8 +27,8 @@ mod test_utils;
 #[cfg(test)]
 mod tests;
 
-pub use self::interpreter::new_default_interpreter;
 pub use self::interpreter_trait::InterpreterTrait;
+pub use self::main::new_default_interpreter;
 pub use self::stdlib::*;
 
 fn is_cr_lf(ch: char) -> bool {

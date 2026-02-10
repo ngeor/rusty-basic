@@ -68,6 +68,7 @@ where
 
     /// Parses the left side and optionally the right side.
     /// The combiner function maps the left and (optional) right output to the final result.
+    /// TODO #[deprecated]
     fn and_opt<R, F, O>(self, right: R, combiner: F) -> AndParser<Self, ToOptionParser<R>, F, O>
     where
         Self: Sized,
@@ -75,45 +76,6 @@ where
         F: Combiner<Self::Output, Option<R::Output>, O>,
     {
         self.and(right.to_option(), combiner)
-    }
-
-    /// Parses the left side and optionally the right side.
-    /// The result is a tuple of both sides.
-    fn and_opt_tuple<R>(
-        self,
-        right: R,
-    ) -> AndParser<Self, ToOptionParser<R>, TupleCombiner, (Self::Output, Option<R::Output>)>
-    where
-        Self: Sized,
-        R: Parser<I, C, Error = Self::Error>,
-    {
-        self.and_opt(right, TupleCombiner)
-    }
-
-    /// Parses the left side and optionally the right side.
-    /// The result is only the left side's output.
-    fn and_opt_keep_left<R>(
-        self,
-        right: R,
-    ) -> AndParser<Self, ToOptionParser<R>, KeepLeftCombiner, Self::Output>
-    where
-        Self: Sized,
-        R: Parser<I, C, Error = Self::Error>,
-    {
-        self.and_opt(right, KeepLeftCombiner)
-    }
-
-    /// Parses the left side and optionally the right side.
-    /// The result is only the right side's output.
-    fn and_opt_keep_right<R>(
-        self,
-        right: R,
-    ) -> AndParser<Self, ToOptionParser<R>, KeepRightCombiner, Option<R::Output>>
-    where
-        Self: Sized,
-        R: Parser<I, C, Error = Self::Error>,
-    {
-        self.and_opt(right, KeepRightCombiner)
     }
 
     // =======================================================================

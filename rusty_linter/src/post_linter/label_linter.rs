@@ -152,7 +152,7 @@ impl PostConversionLinter for LabelCollector {
             // TODO prevent clone for key and value?
             self.labels
                 .entry(self.current_label_owner.clone())
-                .or_insert_with(HashSet::new)
+                .or_default()
                 .insert(label.clone());
             Ok(())
         }

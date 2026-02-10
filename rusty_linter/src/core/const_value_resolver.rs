@@ -26,7 +26,7 @@ where
         &self,
         item: &Positioned<&CaseInsensitiveString>,
     ) -> Result<Variant, LintErrorPos> {
-        self.get_const_value(&item.element)
+        self.get_const_value(item.element)
             .cloned()
             .ok_or(LintError::InvalidConstant.at_pos(item.pos))
     }

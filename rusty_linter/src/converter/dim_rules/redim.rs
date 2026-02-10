@@ -168,12 +168,11 @@ fn require_built_in_array(
     q: TypeQualifier,
     pos: Position,
 ) -> Result<(), LintErrorPos> {
-    if let ExpressionType::Array(element_type) = &variable_info.expression_type {
-        if let ExpressionType::BuiltIn(existing_q) = element_type.as_ref() {
-            if q == *existing_q {
-                return Ok(());
-            }
-        }
+    if let ExpressionType::Array(element_type) = &variable_info.expression_type
+        && let ExpressionType::BuiltIn(existing_q) = element_type.as_ref()
+        && q == *existing_q
+    {
+        return Ok(());
     }
     Err(LintError::DuplicateDefinition.at_pos(pos))
 }
@@ -205,12 +204,11 @@ fn require_fixed_length_string_array(
     len: u16,
     pos: Position,
 ) -> Result<(), LintErrorPos> {
-    if let ExpressionType::Array(element_type) = &variable_info.expression_type {
-        if let ExpressionType::FixedLengthString(existing_len) = element_type.as_ref() {
-            if len == *existing_len {
-                return Ok(());
-            }
-        }
+    if let ExpressionType::Array(element_type) = &variable_info.expression_type
+        && let ExpressionType::FixedLengthString(existing_len) = element_type.as_ref()
+        && len == *existing_len
+    {
+        return Ok(());
     }
     Err(LintError::DuplicateDefinition.at_pos(pos))
 }
@@ -263,12 +261,11 @@ fn require_user_defined_array(
     user_defined_type: &BareName,
     pos: Position,
 ) -> Result<(), LintErrorPos> {
-    if let ExpressionType::Array(element_type) = &variable_info.expression_type {
-        if let ExpressionType::UserDefined(u) = element_type.as_ref() {
-            if u == user_defined_type {
-                return Ok(());
-            }
-        }
+    if let ExpressionType::Array(element_type) = &variable_info.expression_type
+        && let ExpressionType::UserDefined(u) = element_type.as_ref()
+        && u == user_defined_type
+    {
+        return Ok(());
     }
     Err(LintError::DuplicateDefinition.at_pos(pos))
 }

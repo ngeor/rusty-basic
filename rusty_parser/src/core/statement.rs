@@ -29,6 +29,7 @@ pub type StatementPos = Positioned<Statement>;
 pub type Statements = Vec<StatementPos>;
 
 #[derive(Clone, Debug, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum Statement {
     Comment(String),
 

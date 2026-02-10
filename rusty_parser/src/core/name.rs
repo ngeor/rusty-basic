@@ -230,7 +230,7 @@ pub fn name_p() -> impl Parser<StringView, Output = Name, Error = ParserError> {
 }
 
 pub fn name_as_tokens_p() -> impl Parser<StringView, Output = NameAsTokens, Error = ParserError> {
-    identifier().and_opt_tuple(type_qualifier())
+    identifier().and_tuple(type_qualifier().to_option())
 }
 
 fn ensure_no_dots_or_trailing_qualifier(
@@ -258,7 +258,7 @@ fn ensure_no_dots(
 fn ensure_no_trailing_qualifier<P>(
     parser: impl Parser<StringView, Output = P, Error = ParserError>,
 ) -> impl Parser<StringView, Output = P, Error = ParserError> {
-    parser.and_opt_keep_left(peek_token().to_option().and_then(|opt_token| {
+    parser.and_keep_left(peek_token().to_option().and_then(|opt_token| {
         if let Some(token) = opt_token
             && is_type_qualifier(&token)
         {

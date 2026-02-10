@@ -580,7 +580,7 @@ mod single_or_double_literal {
             dot().and_keep_right(digits().to_fatal()),
         )
         // and parse optionally a type qualifier such as `#`
-        .and_opt_tuple(pound())
+        .and_tuple(pound().to_option())
         // done parsing, flat map everything
         .and_then(|((opt_integer_digits, frac_digits), opt_pound)| {
             let left = opt_integer_digits
@@ -1033,7 +1033,7 @@ mod binary_expression {
         Error = ParserError,
     > + SetContext<bool> {
         operator()
-            .then_with_in_context(third_parser(), |op| is_keyword_op(op), TupleCombiner)
+            .then_with_in_context(third_parser(), is_keyword_op, TupleCombiner)
             .to_option()
     }
 

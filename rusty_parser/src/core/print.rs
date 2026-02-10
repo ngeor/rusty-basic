@@ -99,13 +99,16 @@ impl PrintArg {
 /// See [Print] for the definition.
 pub fn parse_print_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     keyword(Keyword::Print)
-        .and_opt_keep_right(print_boundary().and_tuple(seq3(
-            opt_file_handle_comma_p(),
-            opt_using(),
-            print_args_parser(),
-            |a, b, c| (a, b, c),
-        )))
-        .map(|opt_args| opt_args.unwrap_or_default())
+        .and_keep_right(
+            print_boundary()
+                .and_tuple(seq3(
+                    opt_file_handle_comma_p(),
+                    opt_using(),
+                    print_args_parser(),
+                    |a, b, c| (a, b, c),
+                ))
+                .or_default(),
+        )
         .map(|(_, (opt_file_number, format_string, args))| {
             Statement::Print(Print {
                 file_number: opt_file_number.map(|x| x.element),
@@ -118,12 +121,11 @@ pub fn parse_print_p() -> impl Parser<StringView, Output = Statement, Error = Pa
 
 pub fn parse_lprint_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     keyword(Keyword::LPrint)
-        .and_opt_keep_right(print_boundary().and_tuple(seq2(
-            opt_using(),
-            print_args_parser(),
-            |l, r| (l, r),
-        )))
-        .map(|opt_args| opt_args.unwrap_or_default())
+        .and_keep_right(
+            print_boundary()
+                .and_tuple(seq2(opt_using(), print_args_parser(), |l, r| (l, r)))
+                .or_default(),
+        )
         .map(|(_, (format_string, args))| {
             Statement::Print(Print {
                 file_number: None,

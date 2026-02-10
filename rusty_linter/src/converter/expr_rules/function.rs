@@ -99,7 +99,7 @@ impl ExistingArrayWithParenthesis {
 
 impl FuncResolve for ExistingArrayWithParenthesis {
     fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool {
-        self.var_info = Self::get_var_info(ctx, name).map(Clone::clone);
+        self.var_info = Self::get_var_info(ctx, name).cloned();
         self.is_array()
     }
 

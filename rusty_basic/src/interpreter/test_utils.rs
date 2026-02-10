@@ -11,8 +11,8 @@ use crate::instruction_generator::{
     InstructionGeneratorResult, generate_instructions, unwrap_linter_context
 };
 use crate::interpreter::Stdlib;
-use crate::interpreter::interpreter::Interpreter;
 use crate::interpreter::interpreter_trait::InterpreterTrait;
+use crate::interpreter::main::Interpreter;
 use crate::interpreter::read_input::ReadInputSource;
 use crate::interpreter::screen::{CrossTermScreen, HeadlessScreen};
 use crate::interpreter::write_printer::WritePrinter;

@@ -180,7 +180,7 @@ impl Names {
     pub fn push(&mut self, subprogram_name: SubprogramName) {
         let key = Some(subprogram_name);
         debug_assert!(
-            self.data.get(&key).is_none(),
+            !self.data.contains_key(&key),
             "should not encounter same function/sub twice!"
         );
         self.current_key = key.clone();
@@ -201,7 +201,7 @@ impl Names {
     ) -> Vec<(BuiltInStyle, &VariableInfo)> {
         let mut result = self.names().collect_var_info(bare_name, false);
         if let Some(global_names) = self.global_names() {
-            result.extend(global_names.collect_var_info(bare_name, true).into_iter());
+            result.extend(global_names.collect_var_info(bare_name, true));
         }
         result
     }
@@ -211,11 +211,11 @@ impl Names {
         subprogram_name: &Option<SubprogramName>,
         name: &Name,
     ) -> &VariableInfo {
-        let one_level = self.data.get(subprogram_name).expect(&format!(
-            "Subprogram {:?} should be resolved",
-            subprogram_name
-        ));
-        match one_level.0.get_variable_info_by_name(&name) {
+        let one_level = self
+            .data
+            .get(subprogram_name)
+            .unwrap_or_else(|| panic!("Subprogram {:?} should be resolved", subprogram_name));
+        match one_level.0.get_variable_info_by_name(name) {
             Some(i) => i,
             None => {
                 if subprogram_name.is_some() {
@@ -226,10 +226,9 @@ impl Names {
                         .expect("Global name scope missing!")
                         .0
                         .get_variable_info_by_name(name)
-                        .expect(&format!(
-                            "Could not resolve {} even in global namespace",
-                            name
-                        ));
+                        .unwrap_or_else(|| {
+                            panic!("Could not resolve {} even in global namespace", name)
+                        });
                     if result.shared {
                         result
                     } else {
@@ -249,5 +248,11 @@ impl ConstLookup for Names {
             self.global_names()
                 .and_then(|global_names| global_names.get_const_value(name))
         })
+    }
+}
+
+impl Default for Names {
+    fn default() -> Self {
+        Self::new()
     }
 }

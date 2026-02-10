@@ -147,6 +147,7 @@ fn demand_statement_p()
         .or_expected("statement")
 }
 
+#[allow(clippy::large_enum_variant)]
 enum StatementOrExitKeyword {
     Statement(StatementPos),
     ExitKeyword,

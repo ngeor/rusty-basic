@@ -1,5 +1,4 @@
 use rusty_common::*;
-use rusty_pc::and::opt_and_keep_right;
 use rusty_pc::many::IgnoringManyCombiner;
 use rusty_pc::*;
 
@@ -10,7 +9,7 @@ use crate::core::{statement, user_defined_type};
 use crate::error::ParserError;
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::{TokenType, any_token, any_token_of, peek_token, whitespace_ignoring};
+use crate::tokens::{TokenType, any_token, any_token_of, peek_token};
 use crate::*;
 
 pub type Program = Vec<GlobalStatementPos>;
@@ -47,6 +46,7 @@ pub type GlobalStatementPos = Positioned<GlobalStatement>;
 ///     | <on-error-go-to>
 /// ```
 #[derive(Clone, Debug, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum GlobalStatement {
     /// A default type definition, e.g. `DEFINT A-Z.`
     DefType(DefType),
@@ -144,9 +144,9 @@ pub type FunctionImplementation = SubprogramImplementation<Name>;
 
 pub fn program_parser_p() -> impl Parser<StringView, Output = Program, Error = ParserError> {
     ws_eol_col_zero_or_more()
-        .and_opt_keep_right(main_program())
-        .and_opt_keep_left(ws_eol_col_zero_or_more())
-        .and_opt_keep_left(demand_eof())
+        .and_keep_right(main_program().to_option())
+        .and_keep_left(ws_eol_col_zero_or_more())
+        .and_keep_left(demand_eof())
         .map(|opt| opt.unwrap_or_default())
 }
 
@@ -161,11 +161,7 @@ fn main_program() -> impl Parser<StringView, Output = Program, Error = ParserErr
 }
 
 fn next_statements() -> impl Parser<StringView, Output = Program, Error = ParserError> {
-    opt_and_keep_right(
-        whitespace_ignoring(),
-        next_statement().and_opt_keep_left(whitespace_ignoring()),
-    )
-    .zero_or_more()
+    next_statement().padded_by_ws().zero_or_more()
 }
 
 fn next_statement() -> impl Parser<StringView, Output = GlobalStatementPos, Error = ParserError> {
@@ -208,6 +204,8 @@ fn demand_eof() -> impl Parser<StringView, Output = (), Error = ParserError> {
 }
 
 mod separator {
+    use rusty_pc::and::IgnoringBothCombiner;
+
     use super::*;
     use crate::core::statement_separator::no_separator_needed_before_comment;
 
@@ -223,7 +221,7 @@ mod separator {
     }
 
     fn eol_or_colon_separator() -> impl Parser<StringView, Output = (), Error = ParserError> {
-        eol_col_one_or_more().and_opt(ws_eol_col_zero_or_more(), |_, _| ())
+        eol_col_one_or_more().and(ws_eol_col_zero_or_more(), IgnoringBothCombiner)
     }
 
     fn raise_err() -> impl Parser<StringView, Output = (), Error = ParserError> {

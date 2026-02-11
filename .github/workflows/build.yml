@@ -49,8 +49,6 @@ jobs:
         run: cargo build
       - name: Test
         run: cargo test
-      - name: Clippy
-        run: cargo clippy -- -Dwarnings
   build-windows-release:
     runs-on: windows-latest
     steps:

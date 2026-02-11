@@ -13,6 +13,8 @@ jobs:
         uses: actions/checkout@v6
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy
       - name: Build
         run: cargo build
       - name: Test
@@ -41,6 +43,8 @@ jobs:
         uses: actions/checkout@v6
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy
       - name: Build
         run: cargo build
       - name: Test

@@ -12,13 +12,9 @@ pub fn statement_go_sub_p() -> impl Parser<StringView, Output = Statement, Error
 }
 
 pub fn statement_return_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
-    seq2(
-        keyword(Keyword::Return),
-        whitespace_ignoring()
-            .and_keep_right(bare_name_p())
-            .to_option(),
-        |_, name| Statement::Return(name),
-    )
+    keyword(Keyword::Return)
+        .and_keep_right(lead_ws(bare_name_p()).to_option())
+        .map(Statement::Return)
 }
 
 #[cfg(test)]

@@ -1230,7 +1230,7 @@ pub mod file_handle {
     }
 
     fn ws_file_handle() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-        whitespace_ignoring().and_keep_right(file_handle_as_expression_pos_p())
+        lead_ws(file_handle_as_expression_pos_p())
     }
 }
 

@@ -65,7 +65,7 @@ fn parse_for_p()
 }
 
 fn next_counter_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-    whitespace_ignoring().and_keep_right(property::parser())
+    lead_ws(property::parser())
 }
 
 #[cfg(test)]

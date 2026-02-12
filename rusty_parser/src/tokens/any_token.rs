@@ -53,7 +53,7 @@ fn eol() -> impl Parser<StringView, Output = Token, Error = ParserError> {
 
 fn cr_or_crlf() -> impl Parser<StringView, Output = Token, Error = ParserError> {
     one_p('\r')
-        .and_opt(one_p('\n'), StringCombiner)
+        .and(one_p('\n').to_option(), StringCombiner)
         .to_token(TokenType::Eol)
 }
 
@@ -62,18 +62,20 @@ fn lf() -> impl Parser<StringView, Output = Token, Error = ParserError> {
 }
 
 fn gt_or_ge() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    one_p('>').and_opt(one_p('='), StringCombiner).map(|text| {
-        if text.len() == 1 {
-            Token::new(TokenType::Greater.get_index(), text)
-        } else {
-            Token::new(TokenType::GreaterEquals.get_index(), text)
-        }
-    })
+    one_p('>')
+        .and(one_p('=').to_option(), StringCombiner)
+        .map(|text| {
+            if text.len() == 1 {
+                Token::new(TokenType::Greater.get_index(), text)
+            } else {
+                Token::new(TokenType::GreaterEquals.get_index(), text)
+            }
+        })
 }
 
 fn lt_or_le_or_ne() -> impl Parser<StringView, Output = Token, Error = ParserError> {
     one_p('<')
-        .and_opt(one_p('>').or(one_p('=')), StringCombiner)
+        .and(one_of_p(&['>', '=']).to_option(), StringCombiner)
         .map(|text| {
             if text.len() == 1 {
                 Token::new(TokenType::Less.get_index(), text)

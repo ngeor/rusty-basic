@@ -74,3 +74,14 @@ where
 {
     read_p().filter(move |x: &O| *x == needle)
 }
+
+/// Parses one of the given elements.
+/// Note that the operation has O(n) complexity.
+pub fn one_of_p<I, O, E>(needles: &[O]) -> impl Parser<I, Output = O, Error = E>
+where
+    I: InputTrait<Output = O>,
+    O: PartialEq,
+    E: ParserErrorTrait,
+{
+    read_p().filter(move |x: &O| needles.contains(x))
+}

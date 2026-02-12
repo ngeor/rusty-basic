@@ -1,4 +1,4 @@
-use rusty_pc::and::{IgnoringBothCombiner, opt_and};
+use rusty_pc::and::IgnoringBothCombiner;
 use rusty_pc::*;
 
 use crate::core::declaration::{function_declaration_p, sub_declaration_p};
@@ -56,14 +56,13 @@ fn static_declaration_p<P, T>(
 where
     P: Parser<StringView, Output = T, Error = ParserError>,
 {
-    parser.and_opt(
-        opt_and(
-            whitespace_ignoring(),
-            keyword(Keyword::Static),
-            IgnoringBothCombiner,
-        ),
-        |l, r: Option<()>| (l, r.is_some()),
-    )
+    parser.and(ws_static().to_option(), |l, r: Option<()>| (l, r.is_some()))
+}
+
+fn ws_static() -> impl Parser<StringView, Output = (), Error = ParserError> {
+    whitespace_ignoring()
+        .to_option()
+        .and(keyword(Keyword::Static), IgnoringBothCombiner)
 }
 
 #[cfg(test)]

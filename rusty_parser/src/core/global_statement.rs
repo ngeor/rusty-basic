@@ -151,11 +151,9 @@ pub fn program_parser_p() -> impl Parser<StringView, Output = Program, Error = P
 }
 
 fn main_program() -> impl Parser<StringView, Output = Program, Error = ParserError> {
-    global_statement_pos_p().and_opt(next_statements(), |first, opt_next| {
+    global_statement_pos_p().and(next_statements(), |first, mut opt_next| {
         let mut program = vec![first];
-        if let Some(next) = opt_next {
-            program.extend(next);
-        }
+        program.append(&mut opt_next);
         program
     })
 }

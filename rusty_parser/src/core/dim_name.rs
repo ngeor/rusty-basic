@@ -212,12 +212,15 @@ mod type_definition {
     }
 
     fn built_in_string() -> impl Parser<StringView, Output = DimType, Error = ParserError> {
-        keyword(Keyword::String).and_opt(
-            star_ws().and_keep_right(expression_pos_p().or_expected("string length after *")),
-            |_, opt_len| match opt_len {
+        keyword(Keyword::String)
+            .and_keep_right(star_and_length().to_option())
+            .map(|opt_len| match opt_len {
                 Some(len) => DimType::FixedLengthString(len, 0),
                 _ => DimType::BuiltIn(TypeQualifier::DollarString, BuiltInStyle::Extended),
-            },
-        )
+            })
+    }
+
+    fn star_and_length() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+        star_ws().and_keep_right(expression_pos_p().or_expected("string length after *"))
     }
 }

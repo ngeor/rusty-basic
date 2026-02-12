@@ -50,13 +50,17 @@ fn single_line_if_else_p() -> impl Parser<
     Output = (Statements, Vec<ConditionalBlock>, Option<Statements>),
     Error = ParserError,
 > {
-    single_line_non_comment_statements_p().and_opt(
+    single_line_non_comment_statements_p().and(
         // comment or ELSE
-        whitespace_ignoring()
-            .and(comment_p().with_pos(), |_, s| vec![s])
-            .or(single_line_else_p()),
+        single_line_comment_p().or(single_line_else_p()).to_option(),
         |l, r| (l, vec![], r),
     )
+}
+
+fn single_line_comment_p() -> impl Parser<StringView, Output = Statements, Error = ParserError> {
+    whitespace_ignoring()
+        .to_option()
+        .and(comment_p().with_pos(), |_, s| vec![s])
 }
 
 fn single_line_else_p() -> impl Parser<StringView, Output = Statements, Error = ParserError> {

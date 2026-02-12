@@ -66,18 +66,6 @@ where
         self.and(right, KeepRightCombiner)
     }
 
-    /// Parses the left side and optionally the right side.
-    /// The combiner function maps the left and (optional) right output to the final result.
-    /// TODO #[deprecated]
-    fn and_opt<R, F, O>(self, right: R, combiner: F) -> AndParser<Self, ToOptionParser<R>, F, O>
-    where
-        Self: Sized,
-        R: Parser<I, C, Error = Self::Error>,
-        F: Combiner<Self::Output, Option<R::Output>, O>,
-    {
-        self.and(right.to_option(), combiner)
-    }
-
     // =======================================================================
     // AndThen
     // =======================================================================

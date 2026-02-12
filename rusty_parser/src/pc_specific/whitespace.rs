@@ -4,26 +4,27 @@ use crate::ParserError;
 use crate::input::StringView;
 use crate::tokens::{TokenType, any_token_of};
 
+/// Parses a whitespace token.
 pub fn whitespace() -> impl Parser<StringView, Output = Token, Error = ParserError> {
     any_token_of!(TokenType::Whitespace)
 }
 
+/// Parses a whitespace token dismissing it.
 pub fn whitespace_ignoring() -> impl Parser<StringView, Output = (), Error = ParserError> {
     whitespace().map_to_unit()
 }
 
-pub trait PaddedByWs: Parser<StringView, Error = ParserError>
+/// Parses optional leading and trailing whitespace around the given parser.
+pub fn padded_by_ws<P>(
+    parser: P,
+) -> impl Parser<StringView, Output = P::Output, Error = ParserError>
 where
-    Self: Sized,
+    P: Parser<StringView, Error = ParserError>,
 {
-    fn padded_by_ws(self) -> impl Parser<StringView, Output = Self::Output, Error = Self::Error> {
-        surround(
-            whitespace_ignoring(),
-            self,
-            whitespace_ignoring(),
-            SurroundMode::Optional,
-        )
-    }
+    surround(
+        whitespace_ignoring(),
+        parser,
+        whitespace_ignoring(),
+        SurroundMode::Optional,
+    )
 }
-
-impl<P> PaddedByWs for P where P: Parser<StringView, Error = ParserError> {}

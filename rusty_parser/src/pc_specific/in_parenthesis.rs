@@ -4,7 +4,7 @@ use rusty_pc::*;
 
 use crate::ParserError;
 use crate::input::StringView;
-use crate::pc_specific::PaddedByWs;
+use crate::pc_specific::padded_by_ws;
 use crate::tokens::{any_symbol_of, any_token_of};
 
 /// Parses the given parser around parenthesis and optional whitespace (inside the parenthesis).
@@ -18,7 +18,7 @@ where
 {
     surround(
         left_paren(),
-        parser.padded_by_ws(),
+        padded_by_ws(parser),
         right_paren(),
         SurroundMode::Mandatory,
     )

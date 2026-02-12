@@ -5,8 +5,7 @@ use crate::core::declaration::{function_declaration_p, sub_declaration_p};
 use crate::core::statements::zero_or_more_statements;
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace_ignoring;
-use crate::{ParserError, *};
+use crate::{FunctionImplementation, GlobalStatement, Keyword, ParserError, SubImplementation};
 
 // FunctionImplementation ::= <FunctionDeclaration> eol <Statements> eol END<ws+>FUNCTION
 // SubImplementation      ::= <SubDeclaration> eol <Statements> eol END<ws+>SUB
@@ -70,8 +69,10 @@ mod tests {
     use rusty_common::*;
 
     use super::*;
-    use crate::assert_parser_err;
     use crate::test_utils::*;
+    use crate::{
+        Expression, ExpressionType, Operator, ParamType, Parameter, Statement, assert_parser_err, parse
+    };
 
     #[test]
     fn test_function_implementation() {

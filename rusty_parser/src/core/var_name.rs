@@ -4,7 +4,6 @@ use rusty_pc::*;
 use crate::core::name::{bare_name_without_dots, name_p};
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace_ignoring;
 use crate::{
     ArrayDimensions, AsBareName, BareName, BareNamePos, DimType, ExpressionType, HasExpressionType, Keyword, Name, ParamType, ParserError, ToBareName, TypeQualifier
 };

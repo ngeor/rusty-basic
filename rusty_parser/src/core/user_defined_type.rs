@@ -10,7 +10,7 @@ use crate::core::statement_separator::comments_in_between_keywords;
 use crate::error::ParserError;
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::{star_ws, whitespace_ignoring};
+use crate::tokens::star_ws;
 use crate::*;
 
 #[derive(Clone, Debug, PartialEq)]

@@ -4,8 +4,8 @@ use rusty_pc::and::IgnoringBothCombiner;
 use rusty_pc::*;
 
 use crate::input::StringView;
-use crate::pc_specific::WithExpected;
-use crate::tokens::{TokenMatcher, TokenType, any_token, whitespace_ignoring};
+use crate::pc_specific::{WithExpected, whitespace_ignoring};
+use crate::tokens::{TokenMatcher, TokenType, any_token};
 use crate::{Keyword, ParserError};
 
 // TODO review usages of TokenType::Keyword

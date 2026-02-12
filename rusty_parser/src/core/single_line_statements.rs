@@ -2,8 +2,8 @@ use rusty_pc::*;
 
 use crate::core::statement::{single_line_non_comment_statement_p, single_line_statement_p};
 use crate::input::StringView;
-use crate::pc_specific::WithPos;
-use crate::tokens::{colon_ws, whitespace_ignoring};
+use crate::pc_specific::{WithPos, whitespace_ignoring};
+use crate::tokens::colon_ws;
 use crate::{ParserError, Statements};
 
 pub fn single_line_non_comment_statements_p()

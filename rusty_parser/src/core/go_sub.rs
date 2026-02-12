@@ -3,7 +3,6 @@ use rusty_pc::*;
 use crate::core::name::bare_name_p;
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace_ignoring;
 use crate::{Keyword, ParserError, Statement};
 
 pub fn statement_go_sub_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {

@@ -9,7 +9,6 @@ use crate::core::single_line_statements::{
 use crate::core::statements::zero_or_more_statements;
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace_ignoring;
 use crate::{ParserError, *};
 
 pub fn if_block_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {

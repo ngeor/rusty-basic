@@ -1,5 +1,5 @@
 use rusty_pc::and::StringCombiner;
-use rusty_pc::many::{IgnoringManyCombiner, ManyCombiner, StringManyCombiner};
+use rusty_pc::many::{ManyCombiner, StringManyCombiner};
 use rusty_pc::text::{many_str, many_str_with_combiner, one_char_to_str};
 use rusty_pc::*;
 
@@ -93,23 +93,11 @@ fn equals() -> impl Parser<StringView, Output = Token, Error = ParserError> {
 
 /// Parses any number of whitespace characters,
 /// and returns them as a single token.
-///
-/// This is one of the few functions that are public from this module,
-/// allowing users to call it bypassing the `any_token` function,
-/// if they want to. As whitespace isn't part of other tokens,
-/// it should be safe to do so.
-pub fn whitespace() -> impl Parser<StringView, Output = Token, Error = ParserError> {
+fn whitespace() -> impl Parser<StringView, Output = Token, Error = ParserError> {
     whitespace_collecting(StringManyCombiner).to_token(TokenType::Whitespace)
 }
 
-/// Parses any number of whitespace characters, but ignores the result.
-/// Whitespace is often ignored, so this function optimizes as it doesn't
-/// create a token or store the whitespace characters into a [String].
-pub fn whitespace_ignoring() -> impl Parser<StringView, Output = (), Error = ParserError> {
-    whitespace_collecting(IgnoringManyCombiner)
-}
-
-pub fn whitespace_collecting<C, O>(
+fn whitespace_collecting<C, O>(
     combiner: C,
 ) -> impl Parser<StringView, Output = O, Error = ParserError>
 where

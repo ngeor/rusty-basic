@@ -1006,8 +1006,8 @@ mod binary_expression {
     };
     use crate::error::ParserError;
     use crate::input::StringView;
-    use crate::pc_specific::{OrExpected, WithPos};
-    use crate::tokens::{TokenType, any_token, whitespace_ignoring};
+    use crate::pc_specific::{OrExpected, WithPos, whitespace_ignoring};
+    use crate::tokens::{TokenType, any_token};
     use crate::*;
 
     // result ::= <non-bin-expr> <operator> <expr>
@@ -1201,7 +1201,7 @@ pub mod file_handle {
     use crate::error::ParserError;
     use crate::input::StringView;
     use crate::pc_specific::*;
-    use crate::tokens::{TokenType, any_token_of, pound, whitespace_ignoring};
+    use crate::tokens::{TokenType, any_token_of, pound};
     use crate::*;
 
     pub fn file_handle_p()
@@ -1239,8 +1239,8 @@ pub mod guard {
 
     use crate::ParserError;
     use crate::input::StringView;
-    use crate::pc_specific::WithExpected;
-    use crate::tokens::{any_symbol_of, any_token_of, whitespace_ignoring};
+    use crate::pc_specific::{WithExpected, whitespace_ignoring};
+    use crate::tokens::{any_symbol_of, any_token_of};
 
     /// `result ::= " " | "("`
     ///

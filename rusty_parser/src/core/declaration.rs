@@ -5,7 +5,6 @@ use crate::core::name::{bare_name_p, name_p};
 use crate::core::param_name::parameter_pos_p;
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace_ignoring;
 use crate::{ParserError, *};
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)

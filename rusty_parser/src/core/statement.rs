@@ -393,7 +393,6 @@ mod system {
     use crate::core::statement_separator::peek_eof_or_statement_separator;
     use crate::input::StringView;
     use crate::pc_specific::*;
-    use crate::tokens::whitespace_ignoring;
     use crate::{Keyword, ParserError, Statement};
 
     pub fn parse_system_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {

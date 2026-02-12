@@ -7,7 +7,7 @@ use crate::ParserError;
 use crate::core::comment::comment_as_string_p;
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::{TokenMatcher, TokenType, any_token_of, peek_token, whitespace_ignoring};
+use crate::tokens::{TokenMatcher, TokenType, any_token_of, peek_token};
 
 /// Parses a comment separator, which is the EOL,
 /// followed optionally by any number of EOL or whitespace tokens.

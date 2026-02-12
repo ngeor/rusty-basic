@@ -23,3 +23,25 @@ where
         SurroundMode::Optional,
     )
 }
+
+/// Parses optional whitespace, dismissing the token.
+/// This parser always succeeds.
+pub fn opt_ws() -> impl Parser<StringView, Output = (), Error = ParserError> {
+    whitespace_ignoring().to_option().map_to_unit()
+}
+
+/// Parses optional leading whitespace before the given parser.
+pub fn lead_opt_ws<P>(parser: P) -> impl Parser<StringView, Output = P::Output, Error = ParserError>
+where
+    P: Parser<StringView, Error = ParserError>,
+{
+    opt_ws().and_keep_right(parser)
+}
+
+/// Parses leading whitespace before the given parser.
+pub fn lead_ws<P>(parser: P) -> impl Parser<StringView, Output = P::Output, Error = ParserError>
+where
+    P: Parser<StringView, Error = ParserError>,
+{
+    whitespace_ignoring().and_keep_right(parser)
+}

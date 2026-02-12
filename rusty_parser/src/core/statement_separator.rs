@@ -1,5 +1,5 @@
 use rusty_common::*;
-use rusty_pc::and::{IgnoringBothCombiner, opt_and};
+use rusty_pc::and::IgnoringBothCombiner;
 use rusty_pc::many::IgnoringManyCombiner;
 use rusty_pc::*;
 
@@ -40,14 +40,10 @@ fn eol_ws_zero_or_more() -> impl Parser<StringView, Output = (), Error = ParserE
 /// ws* (colon | eol) (ws | eol)*
 /// ws* ' ! (where `!` stands for read and undo)
 pub fn common_separator() -> impl Parser<StringView, Output = (), Error = ParserError> {
-    opt_and(
-        whitespace_ignoring(),
-        OrParser::new(vec![
-            Box::new(eol_or_col_separator()),
-            Box::new(no_separator_needed_before_comment()),
-        ]),
-        IgnoringBothCombiner,
-    )
+    lead_opt_ws(OrParser::new(vec![
+        Box::new(eol_or_col_separator()),
+        Box::new(no_separator_needed_before_comment()),
+    ]))
 }
 
 /// EOL or colon, followed by any number of EOL or whitespace tokens.

@@ -238,9 +238,7 @@ impl CreateArray for ParamType {
 }
 
 fn as_clause() -> impl Parser<StringView, Output = (), Error = ParserError> {
-    whitespace_ignoring()
-        .and_keep_right(keyword_ignoring(Keyword::As))
-        .and_keep_left(whitespace_ignoring())
+    lead_ws(keyword_ignoring(Keyword::As)).and_keep_left(whitespace_ignoring())
 }
 
 pub(crate) fn user_defined_type<T>() -> impl Parser<StringView, Output = T, Error = ParserError>

@@ -1,17 +1,12 @@
-use rusty_pc::{Parser, SurroundMode, Token, surround};
+use rusty_pc::{Parser, SurroundMode, surround};
 
 use crate::ParserError;
 use crate::input::StringView;
 use crate::tokens::{TokenType, any_token_of};
 
-/// Parses a whitespace token.
-pub fn whitespace() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    any_token_of!(TokenType::Whitespace)
-}
-
 /// Parses a whitespace token dismissing it.
 pub fn whitespace_ignoring() -> impl Parser<StringView, Output = (), Error = ParserError> {
-    whitespace().map_to_unit()
+    any_token_of!(TokenType::Whitespace).map_to_unit()
 }
 
 /// Parses optional leading and trailing whitespace around the given parser.

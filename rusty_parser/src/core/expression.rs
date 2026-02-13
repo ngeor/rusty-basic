@@ -998,7 +998,7 @@ mod built_in_function_call {
 
 mod binary_expression {
     use rusty_common::Positioned;
-    use rusty_pc::and::{TupleCombiner, opt_and_keep_right};
+    use rusty_pc::and::TupleCombiner;
     use rusty_pc::*;
 
     use super::{
@@ -1006,7 +1006,7 @@ mod binary_expression {
     };
     use crate::error::ParserError;
     use crate::input::StringView;
-    use crate::pc_specific::{OrExpected, WithPos, whitespace_ignoring};
+    use crate::pc_specific::{OrExpected, WithPos, lead_opt_ws, lead_ws};
     use crate::tokens::{TokenType, any_token};
     use crate::*;
 
@@ -1078,14 +1078,9 @@ mod binary_expression {
     -> impl Parser<StringView, bool, Output = Positioned<Operator>, Error = ParserError> {
         IifParser::new(
             // no whitespace needed
-            opt_and_keep_right(whitespace_ignoring(), operator_p()),
+            lead_opt_ws(operator_p()),
             // whitespace needed
-            whitespace_ignoring()
-                .and_keep_right(operator_p())
-                .or(opt_and_keep_right(
-                    whitespace_ignoring(),
-                    symbol_operator_p(),
-                )),
+            lead_ws(operator_p()).or(lead_opt_ws(symbol_operator_p())),
         )
     }
 

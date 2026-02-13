@@ -1,4 +1,3 @@
-use rusty_pc::and::IgnoringBothCombiner;
 use rusty_pc::*;
 
 use crate::core::comment::comment_p;
@@ -57,14 +56,11 @@ fn single_line_if_else_p() -> impl Parser<
 }
 
 fn single_line_comment_p() -> impl Parser<StringView, Output = Statements, Error = ParserError> {
-    whitespace_ignoring()
-        .to_option()
-        .and(comment_p().with_pos(), |_, s| vec![s])
+    lead_opt_ws(comment_p().with_pos()).map(|s| vec![s])
 }
 
 fn single_line_else_p() -> impl Parser<StringView, Output = Statements, Error = ParserError> {
-    whitespace_ignoring()
-        .and(keyword(Keyword::Else), IgnoringBothCombiner)
+    lead_ws(keyword(Keyword::Else))
         .and_keep_right(single_line_statements_p().or_expected("Statements for single line ELSE"))
 }
 

@@ -387,7 +387,6 @@ mod end {
 }
 
 mod system {
-    use rusty_pc::and::opt_and_tuple;
     use rusty_pc::*;
 
     use crate::core::statement_separator::peek_eof_or_statement_separator;
@@ -397,8 +396,7 @@ mod system {
 
     pub fn parse_system_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
         keyword_ignoring(Keyword::System).and(
-            opt_and_tuple(whitespace_ignoring(), peek_eof_or_statement_separator())
-                .or_expected("end-of-statement"),
+            lead_opt_ws(peek_eof_or_statement_separator()).or_expected("end-of-statement"),
             |_, _| Statement::System,
         )
     }

@@ -29,11 +29,11 @@ fn blank_resume() -> impl Parser<StringView, Output = ResumeOption, Error = Pars
 }
 
 fn resume_next() -> impl Parser<StringView, Output = ResumeOption, Error = ParserError> {
-    whitespace_ignoring().and(keyword_ignoring(Keyword::Next), |_, _| ResumeOption::Next)
+    lead_ws(keyword_ignoring(Keyword::Next)).map(|_| ResumeOption::Next)
 }
 
 fn resume_label() -> impl Parser<StringView, Output = ResumeOption, Error = ParserError> {
-    whitespace_ignoring().and(bare_name_p(), |_, r| ResumeOption::Label(r))
+    lead_ws(bare_name_p()).map(ResumeOption::Label)
 }
 
 #[cfg(test)]

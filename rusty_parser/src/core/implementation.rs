@@ -1,4 +1,3 @@
-use rusty_pc::and::IgnoringBothCombiner;
 use rusty_pc::*;
 
 use crate::core::declaration::{function_declaration_p, sub_declaration_p};
@@ -59,9 +58,7 @@ where
 }
 
 fn ws_static() -> impl Parser<StringView, Output = (), Error = ParserError> {
-    whitespace_ignoring()
-        .to_option()
-        .and(keyword(Keyword::Static), IgnoringBothCombiner)
+    lead_opt_ws(keyword_ignoring(Keyword::Static))
 }
 
 #[cfg(test)]

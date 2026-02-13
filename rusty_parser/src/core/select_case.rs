@@ -1,4 +1,3 @@
-use rusty_pc::and::opt_and_keep_right;
 use rusty_pc::*;
 
 use crate::core::expression::ws_expr_pos_p;
@@ -87,17 +86,14 @@ fn case_block() -> impl Parser<StringView, Output = CaseBlock, Error = ParserErr
 }
 
 fn continue_after_case() -> impl Parser<StringView, Output = CaseBlock, Error = ParserError> {
-    opt_and_keep_right(
-        whitespace_ignoring(),
-        seq2(
-            OrParser::new(vec![
-                Box::new(keyword(Keyword::Else).map(|_| vec![])),
-                Box::new(case_expression_list()),
-            ]),
-            zero_or_more_statements!(Keyword::Case, Keyword::End),
-            CaseBlock::new,
-        ),
-    )
+    lead_opt_ws(seq2(
+        OrParser::new(vec![
+            Box::new(keyword(Keyword::Else).map(|_| vec![])),
+            Box::new(case_expression_list()),
+        ]),
+        zero_or_more_statements!(Keyword::Case, Keyword::End),
+        CaseBlock::new,
+    ))
 }
 
 fn case_expression_list()
@@ -107,7 +103,6 @@ fn case_expression_list()
 
 mod case_expression_parser {
     use rusty_common::Positioned;
-    use rusty_pc::and::opt_and_keep_right;
     use rusty_pc::*;
 
     use crate::core::expression::expression_pos_p;
@@ -124,10 +119,8 @@ mod case_expression_parser {
     fn case_is() -> impl Parser<StringView, Output = CaseExpression, Error = ParserError> {
         seq3(
             keyword_ignoring(Keyword::Is),
-            opt_and_keep_right(whitespace_ignoring(), relational_operator_p())
-                .or_expected("Operator after IS"),
-            opt_and_keep_right(whitespace_ignoring(), expression_pos_p())
-                .or_expected("expression after IS operator"),
+            lead_opt_ws(relational_operator_p()).or_expected("Operator after IS"),
+            lead_opt_ws(expression_pos_p()).or_expected("expression after IS operator"),
             |_, Positioned { element, .. }, r| CaseExpression::Is(element, r),
         )
     }

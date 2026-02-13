@@ -1,4 +1,4 @@
-all: fmt build test
+all: fmt build test clippy
 
 build:
 	cargo build
@@ -8,6 +8,9 @@ test:
 
 fmt:
 	cargo fmt
+
+clippy:
+	cargo clippy -- -Dwarnings
 
 watch:
 	nodemon -e rs -x "cargo test"

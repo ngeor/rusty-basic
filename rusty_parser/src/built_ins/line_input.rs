@@ -7,12 +7,11 @@ use crate::{BuiltInSub, ParserError, *};
 // LINE INPUT variable$
 // LINE INPUT #file-number%, variable$
 pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
-    seq4(
+    seq3(
         keyword_pair(Keyword::Line, Keyword::Input),
-        whitespace_ignoring(),
-        opt_file_handle_comma_p(),
+        demand_lead_ws(opt_file_handle_comma_p()),
         expression_pos_p().or_expected("#file-number or variable"),
-        |_, _, opt_file_number_pos, variable| {
+        |_, opt_file_number_pos, variable| {
             let mut args: Expressions = encode_opt_file_handle_arg(opt_file_number_pos);
             // add the LINE INPUT variable
             args.push(variable);

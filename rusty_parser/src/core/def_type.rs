@@ -34,11 +34,10 @@ impl DefType {
 // Letter       ::= [a-zA-Z]
 
 pub fn def_type_p() -> impl Parser<StringView, Output = DefType, Error = ParserError> {
-    seq3(
+    seq2(
         def_keyword_p(),
-        whitespace_ignoring(),
-        letter_ranges(),
-        |l, _, r| DefType::new(l, r),
+        demand_lead_ws(letter_ranges()),
+        DefType::new,
     )
 }
 

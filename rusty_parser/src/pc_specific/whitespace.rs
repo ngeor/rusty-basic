@@ -45,3 +45,18 @@ where
 {
     whitespace_ignoring().and_keep_right(parser)
 }
+
+/// Parses mandatory whitespace.
+pub fn demand_ws() -> impl Parser<StringView, Output = (), Error = ParserError> {
+    whitespace_ignoring().to_fatal()
+}
+
+/// Parses mandatory leading whitespace before the given parser.
+pub fn demand_lead_ws<P>(
+    parser: P,
+) -> impl Parser<StringView, Output = P::Output, Error = ParserError>
+where
+    P: Parser<StringView, Error = ParserError>,
+{
+    demand_ws().and_keep_right(parser)
+}

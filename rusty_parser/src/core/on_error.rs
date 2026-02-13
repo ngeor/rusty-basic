@@ -10,13 +10,11 @@ use crate::{Expression, Keyword, OnErrorOption, Statement};
 
 pub fn statement_on_error_go_to_p()
 -> impl Parser<StringView, Output = Statement, Error = ParserError> {
-    seq2(
-        keyword_pair(Keyword::On, Keyword::Error),
-        whitespace_ignoring(),
-        |_, _| (),
-    )
-    .and_keep_right(next().or(goto()).or_expected("GOTO or RESUME"))
-    .map(Statement::OnError)
+    keyword_pair(Keyword::On, Keyword::Error)
+        .and_keep_right(demand_lead_ws(
+            next().or(goto()).or_expected("GOTO or RESUME"),
+        ))
+        .map(Statement::OnError)
 }
 
 fn next() -> impl Parser<StringView, Output = OnErrorOption, Error = ParserError> {

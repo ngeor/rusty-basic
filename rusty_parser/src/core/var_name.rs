@@ -175,7 +175,7 @@ where
     T: Default + VarType,
     BP: Parser<StringView, VarNameCtx, Output = T, Error = ParserError>,
 {
-    let extended_type_parser = extended_type_parser.to_fatal();
+    let extended_type_parser = demand_lead_ws_ctx(extended_type_parser.to_fatal());
     as_clause()
         .no_context()
         .and_keep_right(extended_type_parser)
@@ -238,7 +238,7 @@ impl CreateArray for ParamType {
 }
 
 fn as_clause() -> impl Parser<StringView, Output = (), Error = ParserError> {
-    lead_ws(keyword_ignoring(Keyword::As)).and_keep_left(whitespace_ignoring())
+    lead_ws(keyword_ignoring(Keyword::As))
 }
 
 pub(crate) fn user_defined_type<T>() -> impl Parser<StringView, Output = T, Error = ParserError>

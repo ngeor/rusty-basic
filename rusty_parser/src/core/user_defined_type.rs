@@ -176,13 +176,12 @@ fn elements_p() -> impl Parser<StringView, Output = Vec<ElementPos>, Error = Par
 }
 
 fn element_pos_p() -> impl Parser<StringView, Output = ElementPos, Error = ParserError> {
-    seq5(
+    seq4(
         bare_name_without_dots(),
-        whitespace_ignoring(),
-        keyword_ws_p(Keyword::As),
+        demand_lead_ws(keyword_ws_p(Keyword::As)),
         element_type_p().or_expected("element type"),
         comments_in_between_keywords(),
-        |element, _, _, element_type, comments| Element::new(element, element_type, comments),
+        |element, _, element_type, comments| Element::new(element, element_type, comments),
     )
     .with_pos()
 }

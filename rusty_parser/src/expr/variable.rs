@@ -6,7 +6,9 @@ use rusty_pc::*;
 use crate::core::{name_as_tokens_p, token_to_type_qualifier};
 use crate::input::StringView;
 use crate::pc_specific::WithPos;
-use crate::{ParserError, *};
+use crate::{
+    BareName, Expression, ExpressionPos, ExpressionType, Name, NameAsTokens, ParserError, VariableInfo
+};
 
 // variable ::= <identifier-with-dots>
 //           |  <identifier-with-dots> <type-qualifier>

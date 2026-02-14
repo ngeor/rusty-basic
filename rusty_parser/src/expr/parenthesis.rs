@@ -3,7 +3,7 @@ use rusty_pc::*;
 use crate::expr::expression_pos_p;
 use crate::input::StringView;
 use crate::pc_specific::{OrExpected, WithPos, in_parenthesis};
-use crate::{ParserError, *};
+use crate::{Expression, ExpressionPos, ParserError};
 
 pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     in_parenthesis(expression_pos_p().or_expected("expression inside parenthesis"))

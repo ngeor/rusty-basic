@@ -4,7 +4,7 @@ use rusty_pc::*;
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{MatchMode, TokenType, any_symbol_of, any_token_of};
-use crate::{ParserError, *};
+use crate::{Expression, ExpressionPos, ParserError};
 
 pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     surround(

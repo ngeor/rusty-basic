@@ -3,7 +3,7 @@ use rusty_pc::*;
 use crate::input::StringView;
 use crate::pc_specific::WithPos;
 use crate::tokens::{digits, dot, pound};
-use crate::{ParserError, *};
+use crate::{Expression, ExpressionPos, ParserError};
 
 // single ::= <digits> . <digits>
 // single ::= . <digits> (without leading zero)

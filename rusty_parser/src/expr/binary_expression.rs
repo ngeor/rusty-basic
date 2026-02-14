@@ -7,7 +7,7 @@ use crate::expr::expression_pos_p;
 use crate::input::StringView;
 use crate::pc_specific::{OrExpected, WithPos, lead_opt_ws, lead_ws};
 use crate::tokens::{TokenType, any_token};
-use crate::*;
+use crate::{ExpressionPos, ExpressionPosTrait, ExpressionTrait, Keyword, Operator};
 
 // result ::= <non-bin-expr> <operator> <expr>
 pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {

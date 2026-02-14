@@ -5,7 +5,7 @@ use crate::input::StringView;
 use crate::pc_specific::{OrExpected, WithPos, in_parenthesis};
 use crate::{Expression, ExpressionPos, ParserError};
 
-pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     in_parenthesis(expression_pos_p().or_expected("expression inside parenthesis"))
         .map(|child| Expression::Parenthesis(Box::new(child)))
         .with_pos()

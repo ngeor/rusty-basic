@@ -10,7 +10,7 @@ use crate::tokens::{TokenType, any_token};
 use crate::{ExpressionPos, ExpressionPosTrait, ExpressionTrait, Keyword, Operator};
 
 // result ::= <non-bin-expr> <operator> <expr>
-pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     non_bin_expr()
         .then_with_in_context(
             second_parser(),

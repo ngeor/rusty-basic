@@ -16,7 +16,7 @@ use crate::{Expression, ExpressionPos, Expressions, NameAsTokens, ParserError};
 //
 // A function can be qualified.
 
-pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     name_as_tokens_p()
         .and(
             in_parenthesis(csv(expression_pos_p()).or_default()),

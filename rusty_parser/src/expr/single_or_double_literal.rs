@@ -12,7 +12,7 @@ use crate::{Expression, ExpressionPos, ParserError};
 
 // TODO support more qualifiers besides '#'
 
-pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     // read integer digits optionally (might start with . e.g. `.123`)
     digits()
         .to_option()

@@ -8,7 +8,7 @@ use crate::tokens::{any_symbol_of, any_token_of};
 /// `result ::= " " | "("`
 ///
 /// The "(" will be undone.
-pub fn parser() -> impl Parser<StringView, Output = (), Error = ParserError> {
+pub(super) fn parser() -> impl Parser<StringView, Output = (), Error = ParserError> {
     whitespace_guard()
         .or(lparen_guard())
         .with_expected_message("Expected: '(' or whitespace")

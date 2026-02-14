@@ -7,7 +7,7 @@ use crate::pc_specific::{OrExpected, WithPos, keyword};
 use crate::tokens::minus_sign;
 use crate::{ExpressionPos, ExpressionPosTrait, Keyword, ParserError, UnaryOperator};
 
-pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     seq2(
         unary_op(),
         expression_pos_p().or_expected("expression after unary operator"),

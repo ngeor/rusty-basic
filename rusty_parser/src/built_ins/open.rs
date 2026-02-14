@@ -11,6 +11,8 @@ pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserErro
     seq6(
         keyword(Keyword::Open),
         ws_expr_pos_ws_p().or_expected("file name after OPEN"),
+        // keyword::For or Keyword::Access or Keyword::AS
+        // TODO merge the next 3 parsers altogether
         parse_open_mode_p().to_option(),
         parse_open_access_p().to_option(),
         parse_file_number_p().or_expected("AS file-number"),
@@ -64,6 +66,8 @@ fn parse_file_number_p() -> impl Parser<StringView, Output = ExpressionPos, Erro
         .and_keep_right(guarded_file_handle_or_expression_p().or_expected("#file-number%"))
 }
 
+// TODO LEN does not need whitespace if the file expression was in parenthesis
+// i.e. OPEN "input.txt" AS (#1)LEN = 10 should be supported.
 fn parse_len_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     seq3(
         lead_ws(keyword_ignoring(Keyword::Len)),

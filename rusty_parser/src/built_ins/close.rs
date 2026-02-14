@@ -1,12 +1,14 @@
 use rusty_pc::and::VecCombiner;
 use rusty_pc::*;
 
+use crate::expr::expression_pos_p;
+use crate::expr::file_handle::{
+    file_handle_as_expression_pos_p, guarded_file_handle_or_expression_p
+};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::comma_ws;
-use crate::{
-    BuiltInSub, ParserError, file_handle_as_expression_pos_p, guarded_file_handle_or_expression_p, *
-};
+use crate::{BuiltInSub, ExpressionPos, Expressions, Keyword, ParserError, Statement};
 
 // <result> ::= <CLOSE> | <CLOSE><file_handles>
 // file_handles ::= <first_file_handle> | <first_file_handle> <opt-ws> "," <opt-ws> <next_file_handles>

@@ -1,6 +1,7 @@
 use rusty_pc::*;
 
 use crate::built_ins::common::{encode_opt_file_handle_arg, opt_file_handle_comma_p};
+use crate::expr::csv_expressions_non_opt;
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::{BuiltInSub, ParserError, *};

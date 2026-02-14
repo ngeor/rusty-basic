@@ -1,5 +1,6 @@
 use rusty_pc::*;
 
+use crate::expr::csv_expressions_first_guarded;
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::{BuiltInSub, ParserError, *};

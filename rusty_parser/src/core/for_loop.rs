@@ -1,9 +1,8 @@
 use rusty_pc::*;
 
-use crate::core::expression::{expr_pos_ws_p, property, ws_expr_pos_p};
-use crate::core::opt_second_expression::opt_second_expression_after_keyword;
 use crate::core::statements::zero_or_more_statements;
 use crate::error::ParserError;
+use crate::expr::{expr_pos_ws_p, opt_second_expression_after_keyword, property, ws_expr_pos_p};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::equal_sign_ws;

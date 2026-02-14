@@ -1,5 +1,6 @@
 use rusty_pc::*;
 
+use crate::expr::{ws_expr_pos_p, ws_expr_pos_ws_p};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::{BuiltInSub, ParserError, *};

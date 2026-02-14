@@ -3,9 +3,9 @@ use rusty_pc::many::VecManyCombiner;
 use rusty_pc::many_ctx::ManyCtxParser;
 use rusty_pc::*;
 
-use crate::core::expression::file_handle::file_handle_p;
-use crate::core::expression::{expression_pos_p, ws_expr_pos_p};
 use crate::error::ParserError;
+use crate::expr::file_handle::file_handle_p;
+use crate::expr::{expression_pos_p, ws_expr_pos_p};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{

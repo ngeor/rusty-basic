@@ -1,6 +1,7 @@
 mod built_ins;
 mod core;
 mod error;
+pub mod expr;
 mod input;
 mod parser;
 mod pc_specific;
@@ -12,4 +13,5 @@ mod test_utils;
 pub use self::built_ins::*;
 pub use self::core::*;
 pub use self::error::*;
+pub use self::expr::types::*;
 pub use self::parser::*;

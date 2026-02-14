@@ -1,8 +1,8 @@
 use rusty_pc::and::KeepRightCombiner;
 use rusty_pc::*;
 
-use crate::core::expression::{csv_expressions_first_guarded, expression_pos_p, property};
 use crate::error::ParserError;
+use crate::expr::{csv_expressions_first_guarded, expression_pos_p, property};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::equal_sign_ws;

@@ -4,10 +4,10 @@ use std::slice::Iter;
 use rusty_common::Positioned;
 use rusty_pc::*;
 
-use crate::core::expression::expression_pos_p;
 use crate::core::name::bare_name_without_dots;
 use crate::core::statement_separator::comments_in_between_keywords;
 use crate::error::ParserError;
+use crate::expr::expression_pos_p;
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::star_ws;

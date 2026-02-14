@@ -1,8 +1,8 @@
 use rusty_pc::*;
 
-use crate::core::expression::ws_expr_pos_p;
 use crate::core::statement_separator::comments_in_between_keywords;
 use crate::core::statements::zero_or_more_statements;
+use crate::expr::ws_expr_pos_p;
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::{ParserError, *};
@@ -105,8 +105,7 @@ mod case_expression_parser {
     use rusty_common::Positioned;
     use rusty_pc::*;
 
-    use crate::core::expression::expression_pos_p;
-    use crate::core::opt_second_expression::opt_second_expression_after_keyword;
+    use crate::expr::{expression_pos_p, opt_second_expression_after_keyword};
     use crate::input::StringView;
     use crate::pc_specific::*;
     use crate::tokens::{TokenType, any_token};

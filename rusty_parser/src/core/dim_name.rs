@@ -122,7 +122,7 @@ where
 mod array_dimensions {
     use rusty_pc::*;
 
-    use crate::core::opt_second_expression::opt_second_expression_after_keyword;
+    use crate::expr::{expression_pos_p, opt_second_expression_after_keyword};
     use crate::input::StringView;
     use crate::pc_specific::*;
     use crate::{ParserError, *};
@@ -159,7 +159,7 @@ mod type_definition {
     use rusty_pc::*;
 
     use crate::core::VarNameCtx;
-    use crate::core::expression::expression_pos_p;
+    use crate::expr::expression_pos_p;
     use crate::input::StringView;
     use crate::pc_specific::*;
     use crate::tokens::star_ws;

@@ -1,11 +1,11 @@
 use rusty_pc::*;
 
 use crate::core::comment::comment_p;
-use crate::core::expression::ws_expr_pos_ws_p;
 use crate::core::single_line_statements::{
     single_line_non_comment_statements_p, single_line_statements_p
 };
 use crate::core::statements::zero_or_more_statements;
+use crate::expr::ws_expr_pos_ws_p;
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::{ParserError, *};

@@ -554,7 +554,6 @@ fn eager_expression_pos_p() -> impl Parser<StringView, Output = ExpressionPos, E
 }
 
 mod single_or_double_literal {
-    use rusty_pc::and::opt_and_tuple;
     use rusty_pc::*;
 
     use crate::input::StringView;
@@ -570,36 +569,36 @@ mod single_or_double_literal {
     // TODO support more qualifiers besides '#'
 
     pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-        // TODO this is difficult to understand
-        opt_and_tuple(
-            // read integer digits optionally (might start with . e.g. `.123`)
-            digits(),
+        // read integer digits optionally (might start with . e.g. `.123`)
+        digits()
+            .to_option()
             // read dot and demand digits after decimal point
             // if dot is missing, the parser returns an empty result
             // the "deal breaker" is therefore the dot
-            dot().and_keep_right(digits().to_fatal()),
-        )
-        // and parse optionally a type qualifier such as `#`
-        .and_tuple(pound().to_option())
-        // done parsing, flat map everything
-        .and_then(|((opt_integer_digits, frac_digits), opt_pound)| {
-            let left = opt_integer_digits
-                .map(|token| token.to_string())
-                .unwrap_or_else(|| "0".to_owned());
-            let s = format!("{}.{}", left, frac_digits.as_str());
-            if opt_pound.is_some() {
-                match s.parse::<f64>() {
-                    Ok(f) => Ok(Expression::DoubleLiteral(f)),
-                    Err(err) => Err(err.into()),
+            .and_keep_left(dot())
+            // demand digits after decimal point
+            .and_tuple(digits().to_fatal())
+            // and parse optionally a type qualifier such as `#`
+            .and_tuple(pound().to_option())
+            // done parsing, flat map everything
+            .and_then(|((opt_integer_digits, frac_digits), opt_pound)| {
+                let left = opt_integer_digits
+                    .map(|token| token.to_string())
+                    .unwrap_or_else(|| "0".to_owned());
+                let s = format!("{}.{}", left, frac_digits.as_str());
+                if opt_pound.is_some() {
+                    match s.parse::<f64>() {
+                        Ok(f) => Ok(Expression::DoubleLiteral(f)),
+                        Err(err) => Err(err.into()),
+                    }
+                } else {
+                    match s.parse::<f32>() {
+                        Ok(f) => Ok(Expression::SingleLiteral(f)),
+                        Err(err) => Err(err.into()),
+                    }
                 }
-            } else {
-                match s.parse::<f32>() {
-                    Ok(f) => Ok(Expression::SingleLiteral(f)),
-                    Err(err) => Err(err.into()),
-                }
-            }
-        })
-        .with_pos()
+            })
+            .with_pos()
     }
 }
 

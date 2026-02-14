@@ -49,9 +49,7 @@ pub fn expression_pos_p() -> impl Parser<StringView, Output = ExpressionPos, Err
 /// <expr-in-parenthesis>
 /// ```
 pub fn ws_expr_pos_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-    // ws* ( expr )
-    // ws+ expr
-    preceded_by_ws(expression_pos_p())
+    super::parenthesis::parser().or(lead_ws(expression_pos_p()))
 }
 
 /// Parses an expression that is either followed by whitespace
@@ -82,12 +80,6 @@ pub fn expr_pos_ws_p() -> impl Parser<StringView, Output = ExpressionPos, Error 
 /// ```
 pub fn ws_expr_pos_ws_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     followed_by_ws(ws_expr_pos_p())
-}
-
-fn preceded_by_ws(
-    parser: impl Parser<StringView, Output = ExpressionPos, Error = ParserError>,
-) -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-    super::guard::parser().and_keep_right(parser)
 }
 
 fn followed_by_ws(

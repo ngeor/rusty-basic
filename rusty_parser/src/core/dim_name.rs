@@ -166,8 +166,7 @@ mod type_definition {
     use crate::{ParserError, *};
 
     pub fn extended_type()
-    -> impl Parser<StringView, VarNameCtx, Output = DimType, Error = ParserError>
-    + SetContext<VarNameCtx> {
+    -> impl Parser<StringView, VarNameCtx, Output = DimType, Error = ParserError> {
         ctx_parser::<StringView, VarNameCtx, ParserError>()
             .map(|(_opt_q, allow_user_defined)| {
                 let mut parsers: Vec<

@@ -107,12 +107,7 @@ where
             Err(err) => Err(err),
         }
     }
-}
 
-impl<C, P> SetContext<C> for KeywordParser<P>
-where
-    P: SetContext<C>,
-{
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx);
     }

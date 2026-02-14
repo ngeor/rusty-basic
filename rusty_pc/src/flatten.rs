@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{InputTrait, Parser, SetContext};
+use crate::{InputTrait, Parser};
 
 pub struct FlattenParser<P, CIn> {
     parser: P,
@@ -30,11 +30,7 @@ where
             Err(err) => Err(err),
         }
     }
-}
-impl<P, COut, CIn> SetContext<COut> for FlattenParser<P, CIn>
-where
-    P: SetContext<COut>,
-{
+
     fn set_context(&mut self, ctx: COut) {
         self.parser.set_context(ctx)
     }

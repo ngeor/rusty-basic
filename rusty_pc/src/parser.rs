@@ -27,6 +27,12 @@ where
     /// Parses the given input and returns a result.
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error>;
 
+    /// Stores the given context.
+    /// A parser that can store context needs to override this method.
+    /// Parsers that delegate to other parsers should implement this method
+    /// by propagating the context to the delegate.
+    fn set_context(&mut self, ctx: C);
+
     // =======================================================================
     // And
     // =======================================================================

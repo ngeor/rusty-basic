@@ -1,4 +1,4 @@
-use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait};
 
 pub struct AndThenErrParser<P, F> {
     parser: P,
@@ -26,12 +26,7 @@ where
             Err(err) => Err(err),
         }
     }
-}
 
-impl<C, P, F> SetContext<C> for AndThenErrParser<P, F>
-where
-    P: SetContext<C>,
-{
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)
     }

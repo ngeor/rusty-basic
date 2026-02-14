@@ -1,4 +1,4 @@
-use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait};
 
 /// A parser that maps the error of the decorated parser
 /// using the given mapper.
@@ -28,12 +28,7 @@ where
             Err(err) => Err(self.mapper.map(err)),
         }
     }
-}
 
-impl<C, P, M> SetContext<C> for MapErrParser<P, M>
-where
-    P: SetContext<C>,
-{
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)
     }

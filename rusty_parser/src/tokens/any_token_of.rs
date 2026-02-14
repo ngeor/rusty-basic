@@ -195,6 +195,10 @@ where
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         self.parse_token(input)
     }
+
+    fn set_context(&mut self, ctx: C) {
+        self.parser.set_context(ctx)
+    }
 }
 
 impl<P> AnyTokenOf<P> {

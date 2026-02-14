@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::and::Combiner;
-use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait};
 
 /// This parser is a binary parser that sets
 /// the context of the left-side parser
@@ -49,7 +49,7 @@ impl<L, R, X, F, A, O> ThenWithLeftParser<L, R, X, F, A, O> {
 impl<I, C, L, R, X, F, A, O> Parser<I, C> for ThenWithLeftParser<L, R, X, F, A, O>
 where
     I: InputTrait,
-    L: Parser<I, C> + SetContext<C>,
+    L: Parser<I, C>,
     R: Parser<I, X, Error = L::Error>,
     F: Fn(&R::Output) -> C,
     A: Combiner<L::Output, R::Output, O>,
@@ -72,12 +72,7 @@ where
             Err(err) => Err(err.to_fatal()),
         }
     }
-}
 
-impl<C, L, R, X, F, A, O> SetContext<C> for ThenWithLeftParser<L, R, X, F, A, O>
-where
-    L: SetContext<C>,
-{
     fn set_context(&mut self, ctx: C) {
         // on purpose not setting the context to the right side,
         // as it is the one that it is supposed to generate the context

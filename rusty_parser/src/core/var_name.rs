@@ -5,7 +5,9 @@ use crate::core::name::{bare_name_without_dots, name_p};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::whitespace_ignoring;
-use crate::{ParserError, *};
+use crate::{
+    ArrayDimensions, AsBareName, BareName, BareNamePos, DimType, ExpressionType, HasExpressionType, Keyword, Name, ParamType, ParserError, ToBareName, TypeQualifier
+};
 
 /// A variable name with a type.
 ///
@@ -118,9 +120,7 @@ where
     A: Fn() -> AP,
     AP: Parser<StringView, Error = ParserError> + 'static,
     B: Fn() -> BP + 'static,
-    BP: Parser<StringView, VarNameCtx, Output = T, Error = ParserError>
-        + SetContext<VarNameCtx>
-        + 'static,
+    BP: Parser<StringView, VarNameCtx, Output = T, Error = ParserError> + 'static,
 {
     name_with_opt_array(opt_array_parser_factory())
         .then_with_in_context(
@@ -133,18 +133,15 @@ where
 
 fn var_type_parser<T, BP>(
     extended_type_parser: BP,
-) -> impl Parser<StringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
+) -> impl Parser<StringView, VarNameCtx, Output = T, Error = ParserError>
 where
     T: Default + VarType,
-    BP: Parser<StringView, VarNameCtx, Output = T, Error = ParserError>
-        + SetContext<VarNameCtx>
-        + 'static,
+    BP: Parser<StringView, VarNameCtx, Output = T, Error = ParserError> + 'static,
 {
     qualified().or(extended(extended_type_parser)).or(bare())
 }
 
-fn qualified<T>()
--> impl Parser<StringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
+fn qualified<T>() -> impl Parser<StringView, VarNameCtx, Output = T, Error = ParserError>
 where
     T: Default + VarType,
 {
@@ -174,10 +171,10 @@ where
 
 fn extended<T, BP>(
     extended_type_parser: BP,
-) -> impl Parser<StringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
+) -> impl Parser<StringView, VarNameCtx, Output = T, Error = ParserError>
 where
     T: Default + VarType,
-    BP: Parser<StringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>,
+    BP: Parser<StringView, VarNameCtx, Output = T, Error = ParserError>,
 {
     let extended_type_parser = extended_type_parser.to_fatal();
     as_clause()
@@ -185,8 +182,7 @@ where
         .and_keep_right(extended_type_parser)
 }
 
-fn bare<T>()
--> impl Parser<StringView, VarNameCtx, Output = T, Error = ParserError> + SetContext<VarNameCtx>
+fn bare<T>() -> impl Parser<StringView, VarNameCtx, Output = T, Error = ParserError>
 where
     T: Default + VarType,
 {

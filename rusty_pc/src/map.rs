@@ -1,4 +1,4 @@
-use crate::{InputTrait, Parser, SetContext};
+use crate::{InputTrait, Parser};
 
 pub struct MapParser<P, F> {
     parser: P,
@@ -22,12 +22,7 @@ where
     fn parse(&mut self, tokenizer: &mut I) -> Result<Self::Output, Self::Error> {
         self.parser.parse(tokenizer).map(&self.mapper)
     }
-}
 
-impl<C, P, F> SetContext<C> for MapParser<P, F>
-where
-    P: SetContext<C>,
-{
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)
     }
@@ -58,12 +53,7 @@ where
             Err(err) => Err(err),
         }
     }
-}
 
-impl<C, P> SetContext<C> for MapToUnitParser<P>
-where
-    P: SetContext<C>,
-{
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)
     }

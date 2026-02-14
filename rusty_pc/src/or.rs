@@ -1,4 +1,4 @@
-use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait};
 
 pub struct OrParser<I, C, O, E>
 where
@@ -40,6 +40,12 @@ where
 
         self.parsers.last_mut().unwrap().parse(input)
     }
+
+    fn set_context(&mut self, ctx: C) {
+        for parser in self.parsers.iter_mut() {
+            parser.set_context(ctx.clone());
+        }
+    }
 }
 
 pub struct OrParserNoBox<L, R> {
@@ -49,17 +55,6 @@ pub struct OrParserNoBox<L, R> {
 impl<L, R> OrParserNoBox<L, R> {
     pub fn new(left: L, right: R) -> Self {
         Self { left, right }
-    }
-}
-impl<C, L, R> SetContext<C> for OrParserNoBox<L, R>
-where
-    C: Clone,
-    L: SetContext<C>,
-    R: SetContext<C>,
-{
-    fn set_context(&mut self, ctx: C) {
-        self.left.set_context(ctx.clone());
-        self.right.set_context(ctx);
     }
 }
 
@@ -85,6 +80,7 @@ where
 impl<I, C, L, R> Parser<I, C> for OrParserNoBox<L, R>
 where
     I: InputTrait,
+    C: Clone,
     L: Parser<I, C>,
     R: Parser<I, C, Output = L::Output, Error = L::Error>,
 {
@@ -97,5 +93,10 @@ where
             Err(err) if err.is_soft() => self.right.parse(input),
             Err(err) => Err(err),
         }
+    }
+
+    fn set_context(&mut self, ctx: C) {
+        self.left.set_context(ctx.clone());
+        self.right.set_context(ctx);
     }
 }

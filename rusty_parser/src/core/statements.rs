@@ -42,7 +42,7 @@ pub fn zero_or_more_statements_p(
 fn one_statement_p(
     exit_keywords: &[Keyword],
     custom_err: Option<ParserError>,
-) -> impl Parser<StringView, bool, Output = StatementPos, Error = ParserError> + SetContext<bool> {
+) -> impl Parser<StringView, bool, Output = StatementPos, Error = ParserError> {
     one_statement_or_exit_keyword_p(exit_keywords, custom_err).and_then(
         |statement_or_exit_keyword| match statement_or_exit_keyword {
             // we parsed a statement, return it
@@ -60,8 +60,7 @@ fn one_statement_p(
 fn one_statement_or_exit_keyword_p(
     exit_keywords: &[Keyword],
     custom_err: Option<ParserError>,
-) -> impl Parser<StringView, bool, Output = StatementOrExitKeyword, Error = ParserError> + SetContext<bool>
-{
+) -> impl Parser<StringView, bool, Output = StatementOrExitKeyword, Error = ParserError> {
     ThenWithLeftParser::new(
         // must parse the separator
         ctx_demand_separator_p(),
@@ -86,8 +85,7 @@ fn is_comment(statement_or_exit_keyword: &StatementOrExitKeyword) -> bool {
 
 /// A statement separator that is aware if the previously parsed statement
 /// was a comment or not.
-fn ctx_demand_separator_p()
--> impl Parser<StringView, bool, Output = (), Error = ParserError> + SetContext<bool> {
+fn ctx_demand_separator_p() -> impl Parser<StringView, bool, Output = (), Error = ParserError> {
     // TODO consolidate the two separate separator functions, they are almost never used elsewhere
     IifParser::new(
         // last statement was comment

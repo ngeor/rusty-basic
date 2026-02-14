@@ -2,17 +2,8 @@ use std::marker::PhantomData;
 
 use crate::{InputTrait, Parser, ParserErrorTrait};
 
-/// Indicates the support of context and allows for setting the context value.
-pub trait SetContext<C> {
-    /// Stores the given context.
-    /// A parser that can store context needs to override this method.
-    /// Parsers that delegate to other parsers should implement this method
-    /// by propagating the context to the delegate.
-    fn set_context(&mut self, ctx: C);
-}
-
 /// Access the context as a parser.
-pub fn ctx_parser<I, C, E>() -> impl Parser<I, C, Output = C, Error = E> + SetContext<C>
+pub fn ctx_parser<I, C, E>() -> impl Parser<I, C, Output = C, Error = E>
 where
     I: InputTrait,
     C: Clone,
@@ -44,9 +35,7 @@ where
             None => panic!("context was not set"),
         }
     }
-}
 
-impl<C, E> SetContext<C> for CtxParser<C, E> {
     fn set_context(&mut self, ctx: C) {
         // This is the actual point where the context gets stored.
         // All other parser combinators are supposed to propagate
@@ -80,9 +69,7 @@ where
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         self.parser.parse(input)
     }
-}
 
-impl<C1, C2, P> SetContext<C2> for NoContextParser<P, C1, C2> {
     fn set_context(&mut self, _ctx: C2) {}
 }
 
@@ -119,9 +106,7 @@ where
             self.right.parse(input)
         }
     }
-}
 
-impl<L, R> SetContext<bool> for IifParser<L, R> {
     fn set_context(&mut self, ctx: bool) {
         self.context = ctx;
     }

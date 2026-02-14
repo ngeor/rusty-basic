@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{InputTrait, Parser, ParserErrorTrait, SetContext, Token};
+use crate::{InputTrait, Parser, ParserErrorTrait, Token};
 
 /// Collects multiple values from the underlying parser as long as parsing succeeds.
 pub struct ManyParser<P, F, O> {
@@ -59,12 +59,7 @@ where
             Err(err) => Err(err),
         }
     }
-}
 
-impl<C, P, F, O> SetContext<C> for ManyParser<P, F, O>
-where
-    P: SetContext<C>,
-{
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)
     }

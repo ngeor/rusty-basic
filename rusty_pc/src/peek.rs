@@ -13,7 +13,6 @@ impl<P> PeekParser<P> {
 impl<I, C, P> Parser<I, C> for PeekParser<P>
 where
     I: InputTrait,
-    I: InputTrait,
     P: Parser<I, C>,
 {
     type Output = P::Output;
@@ -28,5 +27,9 @@ where
             }
             Err(err) => Err(err),
         }
+    }
+
+    fn set_context(&mut self, ctx: C) {
+        self.parser.set_context(ctx)
     }
 }

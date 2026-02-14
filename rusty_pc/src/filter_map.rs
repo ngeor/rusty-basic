@@ -1,4 +1,4 @@
-use crate::{InputTrait, Parser, SetContext, default_parse_error};
+use crate::{InputTrait, Parser, default_parse_error};
 
 pub struct FilterMapParser<P, F> {
     parser: P,
@@ -30,11 +30,7 @@ where
                 }
             })
     }
-}
-impl<C, P, F> SetContext<C> for FilterMapParser<P, F>
-where
-    P: SetContext<C>,
-{
+
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)
     }

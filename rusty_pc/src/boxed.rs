@@ -27,4 +27,8 @@ where
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         self.parser.parse(input)
     }
+
+    fn set_context(&mut self, ctx: C) {
+        self.parser.set_context(ctx)
+    }
 }

@@ -1,4 +1,4 @@
-use crate::{InputTrait, Parser, SetContext};
+use crate::{InputTrait, Parser};
 
 pub struct AndThenParser<P, F> {
     parser: P,
@@ -22,12 +22,7 @@ where
     fn parse(&mut self, tokenizer: &mut I) -> Result<Self::Output, Self::Error> {
         self.parser.parse(tokenizer).and_then(&self.mapper)
     }
-}
 
-impl<C, P, F> SetContext<C> for AndThenParser<P, F>
-where
-    P: SetContext<C>,
-{
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)
     }

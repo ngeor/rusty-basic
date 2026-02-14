@@ -1,11 +1,13 @@
 use rusty_common::Positioned;
 use rusty_pc::*;
 
-use crate::core::{VarNameCtx, var_name};
+use crate::core::{VarNameCtx, user_defined_type, var_name};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{any_symbol_of, any_token_of};
-use crate::{Keyword, ParserError, *};
+use crate::{
+    BareNamePos, BuiltInStyle, ExpressionType, HasExpressionType, Keyword, ParserError, TypeQualifier, TypedName, VarType
+};
 
 pub type Parameter = TypedName<ParamType>;
 pub type ParameterPos = Positioned<Parameter>;
@@ -94,9 +96,7 @@ fn array_indicator() -> impl Parser<StringView, Output = Option<(Token, Token)>,
     seq2(any_symbol_of!('('), any_symbol_of!(')'), |l, r| (l, r)).to_option()
 }
 
-fn extended_type()
--> impl Parser<StringView, VarNameCtx, Output = ParamType, Error = ParserError> + SetContext<VarNameCtx>
-{
+fn extended_type() -> impl Parser<StringView, VarNameCtx, Output = ParamType, Error = ParserError> {
     ctx_parser()
         .map(|(_, allow_user_defined)| {
             if allow_user_defined {

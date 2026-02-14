@@ -1,5 +1,5 @@
 use rusty_pc::and::TupleCombiner;
-use rusty_pc::{IifParser, Parser, ParserErrorTrait, SetContext};
+use rusty_pc::{IifParser, Parser, ParserErrorTrait};
 
 use crate::core::expression::ws_expr_pos_p;
 use crate::error::ParserError;
@@ -33,8 +33,7 @@ where
 // first_parser AND [ cond_ws(is_first_paren) KEYWORD !AND! ws_expr ]
 fn parse_second(
     k: Keyword,
-) -> impl Parser<StringView, bool, Output = Option<ExpressionPos>, Error = ParserError> + SetContext<bool>
-{
+) -> impl Parser<StringView, bool, Output = Option<ExpressionPos>, Error = ParserError> {
     // the left side needs the context
     ws_keyword(k)
         .and_keep_right(
@@ -45,7 +44,7 @@ fn parse_second(
         .to_option()
 }
 
-fn ws_keyword(k: Keyword) -> impl Parser<StringView, bool, Error = ParserError> + SetContext<bool> {
+fn ws_keyword(k: Keyword) -> impl Parser<StringView, bool, Error = ParserError> {
     // the left side has the context
     conditionally_opt_whitespace().and_tuple(
         // but the right side does not
@@ -69,7 +68,7 @@ fn err(keyword: Keyword) -> ParserError {
 /// * `(1 + 2)AND` no whitespace is required before `AND`
 /// * `1 + 2AND` the lack of whitespace before `AND` is an error
 pub(super) fn conditionally_opt_whitespace()
--> impl Parser<StringView, bool, Output = (), Error = ParserError> + SetContext<bool> {
+-> impl Parser<StringView, bool, Output = (), Error = ParserError> {
     IifParser::new(
         // allow none
         whitespace_ignoring().to_option().map_to_unit(),

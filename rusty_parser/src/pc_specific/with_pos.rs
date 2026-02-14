@@ -1,5 +1,5 @@
 use rusty_common::{AtPos, HasPos, Positioned};
-use rusty_pc::{InputTrait, Parser, SetContext};
+use rusty_pc::{InputTrait, Parser};
 
 pub trait WithPos<I, C>: Parser<I, C>
 where
@@ -38,12 +38,7 @@ where
         let pos = tokenizer.pos();
         self.parser.parse(tokenizer).map(|x| x.at_pos(pos))
     }
-}
 
-impl<C, P> SetContext<C> for WithPosMapper<P>
-where
-    P: SetContext<C>,
-{
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)
     }

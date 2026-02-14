@@ -37,4 +37,8 @@ where
             }
         }
     }
+
+    fn set_context(&mut self, _ctx: C) {
+        unimplemented!()
+    }
 }

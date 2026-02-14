@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
-use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait};
 
 /// A parser that always succeeds, providing the value returned by the given function.
-pub fn supplier<I, C, F, O, E>(f: F) -> impl Parser<I, C, Output = O, Error = E> + SetContext<C>
+pub fn supplier<I, C, F, O, E>(f: F) -> impl Parser<I, C, Output = O, Error = E>
 where
     I: InputTrait,
     F: Fn() -> O,
@@ -26,14 +26,12 @@ where
     fn parse(&mut self, _input: &mut I) -> Result<O, E> {
         Ok((self.0)())
     }
-}
 
-impl<C, F, E> SetContext<C> for SupplierParser<F, E> {
     fn set_context(&mut self, _ctx: C) {}
 }
 
 /// A parser that always fails, providing the value returned by the given function.
-pub fn err_supplier<I, C, F, O, E>(f: F) -> impl Parser<I, C, Output = O, Error = E> + SetContext<C>
+pub fn err_supplier<I, C, F, O, E>(f: F) -> impl Parser<I, C, Output = O, Error = E>
 where
     I: InputTrait,
     F: Fn() -> E,
@@ -56,8 +54,6 @@ where
     fn parse(&mut self, _input: &mut I) -> Result<O, E> {
         Err((self.0)())
     }
-}
 
-impl<C, F, O> SetContext<C> for ErrSupplierParser<F, O> {
     fn set_context(&mut self, _ctx: C) {}
 }

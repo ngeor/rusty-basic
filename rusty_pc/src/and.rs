@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait};
 
 /// And (with undo)
 pub struct AndParser<L, R, F, O> {
@@ -24,6 +24,7 @@ impl<L, R, F, O> AndParser<L, R, F, O> {
 impl<I, C, L, R, F, O> Parser<I, C> for AndParser<L, R, F, O>
 where
     I: InputTrait,
+    C: Clone,
     L: Parser<I, C>,
     R: Parser<I, C, Error = L::Error>,
     F: Combiner<L::Output, R::Output, O>,
@@ -44,14 +45,7 @@ where
             }
         }
     }
-}
 
-impl<C, L, R, F, O> SetContext<C> for AndParser<L, R, F, O>
-where
-    L: SetContext<C>,
-    R: SetContext<C>,
-    C: Clone,
-{
     fn set_context(&mut self, context: C) {
         self.left.set_context(context.clone());
         self.right.set_context(context);

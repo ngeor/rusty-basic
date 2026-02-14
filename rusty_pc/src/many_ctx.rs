@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::many::ManyCombiner;
-use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait};
 
 /// Collects multiple values from the underlying parser as long as parsing succeeds.
 /// The context of the underlying parser is set after every iteration,
@@ -37,7 +37,7 @@ impl<I, COut, CIn, P, F, G, O> Parser<I, COut> for ManyCtxParser<P, F, G, O, CIn
 where
     I: InputTrait,
     CIn: Default,
-    P: Parser<I, CIn> + SetContext<CIn>,
+    P: Parser<I, CIn>,
     F: ManyCombiner<P::Output, O>,
     G: Fn(&P::Output) -> CIn,
     O: Default,
@@ -82,4 +82,6 @@ where
             Err(err) => Err(err),
         }
     }
+
+    fn set_context(&mut self, _ctx: COut) {}
 }

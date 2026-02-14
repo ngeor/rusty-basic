@@ -1,4 +1,4 @@
-use crate::{InputTrait, Parser, SetContext};
+use crate::{InputTrait, Parser};
 
 /// Initializes the context of the underlying parser to the given value
 /// before parsing starts.
@@ -19,7 +19,7 @@ impl<P, CInner> InitContextParser<P, CInner> {
 impl<I, COuter, CInner, P> Parser<I, COuter> for InitContextParser<P, CInner>
 where
     I: InputTrait,
-    P: Parser<I, CInner> + SetContext<CInner>,
+    P: Parser<I, CInner>,
     CInner: Clone,
 {
     type Output = P::Output;
@@ -28,4 +28,6 @@ where
         self.parser.set_context(self.value.clone());
         self.parser.parse(input)
     }
+
+    fn set_context(&mut self, _ctx: COuter) {}
 }

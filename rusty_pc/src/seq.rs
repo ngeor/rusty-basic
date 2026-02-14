@@ -80,6 +80,10 @@ macro_rules! seq_pc {
                     (self._mapper)($first_type, $($generic_type),+)
                 )
             }
+
+            fn set_context(&mut self, _ctx: _C) {
+                unimplemented!()
+            }
         }
 
         #[allow(non_snake_case)]

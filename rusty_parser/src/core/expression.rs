@@ -937,8 +937,7 @@ pub mod property {
     /// If it was qualified, we return Ok(None) without trying to parse,
     /// because qualified names can't have properties.
     fn ctx_dot_property()
-    -> impl Parser<StringView, bool, Output = Option<NameAsTokens>, Error = ParserError>
-    + SetContext<bool> {
+    -> impl Parser<StringView, bool, Output = Option<NameAsTokens>, Error = ParserError> {
         ctx_parser()
             .and_then(|was_first_expr_qualified| {
                 if was_first_expr_qualified {
@@ -1031,7 +1030,7 @@ mod binary_expression {
         bool,
         Output = Option<(Positioned<Operator>, ExpressionPos)>,
         Error = ParserError,
-    > + SetContext<bool> {
+    > {
         operator()
             .then_with_in_context(third_parser(), is_keyword_op, TupleCombiner)
             .to_option()
@@ -1041,8 +1040,7 @@ mod binary_expression {
         op.element == Operator::And || op.element == Operator::Or || op.element == Operator::Modulo
     }
 
-    fn third_parser()
-    -> impl Parser<StringView, bool, Output = ExpressionPos, Error = ParserError> + SetContext<bool>
+    fn third_parser() -> impl Parser<StringView, bool, Output = ExpressionPos, Error = ParserError>
     {
         IifParser::new(
             guard::parser().to_fatal(),
@@ -1077,8 +1075,7 @@ mod binary_expression {
     /// parenthesis. If that is the case, leading whitespace is not required for
     /// keyword based operators.
     fn operator()
-    -> impl Parser<StringView, bool, Output = Positioned<Operator>, Error = ParserError>
-    + SetContext<bool> {
+    -> impl Parser<StringView, bool, Output = Positioned<Operator>, Error = ParserError> {
         IifParser::new(
             // no whitespace needed
             opt_and_keep_right(whitespace_ignoring(), operator_p()),

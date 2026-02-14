@@ -1,4 +1,4 @@
-use crate::{InputTrait, Parser, ParserErrorTrait, SetContext};
+use crate::{InputTrait, Parser, ParserErrorTrait};
 
 pub struct OrDefaultParser<P> {
     parser: P,
@@ -23,11 +23,7 @@ where
             Err(err) => Err(err),
         }
     }
-}
-impl<C, P> SetContext<C> for OrDefaultParser<P>
-where
-    P: SetContext<C>,
-{
+
     fn set_context(&mut self, ctx: C) {
         self.parser.set_context(ctx)
     }

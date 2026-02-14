@@ -73,7 +73,7 @@ fn operator() -> impl Parser<StringView, bool, Output = Positioned<Operator>, Er
         // no whitespace needed
         lead_opt_ws(operator_p()),
         // whitespace needed
-        lead_ws(operator_p()).or(lead_opt_ws(symbol_operator_p())),
+        symbol_operator_p().or(lead_ws(operator_p())),
     )
 }
 

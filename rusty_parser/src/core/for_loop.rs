@@ -2,7 +2,9 @@ use rusty_pc::*;
 
 use crate::core::statements::zero_or_more_statements;
 use crate::error::ParserError;
-use crate::expr::{expr_pos_ws_p, opt_second_expression_after_keyword, property, ws_expr_pos_p};
+use crate::expr::{
+    demand_expr_ws_keyword_p, opt_second_expression_after_keyword, property, ws_expr_pos_p
+};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::equal_sign_ws;
@@ -52,14 +54,13 @@ fn parse_for_step_p() -> impl Parser<
 fn parse_for_p()
 -> impl Parser<StringView, Output = (ExpressionPos, ExpressionPos, ExpressionPos), Error = ParserError>
 {
-    seq6(
-        keyword_ws_p(Keyword::For),
-        property::parser().or_expected("name after FOR"),
+    seq5(
+        keyword_ignoring(Keyword::For),
+        demand_lead_ws(property::parser().or_expected("name after FOR")),
         equal_sign_ws(),
-        expr_pos_ws_p().or_expected("lower bound of FOR loop"),
-        keyword(Keyword::To),
+        demand_expr_ws_keyword_p("lower bound of FOR loop", Keyword::To),
         ws_expr_pos_p().or_expected("upper bound of FOR loop"),
-        |_, name, _, lower_bound, _, upper_bound| (name, lower_bound, upper_bound),
+        |_, name, _, lower_bound, upper_bound| (name, lower_bound, upper_bound),
     )
 }
 

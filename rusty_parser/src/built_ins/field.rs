@@ -1,7 +1,7 @@
 use rusty_common::*;
 use rusty_pc::*;
 
-use crate::expr::expr_pos_ws_p;
+use crate::expr::expr_ws_keyword_p;
 use crate::expr::file_handle::file_handle_p;
 use crate::input::StringView;
 use crate::pc_specific::*;
@@ -23,12 +23,9 @@ pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserErro
 
 fn field_item_p() -> impl Parser<StringView, Output = (ExpressionPos, NamePos), Error = ParserError>
 {
-    seq3(
-        expr_pos_ws_p(),
-        keyword_ws_p(Keyword::As),
+    expr_ws_keyword_p(Keyword::As).and_tuple(demand_lead_ws(
         name_p().with_pos().or_expected("variable name"),
-        |width, _, name| (width, name),
-    )
+    ))
 }
 
 fn build_args(

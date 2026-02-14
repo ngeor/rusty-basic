@@ -13,6 +13,7 @@ use crate::{ExpressionPos, Keyword};
 /// If the keyword is present, the second expression is mandatory.
 ///
 /// Example: `FOR I = 1 TO 100 [STEP 5]`
+#[deprecated]
 pub fn opt_second_expression_after_keyword<P, F>(
     first_parser: P,
     keyword: Keyword,

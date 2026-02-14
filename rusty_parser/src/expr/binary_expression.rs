@@ -44,16 +44,11 @@ fn expr_after_binary_operator()
     // boxed breaks apart the recursive type evaluation
     IifParser::new(
         // the previous operator is a keyword op, must have whitespace or parenthesis
-        ws_expr_pos_p()
-            .boxed()
-            .or_expected("expression after operator"),
+        ws_expr_pos_p().boxed(),
         // the previous operator is a symbol, whitespace is optional
-        lead_opt_ws(
-            expression_pos_p()
-                .boxed()
-                .or_expected("expression after operator"),
-        ),
+        lead_opt_ws(expression_pos_p().boxed()),
     )
+    .or_expected("expression after operator")
 }
 
 fn non_bin_expr() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {

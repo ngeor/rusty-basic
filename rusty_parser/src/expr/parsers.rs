@@ -62,6 +62,7 @@ pub fn ws_expr_pos_p() -> impl Parser<StringView, Output = ExpressionPos, Error 
 /// <expr-in-parenthesis> <ws> |
 /// <expr-in-parenthesis>
 /// ```
+#[deprecated]
 pub fn expr_pos_ws_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     followed_by_ws(expression_pos_p())
 }

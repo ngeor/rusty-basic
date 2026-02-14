@@ -44,9 +44,8 @@ pub fn expression_pos_p() -> impl Parser<StringView, Output = ExpressionPos, Err
 /// or is a parenthesis expression.
 ///
 /// ```text
-/// <ws> <expr-not-in-parenthesis> |
-/// <ws> <expr-in-parenthesis> |
-/// <expr-in-parenthesis>
+/// <expr-in-parenthesis> |
+/// <ws> <expr>
 /// ```
 pub fn ws_expr_pos_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     super::parenthesis::parser().or(lead_ws(expression_pos_p()))

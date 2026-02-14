@@ -105,6 +105,22 @@ pub fn demand_expr_ws_keyword_p(
     )
 }
 
+pub fn ws_expr_ws_keyword_p(
+    keyword: Keyword,
+) -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+    expr_ws_followed_by(ws_expr_pos_p(), keyword_ignoring(keyword))
+}
+
+pub fn demand_ws_expr_ws_keyword_p(
+    expectation: &str,
+    keyword: Keyword,
+) -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+    expr_ws_followed_by(
+        ws_expr_pos_p().or_expected(expectation),
+        keyword_ignoring(keyword),
+    )
+}
+
 /// Parses the expression using the given parser,
 /// then demands whitespace, unless the expression is a parenthesis.
 /// Finally it demands the second parser.

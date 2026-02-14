@@ -1,6 +1,7 @@
+use rusty_pc::and::VecCombiner;
 use rusty_pc::*;
 
-use crate::expr::{ws_expr_pos_p, ws_expr_pos_ws_p};
+use crate::expr::{ws_expr_pos_p, ws_expr_ws_keyword_p};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::{BuiltInSub, ParserError, *};
@@ -12,12 +13,7 @@ pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserErro
 }
 
 fn parse_args() -> impl Parser<StringView, Output = Expressions, Error = ParserError> {
-    seq3(
-        ws_expr_pos_ws_p(),
-        keyword(Keyword::To),
-        ws_expr_pos_p().or_expected("expression"),
-        |l, _, r| vec![l, r],
-    )
+    ws_expr_ws_keyword_p(Keyword::To).and(ws_expr_pos_p().or_expected("expression"), VecCombiner)
 }
 
 #[cfg(test)]

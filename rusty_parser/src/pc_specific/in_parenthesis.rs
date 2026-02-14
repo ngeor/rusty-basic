@@ -4,15 +4,12 @@ use rusty_pc::*;
 
 use crate::ParserError;
 use crate::input::StringView;
-use crate::pc_specific::PaddedByWs;
+use crate::pc_specific::padded_by_ws;
 use crate::tokens::{any_symbol_of, any_token_of};
 
 /// Parses the given parser around parenthesis and optional whitespace (inside the parenthesis).
 /// If the left side parenthesis is missing, parsing fails (soft).
 /// If the right side parenthesis is missing, parsing fails fatally.
-///
-/// # Warning
-/// The given parser cannot return a soft error.
 pub fn in_parenthesis<P>(
     parser: P,
 ) -> impl Parser<StringView, Output = P::Output, Error = ParserError>
@@ -21,18 +18,16 @@ where
 {
     surround(
         left_paren(),
-        parser.padded_by_ws(),
+        padded_by_ws(parser),
         right_paren(),
         SurroundMode::Mandatory,
     )
 }
 
 fn left_paren() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    // TODO add ignoring support for parenthesis
     any_symbol_of!('(')
 }
 
 fn right_paren() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    // TODO add ignoring support for parenthesis
     any_symbol_of!(')')
 }

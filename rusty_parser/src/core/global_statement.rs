@@ -159,7 +159,7 @@ fn main_program() -> impl Parser<StringView, Output = Program, Error = ParserErr
 }
 
 fn next_statements() -> impl Parser<StringView, Output = Program, Error = ParserError> {
-    next_statement().padded_by_ws().zero_or_more()
+    padded_by_ws(next_statement()).zero_or_more()
 }
 
 fn next_statement() -> impl Parser<StringView, Output = GlobalStatementPos, Error = ParserError> {

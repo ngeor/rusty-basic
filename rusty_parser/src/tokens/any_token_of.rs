@@ -87,13 +87,13 @@ macro_rules! any_symbol_of_ws {
     (
         $($symbol:literal),+$(,)?
     ) => {
-        any_token_of!(
+        padded_by_ws(any_token_of!(
             types =
             ;
             symbols = $($symbol),+
             ;
             mode = $crate::tokens::MatchMode::Include
-        ).padded_by_ws()
+        ))
     };
 }
 

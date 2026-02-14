@@ -4,8 +4,7 @@ use rusty_pc::{IifParser, Parser, ParserErrorTrait};
 use crate::core::expression::ws_expr_pos_p;
 use crate::error::ParserError;
 use crate::input::StringView;
-use crate::pc_specific::keyword;
-use crate::tokens::whitespace_ignoring;
+use crate::pc_specific::{keyword, whitespace_ignoring};
 use crate::{ExpressionPos, Keyword};
 
 /// Parses an optional second expression that follows the first expression

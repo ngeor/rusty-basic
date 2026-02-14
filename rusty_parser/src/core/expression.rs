@@ -554,7 +554,6 @@ fn eager_expression_pos_p() -> impl Parser<StringView, Output = ExpressionPos, E
 }
 
 mod single_or_double_literal {
-    use rusty_pc::and::opt_and_tuple;
     use rusty_pc::*;
 
     use crate::input::StringView;
@@ -570,36 +569,36 @@ mod single_or_double_literal {
     // TODO support more qualifiers besides '#'
 
     pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-        // TODO this is difficult to understand
-        opt_and_tuple(
-            // read integer digits optionally (might start with . e.g. `.123`)
-            digits(),
+        // read integer digits optionally (might start with . e.g. `.123`)
+        digits()
+            .to_option()
             // read dot and demand digits after decimal point
             // if dot is missing, the parser returns an empty result
             // the "deal breaker" is therefore the dot
-            dot().and_keep_right(digits().to_fatal()),
-        )
-        // and parse optionally a type qualifier such as `#`
-        .and_tuple(pound().to_option())
-        // done parsing, flat map everything
-        .and_then(|((opt_integer_digits, frac_digits), opt_pound)| {
-            let left = opt_integer_digits
-                .map(|token| token.to_string())
-                .unwrap_or_else(|| "0".to_owned());
-            let s = format!("{}.{}", left, frac_digits.as_str());
-            if opt_pound.is_some() {
-                match s.parse::<f64>() {
-                    Ok(f) => Ok(Expression::DoubleLiteral(f)),
-                    Err(err) => Err(err.into()),
+            .and_keep_left(dot())
+            // demand digits after decimal point
+            .and_tuple(digits().to_fatal())
+            // and parse optionally a type qualifier such as `#`
+            .and_tuple(pound().to_option())
+            // done parsing, flat map everything
+            .and_then(|((opt_integer_digits, frac_digits), opt_pound)| {
+                let left = opt_integer_digits
+                    .map(|token| token.to_string())
+                    .unwrap_or_else(|| "0".to_owned());
+                let s = format!("{}.{}", left, frac_digits.as_str());
+                if opt_pound.is_some() {
+                    match s.parse::<f64>() {
+                        Ok(f) => Ok(Expression::DoubleLiteral(f)),
+                        Err(err) => Err(err.into()),
+                    }
+                } else {
+                    match s.parse::<f32>() {
+                        Ok(f) => Ok(Expression::SingleLiteral(f)),
+                        Err(err) => Err(err.into()),
+                    }
                 }
-            } else {
-                match s.parse::<f32>() {
-                    Ok(f) => Ok(Expression::SingleLiteral(f)),
-                    Err(err) => Err(err.into()),
-                }
-            }
-        })
-        .with_pos()
+            })
+            .with_pos()
     }
 }
 
@@ -998,7 +997,7 @@ mod built_in_function_call {
 
 mod binary_expression {
     use rusty_common::Positioned;
-    use rusty_pc::and::{TupleCombiner, opt_and_keep_right};
+    use rusty_pc::and::TupleCombiner;
     use rusty_pc::*;
 
     use super::{
@@ -1006,8 +1005,8 @@ mod binary_expression {
     };
     use crate::error::ParserError;
     use crate::input::StringView;
-    use crate::pc_specific::{OrExpected, WithPos};
-    use crate::tokens::{TokenType, any_token, whitespace_ignoring};
+    use crate::pc_specific::{OrExpected, WithPos, lead_opt_ws, lead_ws};
+    use crate::tokens::{TokenType, any_token};
     use crate::*;
 
     // result ::= <non-bin-expr> <operator> <expr>
@@ -1078,14 +1077,9 @@ mod binary_expression {
     -> impl Parser<StringView, bool, Output = Positioned<Operator>, Error = ParserError> {
         IifParser::new(
             // no whitespace needed
-            opt_and_keep_right(whitespace_ignoring(), operator_p()),
+            lead_opt_ws(operator_p()),
             // whitespace needed
-            whitespace_ignoring()
-                .and_keep_right(operator_p())
-                .or(opt_and_keep_right(
-                    whitespace_ignoring(),
-                    symbol_operator_p(),
-                )),
+            lead_ws(operator_p()).or(lead_opt_ws(symbol_operator_p())),
         )
     }
 
@@ -1201,7 +1195,7 @@ pub mod file_handle {
     use crate::error::ParserError;
     use crate::input::StringView;
     use crate::pc_specific::*;
-    use crate::tokens::{TokenType, any_token_of, pound, whitespace_ignoring};
+    use crate::tokens::{TokenType, any_token_of, pound};
     use crate::*;
 
     pub fn file_handle_p()
@@ -1230,7 +1224,7 @@ pub mod file_handle {
     }
 
     fn ws_file_handle() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-        whitespace_ignoring().and_keep_right(file_handle_as_expression_pos_p())
+        lead_ws(file_handle_as_expression_pos_p())
     }
 }
 
@@ -1239,8 +1233,8 @@ pub mod guard {
 
     use crate::ParserError;
     use crate::input::StringView;
-    use crate::pc_specific::WithExpected;
-    use crate::tokens::{any_symbol_of, any_token_of, whitespace_ignoring};
+    use crate::pc_specific::{WithExpected, whitespace_ignoring};
+    use crate::tokens::{any_symbol_of, any_token_of};
 
     /// `result ::= " " | "("`
     ///

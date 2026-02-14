@@ -6,7 +6,7 @@ use crate::core::statements::zero_or_more_statements;
 use crate::error::ParserError;
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::{equal_sign_ws, whitespace_ignoring};
+use crate::tokens::equal_sign_ws;
 use crate::*;
 
 // FOR I = 0 TO 5 STEP 1
@@ -65,7 +65,7 @@ fn parse_for_p()
 }
 
 fn next_counter_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-    whitespace_ignoring().and_keep_right(property::parser())
+    lead_ws(property::parser())
 }
 
 #[cfg(test)]

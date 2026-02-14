@@ -3,7 +3,7 @@ use rusty_pc::*;
 use crate::error::ParserError;
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::{TokenType, any_token_of, minus_sign, whitespace_ignoring};
+use crate::tokens::{TokenType, any_token_of, minus_sign};
 use crate::{Keyword, LetterRange, TypeQualifier};
 
 /// Represents a definition of default type, such as DEFINT A-Z.
@@ -34,11 +34,10 @@ impl DefType {
 // Letter       ::= [a-zA-Z]
 
 pub fn def_type_p() -> impl Parser<StringView, Output = DefType, Error = ParserError> {
-    seq3(
+    seq2(
         def_keyword_p(),
-        whitespace_ignoring(),
-        letter_ranges(),
-        |l, _, r| DefType::new(l, r),
+        demand_lead_ws(letter_ranges()),
+        DefType::new,
     )
 }
 

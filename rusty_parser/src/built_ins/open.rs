@@ -1,10 +1,9 @@
 use rusty_common::*;
-use rusty_pc::and::IgnoringBothCombiner;
 use rusty_pc::*;
 
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::{equal_sign_ws, whitespace_ignoring};
+use crate::tokens::equal_sign_ws;
 use crate::{BuiltInSub, ParserError, *};
 pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     seq6(
@@ -65,7 +64,7 @@ fn parse_file_number_p() -> impl Parser<StringView, Output = ExpressionPos, Erro
 
 fn parse_len_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     seq3(
-        whitespace_ignoring().and(keyword_ignoring(Keyword::Len), IgnoringBothCombiner),
+        lead_ws(keyword_ignoring(Keyword::Len)),
         equal_sign_ws(),
         expression_pos_p().or_expected("expression after LEN ="),
         |_, _, e| e,

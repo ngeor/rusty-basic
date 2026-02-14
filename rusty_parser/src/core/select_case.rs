@@ -1,4 +1,3 @@
-use rusty_pc::and::opt_and_keep_right;
 use rusty_pc::*;
 
 use crate::core::expression::ws_expr_pos_p;
@@ -6,7 +5,6 @@ use crate::core::statement_separator::comments_in_between_keywords;
 use crate::core::statements::zero_or_more_statements;
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace_ignoring;
 use crate::{ParserError, *};
 
 // SELECT CASE expr ' comment
@@ -88,17 +86,14 @@ fn case_block() -> impl Parser<StringView, Output = CaseBlock, Error = ParserErr
 }
 
 fn continue_after_case() -> impl Parser<StringView, Output = CaseBlock, Error = ParserError> {
-    opt_and_keep_right(
-        whitespace_ignoring(),
-        seq2(
-            OrParser::new(vec![
-                Box::new(keyword(Keyword::Else).map(|_| vec![])),
-                Box::new(case_expression_list()),
-            ]),
-            zero_or_more_statements!(Keyword::Case, Keyword::End),
-            CaseBlock::new,
-        ),
-    )
+    lead_opt_ws(seq2(
+        OrParser::new(vec![
+            Box::new(keyword(Keyword::Else).map(|_| vec![])),
+            Box::new(case_expression_list()),
+        ]),
+        zero_or_more_statements!(Keyword::Case, Keyword::End),
+        CaseBlock::new,
+    ))
 }
 
 fn case_expression_list()
@@ -108,14 +103,13 @@ fn case_expression_list()
 
 mod case_expression_parser {
     use rusty_common::Positioned;
-    use rusty_pc::and::opt_and_keep_right;
     use rusty_pc::*;
 
     use crate::core::expression::expression_pos_p;
     use crate::core::opt_second_expression::opt_second_expression_after_keyword;
     use crate::input::StringView;
     use crate::pc_specific::*;
-    use crate::tokens::{TokenType, any_token, whitespace_ignoring};
+    use crate::tokens::{TokenType, any_token};
     use crate::{CaseExpression, ExpressionTrait, Keyword, Operator, ParserError};
 
     pub fn parser() -> impl Parser<StringView, Output = CaseExpression, Error = ParserError> {
@@ -125,10 +119,8 @@ mod case_expression_parser {
     fn case_is() -> impl Parser<StringView, Output = CaseExpression, Error = ParserError> {
         seq3(
             keyword_ignoring(Keyword::Is),
-            opt_and_keep_right(whitespace_ignoring(), relational_operator_p())
-                .or_expected("Operator after IS"),
-            opt_and_keep_right(whitespace_ignoring(), expression_pos_p())
-                .or_expected("expression after IS operator"),
+            lead_opt_ws(relational_operator_p()).or_expected("Operator after IS"),
+            lead_opt_ws(expression_pos_p()).or_expected("expression after IS operator"),
             |_, Positioned { element, .. }, r| CaseExpression::Is(element, r),
         )
     }

@@ -4,7 +4,6 @@ use crate::core::expression::ws_expr_pos_p;
 use crate::core::statements::zero_or_more_statements;
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace_ignoring;
 use crate::{ParserError, *};
 
 pub fn do_loop_p() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
@@ -19,7 +18,7 @@ pub fn do_loop_p() -> impl Parser<StringView, Output = Statement, Error = Parser
 
 fn do_condition_top() -> impl Parser<StringView, Output = DoLoop, Error = ParserError> {
     seq4(
-        whitespace_ignoring().and_keep_right(keyword_of!(Keyword::Until, Keyword::While)),
+        lead_ws(keyword_of!(Keyword::Until, Keyword::While)),
         ws_expr_pos_p().or_expected("expression"),
         zero_or_more_statements!(Keyword::Loop),
         keyword(Keyword::Loop),

@@ -31,7 +31,6 @@ pub enum SurroundMode {
     /// If the right boundary is missing, a fatal error is returned.
     /// If the main content is missing, a fatal error is returned.
     Mandatory,
-    // TODO add MandatoryOrDefault to return the default content if it is missing
 }
 
 impl<P, L, R> SurroundParser<P, L, R> {

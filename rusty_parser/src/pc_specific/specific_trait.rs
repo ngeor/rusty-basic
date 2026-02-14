@@ -1,9 +1,8 @@
 use rusty_pc::map_err::{MapErrParser, SoftErrorOverrider};
-use rusty_pc::{Parser, ParserErrorTrait, SurroundMode, surround};
+use rusty_pc::{Parser, ParserErrorTrait};
 
 use crate::error::ParserError;
 use crate::input::StringView;
-use crate::tokens::whitespace_ignoring;
 
 pub trait OrExpected<C>: Parser<StringView, C, Error = ParserError>
 where
@@ -18,19 +17,3 @@ where
 }
 
 impl<P, C> OrExpected<C> for P where P: Parser<StringView, C, Error = ParserError> {}
-
-pub trait PaddedByWs: Parser<StringView, Error = ParserError>
-where
-    Self: Sized,
-{
-    fn padded_by_ws(self) -> impl Parser<StringView, Output = Self::Output, Error = Self::Error> {
-        surround(
-            whitespace_ignoring(),
-            self,
-            whitespace_ignoring(),
-            SurroundMode::Optional,
-        )
-    }
-}
-
-impl<P> PaddedByWs for P where P: Parser<StringView, Error = ParserError> {}

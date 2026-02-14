@@ -1,11 +1,9 @@
-use rusty_pc::and::opt_and_keep_right;
 use rusty_pc::*;
 
 use crate::core::name::{bare_name_p, name_p};
 use crate::core::param_name::parameter_pos_p;
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::tokens::whitespace_ignoring;
 use crate::{ParserError, *};
 
 // Declaration           ::= DECLARE<ws+>(FunctionDeclaration|SubDeclaration)
@@ -53,12 +51,7 @@ pub fn sub_declaration_p()
 
 // result ::= "" | "(" ")" | "(" parameter (,parameter)* ")"
 fn declaration_parameters_p() -> impl Parser<StringView, Output = Parameters, Error = ParserError> {
-    // TODO remove the need for the double .or_default()
-    opt_and_keep_right(
-        whitespace_ignoring(),
-        in_parenthesis(csv(parameter_pos_p()).or_default()),
-    )
-    .or_default()
+    lead_opt_ws(in_parenthesis(csv(parameter_pos_p()).or_default())).or_default()
 }
 
 #[cfg(test)]

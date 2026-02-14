@@ -52,50 +52,6 @@ where
     }
 }
 
-/// Parses the left side optionally and then the right side.
-/// If the right side fails, the left side is reverted too.
-/// The combiner function is used to create the final result.
-pub fn opt_and<I, L, R, E, F, O>(
-    left: impl Parser<I, Output = L, Error = E>,
-    right: impl Parser<I, Output = R, Error = E>,
-    combiner: F,
-) -> impl Parser<I, Output = O, Error = E>
-where
-    I: InputTrait,
-    E: ParserErrorTrait,
-    F: Combiner<Option<L>, R, O>,
-{
-    left.to_option().and(right, combiner)
-}
-
-/// Parses the left side optionally and then the right side.
-/// If the right side fails, the left side is reverted too.
-/// The result is a tuple of the (optional) left side and the right side.
-pub fn opt_and_tuple<I, L, R, E>(
-    left: impl Parser<I, Output = L, Error = E>,
-    right: impl Parser<I, Output = R, Error = E>,
-) -> impl Parser<I, Output = (Option<L>, R), Error = E>
-where
-    I: InputTrait,
-    E: ParserErrorTrait,
-{
-    opt_and(left, right, TupleCombiner)
-}
-
-/// Parses the left side optionally and then the right side.
-/// If the right side fails, the left side is reverted too.
-/// The result is the right side only, the left is discarded.
-pub fn opt_and_keep_right<I, L, R, E>(
-    left: impl Parser<I, Output = L, Error = E>,
-    right: impl Parser<I, Output = R, Error = E>,
-) -> impl Parser<I, Output = R, Error = E>
-where
-    I: InputTrait,
-    E: ParserErrorTrait,
-{
-    opt_and(left, right, KeepRightCombiner)
-}
-
 /// Combines two values into one.
 pub trait Combiner<L, R, O> {
     /// Combines two values into one.

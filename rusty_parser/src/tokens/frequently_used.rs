@@ -2,14 +2,14 @@ use rusty_pc::{Parser, Token};
 
 use crate::ParserError;
 use crate::input::StringView;
-use crate::pc_specific::PaddedByWs;
+use crate::pc_specific::padded_by_ws;
 use crate::tokens::{TokenType, any_symbol_of, any_symbol_of_ws, any_token_of};
 
 /// Equal sign, surrounded by optional whitespace.
 ///
 /// `<ws>? = <ws>?`
 pub fn equal_sign_ws() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    any_token_of!(TokenType::Equals).padded_by_ws()
+    padded_by_ws(any_token_of!(TokenType::Equals))
 }
 
 /// Comma, surrounded by optional whitespace.

@@ -1,4 +1,4 @@
-use rusty_pc::{Parser, SetContext, SurroundMode, surround};
+use rusty_pc::{Parser, SurroundMode, surround};
 
 use crate::ParserError;
 use crate::input::StringView;
@@ -63,9 +63,9 @@ where
 
 pub fn demand_lead_ws_ctx<P, C>(
     parser: P,
-) -> impl Parser<StringView, C, Output = P::Output, Error = ParserError> + SetContext<C>
+) -> impl Parser<StringView, C, Output = P::Output, Error = ParserError>
 where
-    P: Parser<StringView, C, Error = ParserError> + SetContext<C>,
+    P: Parser<StringView, C, Error = ParserError>,
     C: Clone,
 {
     demand_ws().no_context().and_keep_right(parser)

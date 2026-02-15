@@ -64,7 +64,7 @@ where
                 // create context from right
                 let left_context = (self.right_context_mapper)(&right);
                 // pass it back to left
-                self.left.set_context(left_context);
+                self.left.set_context(&left_context);
                 // return the result
                 Ok(self.combiner.combine(left, right))
             }
@@ -73,7 +73,7 @@ where
         }
     }
 
-    fn set_context(&mut self, ctx: C) {
+    fn set_context(&mut self, ctx: &C) {
         // on purpose not setting the context to the right side,
         // as it is the one that it is supposed to generate the context
         // of the left side.

@@ -81,7 +81,7 @@ macro_rules! seq_pc {
                 )
             }
 
-            fn set_context(&mut self, _ctx: _C) {
+            fn set_context(&mut self, _ctx: &_C) {
                 unimplemented!()
             }
         }

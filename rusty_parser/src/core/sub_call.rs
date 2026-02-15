@@ -47,7 +47,6 @@ pub fn sub_call_or_assignment_p() -> impl Parser<StringView, Output = Statement,
                 }
             })
             .flatten(),
-        |x| x.clone(),
         KeepRightCombiner,
     )
 }

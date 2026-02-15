@@ -88,7 +88,6 @@ impl<E> ElementCollector<E> for OptionalElementCollector {
 impl<I, C, P, D, E, A> Parser<I, C> for DelimitedParser<P, D, E, A>
 where
     I: InputTrait,
-    C: Clone,
     P: Parser<I, C, Error = E>,
     D: Parser<I, C, Error = E>,
     E: ParserErrorTrait,
@@ -161,8 +160,8 @@ where
         }
     }
 
-    fn set_context(&mut self, ctx: C) {
-        self.parser.set_context(ctx.clone());
+    fn set_context(&mut self, ctx: &C) {
+        self.parser.set_context(ctx);
         self.delimiter.set_context(ctx);
     }
 }

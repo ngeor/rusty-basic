@@ -123,8 +123,9 @@ where
 {
     name_with_opt_array(opt_array_parser_factory())
         .then_with_in_context(
-            var_type_parser(extended_type_parser_factory()),
-            |(name, _array)| (name.qualifier(), !name.as_bare_name().contains('.')),
+            var_type_parser(extended_type_parser_factory()).map_ctx(
+                |(name, _array): &(Name, _)| (name.qualifier(), !name.as_bare_name().contains('.')),
+            ),
             TupleCombiner,
         )
         .map(|((name, array), var_type)| create_typed_name(name, array, var_type))

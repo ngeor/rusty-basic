@@ -13,8 +13,7 @@ use crate::{ExpressionPos, ExpressionPosTrait, ExpressionTrait, Keyword, Operato
 pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     non_bin_expr()
         .then_with_in_context(
-            second_parser(),
-            |first| first.is_parenthesis(),
+            second_parser().map_ctx(ExpressionTrait::is_parenthesis),
             TupleCombiner,
         )
         .map(|(l, r)| match r {
@@ -31,7 +30,10 @@ fn second_parser() -> impl Parser<
     Error = ParserError,
 > {
     operator()
-        .then_with_in_context(expr_after_binary_operator(), is_keyword_op, TupleCombiner)
+        .then_with_in_context(
+            expr_after_binary_operator().map_ctx(is_keyword_op),
+            TupleCombiner,
+        )
         .to_option()
 }
 

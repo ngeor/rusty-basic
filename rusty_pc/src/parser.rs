@@ -8,6 +8,7 @@ use crate::filter_map::FilterMapParser;
 use crate::flatten::FlattenParser;
 use crate::many::{ManyCombiner, ManyParser, VecManyCombiner};
 use crate::map::{MapParser, MapToUnitParser};
+use crate::map_ctx::MapCtxParser;
 use crate::map_err::{
     ErrorMapper, FatalErrorOverrider, MapErrParser, SoftErrorOverrider, ToFatalErrorMapper
 };
@@ -31,7 +32,7 @@ where
     /// A parser that can store context needs to override this method.
     /// Parsers that delegate to other parsers should implement this method
     /// by propagating the context to the delegate.
-    fn set_context(&mut self, ctx: C);
+    fn set_context(&mut self, ctx: &C);
 
     // =======================================================================
     // And
@@ -285,6 +286,23 @@ where
     }
 
     // =======================================================================
+    // MapCtx
+    // =======================================================================
+
+    /// Creates a parser that propagates the context into the underlying parser
+    /// by applying the given function.
+    fn map_ctx<F, COut>(
+        self,
+        context_projection: F,
+    ) -> impl Parser<I, COut, Output = Self::Output, Error = Self::Error>
+    where
+        Self: Sized,
+        F: Fn(&COut) -> C,
+    {
+        MapCtxParser::new(self, context_projection)
+    }
+
+    // =======================================================================
     // MapErr
     // =======================================================================
 
@@ -384,24 +402,24 @@ where
     /// The right-side parser is treated as a 'complete' parser,
     /// i.e. soft errors will be converted to fatal.
     ///
+    /// The context type of the right-side parser must match
+    /// the output type of the left-side (this) parser.
+    ///
     /// # Arguments
     ///
     /// * self: this parser (the left-side parser)
     /// * other: the right-side parser
-    /// * ctx_projection: a function that maps the left-side result into the right-side context
-    fn then_with_in_context<R, F, A, O, CR>(
+    fn then_with_in_context<R, A, O>(
         self,
         other: R,
-        ctx_projection: F,
         combiner: A,
-    ) -> ThenWithContextParser<Self, R, F, A, O>
+    ) -> ThenWithContextParser<Self, R, A, O>
     where
         Self: Sized,
-        R: Parser<I, CR, Error = Self::Error>,
-        F: Fn(&Self::Output) -> CR,
+        R: Parser<I, Self::Output, Error = Self::Error>,
         A: Combiner<Self::Output, R::Output, O>,
     {
-        ThenWithContextParser::new(self, other, ctx_projection, combiner)
+        ThenWithContextParser::new(self, other, combiner)
     }
 
     // =======================================================================

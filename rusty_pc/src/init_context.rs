@@ -20,14 +20,13 @@ impl<I, COuter, CInner, P> Parser<I, COuter> for InitContextParser<P, CInner>
 where
     I: InputTrait,
     P: Parser<I, CInner>,
-    CInner: Clone,
 {
     type Output = P::Output;
     type Error = P::Error;
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
-        self.parser.set_context(self.value.clone());
+        self.parser.set_context(&self.value);
         self.parser.parse(input)
     }
 
-    fn set_context(&mut self, _ctx: COuter) {}
+    fn set_context(&mut self, _ctx: &COuter) {}
 }

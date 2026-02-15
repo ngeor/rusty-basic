@@ -33,7 +33,7 @@ where
         }
     }
 
-    fn set_context(&mut self, _ctx: ()) {}
+    fn set_context(&mut self, _ctx: &()) {}
 }
 
 /// Peeks the next element of the input.
@@ -66,7 +66,7 @@ where
         }
     }
 
-    fn set_context(&mut self, _ctx: ()) {
+    fn set_context(&mut self, _ctx: &()) {
         // do nothing
     }
 }

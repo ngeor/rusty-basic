@@ -23,7 +23,7 @@ where
         self.parser.parse(tokenizer).and_then(&self.mapper)
     }
 
-    fn set_context(&mut self, ctx: C) {
+    fn set_context(&mut self, ctx: &C) {
         self.parser.set_context(ctx)
     }
 }

@@ -196,7 +196,7 @@ where
         self.parse_token(input)
     }
 
-    fn set_context(&mut self, ctx: C) {
+    fn set_context(&mut self, ctx: &C) {
         self.parser.set_context(ctx)
     }
 }

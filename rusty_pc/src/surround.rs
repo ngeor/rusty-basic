@@ -47,7 +47,6 @@ impl<P, L, R> SurroundParser<P, L, R> {
 impl<I, C, P, L, R> Parser<I, C> for SurroundParser<P, L, R>
 where
     I: InputTrait,
-    C: Clone,
     P: Parser<I, C>,
     L: Parser<I, C, Error = P::Error>,
     R: Parser<I, C, Error = P::Error>,
@@ -91,9 +90,9 @@ where
         Ok(result)
     }
 
-    fn set_context(&mut self, ctx: C) {
-        self.parser.set_context(ctx.clone());
-        self.left.set_context(ctx.clone());
+    fn set_context(&mut self, ctx: &C) {
+        self.parser.set_context(ctx);
+        self.left.set_context(ctx);
         self.right.set_context(ctx);
     }
 }

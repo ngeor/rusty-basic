@@ -17,8 +17,8 @@ use crate::{BareName, Expression, ExpressionPos, ExpressionType, Name, NameAsTok
 pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     base_expr_pos_p()
         .then_with_in_context(
-            ctx_dot_property(),
-            |first_expr_pos| is_qualified(&first_expr_pos.element),
+            ctx_dot_property()
+                .map_ctx(|first_expr_pos: &ExpressionPos| is_qualified(&first_expr_pos.element)),
             TupleCombiner,
         )
         .and_then(|(first_expr_pos, properties)| {

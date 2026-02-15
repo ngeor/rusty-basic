@@ -70,8 +70,7 @@ fn followed_by_ws(
     parser: impl Parser<StringView, Output = ExpressionPos, Error = ParserError>,
 ) -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     parser.then_with_in_context(
-        conditionally_opt_whitespace(),
-        |e| e.is_parenthesis(),
+        conditionally_opt_whitespace().map_ctx(ExpressionTrait::is_parenthesis),
         KeepLeftCombiner,
     )
 }
@@ -124,8 +123,8 @@ pub fn expr_ws_followed_by(
     expr_parser.then_with_in_context(
         conditionally_opt_whitespace()
             .to_fatal()
-            .and_keep_right(other_parser.to_fatal().no_context()),
-        |e| e.is_parenthesis(),
+            .and_keep_right(other_parser.to_fatal().no_context())
+            .map_ctx(ExpressionTrait::is_parenthesis),
         KeepLeftCombiner,
     )
 }
@@ -138,8 +137,7 @@ pub fn expr_keyword_opt_expr(
     keyword: Keyword,
 ) -> impl Parser<StringView, Output = (ExpressionPos, Option<ExpressionPos>), Error = ParserError> {
     expression_pos_p().then_with_in_context(
-        opt_keyword_expr(keyword),
-        ExpressionTrait::is_parenthesis,
+        opt_keyword_expr(keyword).map_ctx(ExpressionTrait::is_parenthesis),
         TupleCombiner,
     )
 }

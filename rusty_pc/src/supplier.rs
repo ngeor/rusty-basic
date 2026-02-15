@@ -27,7 +27,7 @@ where
         Ok((self.0)())
     }
 
-    fn set_context(&mut self, _ctx: C) {}
+    fn set_context(&mut self, _ctx: &C) {}
 }
 
 /// A parser that always fails, providing the value returned by the given function.
@@ -55,5 +55,5 @@ where
         Err((self.0)())
     }
 
-    fn set_context(&mut self, _ctx: C) {}
+    fn set_context(&mut self, _ctx: &C) {}
 }

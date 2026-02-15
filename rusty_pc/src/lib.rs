@@ -14,6 +14,7 @@ mod lazy;
 pub mod many;
 pub mod many_ctx;
 pub mod map;
+pub mod map_ctx;
 pub mod map_err;
 mod or;
 pub mod or_default;

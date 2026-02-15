@@ -36,12 +36,12 @@ where
         }
     }
 
-    fn set_context(&mut self, ctx: C) {
+    fn set_context(&mut self, ctx: &C) {
         // This is the actual point where the context gets stored.
         // All other parser combinators are supposed to propagate
         // it with the `in_context` method, recreating themselves
         // and invoking `in_context` on the parsers they decorate.
-        self.0 = Some(ctx);
+        self.0 = Some(ctx.clone());
     }
 }
 
@@ -70,7 +70,7 @@ where
         self.parser.parse(input)
     }
 
-    fn set_context(&mut self, _ctx: C2) {}
+    fn set_context(&mut self, _ctx: &C2) {}
 }
 
 /// Based on the boolean context, parses using the left or the right parser.
@@ -107,7 +107,7 @@ where
         }
     }
 
-    fn set_context(&mut self, ctx: bool) {
-        self.context = ctx;
+    fn set_context(&mut self, ctx: &bool) {
+        self.context = *ctx;
     }
 }

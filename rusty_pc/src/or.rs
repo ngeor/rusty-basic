@@ -19,7 +19,6 @@ where
 impl<I, C, O, E> Parser<I, C> for OrParser<I, C, O, E>
 where
     I: InputTrait,
-    C: Clone,
     E: ParserErrorTrait,
 {
     type Output = O;
@@ -41,9 +40,9 @@ where
         self.parsers.last_mut().unwrap().parse(input)
     }
 
-    fn set_context(&mut self, ctx: C) {
+    fn set_context(&mut self, ctx: &C) {
         for parser in self.parsers.iter_mut() {
-            parser.set_context(ctx.clone());
+            parser.set_context(ctx);
         }
     }
 }
@@ -80,7 +79,6 @@ where
 impl<I, C, L, R> Parser<I, C> for OrParserNoBox<L, R>
 where
     I: InputTrait,
-    C: Clone,
     L: Parser<I, C>,
     R: Parser<I, C, Output = L::Output, Error = L::Error>,
 {
@@ -95,8 +93,8 @@ where
         }
     }
 
-    fn set_context(&mut self, ctx: C) {
-        self.left.set_context(ctx.clone());
+    fn set_context(&mut self, ctx: &C) {
+        self.left.set_context(ctx);
         self.right.set_context(ctx);
     }
 }

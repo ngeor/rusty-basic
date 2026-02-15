@@ -90,7 +90,7 @@ where
         }
     }
 
-    fn set_context(&mut self, ctx: ()) {
+    fn set_context(&mut self, ctx: &()) {
         self.parser.set_context(ctx);
     }
 }

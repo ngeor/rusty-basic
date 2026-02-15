@@ -46,19 +46,21 @@ where
     type Error = P::Error;
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         // set the default context before parsing begins
-        self.parser.set_context(CIn::default());
+        let mut ctx = CIn::default();
+        self.parser.set_context(&ctx);
         match self.parser.parse(input) {
             Ok(first_value) => {
                 // set the context to the underlying parser
-                self.parser
-                    .set_context((self.context_projection)(&first_value));
+                ctx = (self.context_projection)(&first_value);
+                self.parser.set_context(&ctx);
                 // seed the result
                 let mut result = self.combiner.seed(first_value);
                 loop {
                     match self.parser.parse(input) {
                         Ok(value) => {
                             // set the context of the underlying parser to the current value
-                            self.parser.set_context((self.context_projection)(&value));
+                            ctx = (self.context_projection)(&value);
+                            self.parser.set_context(&ctx);
                             // accumulate the result
                             result = self.combiner.accumulate(result, value);
                         }
@@ -83,5 +85,5 @@ where
         }
     }
 
-    fn set_context(&mut self, _ctx: COut) {}
+    fn set_context(&mut self, _ctx: &COut) {}
 }

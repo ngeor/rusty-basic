@@ -31,7 +31,7 @@ where
         }
     }
 
-    fn set_context(&mut self, ctx: COut) {
+    fn set_context(&mut self, ctx: &COut) {
         self.parser.set_context(ctx)
     }
 }

@@ -43,8 +43,7 @@ fn parse_for_step_p() -> impl Parser<
     Error = ParserError,
 > {
     parse_for_p().then_with_in_context(
-        opt_step_p(),
-        |(_, _, upper)| upper.is_parenthesis(),
+        opt_step_p().map_ctx(|(_, _, upper): &(_, _, ExpressionPos)| upper.is_parenthesis()),
         |(n, l, u), opt_step| (n, l, u, opt_step),
     )
 }

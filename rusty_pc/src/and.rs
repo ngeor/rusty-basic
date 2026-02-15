@@ -24,7 +24,6 @@ impl<L, R, F, O> AndParser<L, R, F, O> {
 impl<I, C, L, R, F, O> Parser<I, C> for AndParser<L, R, F, O>
 where
     I: InputTrait,
-    C: Clone,
     L: Parser<I, C>,
     R: Parser<I, C, Error = L::Error>,
     F: Combiner<L::Output, R::Output, O>,
@@ -46,8 +45,8 @@ where
         }
     }
 
-    fn set_context(&mut self, context: C) {
-        self.left.set_context(context.clone());
+    fn set_context(&mut self, context: &C) {
+        self.left.set_context(context);
         self.right.set_context(context);
     }
 }

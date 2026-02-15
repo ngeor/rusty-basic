@@ -10,32 +10,29 @@ use crate::{InputTrait, Parser, ParserErrorTrait};
 ///
 /// As the right-side context is always set before parsing
 /// the right-side, there is no need to use `init_context`.
-pub struct ThenWithContextParser<L, R, F, A, O> {
+pub struct ThenWithContextParser<L, R, A, O> {
     left: L,
     right: R,
-    ctx_projection: F,
     combiner: A,
     _marker: PhantomData<O>,
 }
 
-impl<L, R, F, A, O> ThenWithContextParser<L, R, F, A, O> {
-    pub(crate) fn new(left: L, right: R, ctx_projection: F, combiner: A) -> Self {
+impl<L, R, A, O> ThenWithContextParser<L, R, A, O> {
+    pub(crate) fn new(left: L, right: R, combiner: A) -> Self {
         Self {
             left,
             right,
-            ctx_projection,
             combiner,
             _marker: PhantomData,
         }
     }
 }
 
-impl<I, C, L, R, F, A, O, CR> Parser<I, C> for ThenWithContextParser<L, R, F, A, O>
+impl<I, C, L, R, A, O> Parser<I, C> for ThenWithContextParser<L, R, A, O>
 where
     I: InputTrait,
     L: Parser<I, C>,
-    R: Parser<I, CR, Error = L::Error>,
-    F: Fn(&L::Output) -> CR,
+    R: Parser<I, L::Output, Error = L::Error>,
     A: Combiner<L::Output, R::Output, O>,
 {
     type Output = O;
@@ -43,8 +40,7 @@ where
 
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         let left = self.left.parse(input)?;
-        let ctx = (self.ctx_projection)(&left);
-        self.right.set_context(ctx);
+        self.right.set_context(&left);
         match self.right.parse(input) {
             Ok(right) => Ok(self.combiner.combine(left, right)),
             // right-side error is always fatal
@@ -52,7 +48,7 @@ where
         }
     }
 
-    fn set_context(&mut self, ctx: C) {
+    fn set_context(&mut self, ctx: &C) {
         self.left.set_context(ctx);
     }
 }

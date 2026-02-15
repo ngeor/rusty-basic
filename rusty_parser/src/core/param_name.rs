@@ -97,20 +97,17 @@ fn array_indicator() -> impl Parser<StringView, Output = Option<(Token, Token)>,
 }
 
 fn extended_type() -> impl Parser<StringView, VarNameCtx, Output = ParamType, Error = ParserError> {
-    ctx_parser()
-        .map(|(_, allow_user_defined)| {
-            if allow_user_defined {
-                built_in_extended_type()
-                    .or(user_defined_type())
-                    .with_expected_message(
-                        "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-                    )
-                    .boxed()
-            } else {
-                built_in_extended_type().boxed()
-            }
-        })
-        .flatten()
+    IifCtxParser::new(
+        // allow user defined
+        built_in_extended_type()
+            .or(user_defined_type())
+            .with_expected_message(
+                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
+            ),
+        // do not allow user defined
+        built_in_extended_type(),
+    )
+    .map_ctx(|ctx: &VarNameCtx| ctx.1)
 }
 
 fn built_in_extended_type() -> impl Parser<StringView, Output = ParamType, Error = ParserError> {

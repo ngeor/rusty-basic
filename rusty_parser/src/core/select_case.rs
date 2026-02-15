@@ -105,11 +105,11 @@ mod case_expression_parser {
     use rusty_common::Positioned;
     use rusty_pc::*;
 
-    use crate::expr::{expression_pos_p, opt_second_expression_after_keyword};
+    use crate::expr::{expr_keyword_opt_expr, expression_pos_p};
     use crate::input::StringView;
     use crate::pc_specific::*;
     use crate::tokens::{TokenType, any_token};
-    use crate::{CaseExpression, ExpressionTrait, Keyword, Operator, ParserError};
+    use crate::{CaseExpression, Keyword, Operator, ParserError};
 
     pub fn parser() -> impl Parser<StringView, Output = CaseExpression, Error = ParserError> {
         case_is().or(simple_or_range())
@@ -140,12 +140,7 @@ mod case_expression_parser {
     }
 
     fn simple_or_range() -> impl Parser<StringView, Output = CaseExpression, Error = ParserError> {
-        opt_second_expression_after_keyword(
-            expression_pos_p(),
-            Keyword::To,
-            ExpressionTrait::is_parenthesis,
-        )
-        .map(|(left, opt_right)| match opt_right {
+        expr_keyword_opt_expr(Keyword::To).map(|(left, opt_right)| match opt_right {
             Some(right) => CaseExpression::Range(left, right),
             _ => CaseExpression::Simple(left),
         })

@@ -1,4 +1,4 @@
-use rusty_pc::{Parser, SurroundMode, surround};
+use rusty_pc::{IifParser, Parser, SurroundMode, surround};
 
 use crate::ParserError;
 use crate::input::StringView;
@@ -69,4 +69,25 @@ where
     C: Clone,
 {
     demand_ws().no_context().and_keep_right(parser)
+}
+
+/// Creates a parser that parses whitespace,
+/// conditionally allowing it to be missing.
+/// When [allow_none] is false, whitespace is mandatory.
+/// When [allow_none] is true, the whitespace can be missing.
+/// This is typically the case when the previously parsed
+/// token was a right side parenthesis.
+///
+/// Examples
+///
+/// * `(1 + 2)AND` no whitespace is required before `AND`
+/// * `1 + 2AND` the lack of whitespace before `AND` is an error
+pub fn conditionally_opt_whitespace()
+-> impl Parser<StringView, bool, Output = (), Error = ParserError> {
+    IifParser::new(
+        // allow none
+        opt_ws(),
+        // whitespace is required
+        whitespace_ignoring(),
+    )
 }

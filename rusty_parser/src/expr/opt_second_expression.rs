@@ -1,10 +1,10 @@
 use rusty_pc::and::TupleCombiner;
-use rusty_pc::{IifParser, Parser, ParserErrorTrait};
+use rusty_pc::{Parser, ParserErrorTrait};
 
 use crate::error::ParserError;
 use crate::expr::parsers::ws_expr_pos_p;
 use crate::input::StringView;
-use crate::pc_specific::{keyword, whitespace_ignoring};
+use crate::pc_specific::{conditionally_opt_whitespace, keyword};
 use crate::{ExpressionPos, Keyword};
 
 /// Parses an optional second expression that follows the first expression
@@ -54,25 +54,4 @@ fn ws_keyword(k: Keyword) -> impl Parser<StringView, bool, Error = ParserError> 
 
 fn err(keyword: Keyword) -> ParserError {
     ParserError::expected(&format!("expression after {}", keyword)).to_fatal()
-}
-
-/// Creates a parser that parses whitespace,
-/// conditionally allowing it to be missing.
-/// When [allow_none] is false, whitespace is mandatory.
-/// When [allow_none] is true, the whitespace can be missing.
-/// This is typically the case when the previously parsed
-/// token was a right side parenthesis.
-///
-/// Examples
-///
-/// * `(1 + 2)AND` no whitespace is required before `AND`
-/// * `1 + 2AND` the lack of whitespace before `AND` is an error
-pub(super) fn conditionally_opt_whitespace()
--> impl Parser<StringView, bool, Output = (), Error = ParserError> {
-    IifParser::new(
-        // allow none
-        whitespace_ignoring().to_option().map_to_unit(),
-        // whitespace is required
-        whitespace_ignoring(),
-    )
 }

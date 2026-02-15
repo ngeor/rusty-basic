@@ -4,7 +4,9 @@ use rusty_pc::*;
 use crate::core::var_name;
 use crate::input::StringView;
 use crate::pc_specific::*;
-use crate::{ParserError, *};
+use crate::{
+    ArrayDimensions, BareName, BuiltInStyle, DimList, DimType, Name, ParserError, ToBareName, TypeQualifier, TypedName
+};
 
 pub type DimVar = TypedName<DimType>;
 pub type DimVarPos = Positioned<DimVar>;
@@ -122,10 +124,10 @@ where
 mod array_dimensions {
     use rusty_pc::*;
 
-    use crate::expr::{expression_pos_p, opt_second_expression_after_keyword};
+    use crate::expr::expr_keyword_opt_expr;
     use crate::input::StringView;
     use crate::pc_specific::*;
-    use crate::{ParserError, *};
+    use crate::{ArrayDimension, ArrayDimensions, Keyword, ParserError};
 
     pub fn array_dimensions_p()
     -> impl Parser<StringView, Output = ArrayDimensions, Error = ParserError> {
@@ -137,12 +139,7 @@ mod array_dimensions {
     // paren_expr ws* TO ws* paren_expr
     fn array_dimension_p() -> impl Parser<StringView, Output = ArrayDimension, Error = ParserError>
     {
-        opt_second_expression_after_keyword(
-            expression_pos_p(),
-            Keyword::To,
-            ExpressionTrait::is_parenthesis,
-        )
-        .map(|(l, opt_r)| match opt_r {
+        expr_keyword_opt_expr(Keyword::To).map(|(l, opt_r)| match opt_r {
             Some(r) => ArrayDimension {
                 lbound: Some(l),
                 ubound: r,
@@ -158,12 +155,12 @@ mod array_dimensions {
 mod type_definition {
     use rusty_pc::*;
 
-    use crate::core::VarNameCtx;
+    use crate::core::{VarNameCtx, user_defined_type};
     use crate::expr::expression_pos_p;
     use crate::input::StringView;
     use crate::pc_specific::*;
     use crate::tokens::star_ws;
-    use crate::{ParserError, *};
+    use crate::{BuiltInStyle, DimType, ExpressionPos, Keyword, ParserError, TypeQualifier};
 
     pub fn extended_type()
     -> impl Parser<StringView, VarNameCtx, Output = DimType, Error = ParserError> {

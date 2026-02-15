@@ -1,7 +1,6 @@
-use rusty_pc::and::{KeepLeftCombiner, VecCombiner};
+use rusty_pc::and::{KeepLeftCombiner, TupleCombiner, VecCombiner};
 use rusty_pc::*;
 
-use crate::expr::opt_second_expression::conditionally_opt_whitespace;
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::comma_ws;
@@ -135,4 +134,29 @@ pub fn expr_ws_followed_by(
         |e| e.is_parenthesis(),
         KeepLeftCombiner,
     )
+}
+
+/// Parses an expression, followed optionally by a keyword and a second expression.
+/// If the keyword is present, the second expression is mandatory.
+///
+/// Examples: `FOR I = 1 TO 100 [STEP 5]`, `CASE 1 [TO 2]`
+pub fn expr_keyword_opt_expr(
+    keyword: Keyword,
+) -> impl Parser<StringView, Output = (ExpressionPos, Option<ExpressionPos>), Error = ParserError> {
+    expression_pos_p().then_with_in_context(
+        opt_keyword_expr(keyword),
+        ExpressionTrait::is_parenthesis,
+        TupleCombiner,
+    )
+}
+
+/// Parses the optional `TO expr` part (e.g. `CASE 1 TO 2`)
+fn opt_keyword_expr(
+    keyword: Keyword,
+) -> impl Parser<StringView, bool, Output = Option<ExpressionPos>, Error = ParserError> {
+    let msg = format!("expression after {}", keyword);
+    conditionally_opt_whitespace()
+        .and_keep_right(keyword_ignoring(keyword).no_context())
+        .and_keep_right(ws_expr_pos_p().or_expected(&msg).no_context())
+        .to_option()
 }

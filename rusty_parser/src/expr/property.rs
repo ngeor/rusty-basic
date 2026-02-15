@@ -6,7 +6,7 @@ use crate::error::ParserError;
 use crate::input::StringView;
 use crate::pc_specific::OrExpected;
 use crate::tokens::dot;
-use crate::*;
+use crate::{BareName, Expression, ExpressionPos, ExpressionType, Name, NameAsTokens};
 
 // property ::= <expr> "." <property-name>
 // property-name ::= <identifier-without-dot>

@@ -2,11 +2,11 @@ use rusty_pc::*;
 
 use crate::core::statements::zero_or_more_statements;
 use crate::error::ParserError;
-use crate::expr::{expr_pos_ws_p, opt_second_expression_after_keyword, property, ws_expr_pos_p};
+use crate::expr::{demand_expr_ws_keyword_p, property, ws_expr_pos_p};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::equal_sign_ws;
-use crate::*;
+use crate::{ExpressionPos, ExpressionTrait, ForLoop, Keyword, Statement};
 
 // FOR I = 0 TO 5 STEP 1
 // statements
@@ -42,29 +42,41 @@ fn parse_for_step_p() -> impl Parser<
     ),
     Error = ParserError,
 > {
-    opt_second_expression_after_keyword(parse_for_p(), Keyword::Step, |(_var, _low, upper)| {
-        upper.is_parenthesis()
-    })
-    .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
+    parse_for_p().then_with_in_context(
+        opt_step_p(),
+        |(_, _, upper)| upper.is_parenthesis(),
+        |(n, l, u), opt_step| (n, l, u, opt_step),
+    )
 }
 
 /// Parses the "FOR I = 1 TO 2" part
 fn parse_for_p()
 -> impl Parser<StringView, Output = (ExpressionPos, ExpressionPos, ExpressionPos), Error = ParserError>
 {
-    seq6(
-        keyword_ws_p(Keyword::For),
-        property::parser().or_expected("name after FOR"),
+    seq5(
+        keyword_ignoring(Keyword::For),
+        demand_lead_ws(property::parser().or_expected("name after FOR")),
         equal_sign_ws(),
-        expr_pos_ws_p().or_expected("lower bound of FOR loop"),
-        keyword(Keyword::To),
+        demand_expr_ws_keyword_p("lower bound of FOR loop", Keyword::To),
         ws_expr_pos_p().or_expected("upper bound of FOR loop"),
-        |_, name, _, lower_bound, _, upper_bound| (name, lower_bound, upper_bound),
+        |_, name, _, lower_bound, upper_bound| (name, lower_bound, upper_bound),
     )
 }
 
 fn next_counter_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     lead_ws(property::parser())
+}
+
+fn opt_step_p() -> impl Parser<StringView, bool, Output = Option<ExpressionPos>, Error = ParserError>
+{
+    conditionally_opt_whitespace()
+        .and_keep_right(keyword_ignoring(Keyword::Step).no_context())
+        .and_keep_right(
+            ws_expr_pos_p()
+                .or_expected("expression after STEP")
+                .no_context(),
+        )
+        .to_option()
 }
 
 #[cfg(test)]

@@ -4,7 +4,7 @@ use crate::core::name_as_tokens_p;
 use crate::expr::expression_pos_p;
 use crate::input::StringView;
 use crate::pc_specific::{WithPos, csv, in_parenthesis};
-use crate::{ParserError, *};
+use crate::{Expression, ExpressionPos, Expressions, NameAsTokens, ParserError};
 
 // function_call ::= <function-name> "(" <expr>* ")"
 // function-name ::= <identifier-with-dots>
@@ -16,7 +16,7 @@ use crate::{ParserError, *};
 //
 // A function can be qualified.
 
-pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     name_as_tokens_p()
         .and(
             in_parenthesis(csv(expression_pos_p()).or_default()),

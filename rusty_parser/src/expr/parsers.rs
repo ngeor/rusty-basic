@@ -1,11 +1,16 @@
-use rusty_pc::and::{KeepLeftCombiner, VecCombiner};
+use rusty_pc::and::{KeepLeftCombiner, TupleCombiner, VecCombiner};
 use rusty_pc::*;
 
-use crate::expr::opt_second_expression::conditionally_opt_whitespace;
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::comma_ws;
-use crate::{ExpressionPos, ExpressionTrait, Expressions, ParserError};
+use crate::{ExpressionPos, ExpressionTrait, Expressions, Keyword, ParserError};
+
+/// Parses an expression.
+pub fn expression_pos_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+    lazy(super::binary_expression::parser)
+}
+
 /// `( expr [, expr]* )`
 pub fn in_parenthesis_csv_expressions_non_opt(
     expectation: &str,
@@ -35,37 +40,15 @@ pub fn csv_expressions_first_guarded()
     )
 }
 
-pub fn expression_pos_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-    lazy(eager_expression_pos_p)
-}
-
 /// Parses an expression that is either preceded by whitespace
 /// or is a parenthesis expression.
 ///
 /// ```text
-/// <ws> <expr-not-in-parenthesis> |
-/// <ws> <expr-in-parenthesis> |
-/// <expr-in-parenthesis>
+/// <expr-in-parenthesis> |
+/// <ws> <expr>
 /// ```
 pub fn ws_expr_pos_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-    // ws* ( expr )
-    // ws+ expr
-    preceded_by_ws(expression_pos_p())
-}
-
-/// Parses an expression that is either followed by whitespace
-/// or is a parenthesis expression.
-///
-/// The whitespace is mandatory after a non-parenthesis
-/// expression.
-///
-/// ```text
-/// <expr-not-in-parenthesis> <ws> |
-/// <expr-in-parenthesis> <ws> |
-/// <expr-in-parenthesis>
-/// ```
-pub fn expr_pos_ws_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-    followed_by_ws(expression_pos_p())
+    super::parenthesis::parser().or(lead_ws(expression_pos_p()))
 }
 
 /// Parses an expression that is either surrounded by whitespace
@@ -83,12 +66,6 @@ pub fn ws_expr_pos_ws_p() -> impl Parser<StringView, Output = ExpressionPos, Err
     followed_by_ws(ws_expr_pos_p())
 }
 
-fn preceded_by_ws(
-    parser: impl Parser<StringView, Output = ExpressionPos, Error = ParserError>,
-) -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-    super::guard::parser().and_keep_right(parser)
-}
-
 fn followed_by_ws(
     parser: impl Parser<StringView, Output = ExpressionPos, Error = ParserError>,
 ) -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
@@ -99,8 +76,81 @@ fn followed_by_ws(
     )
 }
 
-/// Parses an expression
-fn eager_expression_pos_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError>
-{
-    super::binary_expression::parser()
+/// Parses an expression,
+/// then demands whitespace, unless the expression is a parenthesis.
+/// Finally it demands the given keyword.
+pub fn expr_ws_keyword_p(
+    keyword: Keyword,
+) -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+    expr_ws_followed_by(expression_pos_p(), keyword_ignoring(keyword))
+}
+
+/// Parses an expression, failing fatally with the given expectation message if it can't be parsed.
+/// Then it demands whitespace, unless the expression is a parenthesis.
+/// Finally it demands the given keyword.
+pub fn demand_expr_ws_keyword_p(
+    expectation: &str,
+    keyword: Keyword,
+) -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+    expr_ws_followed_by(
+        expression_pos_p().or_expected(expectation),
+        keyword_ignoring(keyword),
+    )
+}
+
+pub fn ws_expr_ws_keyword_p(
+    keyword: Keyword,
+) -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+    expr_ws_followed_by(ws_expr_pos_p(), keyword_ignoring(keyword))
+}
+
+pub fn demand_ws_expr_ws_keyword_p(
+    expectation: &str,
+    keyword: Keyword,
+) -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+    expr_ws_followed_by(
+        ws_expr_pos_p().or_expected(expectation),
+        keyword_ignoring(keyword),
+    )
+}
+
+/// Parses the expression using the given parser,
+/// then demands whitespace, unless the expression is a parenthesis.
+/// Finally it demands the second parser.
+pub fn expr_ws_followed_by(
+    expr_parser: impl Parser<StringView, Output = ExpressionPos, Error = ParserError>,
+    other_parser: impl Parser<StringView, Error = ParserError>,
+) -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+    expr_parser.then_with_in_context(
+        conditionally_opt_whitespace()
+            .to_fatal()
+            .and_keep_right(other_parser.to_fatal().no_context()),
+        |e| e.is_parenthesis(),
+        KeepLeftCombiner,
+    )
+}
+
+/// Parses an expression, followed optionally by a keyword and a second expression.
+/// If the keyword is present, the second expression is mandatory.
+///
+/// Examples: `FOR I = 1 TO 100 [STEP 5]`, `CASE 1 [TO 2]`
+pub fn expr_keyword_opt_expr(
+    keyword: Keyword,
+) -> impl Parser<StringView, Output = (ExpressionPos, Option<ExpressionPos>), Error = ParserError> {
+    expression_pos_p().then_with_in_context(
+        opt_keyword_expr(keyword),
+        ExpressionTrait::is_parenthesis,
+        TupleCombiner,
+    )
+}
+
+/// Parses the optional `TO expr` part (e.g. `CASE 1 TO 2`)
+fn opt_keyword_expr(
+    keyword: Keyword,
+) -> impl Parser<StringView, bool, Output = Option<ExpressionPos>, Error = ParserError> {
+    let msg = format!("expression after {}", keyword);
+    conditionally_opt_whitespace()
+        .and_keep_right(keyword_ignoring(keyword).no_context())
+        .and_keep_right(ws_expr_pos_p().or_expected(&msg).no_context())
+        .to_option()
 }

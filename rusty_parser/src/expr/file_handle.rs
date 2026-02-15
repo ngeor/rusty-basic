@@ -8,7 +8,7 @@ use crate::expr::ws_expr_pos_p;
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{TokenType, any_token_of, pound};
-use crate::*;
+use crate::{Expression, ExpressionPos, FileHandle};
 
 pub fn file_handle_p()
 -> impl Parser<StringView, Output = Positioned<FileHandle>, Error = ParserError> {

@@ -5,10 +5,10 @@ use crate::error::ParserError;
 use crate::input::StringView;
 use crate::pc_specific::WithPos;
 use crate::tokens::{TokenType, any_token_of};
-use crate::*;
+use crate::{Expression, ExpressionPos};
 
 // result ::= <digits> | <hex-digits> | <oct-digits>
-pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     any_token_of!(
         TokenType::Digits,
         TokenType::HexDigits,

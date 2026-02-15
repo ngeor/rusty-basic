@@ -103,9 +103,17 @@ where
     }
 }
 
-/// Combines two vectors by concatenating them into one.
+/// Combines items into a vector.
 pub struct VecCombiner;
 
+/// Combines two items into a vector.
+impl<L> Combiner<L, L, Vec<L>> for VecCombiner {
+    fn combine(&self, left: L, right: L) -> Vec<L> {
+        vec![left, right]
+    }
+}
+
+/// Combines two vectors by concatenating them into one.
 impl<L> Combiner<Vec<L>, Vec<L>, Vec<L>> for VecCombiner {
     fn combine(&self, mut left: Vec<L>, mut right: Vec<L>) -> Vec<L> {
         left.append(&mut right);

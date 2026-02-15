@@ -1,4 +1,3 @@
-// TODO consider nesting variable/function_call modules inside property as they are only used there
 use std::collections::VecDeque;
 
 use rusty_pc::*;
@@ -6,7 +5,9 @@ use rusty_pc::*;
 use crate::core::{name_as_tokens_p, token_to_type_qualifier};
 use crate::input::StringView;
 use crate::pc_specific::WithPos;
-use crate::{ParserError, *};
+use crate::{
+    BareName, Expression, ExpressionPos, ExpressionType, Name, NameAsTokens, ParserError, VariableInfo
+};
 
 // variable ::= <identifier-with-dots>
 //           |  <identifier-with-dots> <type-qualifier>
@@ -15,7 +16,7 @@ use crate::{ParserError, *};
 // must not be followed by parenthesis (solved by ordering of parsers)
 //
 // if <identifier-with-dots> contains dots, it might be converted to a property expression
-pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     name_as_tokens_p().map(map_to_expr).with_pos()
 }
 

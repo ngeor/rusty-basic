@@ -3,14 +3,14 @@ use rusty_pc::and::TupleCombiner;
 use rusty_pc::*;
 
 use crate::error::ParserError;
-use crate::expr::expression_pos_p;
+use crate::expr::{expression_pos_p, ws_expr_pos_p};
 use crate::input::StringView;
 use crate::pc_specific::{OrExpected, WithPos, lead_opt_ws, lead_ws};
 use crate::tokens::{TokenType, any_token};
-use crate::*;
+use crate::{ExpressionPos, ExpressionPosTrait, ExpressionTrait, Keyword, Operator};
 
 // result ::= <non-bin-expr> <operator> <expr>
-pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     non_bin_expr()
         .then_with_in_context(
             second_parser(),
@@ -31,7 +31,7 @@ fn second_parser() -> impl Parser<
     Error = ParserError,
 > {
     operator()
-        .then_with_in_context(third_parser(), is_keyword_op, TupleCombiner)
+        .then_with_in_context(expr_after_binary_operator(), is_keyword_op, TupleCombiner)
         .to_option()
 }
 
@@ -39,20 +39,16 @@ fn is_keyword_op(op: &Positioned<Operator>) -> bool {
     op.element == Operator::And || op.element == Operator::Or || op.element == Operator::Modulo
 }
 
-fn third_parser() -> impl Parser<StringView, bool, Output = ExpressionPos, Error = ParserError> {
-    IifParser::new(
-        super::guard::parser().to_fatal(),
-        super::guard::parser().to_option().map_to_unit(),
-    )
-    .and_keep_right(right_side_expr().no_context())
-}
-
-/// Parses the right side expression, after having parsed the binary operator
-fn right_side_expr() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+fn expr_after_binary_operator()
+-> impl Parser<StringView, bool, Output = ExpressionPos, Error = ParserError> {
     // boxed breaks apart the recursive type evaluation
-    expression_pos_p()
-        .or_expected("expression after operator")
-        .boxed()
+    IifParser::new(
+        // the previous operator is a keyword op, must have whitespace or parenthesis
+        ws_expr_pos_p().boxed(),
+        // the previous operator is a symbol, whitespace is optional
+        lead_opt_ws(expression_pos_p().boxed()),
+    )
+    .or_expected("expression after operator")
 }
 
 fn non_bin_expr() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
@@ -77,7 +73,7 @@ fn operator() -> impl Parser<StringView, bool, Output = Positioned<Operator>, Er
         // no whitespace needed
         lead_opt_ws(operator_p()),
         // whitespace needed
-        lead_ws(operator_p()).or(lead_opt_ws(symbol_operator_p())),
+        symbol_operator_p().or(lead_ws(operator_p())),
     )
 }
 

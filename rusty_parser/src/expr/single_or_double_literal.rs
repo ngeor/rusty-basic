@@ -3,7 +3,7 @@ use rusty_pc::*;
 use crate::input::StringView;
 use crate::pc_specific::WithPos;
 use crate::tokens::{digits, dot, pound};
-use crate::{ParserError, *};
+use crate::{Expression, ExpressionPos, ParserError};
 
 // single ::= <digits> . <digits>
 // single ::= . <digits> (without leading zero)
@@ -12,7 +12,7 @@ use crate::{ParserError, *};
 
 // TODO support more qualifiers besides '#'
 
-pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     // read integer digits optionally (might start with . e.g. `.123`)
     digits()
         .to_option()

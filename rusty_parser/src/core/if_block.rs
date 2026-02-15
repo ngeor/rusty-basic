@@ -5,7 +5,7 @@ use crate::core::single_line_statements::{
     single_line_non_comment_statements_p, single_line_statements_p
 };
 use crate::core::statements::zero_or_more_statements;
-use crate::expr::ws_expr_pos_ws_p;
+use crate::expr::demand_ws_expr_ws_keyword_p;
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::{ParserError, *};
@@ -35,12 +35,10 @@ pub fn if_block_p() -> impl Parser<StringView, Output = Statement, Error = Parse
 // multi line if    ::= statements else-if-blocks else-block END IF
 
 fn if_expr_then_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-    seq3(
-        keyword(Keyword::If),
-        ws_expr_pos_ws_p().or_expected("expression after IF"),
-        keyword(Keyword::Then),
-        |_, m, _| m,
-    )
+    keyword(Keyword::If).and_keep_right(demand_ws_expr_ws_keyword_p(
+        "expression after IF",
+        Keyword::Then,
+    ))
 }
 
 fn single_line_if_else_p() -> impl Parser<
@@ -79,12 +77,10 @@ fn multi_line_if_p() -> impl Parser<
 }
 
 fn else_if_expr_then_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-    seq3(
-        keyword(Keyword::ElseIf),
-        ws_expr_pos_ws_p().or_expected("expression after ELSEIF"),
-        keyword(Keyword::Then),
-        |_, m, _| m,
-    )
+    keyword(Keyword::ElseIf).and_keep_right(demand_ws_expr_ws_keyword_p(
+        "expression after ELSEIF",
+        Keyword::Then,
+    ))
 }
 
 fn else_if_block_p() -> impl Parser<StringView, Output = ConditionalBlock, Error = ParserError> {

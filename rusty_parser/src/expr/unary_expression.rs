@@ -1,27 +1,34 @@
 use rusty_common::Positioned;
 use rusty_pc::*;
 
-use crate::expr::{expression_pos_p, guard};
+use crate::expr::{expression_pos_p, ws_expr_pos_p};
 use crate::input::StringView;
 use crate::pc_specific::{OrExpected, WithPos, keyword};
 use crate::tokens::minus_sign;
-use crate::{ParserError, *};
+use crate::{ExpressionPos, ExpressionPosTrait, Keyword, ParserError, UnaryOperator};
 
-pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-    seq2(
-        unary_op(),
-        expression_pos_p().or_expected("expression after unary operator"),
-        |Positioned { element: op, pos }, expr| expr.apply_unary_priority_order(op, pos),
-    )
+pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+    unary_minus()
+        .or(unary_not())
+        .map(|(Positioned { element: op, pos }, expr)| expr.apply_unary_priority_order(op, pos))
 }
 
-fn unary_op() -> impl Parser<StringView, Output = Positioned<UnaryOperator>, Error = ParserError> {
+fn unary_minus()
+-> impl Parser<StringView, Output = (Positioned<UnaryOperator>, ExpressionPos), Error = ParserError>
+{
     minus_sign()
         .map(|_| UnaryOperator::Minus)
-        .or(keyword(Keyword::Not)
-            .and_keep_right(guard::parser().to_fatal())
-            .map(|_| UnaryOperator::Not))
         .with_pos()
+        .and_tuple(expression_pos_p().or_expected("expression after -"))
+}
+
+fn unary_not()
+-> impl Parser<StringView, Output = (Positioned<UnaryOperator>, ExpressionPos), Error = ParserError>
+{
+    keyword(Keyword::Not)
+        .map(|_| UnaryOperator::Not)
+        .with_pos()
+        .and_tuple(ws_expr_pos_p().or_expected("expression after NOT"))
 }
 
 #[cfg(test)]

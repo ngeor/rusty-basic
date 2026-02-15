@@ -3,9 +3,9 @@ use rusty_pc::Parser;
 use crate::built_ins::built_in_function_call_p;
 use crate::input::StringView;
 use crate::pc_specific::WithPos;
-use crate::{ParserError, *};
+use crate::{ExpressionPos, ParserError};
 
-pub fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     built_in_function_call_p().with_pos()
 }
 

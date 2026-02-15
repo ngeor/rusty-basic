@@ -4,7 +4,7 @@ use crate::{InputTrait, Parser};
 pub struct IifCtxParser<L, R> {
     left: L,
     right: R,
-    context: bool,
+    context: Option<bool>,
 }
 
 impl<L, R> IifCtxParser<L, R> {
@@ -17,7 +17,7 @@ impl<L, R> IifCtxParser<L, R> {
         Self {
             left,
             right,
-            context: false,
+            context: None,
         }
     }
 }
@@ -32,7 +32,7 @@ where
     type Error = L::Error;
 
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
-        if self.context {
+        if self.context.expect("context is not initialized") {
             self.left.parse(input)
         } else {
             self.right.parse(input)
@@ -40,6 +40,6 @@ where
     }
 
     fn set_context(&mut self, ctx: &bool) {
-        self.context = *ctx;
+        self.context = Some(*ctx);
     }
 }

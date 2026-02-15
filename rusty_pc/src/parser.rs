@@ -1,3 +1,4 @@
+use crate::ThenWithContextParser;
 use crate::and::{AndParser, Combiner, KeepLeftCombiner, KeepRightCombiner, TupleCombiner};
 use crate::and_then::AndThenParser;
 use crate::and_then_err::AndThenErrParser;
@@ -12,10 +13,10 @@ use crate::map_ctx::MapCtxParser;
 use crate::map_err::{
     ErrorMapper, FatalErrorOverrider, MapErrParser, SoftErrorOverrider, ToFatalErrorMapper
 };
+use crate::no_context::NoContextParser;
 use crate::or_default::OrDefaultParser;
 use crate::peek::PeekParser;
 use crate::to_option::ToOptionParser;
-use crate::{NoContextParser, ThenWithContextParser};
 
 /// A parser uses the given input in order to produce a result.
 pub trait Parser<I, C = ()>
@@ -348,7 +349,11 @@ where
     // NoContext
     // =======================================================================
 
-    fn no_context<C2>(self) -> NoContextParser<Self, C, C2>
+    /// Stops propagating the context to the underlying parser.
+    /// The underlying parser might also have a different context type,
+    /// so this can be used to resolve context type mismatches,
+    /// as long as the underlying parser does not use the parent context.
+    fn no_context<COut>(self) -> NoContextParser<Self, COut, C>
     where
         Self: Sized,
     {

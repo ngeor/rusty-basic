@@ -44,35 +44,6 @@ where
         self.0 = Some(ctx.clone());
     }
 }
-
-pub struct NoContextParser<P, C1, C2> {
-    parser: P,
-    _marker: PhantomData<(C1, C2)>,
-}
-
-impl<P, C1, C2> NoContextParser<P, C1, C2> {
-    pub(crate) fn new(parser: P) -> Self {
-        Self {
-            parser,
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<I, C1, C2, P> Parser<I, C2> for NoContextParser<P, C1, C2>
-where
-    P: Parser<I, C1>,
-    I: InputTrait,
-{
-    type Output = P::Output;
-    type Error = P::Error;
-    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
-        self.parser.parse(input)
-    }
-
-    fn set_context(&mut self, _ctx: &C2) {}
-}
-
 /// Based on the boolean context, parses using the left or the right parser.
 pub struct IifParser<L, R> {
     left: L,

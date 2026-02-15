@@ -6,6 +6,11 @@ use crate::pc_specific::*;
 use crate::tokens::comma_ws;
 use crate::{ExpressionPos, ExpressionTrait, Expressions, Keyword, ParserError};
 
+/// Parses an expression.
+pub fn expression_pos_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
+    lazy(super::binary_expression::parser)
+}
+
 /// `( expr [, expr]* )`
 pub fn in_parenthesis_csv_expressions_non_opt(
     expectation: &str,
@@ -35,10 +40,6 @@ pub fn csv_expressions_first_guarded()
     )
 }
 
-pub fn expression_pos_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
-    lazy(eager_expression_pos_p)
-}
-
 /// Parses an expression that is either preceded by whitespace
 /// or is a parenthesis expression.
 ///
@@ -61,7 +62,6 @@ pub fn ws_expr_pos_p() -> impl Parser<StringView, Output = ExpressionPos, Error 
 /// <ws> <expr-in-parenthesis> <ws> |
 /// <expr-in-parenthesis>
 /// ```
-#[deprecated]
 pub fn ws_expr_pos_ws_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     followed_by_ws(ws_expr_pos_p())
 }
@@ -74,12 +74,6 @@ fn followed_by_ws(
         |e| e.is_parenthesis(),
         KeepLeftCombiner,
     )
-}
-
-/// Parses an expression
-fn eager_expression_pos_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError>
-{
-    super::binary_expression::parser()
 }
 
 /// Parses an expression,

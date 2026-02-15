@@ -34,8 +34,6 @@ pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserErro
     seq6(
         keyword(Keyword::Open),
         ws_expr_pos_ws_p().or_expected("file name after OPEN"),
-        // keyword::For or Keyword::Access or Keyword::AS
-        // TODO merge the next 3 parsers altogether
         parse_open_mode_p().to_option(),
         parse_open_access_p().to_option(),
         parse_file_number_p().or_expected("AS file-number"),

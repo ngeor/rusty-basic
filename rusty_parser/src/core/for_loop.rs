@@ -2,13 +2,11 @@ use rusty_pc::*;
 
 use crate::core::statements::zero_or_more_statements;
 use crate::error::ParserError;
-use crate::expr::{
-    demand_expr_ws_keyword_p, opt_second_expression_after_keyword, property, ws_expr_pos_p
-};
+use crate::expr::{demand_expr_ws_keyword_p, property, ws_expr_pos_p};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::equal_sign_ws;
-use crate::*;
+use crate::{ExpressionPos, ExpressionTrait, ForLoop, Keyword, Statement};
 
 // FOR I = 0 TO 5 STEP 1
 // statements
@@ -44,10 +42,11 @@ fn parse_for_step_p() -> impl Parser<
     ),
     Error = ParserError,
 > {
-    opt_second_expression_after_keyword(parse_for_p(), Keyword::Step, |(_var, _low, upper)| {
-        upper.is_parenthesis()
-    })
-    .map(|((n, l, u), opt_step)| (n, l, u, opt_step))
+    parse_for_p().then_with_in_context(
+        opt_step_p(),
+        |(_, _, upper)| upper.is_parenthesis(),
+        |(n, l, u), opt_step| (n, l, u, opt_step),
+    )
 }
 
 /// Parses the "FOR I = 1 TO 2" part
@@ -66,6 +65,18 @@ fn parse_for_p()
 
 fn next_counter_p() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {
     lead_ws(property::parser())
+}
+
+fn opt_step_p() -> impl Parser<StringView, bool, Output = Option<ExpressionPos>, Error = ParserError>
+{
+    conditionally_opt_whitespace()
+        .and_keep_right(keyword_ignoring(Keyword::Step).no_context())
+        .and_keep_right(
+            ws_expr_pos_p()
+                .or_expected("expression after STEP")
+                .no_context(),
+        )
+        .to_option()
 }
 
 #[cfg(test)]

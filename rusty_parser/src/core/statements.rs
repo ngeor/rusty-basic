@@ -1,5 +1,5 @@
 use rusty_common::Positioned;
-use rusty_pc::and::KeepRightCombiner;
+use rusty_pc::and::KeepLeftCombiner;
 use rusty_pc::*;
 
 use crate::core::statement::statement_p;
@@ -7,7 +7,7 @@ use crate::core::statement_separator::{comment_separator, common_separator};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{TokenMatcher, peek_token};
-use crate::*;
+use crate::{Keyword, ParserError, Statement, StatementPos, Statements};
 
 macro_rules! zero_or_more_statements {
     ($exit:expr, ParserError::$err:ident) => {
@@ -31,18 +31,17 @@ pub fn zero_or_more_statements_p(
     exit_keywords: &[Keyword],
     custom_err: Option<ParserError>,
 ) -> impl Parser<StringView, Output = Statements, Error = ParserError> {
-    one_statement_p(exit_keywords, custom_err)
-        .zero_or_more()
-        // Initialize the context before the loop of "zero_or_more" starts.
-        // The context indicates if the previous statement was a comment.
-        .init_context(false)
+    // parse the first separator
+    common_separator()
+        .or_expected("end-of-statement")
+        .and_keep_right(one_statement_p(exit_keywords, custom_err).zero_or_more())
 }
 
 /// Either parses one statement or detects the exit keyword and stops parsing.
 fn one_statement_p(
     exit_keywords: &[Keyword],
     custom_err: Option<ParserError>,
-) -> impl Parser<StringView, bool, Output = StatementPos, Error = ParserError> {
+) -> impl Parser<StringView, Output = StatementPos, Error = ParserError> {
     one_statement_or_exit_keyword_p(exit_keywords, custom_err).and_then(
         |statement_or_exit_keyword| match statement_or_exit_keyword {
             // we parsed a statement, return it
@@ -60,40 +59,12 @@ fn one_statement_p(
 fn one_statement_or_exit_keyword_p(
     exit_keywords: &[Keyword],
     custom_err: Option<ParserError>,
-) -> impl Parser<StringView, bool, Output = StatementOrExitKeyword, Error = ParserError> {
-    ThenWithLeftParser::new(
-        // must parse the separator
-        ctx_demand_separator_p(),
-        // must parse the statement or peek the exit keyword
-        find_exit_keyword_or_demand_statement_p(exit_keywords, custom_err),
-        // populate the context of the separator for the next iteration
-        is_comment,
-        // keep only the statement or the peeked exit keyword
-        KeepRightCombiner,
+) -> impl Parser<StringView, Output = StatementOrExitKeyword, Error = ParserError> {
+    // must parse the statement or peek the exit keyword
+    find_exit_keyword_or_demand_statement_p(exit_keywords, custom_err).then_with_in_context(
+        ctx_demand_separator_p().map_ctx(Context::from),
+        KeepLeftCombiner,
     )
-}
-
-fn is_comment(statement_or_exit_keyword: &StatementOrExitKeyword) -> bool {
-    matches!(
-        statement_or_exit_keyword,
-        StatementOrExitKeyword::Statement(Positioned {
-            element: Statement::Comment(_),
-            ..
-        })
-    )
-}
-
-/// A statement separator that is aware if the previously parsed statement
-/// was a comment or not.
-fn ctx_demand_separator_p() -> impl Parser<StringView, bool, Output = (), Error = ParserError> {
-    // TODO consolidate the two separate separator functions, they are almost never used elsewhere
-    IifParser::new(
-        // last statement was comment
-        comment_separator(),
-        // last statement was not comment
-        common_separator(),
-    )
-    .or_expected("end-of-statement")
 }
 
 fn find_exit_keyword_or_demand_statement_p(
@@ -145,8 +116,42 @@ fn demand_statement_p()
         .or_expected("statement")
 }
 
+/// A statement separator that is aware if the previously parsed statement
+/// was a comment or not.
+fn ctx_demand_separator_p() -> impl Parser<StringView, Context, Output = (), Error = ParserError> {
+    // TODO consolidate the two separate separator functions, they are almost never used elsewhere
+    ctx_parser()
+        .map(|ctx: Context| match ctx {
+            Context::Statement => common_separator().boxed(),
+            Context::Comment => comment_separator().boxed(),
+            Context::ExitKeyword => supplier(|| ()).boxed(),
+        })
+        .flatten()
+        .or_expected("end-of-statement")
+}
+
 #[allow(clippy::large_enum_variant)]
 enum StatementOrExitKeyword {
     Statement(StatementPos),
     ExitKeyword,
+}
+
+#[derive(Clone, Copy)]
+enum Context {
+    Statement,
+    Comment,
+    ExitKeyword,
+}
+
+impl Context {
+    fn from(s: &StatementOrExitKeyword) -> Self {
+        match s {
+            StatementOrExitKeyword::Statement(Positioned {
+                element: Statement::Comment(_),
+                ..
+            }) => Self::Comment,
+            StatementOrExitKeyword::Statement(_) => Self::Statement,
+            StatementOrExitKeyword::ExitKeyword => Self::ExitKeyword,
+        }
+    }
 }

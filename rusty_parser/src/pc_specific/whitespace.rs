@@ -1,4 +1,4 @@
-use rusty_pc::{IifParser, Parser, SurroundMode, surround};
+use rusty_pc::{IifCtxParser, Parser, SurroundMode, surround};
 
 use crate::ParserError;
 use crate::input::StringView;
@@ -84,7 +84,7 @@ where
 /// * `1 + 2AND` the lack of whitespace before `AND` is an error
 pub fn conditionally_opt_whitespace()
 -> impl Parser<StringView, bool, Output = (), Error = ParserError> {
-    IifParser::new(
+    IifCtxParser::new(
         // allow none
         opt_ws(),
         // whitespace is required

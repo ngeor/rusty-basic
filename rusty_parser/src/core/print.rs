@@ -161,7 +161,7 @@ fn print_args_parser() -> impl Parser<StringView, Output = Vec<PrintArg>, Error 
 }
 
 fn print_arg_parser() -> impl Parser<StringView, bool, Output = PrintArg, Error = ParserError> {
-    IifParser::new(delimiter_print_arg(), any_print_arg())
+    IifCtxParser::new(delimiter_print_arg(), any_print_arg())
 }
 
 fn any_print_arg() -> impl Parser<StringView, Output = PrintArg, Error = ParserError> {

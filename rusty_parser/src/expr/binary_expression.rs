@@ -44,7 +44,7 @@ fn is_keyword_op(op: &Positioned<Operator>) -> bool {
 fn expr_after_binary_operator()
 -> impl Parser<StringView, bool, Output = ExpressionPos, Error = ParserError> {
     // boxed breaks apart the recursive type evaluation
-    IifParser::new(
+    IifCtxParser::new(
         // the previous operator is a keyword op, must have whitespace or parenthesis
         ws_expr_pos_p().boxed(),
         // the previous operator is a symbol, whitespace is optional
@@ -71,7 +71,7 @@ fn non_bin_expr() -> impl Parser<StringView, Output = ExpressionPos, Error = Par
 /// parenthesis. If that is the case, leading whitespace is not required for
 /// keyword based operators.
 fn operator() -> impl Parser<StringView, bool, Output = Positioned<Operator>, Error = ParserError> {
-    IifParser::new(
+    IifCtxParser::new(
         // no whitespace needed
         lead_opt_ws(operator_p()),
         // whitespace needed

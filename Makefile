@@ -36,3 +36,7 @@ print-type-size: clean
 
 print-longest-type-length: clean
 	@RUSTFLAGS="-Zprint-type-sizes" cargo build -p rusty_parser | perl -e 'print sort { length($$b) <=> length($$a) } <>' | grep Parser | grep -v std | awk '{print length}' | head -n1
+
+# Fix executable permission issues on Samba
+chmod-x:
+	git status -s | grep ' M ' | cut -d\  -f3 | xargs -n1 chmod -x

@@ -15,7 +15,7 @@ use crate::map_err::{
 use crate::or_default::OrDefaultParser;
 use crate::peek::PeekParser;
 use crate::to_option::ToOptionParser;
-use crate::{InitContextParser, NoContextParser, ThenWithContextParser};
+use crate::{NoContextParser, ThenWithContextParser};
 
 /// A parser uses the given input in order to produce a result.
 pub trait Parser<I, C = ()>
@@ -211,20 +211,6 @@ where
         Self::Output: Parser<I, CIn, Error = Self::Error>,
     {
         FlattenParser::new(self)
-    }
-
-    // =======================================================================
-    // InitContext
-    // =======================================================================
-
-    /// Creates a parser that will initialize the context of the underlying parser
-    /// to the given value before parsing starts.
-    fn init_context(self, value: C) -> InitContextParser<Self, C>
-    where
-        Self: Sized,
-        C: Clone,
-    {
-        InitContextParser::new(self, value)
     }
 
     // =======================================================================

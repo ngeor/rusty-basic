@@ -9,7 +9,6 @@ pub mod delimited;
 pub mod filter;
 pub mod filter_map;
 pub mod flatten;
-mod init_context;
 mod lazy;
 pub mod many;
 pub mod many_ctx;
@@ -30,7 +29,6 @@ mod token;
 mod top_level;
 
 pub use ctx::*;
-pub use init_context::*;
 pub use lazy::*;
 pub use or::*;
 pub use parser::*;

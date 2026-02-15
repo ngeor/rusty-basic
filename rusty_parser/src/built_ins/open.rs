@@ -7,6 +7,29 @@ use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::equal_sign_ws;
 use crate::{BuiltInSub, ParserError, *};
+
+/// Original doc from QBasic regarding OPEN:
+///
+/// Opens a file or device.
+///
+/// ```txt
+/// OPEN file$ [FOR mode] [ACCESS access] [lock] AS [#]filenumber% [LEN=reclen%]
+/// ```
+///
+/// file$: The name of the file or device. The file name may include a drive and path.
+///
+/// mode: One of the following file modes: APPEND, BINARY, INPUT, OUTPUT, or RANDOM.
+///
+/// access: In network environments, specifies whether the file is
+/// opened for READ, WRITE, or READ WRITE access.
+///
+/// lock: Specifies the file locking in network environments:
+/// SHARED, LOCK READ, LOCK WRITE, LOCK READ WRITE.
+///
+/// filenumber%: A number in the range 1 through 255 that identifies the file while it is open.
+///
+/// reclen%: For random-access files, the record length (default is 128 bytes). For sequential files,
+/// the number of characters buffered (default is 512 bytes).
 pub fn parse() -> impl Parser<StringView, Output = Statement, Error = ParserError> {
     seq6(
         keyword(Keyword::Open),

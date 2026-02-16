@@ -1,29 +1,38 @@
-use crate::{InputTrait, Parser, ParserErrorTrait};
+use crate::map_decorator::{MapDecorator, MapDecoratorMarker};
+use crate::{InputTrait, Parser};
 
 pub struct ToOptionParser<P> {
     parser: P,
 }
+
 impl<P> ToOptionParser<P> {
     pub(crate) fn new(parser: P) -> Self {
         Self { parser }
     }
 }
-impl<I, C, P> Parser<I, C> for ToOptionParser<P>
+
+impl<I, C, P> MapDecorator<I, C> for ToOptionParser<P>
 where
     I: InputTrait,
     P: Parser<I, C>,
 {
+    type OriginalOutput = P::Output;
     type Output = Option<P::Output>;
     type Error = P::Error;
-    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
-        match self.parser.parse(input) {
-            Ok(value) => Ok(Some(value)),
-            Err(err) if err.is_soft() => Ok(None),
-            Err(err) => Err(err),
-        }
+
+    fn decorated(
+        &mut self,
+    ) -> &mut impl Parser<I, C, Output = Self::OriginalOutput, Error = Self::Error> {
+        &mut self.parser
     }
 
-    fn set_context(&mut self, ctx: &C) {
-        self.parser.set_context(ctx)
+    fn map_ok(&self, ok: Self::OriginalOutput) -> Self::Output {
+        Some(ok)
+    }
+
+    fn map_soft_error(&self, _err: Self::Error) -> Result<Self::Output, Self::Error> {
+        Ok(None)
     }
 }
+
+impl<P> MapDecoratorMarker for ToOptionParser<P> {}

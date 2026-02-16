@@ -16,6 +16,12 @@ where
 
     /// Maps the successful result of the parser.
     fn map_ok(&self, ok: Self::OriginalOutput) -> Self::Output;
+
+    /// Maps the soft error of the parser.
+    /// By default, the error is returned as-is. However, it is possible to override this behavior.
+    fn map_soft_error(&self, err: Self::Error) -> Result<Self::Output, Self::Error> {
+        Err(err)
+    }
 }
 
 /// Marker trait for `MapDecorator`.
@@ -33,6 +39,7 @@ where
     fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
         match self.decorated().parse(input) {
             Ok(ok) => Ok(self.map_ok(ok)),
+            Err(err) if err.is_soft() => self.map_soft_error(err),
             Err(err) => Err(err),
         }
     }

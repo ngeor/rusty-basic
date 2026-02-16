@@ -28,8 +28,8 @@ where
         &mut self.parser
     }
 
-    fn map_ok(&self, ok: Self::OriginalOutput) -> Self::Output {
-        ok
+    fn map_ok(&self, ok: Self::OriginalOutput) -> Result<Self::Output, Self::Error> {
+        Ok(ok)
     }
 
     fn map_soft_error(&self, err: Self::Error) -> Result<Self::Output, Self::Error> {

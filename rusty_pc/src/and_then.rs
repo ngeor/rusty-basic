@@ -1,3 +1,4 @@
+use crate::map_decorator::{MapDecorator, MapDecoratorMarker};
 use crate::{InputTrait, Parser};
 
 pub struct AndThenParser<P, F> {
@@ -11,19 +12,25 @@ impl<P, F> AndThenParser<P, F> {
     }
 }
 
-impl<I, C, P, F, U> Parser<I, C> for AndThenParser<P, F>
+impl<I, C, P, F, U> MapDecorator<I, C> for AndThenParser<P, F>
 where
     I: InputTrait,
     P: Parser<I, C>,
     F: Fn(P::Output) -> Result<U, P::Error>,
 {
+    type OriginalOutput = P::Output;
     type Output = U;
     type Error = P::Error;
-    fn parse(&mut self, tokenizer: &mut I) -> Result<Self::Output, Self::Error> {
-        self.parser.parse(tokenizer).and_then(&self.mapper)
+
+    fn decorated(
+        &mut self,
+    ) -> &mut impl Parser<I, C, Output = Self::OriginalOutput, Error = Self::Error> {
+        &mut self.parser
     }
 
-    fn set_context(&mut self, ctx: &C) {
-        self.parser.set_context(ctx)
+    fn map_ok(&self, ok: Self::OriginalOutput) -> Result<Self::Output, Self::Error> {
+        (self.mapper)(ok)
     }
 }
+
+impl<P, F> MapDecoratorMarker for AndThenParser<P, F> {}

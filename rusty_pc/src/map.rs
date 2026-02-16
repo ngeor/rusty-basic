@@ -26,8 +26,8 @@ where
         &mut self.parser
     }
 
-    fn map_ok(&self, ok: P::Output) -> U {
-        (self.mapper)(ok)
+    fn map_ok(&self, ok: P::Output) -> Result<Self::Output, Self::Error> {
+        Ok((self.mapper)(ok))
     }
 }
 
@@ -57,7 +57,9 @@ where
         &mut self.parser
     }
 
-    fn map_ok(&self, _ok: P::Output) {}
+    fn map_ok(&self, _ok: P::Output) -> Result<Self::Output, Self::Error> {
+        Ok(())
+    }
 }
 
 impl<P> MapDecoratorMarker for MapToUnitParser<P> {}

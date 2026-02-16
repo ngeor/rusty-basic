@@ -1,3 +1,4 @@
+use crate::map_decorator::{MapDecorator, MapDecoratorMarker};
 use crate::{InputTrait, Parser};
 
 pub struct MapParser<P, F> {
@@ -11,22 +12,26 @@ impl<P, F> MapParser<P, F> {
     }
 }
 
-impl<I, C, P, F, U> Parser<I, C> for MapParser<P, F>
+impl<I, C, P, F, U> MapDecorator<I, C> for MapParser<P, F>
 where
     I: InputTrait,
     P: Parser<I, C>,
     F: Fn(P::Output) -> U,
 {
+    type OriginalOutput = P::Output;
     type Output = U;
     type Error = P::Error;
-    fn parse(&mut self, tokenizer: &mut I) -> Result<Self::Output, Self::Error> {
-        self.parser.parse(tokenizer).map(&self.mapper)
+
+    fn decorated(&mut self) -> &mut impl Parser<I, C, Output = P::Output, Error = P::Error> {
+        &mut self.parser
     }
 
-    fn set_context(&mut self, ctx: &C) {
-        self.parser.set_context(ctx)
+    fn map_ok(&self, ok: P::Output) -> U {
+        (self.mapper)(ok)
     }
 }
+
+impl<P, F> MapDecoratorMarker for MapParser<P, F> {}
 
 /// MapToUnitParser is the same as `.map(|_| ())`.
 pub struct MapToUnitParser<P> {
@@ -39,22 +44,20 @@ impl<P> MapToUnitParser<P> {
     }
 }
 
-impl<I, C, P> Parser<I, C> for MapToUnitParser<P>
+impl<I, C, P> MapDecorator<I, C> for MapToUnitParser<P>
 where
     I: InputTrait,
     P: Parser<I, C>,
 {
+    type OriginalOutput = P::Output;
     type Output = ();
     type Error = P::Error;
 
-    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
-        match self.parser.parse(input) {
-            Ok(_) => Ok(()),
-            Err(err) => Err(err),
-        }
+    fn decorated(&mut self) -> &mut impl Parser<I, C, Output = P::Output, Error = P::Error> {
+        &mut self.parser
     }
 
-    fn set_context(&mut self, ctx: &C) {
-        self.parser.set_context(ctx)
-    }
+    fn map_ok(&self, _ok: P::Output) {}
 }
+
+impl<P> MapDecoratorMarker for MapToUnitParser<P> {}

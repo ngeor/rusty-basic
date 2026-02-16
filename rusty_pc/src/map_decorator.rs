@@ -1,0 +1,43 @@
+use crate::{InputTrait, Parser, ParserErrorTrait};
+
+/// A parser decorator that maps the result of the decorated parser.
+pub trait MapDecorator<I, C>
+where
+    I: InputTrait,
+{
+    type OriginalOutput;
+    type Output;
+    type Error: ParserErrorTrait;
+
+    /// Gets the decorated parser.
+    fn decorated(
+        &mut self,
+    ) -> &mut impl Parser<I, C, Output = Self::OriginalOutput, Error = Self::Error>;
+
+    /// Maps the successful result of the parser.
+    fn map_ok(&self, ok: Self::OriginalOutput) -> Self::Output;
+}
+
+/// Marker trait for `MapDecorator`.
+/// Allows for blanket trait implementation of `Parser`.
+pub trait MapDecoratorMarker {}
+
+impl<I, C, D> Parser<I, C> for D
+where
+    I: InputTrait,
+    D: MapDecoratorMarker + MapDecorator<I, C>,
+{
+    type Output = D::Output;
+    type Error = D::Error;
+
+    fn parse(&mut self, input: &mut I) -> Result<Self::Output, Self::Error> {
+        match self.decorated().parse(input) {
+            Ok(ok) => Ok(self.map_ok(ok)),
+            Err(err) => Err(err),
+        }
+    }
+
+    fn set_context(&mut self, ctx: &C) {
+        self.decorated().set_context(ctx)
+    }
+}

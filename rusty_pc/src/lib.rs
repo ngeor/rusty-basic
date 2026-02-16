@@ -15,6 +15,7 @@ pub mod many;
 pub mod many_ctx;
 pub mod map;
 pub mod map_ctx;
+pub mod map_decorator;
 pub mod map_err;
 pub mod no_context;
 mod or;

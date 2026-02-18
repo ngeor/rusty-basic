@@ -101,9 +101,7 @@ fn extended_type() -> impl Parser<StringView, VarNameCtx, Output = ParamType, Er
         // allow user defined
         built_in_extended_type()
             .or(user_defined_type())
-            .with_expected_message(
-                "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier",
-            ),
+            .with_expected_message("INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier"),
         // do not allow user defined
         built_in_extended_type(),
     )

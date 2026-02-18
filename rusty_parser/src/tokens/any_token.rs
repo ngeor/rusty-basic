@@ -4,7 +4,6 @@ use rusty_pc::text::{many_str, many_str_with_combiner, one_char_to_str};
 use rusty_pc::*;
 
 use crate::input::StringView;
-use crate::pc_specific::WithExpected;
 use crate::tokens::TokenType;
 use crate::tokens::any_symbol::any_symbol;
 use crate::{Keyword, ParserError};

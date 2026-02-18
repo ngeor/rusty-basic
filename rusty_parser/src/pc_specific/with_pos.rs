@@ -10,6 +10,7 @@ where
         WithPosMapper::new(self)
     }
 }
+
 impl<I, C, P> WithPos<I, C> for P
 where
     P: Parser<I, C>,

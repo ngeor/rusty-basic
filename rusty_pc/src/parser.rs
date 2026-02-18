@@ -10,7 +10,8 @@ use crate::flatten::FlattenParser;
 use crate::many::{ManyCombiner, ManyParser, VecManyCombiner};
 use crate::map::{MapParser, MapToUnitParser};
 use crate::map_ctx::MapCtxParser;
-use crate::map_err::{ErrorMapper, FatalErrorOverrider, MapErrParser, SoftErrorOverrider};
+use crate::map_err::{ErrorMapper, FatalErrorOverrider, MapErrParser};
+use crate::map_soft_err::MapSoftErrParser;
 use crate::no_context::NoContextParser;
 use crate::or_default::OrDefaultParser;
 use crate::peek::PeekParser;
@@ -289,7 +290,7 @@ where
     }
 
     // =======================================================================
-    // MapErr
+    // MapSoftErr
     // =======================================================================
 
     /// Maps the error of this parser.
@@ -306,16 +307,16 @@ where
 
     /// If this parser returns a soft error, the soft error will be replaced by
     /// the given error (which might be soft or fatal).
-    fn with_soft_err(self, err: Self::Error) -> MapErrParser<Self, SoftErrorOverrider<Self::Error>>
+    fn with_soft_err(self, err: Self::Error) -> MapSoftErrParser<Self, Self::Error>
     where
         Self: Sized,
     {
-        self.map_err(SoftErrorOverrider::new(err))
+        MapSoftErrParser::new(self, err)
     }
 
     /// If this parser returns a soft error, the soft error will be replaced by
     /// the given error, which must be fatal.
-    fn or_fail(self, err: Self::Error) -> MapErrParser<Self, SoftErrorOverrider<Self::Error>>
+    fn or_fail(self, err: Self::Error) -> MapSoftErrParser<Self, Self::Error>
     where
         Self: Sized,
     {

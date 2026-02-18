@@ -42,24 +42,6 @@ where
     fn map(&self, err: E) -> E;
 }
 
-/// Overrides a soft error with the given value.
-pub struct SoftErrorOverrider<E>(E);
-
-impl<E> SoftErrorOverrider<E> {
-    pub fn new(err: E) -> Self {
-        Self(err)
-    }
-}
-
-impl<E> ErrorMapper<E> for SoftErrorOverrider<E>
-where
-    E: ParserErrorTrait,
-{
-    fn map(&self, err: E) -> E {
-        if err.is_soft() { self.0.clone() } else { err }
-    }
-}
-
 /// Overrides a fatal error with the given value.
 pub struct FatalErrorOverrider<E>(E);
 

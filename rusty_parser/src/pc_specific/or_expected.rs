@@ -1,4 +1,4 @@
-use rusty_pc::map_err::{MapErrParser, SoftErrorOverrider};
+use rusty_pc::map_soft_err::MapSoftErrParser;
 use rusty_pc::{Parser, ParserErrorTrait};
 
 use crate::error::ParserError;
@@ -11,7 +11,7 @@ where
     /// Demands a successful result or returns a fatal syntax error
     /// with an error message like "Expected: " followed by the
     /// given expectation message.
-    fn or_expected(self, expectation: &str) -> MapErrParser<Self, SoftErrorOverrider<Self::Error>> {
+    fn or_expected(self, expectation: &str) -> MapSoftErrParser<Self, Self::Error> {
         self.or_fail(ParserError::expected(expectation).to_fatal())
     }
 }

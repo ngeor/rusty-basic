@@ -27,6 +27,7 @@ mod supplier;
 mod surround;
 pub mod text;
 mod then_with;
+pub mod to_fatal;
 pub mod to_option;
 mod token;
 mod top_level;

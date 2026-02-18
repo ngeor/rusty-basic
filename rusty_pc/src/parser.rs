@@ -10,12 +10,11 @@ use crate::flatten::FlattenParser;
 use crate::many::{ManyCombiner, ManyParser, VecManyCombiner};
 use crate::map::{MapParser, MapToUnitParser};
 use crate::map_ctx::MapCtxParser;
-use crate::map_err::{
-    ErrorMapper, FatalErrorOverrider, MapErrParser, SoftErrorOverrider, ToFatalErrorMapper
-};
+use crate::map_err::{ErrorMapper, FatalErrorOverrider, MapErrParser, SoftErrorOverrider};
 use crate::no_context::NoContextParser;
 use crate::or_default::OrDefaultParser;
 use crate::peek::PeekParser;
+use crate::to_fatal::ToFatalParser;
 use crate::to_option::ToOptionParser;
 
 /// A parser uses the given input in order to produce a result.
@@ -337,14 +336,6 @@ where
         self.map_err(FatalErrorOverrider::new(err))
     }
 
-    /// If this parser returns a soft error, it will be converted to a fatal error.
-    fn to_fatal(self) -> MapErrParser<Self, ToFatalErrorMapper>
-    where
-        Self: Sized,
-    {
-        self.map_err(ToFatalErrorMapper)
-    }
-
     // =======================================================================
     // NoContext
     // =======================================================================
@@ -411,6 +402,18 @@ where
         A: Combiner<Self::Output, R::Output, O>,
     {
         ThenWithContextParser::new(self, other, combiner)
+    }
+
+    // =======================================================================
+    // ToFatal
+    // =======================================================================
+
+    /// If this parser returns a soft error, it will be converted to a fatal error.
+    fn to_fatal(self) -> ToFatalParser<Self>
+    where
+        Self: Sized,
+    {
+        ToFatalParser::new(self)
     }
 
     // =======================================================================

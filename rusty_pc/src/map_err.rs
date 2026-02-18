@@ -42,18 +42,6 @@ where
     fn map(&self, err: E) -> E;
 }
 
-/// Converts a soft error into a fatal equivalent.
-pub struct ToFatalErrorMapper;
-
-impl<E> ErrorMapper<E> for ToFatalErrorMapper
-where
-    E: ParserErrorTrait,
-{
-    fn map(&self, err: E) -> E {
-        err.to_fatal()
-    }
-}
-
 /// Overrides a soft error with the given value.
 pub struct SoftErrorOverrider<E>(E);
 

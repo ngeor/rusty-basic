@@ -10,12 +10,12 @@ use crate::flatten::FlattenParser;
 use crate::many::{ManyCombiner, ManyParser, VecManyCombiner};
 use crate::map::{MapParser, MapToUnitParser};
 use crate::map_ctx::MapCtxParser;
-use crate::map_err::{
-    ErrorMapper, FatalErrorOverrider, MapErrParser, SoftErrorOverrider, ToFatalErrorMapper
-};
+use crate::map_fatal_err::MapFatalErrParser;
+use crate::map_soft_err::MapSoftErrParser;
 use crate::no_context::NoContextParser;
 use crate::or_default::OrDefaultParser;
 use crate::peek::PeekParser;
+use crate::to_fatal::ToFatalParser;
 use crate::to_option::ToOptionParser;
 
 /// A parser uses the given input in order to produce a result.
@@ -290,33 +290,50 @@ where
     }
 
     // =======================================================================
-    // MapErr
+    // MapFatalErr
     // =======================================================================
 
-    /// Maps the error of this parser.
+    /// Maps the fatal error of this parser.
     /// If the parser is successful, the value is returned as-is.
-    /// If the parser returns an error, the given mapper is used to map the error
-    /// to a new error.
-    fn map_err<F>(self, mapper: F) -> MapErrParser<Self, F>
+    /// If the parser returns a soft error, the error is returned as-is.
+    /// If the parser returns a fatal error, it is replaced by the given error.
+    fn map_fatal_err(self, err: Self::Error) -> MapFatalErrParser<Self, Self::Error>
     where
         Self: Sized,
-        F: ErrorMapper<Self::Error>,
     {
-        MapErrParser::new(self, mapper)
+        assert!(err.is_fatal());
+        MapFatalErrParser::new(self, err)
     }
+
+    // =======================================================================
+    // MapSoftErr
+    // =======================================================================
 
     /// If this parser returns a soft error, the soft error will be replaced by
     /// the given error (which might be soft or fatal).
-    fn with_soft_err(self, err: Self::Error) -> MapErrParser<Self, SoftErrorOverrider<Self::Error>>
+    fn with_soft_err(self, err: Self::Error) -> MapSoftErrParser<Self, Self::Error>
     where
         Self: Sized,
     {
-        self.map_err(SoftErrorOverrider::new(err))
+        MapSoftErrParser::new(self, err)
+    }
+
+    /// If this parser returns a soft error, the soft error will be replaced
+    /// by transforming the given message into an error.
+    ///
+    /// The parameter will be converted with the standard `From` trait.
+    /// It is expected that the conversion returns a soft error.
+    fn with_expected_message<E>(self, msg: E) -> MapSoftErrParser<Self, Self::Error>
+    where
+        Self: Sized,
+        Self::Error: From<E>,
+    {
+        self.with_soft_err(Self::Error::from(msg))
     }
 
     /// If this parser returns a soft error, the soft error will be replaced by
     /// the given error, which must be fatal.
-    fn or_fail(self, err: Self::Error) -> MapErrParser<Self, SoftErrorOverrider<Self::Error>>
+    fn or_fail(self, err: Self::Error) -> MapSoftErrParser<Self, Self::Error>
     where
         Self: Sized,
     {
@@ -324,25 +341,17 @@ where
         self.with_soft_err(err)
     }
 
-    /// If this parser returns a fatal error, the fatal error will be replaced by the given error
-    /// (which must be fatal too).
-    fn with_fatal_err(
-        self,
-        err: Self::Error,
-    ) -> MapErrParser<Self, FatalErrorOverrider<Self::Error>>
+    /// Converts the soft errors of this parser to fatal errors
+    /// based on the given error message.
+    ///
+    /// The message parameter will be converted with the standard `From` trait.
+    /// The resulting error is converted into a fatal one.
+    fn or_expected<E>(self, msg: E) -> MapSoftErrParser<Self, Self::Error>
     where
         Self: Sized,
+        Self::Error: From<E>,
     {
-        assert!(err.is_fatal());
-        self.map_err(FatalErrorOverrider::new(err))
-    }
-
-    /// If this parser returns a soft error, it will be converted to a fatal error.
-    fn to_fatal(self) -> MapErrParser<Self, ToFatalErrorMapper>
-    where
-        Self: Sized,
-    {
-        self.map_err(ToFatalErrorMapper)
+        self.with_soft_err(Self::Error::from(msg).to_fatal())
     }
 
     // =======================================================================
@@ -411,6 +420,18 @@ where
         A: Combiner<Self::Output, R::Output, O>,
     {
         ThenWithContextParser::new(self, other, combiner)
+    }
+
+    // =======================================================================
+    // ToFatal
+    // =======================================================================
+
+    /// If this parser returns a soft error, it will be converted to a fatal error.
+    fn to_fatal(self) -> ToFatalParser<Self>
+    where
+        Self: Sized,
+    {
+        ToFatalParser::new(self)
     }
 
     // =======================================================================

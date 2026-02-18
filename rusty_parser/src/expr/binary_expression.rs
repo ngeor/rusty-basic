@@ -5,7 +5,7 @@ use rusty_pc::*;
 use crate::error::ParserError;
 use crate::expr::{expression_pos_p, ws_expr_pos_p};
 use crate::input::StringView;
-use crate::pc_specific::{OrExpected, WithPos, lead_opt_ws, lead_ws};
+use crate::pc_specific::{WithPos, lead_opt_ws, lead_ws};
 use crate::tokens::{TokenType, any_token};
 use crate::{ExpressionPos, ExpressionPosTrait, ExpressionTrait, Keyword, Operator};
 

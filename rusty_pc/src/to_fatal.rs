@@ -1,25 +1,23 @@
 use crate::map_decorator::{MapDecorator, MapDecoratorMarker};
-use crate::{InputTrait, Parser};
+use crate::{InputTrait, Parser, ParserErrorTrait};
 
-pub struct AndThenParser<P, F> {
+pub struct ToFatalParser<P> {
     parser: P,
-    mapper: F,
 }
 
-impl<P, F> AndThenParser<P, F> {
-    pub(crate) fn new(parser: P, mapper: F) -> Self {
-        Self { parser, mapper }
+impl<P> ToFatalParser<P> {
+    pub(crate) fn new(parser: P) -> Self {
+        Self { parser }
     }
 }
 
-impl<I, C, P, F, U> MapDecorator<I, C> for AndThenParser<P, F>
+impl<I, C, P> MapDecorator<I, C> for ToFatalParser<P>
 where
     I: InputTrait,
     P: Parser<I, C>,
-    F: Fn(P::Output) -> Result<U, P::Error>,
 {
     type OriginalOutput = P::Output;
-    type Output = U;
+    type Output = P::Output;
     type Error = P::Error;
 
     fn decorated(
@@ -29,8 +27,12 @@ where
     }
 
     fn map_ok(&self, ok: Self::OriginalOutput) -> Result<Self::Output, Self::Error> {
-        (self.mapper)(ok)
+        Ok(ok)
+    }
+
+    fn map_soft_error(&self, err: Self::Error) -> Result<Self::Output, Self::Error> {
+        Err(err.to_fatal())
     }
 }
 
-impl<P, F> MapDecoratorMarker for AndThenParser<P, F> {}
+impl<P> MapDecoratorMarker for ToFatalParser<P> {}

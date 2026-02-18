@@ -63,7 +63,7 @@ impl ParserError {
     /// Creates a syntax error that starts with "Expected: "
     /// followed by the given string.
     pub fn expected(expectation: &str) -> Self {
-        Self::Expected(format!("Expected: {}", expectation))
+        Self::from(expectation)
     }
 }
 
@@ -96,5 +96,19 @@ impl From<std::num::ParseFloatError> for ParserError {
 impl From<std::num::ParseIntError> for ParserError {
     fn from(e: std::num::ParseIntError) -> Self {
         Self::ParseNumError(e.to_string())
+    }
+}
+
+// Needed in order to support with_expected_message
+
+impl From<String> for ParserError {
+    fn from(e: String) -> Self {
+        Self::Expected(format!("Expected: {}", e))
+    }
+}
+
+impl From<&str> for ParserError {
+    fn from(e: &str) -> Self {
+        Self::Expected(format!("Expected: {}", e))
     }
 }

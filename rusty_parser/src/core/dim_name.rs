@@ -172,13 +172,12 @@ mod type_definition {
                     Box::new(built_in_numeric_type()),
                     Box::new(built_in_string()),
                 ];
-                let mut expected_message =
-                    "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING";
+                let mut expected_message = "INTEGER or LONG or SINGLE or DOUBLE or STRING";
 
                 if allow_user_defined {
                     parsers.push(Box::new(user_defined_type()));
                     expected_message =
-                        "Expected: INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier";
+                        "INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier";
                 }
 
                 OrParser::new(parsers).with_expected_message(expected_message)

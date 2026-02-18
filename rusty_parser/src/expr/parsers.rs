@@ -149,6 +149,6 @@ fn opt_keyword_expr(
     let msg = format!("expression after {}", keyword);
     conditionally_opt_whitespace()
         .and_keep_right(keyword_ignoring(keyword).no_context())
-        .and_keep_right(ws_expr_pos_p().or_expected(&msg).no_context())
+        .and_keep_right(ws_expr_pos_p().or_expected(msg).no_context())
         .to_option()
 }

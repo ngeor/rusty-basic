@@ -4,7 +4,6 @@ use rusty_pc::*;
 use crate::core::{name_as_tokens_p, token_to_type_qualifier};
 use crate::error::ParserError;
 use crate::input::StringView;
-use crate::pc_specific::OrExpected;
 use crate::tokens::dot;
 use crate::{BareName, Expression, ExpressionPos, ExpressionType, Name, NameAsTokens};
 

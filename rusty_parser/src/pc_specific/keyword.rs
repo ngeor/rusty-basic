@@ -4,7 +4,7 @@ use rusty_pc::and::IgnoringBothCombiner;
 use rusty_pc::*;
 
 use crate::input::StringView;
-use crate::pc_specific::{WithExpected, whitespace_ignoring};
+use crate::pc_specific::whitespace_ignoring;
 use crate::tokens::{TokenMatcher, TokenType, any_token};
 use crate::{Keyword, ParserError};
 
@@ -42,7 +42,7 @@ pub fn keyword_ignoring(k: Keyword) -> impl Parser<StringView, Output = (), Erro
     any_token()
         .filter(move |t| k.matches_token(t))
         .map_to_unit()
-        .with_expected_message(format!("Expected: {}", k))
+        .with_expected_message(format!("{}", k))
 }
 
 /// Parses the given keyword, followed by mandatory whitespace.

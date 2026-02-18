@@ -2,7 +2,6 @@ use rusty_pc::*;
 
 use crate::error::ParserError;
 use crate::input::StringView;
-use crate::pc_specific::OrExpected;
 use crate::tokens::comma_ws;
 
 /// Comma separated list of items.

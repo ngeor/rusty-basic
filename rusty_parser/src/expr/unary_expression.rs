@@ -3,7 +3,7 @@ use rusty_pc::*;
 
 use crate::expr::{expression_pos_p, ws_expr_pos_p};
 use crate::input::StringView;
-use crate::pc_specific::{OrExpected, WithPos, keyword};
+use crate::pc_specific::{WithPos, keyword};
 use crate::tokens::minus_sign;
 use crate::{ExpressionPos, ExpressionPosTrait, Keyword, ParserError, UnaryOperator};
 

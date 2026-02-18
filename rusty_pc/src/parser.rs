@@ -320,7 +320,9 @@ where
 
     /// If this parser returns a soft error, the soft error will be replaced
     /// by transforming the given message into an error.
+    ///
     /// The parameter will be converted with the standard `From` trait.
+    /// It is expected that the conversion returns a soft error.
     fn with_expected_message<E>(self, msg: E) -> MapSoftErrParser<Self, Self::Error>
     where
         Self: Sized,
@@ -337,6 +339,19 @@ where
     {
         assert!(err.is_fatal());
         self.with_soft_err(err)
+    }
+
+    /// Converts the soft errors of this parser to fatal errors
+    /// based on the given error message.
+    ///
+    /// The message parameter will be converted with the standard `From` trait.
+    /// The resulting error is converted into a fatal one.
+    fn or_expected<E>(self, msg: E) -> MapSoftErrParser<Self, Self::Error>
+    where
+        Self: Sized,
+        Self::Error: From<E>,
+    {
+        self.with_soft_err(Self::Error::from(msg).to_fatal())
     }
 
     // =======================================================================

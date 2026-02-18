@@ -2,7 +2,7 @@ use rusty_pc::*;
 
 use crate::expr::expression_pos_p;
 use crate::input::StringView;
-use crate::pc_specific::{OrExpected, WithPos, in_parenthesis};
+use crate::pc_specific::{WithPos, in_parenthesis};
 use crate::{Expression, ExpressionPos, ParserError};
 
 pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error = ParserError> {

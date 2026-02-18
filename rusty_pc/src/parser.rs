@@ -10,7 +10,7 @@ use crate::flatten::FlattenParser;
 use crate::many::{ManyCombiner, ManyParser, VecManyCombiner};
 use crate::map::{MapParser, MapToUnitParser};
 use crate::map_ctx::MapCtxParser;
-use crate::map_err::{ErrorMapper, FatalErrorOverrider, MapErrParser};
+use crate::map_fatal_err::MapFatalErrParser;
 use crate::map_soft_err::MapSoftErrParser;
 use crate::no_context::NoContextParser;
 use crate::or_default::OrDefaultParser;
@@ -290,20 +290,24 @@ where
     }
 
     // =======================================================================
-    // MapSoftErr
+    // MapFatalErr
     // =======================================================================
 
-    /// Maps the error of this parser.
+    /// Maps the fatal error of this parser.
     /// If the parser is successful, the value is returned as-is.
-    /// If the parser returns an error, the given mapper is used to map the error
-    /// to a new error.
-    fn map_err<F>(self, mapper: F) -> MapErrParser<Self, F>
+    /// If the parser returns a soft error, the error is returned as-is.
+    /// If the parser returns a fatal error, it is replaced by the given error.
+    fn map_fatal_err(self, err: Self::Error) -> MapFatalErrParser<Self, Self::Error>
     where
         Self: Sized,
-        F: ErrorMapper<Self::Error>,
     {
-        MapErrParser::new(self, mapper)
+        assert!(err.is_fatal());
+        MapFatalErrParser::new(self, err)
     }
+
+    // =======================================================================
+    // MapSoftErr
+    // =======================================================================
 
     /// If this parser returns a soft error, the soft error will be replaced by
     /// the given error (which might be soft or fatal).
@@ -322,19 +326,6 @@ where
     {
         assert!(err.is_fatal());
         self.with_soft_err(err)
-    }
-
-    /// If this parser returns a fatal error, the fatal error will be replaced by the given error
-    /// (which must be fatal too).
-    fn with_fatal_err(
-        self,
-        err: Self::Error,
-    ) -> MapErrParser<Self, FatalErrorOverrider<Self::Error>>
-    where
-        Self: Sized,
-    {
-        assert!(err.is_fatal());
-        self.map_err(FatalErrorOverrider::new(err))
     }
 
     // =======================================================================

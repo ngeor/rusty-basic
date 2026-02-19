@@ -164,25 +164,22 @@ mod type_definition {
 
     pub fn extended_type()
     -> impl Parser<StringView, VarNameCtx, Output = DimType, Error = ParserError> {
-        ctx_parser::<StringView, VarNameCtx, ParserError>()
-            .map(|(_opt_q, allow_user_defined)| {
-                let mut parsers: Vec<
-                    Box<dyn Parser<StringView, Output = DimType, Error = ParserError>>,
-                > = vec![
-                    Box::new(built_in_numeric_type()),
-                    Box::new(built_in_string()),
-                ];
-                let mut expected_message = "INTEGER or LONG or SINGLE or DOUBLE or STRING";
-
-                if allow_user_defined {
-                    parsers.push(Box::new(user_defined_type()));
-                    expected_message =
-                        "INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier";
-                }
-
-                OrParser::new(parsers).with_expected_message(expected_message)
-            })
-            .flatten()
+        IifCtxParser::new(
+            // allow user defined
+            OrParser::new(vec![
+                Box::new(built_in_numeric_type()),
+                Box::new(built_in_string()),
+                Box::new(user_defined_type()),
+            ])
+            .with_expected_message("INTEGER or LONG or SINGLE or DOUBLE or STRING or identifier"),
+            // do not allow user defined
+            OrParser::new(vec![
+                Box::new(built_in_numeric_type()),
+                Box::new(built_in_string()),
+            ])
+            .with_expected_message("INTEGER or LONG or SINGLE or DOUBLE or STRING"),
+        )
+        .map_ctx(|(_, allow_user_defined): &(_, bool)| *allow_user_defined)
     }
 
     fn built_in_numeric_type() -> impl Parser<StringView, Output = DimType, Error = ParserError> {

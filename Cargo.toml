@@ -3,6 +3,7 @@ resolver = "3"
 
 members = [
   "rusty_basic",
+  "rusty_bit_vec",
   "rusty_common",
   "rusty_linter",
   "rusty_parser",

@@ -1,5 +1,6 @@
+use rusty_bit_vec::{MAX_INTEGER, MAX_LONG};
 use rusty_parser::BuiltInFunction;
-use rusty_variant::{MAX_INTEGER, MAX_LONG, Variant, VariantError};
+use rusty_variant::{Variant, VariantError};
 
 use crate::RuntimeError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;

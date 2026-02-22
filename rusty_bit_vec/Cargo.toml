@@ -1,0 +1,6 @@
+[package]
+name = "rusty_bit_vec"
+version = "0.10.0"
+edition = "2024"
+
+[dependencies]

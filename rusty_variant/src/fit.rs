@@ -1,4 +1,6 @@
-use crate::{MAX_INTEGER, MAX_LONG, MIN_INTEGER, MIN_LONG, Variant};
+use rusty_bit_vec::{MAX_INTEGER, MAX_LONG, MIN_INTEGER, MIN_LONG};
+
+use crate::Variant;
 
 trait IsInRange {
     fn is_in_integer_range(&self) -> bool;

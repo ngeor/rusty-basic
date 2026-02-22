@@ -1,6 +1,7 @@
+use rusty_bit_vec::MAX_INTEGER;
 use rusty_common::Positioned;
 use rusty_parser::{AsBareName, Expression, TypeQualifier};
-use rusty_variant::{MAX_INTEGER, Variant};
+use rusty_variant::Variant;
 
 use crate::core::{ConstLookup, LintError};
 

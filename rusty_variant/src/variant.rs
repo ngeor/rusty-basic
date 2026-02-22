@@ -1,8 +1,10 @@
 use std::cmp::Ordering;
 use std::fmt::Display;
 
+use rusty_bit_vec::{MIN_INTEGER, MIN_LONG};
+
 use crate::fit::FitToType;
-use crate::{MIN_INTEGER, MIN_LONG, UserDefinedTypeValue, VArray, qb_and, qb_or};
+use crate::{UserDefinedTypeValue, VArray, qb_and, qb_or};
 
 #[derive(Clone, Debug)]
 pub enum Variant {
@@ -1401,8 +1403,9 @@ mod tests {
         }
 
         mod long {
+            use rusty_bit_vec::MAX_INTEGER;
+
             use super::*;
-            use crate::MAX_INTEGER;
 
             #[test]
             fn test_single() {

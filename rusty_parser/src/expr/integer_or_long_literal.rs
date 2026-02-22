@@ -1,5 +1,5 @@
+use rusty_bit_vec::{BitVec, BitVecIntOrLong, MAX_INTEGER, MAX_LONG};
 use rusty_pc::*;
-use rusty_variant::{BitVec, BitVecIntOrLong, MAX_INTEGER, MAX_LONG};
 
 use crate::error::ParserError;
 use crate::input::StringView;

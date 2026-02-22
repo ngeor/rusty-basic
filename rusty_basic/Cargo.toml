@@ -8,6 +8,7 @@ edition = "2024"
 
 [dependencies]
 crossterm = "0.29"
+rusty_bit_vec = { path = "../rusty_bit_vec" }
 rusty_common = { path = "../rusty_common" }
 rusty_parser = { path = "../rusty_parser" }
 rusty_linter = { path = "../rusty_linter" }

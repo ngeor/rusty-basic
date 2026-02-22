@@ -203,12 +203,17 @@ name = "rusty_basic"
 version = "0.10.0"
 dependencies = [
  "crossterm",
+ "rusty_bit_vec",
  "rusty_common",
  "rusty_linter",
  "rusty_parser",
  "rusty_variant",
  "winapi",
 ]
+
+[[package]]
+name = "rusty_bit_vec"
+version = "0.10.0"
 
 [[package]]
 name = "rusty_common"
@@ -218,6 +223,7 @@ version = "0.10.0"
 name = "rusty_linter"
 version = "0.10.0"
 dependencies = [
+ "rusty_bit_vec",
  "rusty_common",
  "rusty_parser",
  "rusty_variant",
@@ -227,9 +233,9 @@ dependencies = [
 name = "rusty_parser"
 version = "0.10.0"
 dependencies = [
+ "rusty_bit_vec",
  "rusty_common",
  "rusty_pc",
- "rusty_variant",
 ]
 
 [[package]]
@@ -240,6 +246,7 @@ version = "0.10.0"
 name = "rusty_variant"
 version = "0.10.0"
 dependencies = [
+ "rusty_bit_vec",
  "rusty_common",
 ]
 

@@ -6,7 +6,6 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+rusty_bit_vec = { path = "../rusty_bit_vec" }
 rusty_common = { path = "../rusty_common" }
 rusty_pc = { path = "../rusty_pc" }
-# TODO parser should not depend on variant
-rusty_variant = { path = "../rusty_variant" }

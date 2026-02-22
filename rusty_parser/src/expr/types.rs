@@ -1,5 +1,5 @@
+use rusty_bit_vec::{MIN_INTEGER, MIN_LONG};
 use rusty_common::*;
-use rusty_variant::{MIN_INTEGER, MIN_LONG};
 
 use crate::{
     BuiltInFunction, ExpressionType, FileHandle, HasExpressionType, Name, Operator, TypeQualifier, UnaryOperator, VariableInfo

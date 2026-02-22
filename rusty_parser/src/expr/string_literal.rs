@@ -18,7 +18,6 @@ pub(super) fn parser() -> impl Parser<StringView, Output = ExpressionPos, Error 
 }
 
 fn string_delimiter() -> impl Parser<StringView, Output = Token, Error = ParserError> {
-    // TODO support ignoring token to avoid allocation
     any_symbol_of!('"')
 }
 

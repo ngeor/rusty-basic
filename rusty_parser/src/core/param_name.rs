@@ -92,7 +92,6 @@ fn parameter_p() -> impl Parser<StringView, Output = Parameter, Error = ParserEr
 
 fn array_indicator() -> impl Parser<StringView, Output = Option<(Token, Token)>, Error = ParserError>
 {
-    // TODO support ignoring token to avoid allocation
     seq2(any_symbol_of!('('), any_symbol_of!(')'), |l, r| (l, r)).to_option()
 }
 

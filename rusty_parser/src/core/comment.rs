@@ -14,7 +14,6 @@ pub fn comment_p() -> impl Parser<StringView, Output = Statement, Error = Parser
 /// Parses a comment as a [String].
 /// Does not consume the EOL token.
 pub fn comment_as_string_p() -> impl Parser<StringView, Output = String, Error = ParserError> {
-    // TODO support ignoring tokens to avoid allocation
     any_symbol_of!('\'').and_keep_right(
         any_token_of!(TokenType::Eol ; mode = MatchMode::Exclude)
             .many_allow_none(StringManyCombiner),

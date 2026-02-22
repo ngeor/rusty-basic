@@ -8,8 +8,6 @@ use crate::pc_specific::whitespace_ignoring;
 use crate::tokens::{TokenMatcher, TokenType, any_token};
 use crate::{Keyword, ParserError};
 
-// TODO review usages of TokenType::Keyword
-
 /// Matches the specific keyword.
 ///
 /// Ensures that it is not followed by a dollar sign, in which case it is a valid identifier.
@@ -50,7 +48,6 @@ pub fn keyword_ws_p(k: Keyword) -> impl Parser<StringView, Output = (), Error = 
     keyword_ignoring(k).and(whitespace_ignoring().to_fatal(), IgnoringBothCombiner)
 }
 
-// TODO add keyword_pair_ws
 /// Parses the first keyword, followed by mandatory whitespace,
 /// followed by the second keyword. If the first keyword is parsed,
 /// both the whitespace and the second keyword must be parsed.

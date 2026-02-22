@@ -171,7 +171,6 @@ fn any_print_arg() -> impl Parser<StringView, Output = PrintArg, Error = ParserE
 }
 
 fn delimiter_print_arg() -> impl Parser<StringView, Output = PrintArg, Error = ParserError> {
-    // TODO support char based tokens or make the next mapping friendlier
     any_symbol_of_ws!(';', ',').map(|t| {
         if ';'.matches_token(&t) {
             PrintArg::Semicolon

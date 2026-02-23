@@ -397,9 +397,9 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                 self.context.stop_collecting_arguments();
                 self.stacktrace.insert(0, pos);
             }
-            Instruction::PushStaticStack(subprogram_name) => {
+            Instruction::PushStaticStack(scope_name) => {
                 self.context
-                    .stop_collecting_arguments_static(subprogram_name.clone());
+                    .stop_collecting_arguments_static(scope_name.clone());
                 self.stacktrace.insert(0, pos);
             }
             Instruction::PopStack => {

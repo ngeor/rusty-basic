@@ -3,7 +3,7 @@ use rusty_parser::{ExitObject, Statement};
 
 use crate::converter::common::{Context, Convertible, ConvertibleIn, DimContext, ExprContext};
 use crate::converter::statement::{assignment, const_rules};
-use crate::core::{LintError, LintErrorPos, NameScope};
+use crate::core::{LintError, LintErrorPos, ScopeKind};
 
 impl ConvertibleIn<Position> for Statement {
     fn convert_in(self, ctx: &mut Context, pos: Position) -> Result<Self, LintErrorPos> {
@@ -37,16 +37,16 @@ impl ConvertibleIn<Position> for Statement {
                     Ok(Self::Resume(resume_option))
                 }
             }
-            Self::Exit(exit_object) => match ctx.names.get_name_scope() {
-                NameScope::Global => Err(LintError::IllegalOutsideSubFunction.at_pos(pos)),
-                NameScope::Sub => {
+            Self::Exit(exit_object) => match ctx.names.get_current_scope_kind() {
+                ScopeKind::Global => Err(LintError::IllegalOutsideSubFunction.at_pos(pos)),
+                ScopeKind::Sub => {
                     if exit_object == ExitObject::Sub {
                         Ok(Self::Exit(exit_object))
                     } else {
                         Err(LintError::IllegalInSubFunction.at_pos(pos))
                     }
                 }
-                NameScope::Function => {
+                ScopeKind::Function => {
                     if exit_object == ExitObject::Function {
                         Ok(Self::Exit(exit_object))
                     } else {

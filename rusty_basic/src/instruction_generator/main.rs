@@ -1,5 +1,5 @@
 use rusty_common::{AtPos, CaseInsensitiveString, Position, Positioned};
-use rusty_linter::{Context, Names, SubprogramName};
+use rusty_linter::{Context, Names, ScopeName};
 use rusty_parser::{
     Assignment, BareName, BuiltInFunction, BuiltInSub, DimVar, Expression, ExpressionType, FileHandle, FunctionImplementation, GlobalStatement, HasExpressionType, Name, Parameter, Program, Statement, Statements, SubImplementation, TypeQualifier, UserDefinedTypes
 };
@@ -181,7 +181,7 @@ pub enum Instruction {
     PushUnnamedByRef,
 
     PushStack,
-    PushStaticStack(SubprogramName),
+    PushStaticStack(ScopeName),
     PopStack,
 
     EnqueueToReturnStack(usize),
@@ -264,7 +264,7 @@ pub struct InstructionGenerator {
     pub instructions: Vec<InstructionPos>,
     pub statement_addresses: Vec<usize>,
     pub subprogram_info_repository: SubprogramInfoRepository,
-    pub current_subprogram: SubprogramName,
+    pub current_subprogram: ScopeName,
     pub linter_names: Names,
 }
 
@@ -274,7 +274,7 @@ impl InstructionGenerator {
             instructions: vec![],
             statement_addresses: vec![],
             subprogram_info_repository,
-            current_subprogram: SubprogramName::Global,
+            current_subprogram: ScopeName::Global,
             linter_names,
         }
     }
@@ -375,7 +375,7 @@ impl InstructionGenerator {
         let qualifier = function_name
             .qualifier()
             .expect("Expected qualified function name");
-        self.mark_current_subprogram(SubprogramName::Function(function_name), pos);
+        self.mark_current_subprogram(ScopeName::Function(function_name), pos);
         // set default value
         self.push(Instruction::AllocateBuiltIn(qualifier), pos);
         self.subprogram_body(body, pos);
@@ -397,21 +397,21 @@ impl InstructionGenerator {
             body,
             ..
         } = sub_implementation;
-        self.mark_current_subprogram(SubprogramName::Sub(name), pos);
+        self.mark_current_subprogram(ScopeName::Sub(name), pos);
         self.subprogram_body(body, pos);
     }
 
-    fn mark_current_subprogram(&mut self, subprogram_name: SubprogramName, pos: Position) {
+    fn mark_current_subprogram(&mut self, scope_name: ScopeName, pos: Position) {
         debug_assert_ne!(
-            subprogram_name,
-            SubprogramName::Global,
+            scope_name,
+            ScopeName::Global,
             "should not mark global scope"
         );
         self.push(
-            Instruction::Label(Self::format_subprogram_label(&subprogram_name)),
+            Instruction::Label(Self::format_subprogram_label(&scope_name)),
             pos,
         );
-        self.current_subprogram = subprogram_name;
+        self.current_subprogram = scope_name;
     }
 
     fn subprogram_body(&mut self, block: Statements, pos: Position) {
@@ -474,21 +474,21 @@ impl InstructionGenerator {
         self.statement_addresses.push(self.instructions.len());
     }
 
-    pub fn format_subprogram_label(subprogram_name: &SubprogramName) -> BareName {
-        let s: String = match subprogram_name {
-            SubprogramName::Function(function_name) => {
+    pub fn format_subprogram_label(scope_name: &ScopeName) -> BareName {
+        let s: String = match scope_name {
+            ScopeName::Function(function_name) => {
                 let mut s: String = String::new();
                 s.push_str(":fun:");
                 s.push_str(&function_name.to_string());
                 s
             }
-            SubprogramName::Sub(sub_name) => {
+            ScopeName::Sub(sub_name) => {
                 let mut s: String = String::new();
                 s.push_str(":sub:");
                 s.push_str(sub_name.as_ref());
                 s
             }
-            SubprogramName::Global => {
+            ScopeName::Global => {
                 panic!("Should not generate label for global scope")
             }
         };

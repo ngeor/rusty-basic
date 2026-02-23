@@ -1,5 +1,5 @@
 use rusty_common::{AtPos, Position, Positioned};
-use rusty_linter::SubprogramName;
+use rusty_linter::ScopeName;
 use rusty_parser::*;
 
 use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionGenerator};
@@ -42,18 +42,18 @@ impl InstructionGenerator {
     ) {
         let Positioned { element: name, pos } = function_name;
         let qualified_name = name.demand_qualified();
-        let subprogram_name = SubprogramName::Function(qualified_name.clone());
+        let scope_name = ScopeName::Function(qualified_name.clone());
         // cloning to fight the borrow checker
         let function_parameters: Vec<Parameter> = self
             .subprogram_info_repository
-            .get_subprogram_info(&subprogram_name)
+            .get_subprogram_info(&scope_name)
             .params
             .clone();
         self.generate_push_named_args_instructions(&function_parameters, &args, pos);
-        self.push_stack(subprogram_name.clone(), pos);
+        self.push_stack(scope_name.clone(), pos);
         let index = self.instructions.len();
         self.push(Instruction::PushRet(index + 2), pos);
-        self.jump_to_subprogram(&subprogram_name, pos);
+        self.jump_to_subprogram(&scope_name, pos);
         // TODO find different way for by ref args
         // stash by-ref variables
         self.generate_stash_by_ref_args(&args);
@@ -69,18 +69,18 @@ impl InstructionGenerator {
 
     pub fn generate_sub_call_instructions(&mut self, sub_call: SubCall, pos: Position) {
         let (name, args) = sub_call.into();
-        let subprogram_name = SubprogramName::Sub(name);
+        let scope_name = ScopeName::Sub(name);
         // cloning to fight the borrow checker
         let sub_impl_parameters: Vec<Parameter> = self
             .subprogram_info_repository
-            .get_subprogram_info(&subprogram_name)
+            .get_subprogram_info(&scope_name)
             .params
             .clone();
         self.generate_push_named_args_instructions(&sub_impl_parameters, &args, pos);
-        self.push_stack(subprogram_name.clone(), pos);
+        self.push_stack(scope_name.clone(), pos);
         let index = self.instructions.len();
         self.push(Instruction::PushRet(index + 2), pos); // points to "generate_stash_by_ref_args"
-        self.jump_to_subprogram(&subprogram_name, pos);
+        self.jump_to_subprogram(&scope_name, pos);
         self.generate_stash_by_ref_args(&args);
         self.push(Instruction::PopStack, pos);
         self.generate_un_stash_by_ref_args(&args);
@@ -148,20 +148,20 @@ impl InstructionGenerator {
         }
     }
 
-    fn push_stack(&mut self, subprogram_name: SubprogramName, pos: Position) {
+    fn push_stack(&mut self, scope_name: ScopeName, pos: Position) {
         if self
             .subprogram_info_repository
-            .get_subprogram_info(&subprogram_name)
+            .get_subprogram_info(&scope_name)
             .is_static
         {
-            self.push(Instruction::PushStaticStack(subprogram_name), pos);
+            self.push(Instruction::PushStaticStack(scope_name), pos);
         } else {
             self.push(Instruction::PushStack, pos);
         }
     }
 
-    fn jump_to_subprogram(&mut self, subprogram_name: &SubprogramName, pos: Position) {
-        let label: BareName = Self::format_subprogram_label(subprogram_name);
+    fn jump_to_subprogram(&mut self, scope_name: &ScopeName, pos: Position) {
+        let label: BareName = Self::format_subprogram_label(scope_name);
         self.push(Instruction::Jump(AddressOrLabel::Unresolved(label)), pos);
     }
 }

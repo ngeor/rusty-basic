@@ -11,7 +11,7 @@ use rusty_parser::Program;
 
 pub use self::converter::Context;
 pub use self::core::{
-    CastVariant, HasUserDefinedTypes, LintError, QBNumberCast, SubprogramName, qualifier_of_variant
+    CastVariant, HasUserDefinedTypes, LintError, QBNumberCast, ScopeName, qualifier_of_variant
 };
 pub use self::names::Names;
 use crate::converter::convert;

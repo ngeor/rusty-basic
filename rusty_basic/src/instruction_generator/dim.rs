@@ -1,5 +1,5 @@
 use rusty_common::*;
-use rusty_linter::SubprogramName;
+use rusty_linter::ScopeName;
 use rusty_parser::*;
 use rusty_variant::Variant;
 
@@ -46,7 +46,7 @@ impl InstructionGenerator {
 
 impl InstructionGenerator {
     fn is_in_static_subprogram(&self) -> bool {
-        if self.current_subprogram == SubprogramName::Global {
+        if self.current_subprogram == ScopeName::Global {
             false
         } else {
             self.subprogram_info_repository

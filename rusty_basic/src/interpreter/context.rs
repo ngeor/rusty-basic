@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use rusty_common::CaseInsensitiveString;
-use rusty_linter::{QBNumberCast, SubprogramName};
+use rusty_linter::{QBNumberCast, ScopeName};
 use rusty_parser::{BareName, BuiltInFunction, TypeQualifier};
 use rusty_variant::{UserDefinedTypeValue, VArray, Variant, bytes_to_i32, i32_to_bytes};
 
@@ -19,7 +19,7 @@ pub struct Context {
     states: Vec<State>,
     memory_blocks: Vec<MemoryBlock>,
     // static memory blocks (for STATIC function/sub)
-    static_memory_blocks: HashMap<SubprogramName, usize>,
+    static_memory_blocks: HashMap<ScopeName, usize>,
 }
 
 impl Context {
@@ -49,11 +49,11 @@ impl Context {
         self.do_push_new(variables, false);
     }
 
-    pub fn stop_collecting_arguments_static(&mut self, subprogram_name: SubprogramName) {
+    pub fn stop_collecting_arguments_static(&mut self, scope_name: ScopeName) {
         // current state must be argument collecting state
         let arguments = self.do_pop().arguments.expect("Expected argument state");
         // ensure memory block for this subprogram
-        match self.static_memory_blocks.get(&subprogram_name) {
+        match self.static_memory_blocks.get(&scope_name) {
             Some(existing_memory_block_index) => {
                 let memory_block_index = *existing_memory_block_index;
                 self.memory_blocks[memory_block_index]
@@ -65,7 +65,7 @@ impl Context {
                 let variables = Variables::from(arguments);
                 let memory_block_index = self.do_push_new(variables, true);
                 self.static_memory_blocks
-                    .insert(subprogram_name, memory_block_index);
+                    .insert(scope_name, memory_block_index);
             }
         }
     }

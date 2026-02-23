@@ -3,11 +3,7 @@ use rusty_parser::{Expression, ExpressionPos, Expressions};
 
 use crate::core::{LintError, LintErrorPos, NameScope};
 
-pub fn lint(
-    args: &Expressions,
-    name_scope: NameScope,
-    pos: Position,
-) -> Result<(), LintErrorPos> {
+pub fn lint(args: &Expressions, name_scope: NameScope, pos: Position) -> Result<(), LintErrorPos> {
     if name_scope == NameScope::Global {
         args.iter().try_for_each(require_constant)
     } else {

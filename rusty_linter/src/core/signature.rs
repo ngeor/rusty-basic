@@ -8,35 +8,28 @@ use crate::core::ResolvedParamTypes;
 /// The signature of a FUNCTION or SUB.
 /// Consists of the resolved parameter types and, in case of a FUNCTION, the return type.
 #[derive(PartialEq)]
-pub struct Signature {
-    /// The return type of a FUNCTION, or None if this is the signature of a SUB.
-    q: Option<TypeQualifier>,
+pub enum Signature {
+    /// The signature of a FUNCTION consists of the resolved parameter types
+    /// and the return type.
+    Function(ResolvedParamTypes, TypeQualifier),
 
-    /// The resolved parameter types.
-    param_types: ResolvedParamTypes,
+    /// The signature of a SUB consists of the resolved parameter types.
+    Sub(ResolvedParamTypes),
 }
 
 impl Signature {
-    pub fn new_sub(param_types: ResolvedParamTypes) -> Self {
-        Self {
-            q: None,
-            param_types,
-        }
-    }
-
-    pub fn new_function(q: TypeQualifier, param_types: ResolvedParamTypes) -> Self {
-        Self {
-            q: Some(q),
-            param_types,
-        }
-    }
-
     pub fn qualifier(&self) -> Option<TypeQualifier> {
-        self.q.as_ref().copied()
+        match self {
+            Self::Function(_, q) => Some(*q),
+            Self::Sub(_) => None,
+        }
     }
 
     pub fn param_types(&self) -> &ResolvedParamTypes {
-        &self.param_types
+        match self {
+            Self::Function(param_types, _) => param_types,
+            Self::Sub(param_types) => param_types,
+        }
     }
 }
 
@@ -46,9 +39,12 @@ impl Signature {
 
 impl PartialEq<TypeQualifier> for Signature {
     fn eq(&self, other: &TypeQualifier) -> bool {
-        match &self.q {
-            Some(q) => q == other,
-            _ => false,
+        if let Self::Function(_, q) = self
+            && q == other
+        {
+            true
+        } else {
+            false
         }
     }
 }

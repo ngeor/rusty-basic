@@ -31,11 +31,9 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 5b. An extended variable cannot co-exist with other symbols of the same name
 */
 
-type Key = Option<SubprogramName>;
-
 pub struct Names {
-    data: HashMap<Key, NamesOneLevel>,
-    current_key: Key,
+    data: HashMap<SubprogramName, NamesOneLevel>,
+    current_key: SubprogramName,
 }
 
 /// Stores the data relevant to one level only (i.e. global symbols, or a FUNCTION, or a SUB).
@@ -47,12 +45,12 @@ struct NamesOneLevel(NamesInner, ImplicitVars);
 
 impl Names {
     pub fn new() -> Self {
-        let mut data: HashMap<Key, NamesOneLevel> = HashMap::new();
+        let mut data: HashMap<SubprogramName, NamesOneLevel> = HashMap::new();
         // insert GLOBAL scope
-        data.insert(None, NamesOneLevel::default());
+        data.insert(SubprogramName::Global, NamesOneLevel::default());
         Self {
             data,
-            current_key: None,
+            current_key: SubprogramName::Global,
         }
     }
 
@@ -79,8 +77,8 @@ impl Names {
     /// Returns the global names, but only if we are currently within a sub program.
     fn global_names(&self) -> Option<&NamesInner> {
         match &self.current_key {
-            Some(_) => self.data.get(&None).map(|x| &x.0),
-            None => None,
+            SubprogramName::Global => None,
+            _ => self.data.get(&SubprogramName::Global).map(|x| &x.0),
         }
     }
 
@@ -160,39 +158,40 @@ impl Names {
 
     pub fn is_in_function(&self, function_name: &BareName) -> bool {
         match &self.current_key {
-            Some(SubprogramName::Function(f)) => f.as_bare_name() == function_name,
+            SubprogramName::Function(f) => f.as_bare_name() == function_name,
             _ => false,
         }
     }
 
     pub fn is_in_subprogram(&self) -> bool {
-        self.current_key.is_some()
+        self.current_key != SubprogramName::Global
     }
 
     pub fn get_name_scope(&self) -> NameScope {
-        match &self.current_key {
-            Some(SubprogramName::Function(_)) => NameScope::Function,
-            Some(SubprogramName::Sub(_)) => NameScope::Sub,
-            None => NameScope::Global,
-        }
+        NameScope::from(&self.current_key)
     }
 
     pub fn push(&mut self, subprogram_name: SubprogramName) {
-        let key = Some(subprogram_name);
         debug_assert!(
-            !self.data.contains_key(&key),
+            !self.data.contains_key(&subprogram_name),
             "should not encounter same function/sub twice!"
         );
-        self.current_key = key.clone();
-        self.data.insert(key, NamesOneLevel::default());
+        debug_assert_ne!(
+            subprogram_name,
+            SubprogramName::Global,
+            "should not push global scope"
+        );
+        self.current_key = subprogram_name.clone();
+        self.data.insert(subprogram_name, NamesOneLevel::default());
     }
 
     pub fn pop(&mut self) {
-        debug_assert!(
-            self.current_key.is_some(),
+        debug_assert_ne!(
+            self.current_key,
+            SubprogramName::Global,
             "should not pop context from the global level"
         );
-        self.current_key = None;
+        self.current_key = SubprogramName::Global;
     }
 
     pub fn find_name_or_shared_in_parent(
@@ -208,7 +207,7 @@ impl Names {
 
     pub fn get_resolved_variable_info(
         &self,
-        subprogram_name: &Option<SubprogramName>,
+        subprogram_name: &SubprogramName,
         name: &Name,
     ) -> &VariableInfo {
         let one_level = self
@@ -218,11 +217,11 @@ impl Names {
         match one_level.0.get_variable_info_by_name(name) {
             Some(i) => i,
             None => {
-                if subprogram_name.is_some() {
+                if subprogram_name != &SubprogramName::Global {
                     // try then parent level but only for SHARED
                     let result = self
                         .data
-                        .get(&None)
+                        .get(&SubprogramName::Global)
                         .expect("Global name scope missing!")
                         .0
                         .get_variable_info_by_name(name)

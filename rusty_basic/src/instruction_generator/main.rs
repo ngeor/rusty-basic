@@ -264,7 +264,7 @@ pub struct InstructionGenerator {
     pub instructions: Vec<InstructionPos>,
     pub statement_addresses: Vec<usize>,
     pub subprogram_info_repository: SubprogramInfoRepository,
-    pub current_subprogram: Option<SubprogramName>,
+    pub current_subprogram: SubprogramName,
     pub linter_names: Names,
 }
 
@@ -274,7 +274,7 @@ impl InstructionGenerator {
             instructions: vec![],
             statement_addresses: vec![],
             subprogram_info_repository,
-            current_subprogram: None,
+            current_subprogram: SubprogramName::Global,
             linter_names,
         }
     }
@@ -402,11 +402,16 @@ impl InstructionGenerator {
     }
 
     fn mark_current_subprogram(&mut self, subprogram_name: SubprogramName, pos: Position) {
+        debug_assert_ne!(
+            subprogram_name,
+            SubprogramName::Global,
+            "should not mark global scope"
+        );
         self.push(
             Instruction::Label(Self::format_subprogram_label(&subprogram_name)),
             pos,
         );
-        self.current_subprogram = Some(subprogram_name);
+        self.current_subprogram = subprogram_name;
     }
 
     fn subprogram_body(&mut self, block: Statements, pos: Position) {
@@ -482,6 +487,9 @@ impl InstructionGenerator {
                 s.push_str(":sub:");
                 s.push_str(sub_name.as_ref());
                 s
+            }
+            SubprogramName::Global => {
+                panic!("Should not generate label for global scope")
             }
         };
         BareName::new(s)

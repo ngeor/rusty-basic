@@ -6,7 +6,7 @@ use rusty_parser::{
 };
 use rusty_variant::Variant;
 
-use crate::core::{ConstLookup, NameContext, SubprogramName};
+use crate::core::{ConstLookup, NameScope, SubprogramName};
 use crate::names::ImplicitVars;
 use crate::names::names_inner::NamesInner;
 use crate::names::traits::ManyNamesTrait;
@@ -169,11 +169,11 @@ impl Names {
         self.current_key.is_some()
     }
 
-    pub fn get_name_context(&self) -> NameContext {
+    pub fn get_name_scope(&self) -> NameScope {
         match &self.current_key {
-            Some(SubprogramName::Function(_)) => NameContext::Function,
-            Some(SubprogramName::Sub(_)) => NameContext::Sub,
-            None => NameContext::Global,
+            Some(SubprogramName::Function(_)) => NameScope::Function,
+            Some(SubprogramName::Sub(_)) => NameScope::Sub,
+            None => NameScope::Global,
         }
     }
 

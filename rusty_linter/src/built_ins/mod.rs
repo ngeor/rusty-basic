@@ -49,13 +49,13 @@ mod width;
 use rusty_common::Position;
 use rusty_parser::{BuiltInFunction, BuiltInSub, Expressions};
 
-use crate::core::{LintErrorPos, NameContext};
+use crate::core::{LintErrorPos, NameScope};
 
 pub fn lint_sub_call(
     built_in_sub: &BuiltInSub,
     pos: Position,
     args: &Expressions,
-    name_context: NameContext,
+    name_scope: NameScope,
 ) -> Result<(), LintErrorPos> {
     match built_in_sub {
         BuiltInSub::Beep => beep::lint(args, pos),
@@ -63,7 +63,7 @@ pub fn lint_sub_call(
         BuiltInSub::Close => close::lint(args),
         BuiltInSub::Cls => cls::lint(args, pos),
         BuiltInSub::Color => color::lint(args, pos),
-        BuiltInSub::Data => data::lint(args, name_context, pos),
+        BuiltInSub::Data => data::lint(args, name_scope, pos),
         BuiltInSub::DefSeg => def_seg::lint(args, pos),
         BuiltInSub::Environ => environ_sub::lint(args, pos),
         BuiltInSub::Field => field::lint(args, pos),

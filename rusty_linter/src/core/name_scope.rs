@@ -1,5 +1,5 @@
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum NameContext {
+pub enum NameScope {
     Global,
     Sub,
     Function,

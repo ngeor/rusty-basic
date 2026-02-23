@@ -1,14 +1,14 @@
 use rusty_common::{AtPos, Position};
 use rusty_parser::{Expression, ExpressionPos, Expressions};
 
-use crate::core::{LintError, LintErrorPos, NameContext};
+use crate::core::{LintError, LintErrorPos, NameScope};
 
 pub fn lint(
     args: &Expressions,
-    name_context: NameContext,
+    name_scope: NameScope,
     pos: Position,
 ) -> Result<(), LintErrorPos> {
-    if name_context == NameContext::Global {
+    if name_scope == NameScope::Global {
         args.iter().try_for_each(require_constant)
     } else {
         Err(LintError::IllegalInSubFunction.at_pos(pos))

@@ -1,7 +1,7 @@
 mod casting;
 mod const_value_resolver;
 mod error;
-mod name_context;
+mod name_scope;
 mod qb_casting;
 mod qualify_variant;
 mod ref_to_value_visitor;
@@ -17,7 +17,7 @@ mod visitor;
 pub use self::casting::*;
 pub use self::const_value_resolver::*;
 pub use self::error::*;
-pub use self::name_context::*;
+pub use self::name_scope::*;
 pub use self::qb_casting::*;
 pub use self::qualify_variant::*;
 pub use self::ref_to_value_visitor::*;

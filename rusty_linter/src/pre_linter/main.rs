@@ -188,7 +188,7 @@ where
 }
 
 /// This is the same as [Parameter],
-/// but the memebers are references.
+/// but the members are references.
 /// It's needed due to the recursive implementation of `RefToValueVisitor`
 /// and the recursive (`Box`) implementation of `ParamType::Array`.
 struct RefParamName<'a>(&'a BareName, &'a ParamType);

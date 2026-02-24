@@ -1,7 +1,7 @@
 use rusty_parser::{Expression, ExpressionPos, Operator};
 
-use crate::converter::common::{Context, ConvertibleIn, ExprContextPos};
-use crate::core::{LintErrorPos, binary_cast};
+use crate::converter::common::{ConvertibleIn, ExprContextPos};
+use crate::core::{Context, LintErrorPos, binary_cast};
 
 pub fn convert(
     ctx: &mut Context,

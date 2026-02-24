@@ -1,9 +1,8 @@
 use rusty_common::*;
 use rusty_parser::*;
 
-use crate::converter::common::Context;
 use crate::core::{
-    CastVariant, ConstEvaluator, LintError, LintErrorPos, LintResult, qualifier_of_const_variant
+    CastVariant, ConstEvaluator, Context, LintError, LintErrorPos, LintResult, qualifier_of_const_variant
 };
 
 pub fn on_const(ctx: &mut Context, c: Constant) -> Result<Statement, LintErrorPos> {

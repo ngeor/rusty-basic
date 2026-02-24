@@ -1,8 +1,8 @@
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{Assignment, Expression, ExpressionPos, Statement};
 
-use crate::converter::common::{Context, ConvertibleIn, ExprContext};
-use crate::core::LintErrorPos;
+use crate::converter::common::{ConvertibleIn, ExprContext};
+use crate::core::{Context, LintErrorPos};
 
 pub fn on_assignment(
     a: Assignment,

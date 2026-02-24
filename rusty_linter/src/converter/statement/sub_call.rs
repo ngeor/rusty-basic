@@ -1,7 +1,7 @@
 use rusty_parser::{BuiltInSub, Statement, SubCall};
 
-use crate::converter::common::{Context, ConvertibleIn, ExprContext};
-use crate::core::LintErrorPos;
+use crate::converter::common::{ConvertibleIn, ExprContext};
+use crate::core::{Context, LintErrorPos};
 
 impl Context {
     pub fn sub_call(&mut self, sub_call: SubCall) -> Result<Statement, LintErrorPos> {

@@ -1,11 +1,11 @@
 use rusty_common::*;
 use rusty_parser::*;
 
-use crate::converter::common::{Context, ConvertibleIn, DimContext, DimNameState};
+use crate::converter::common::{ConvertibleIn, DimContext, DimNameState};
 use crate::converter::dim_rules::dim_type_rules::on_dim_type;
 use crate::converter::dim_rules::redim::on_redim_type;
 use crate::converter::dim_rules::validation;
-use crate::core::{LintError, LintErrorPos};
+use crate::core::{Context, LintError, LintErrorPos};
 
 impl ConvertibleIn<DimContext> for DimList {
     fn convert_in(self, ctx: &mut Context, dim_context: DimContext) -> Result<Self, LintErrorPos> {

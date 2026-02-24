@@ -3,8 +3,8 @@ use rusty_parser::{
     DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement, Statements, SubImplementation
 };
 
-use crate::converter::common::{Context, Convertible, ConvertibleIn};
-use crate::core::{IntoQualified, LintErrorPos, ScopeName};
+use crate::converter::common::{Convertible, ConvertibleIn};
+use crate::core::{Context, IntoQualified, LintErrorPos, ScopeName};
 use crate::names::ImplicitVars;
 
 impl Convertible for Program {

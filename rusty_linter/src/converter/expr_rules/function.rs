@@ -3,9 +3,9 @@ use rusty_parser::{
     AsBareName, BareName, Expression, ExpressionType, Expressions, Name, VariableInfo
 };
 
-use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
+use crate::converter::common::{ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
-use crate::core::{IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult};
+use crate::core::{Context, IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult};
 
 pub fn convert(
     ctx: &mut Context,

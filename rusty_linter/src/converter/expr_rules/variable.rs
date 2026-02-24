@@ -4,10 +4,10 @@ use rusty_parser::{
 };
 use rusty_variant::Variant;
 
-use crate::converter::common::{Context, ExprContext, ExprContextPos};
+use crate::converter::common::{ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
 use crate::core::{
-    ConstLookup, IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult, qualifier_of_const_variant
+    ConstLookup, Context, IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult, qualifier_of_const_variant
 };
 
 pub fn convert(

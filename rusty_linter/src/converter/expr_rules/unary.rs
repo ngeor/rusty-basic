@@ -3,8 +3,8 @@ use rusty_parser::{
     Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UnaryOperator
 };
 
-use crate::converter::common::{Context, ConvertibleIn, ExprContextPos};
-use crate::core::{LintError, LintErrorPos};
+use crate::converter::common::{ConvertibleIn, ExprContextPos};
+use crate::core::{Context, LintError, LintErrorPos};
 
 pub fn convert(
     ctx: &mut Context,

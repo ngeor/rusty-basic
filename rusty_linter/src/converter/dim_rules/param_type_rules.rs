@@ -1,9 +1,8 @@
 use rusty_common::Position;
 use rusty_parser::{BareName, ParamType};
 
-use crate::converter::common::Context;
 use crate::converter::dim_rules::dim_type_rules;
-use crate::core::LintErrorPos;
+use crate::core::{Context, LintErrorPos};
 
 pub fn on_param_type(
     dim_type: ParamType,

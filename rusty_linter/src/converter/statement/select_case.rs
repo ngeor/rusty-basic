@@ -1,7 +1,7 @@
 use rusty_parser::{CaseBlock, CaseExpression, SelectCase};
 
-use crate::converter::common::{Context, Convertible, ConvertibleIn};
-use crate::core::LintErrorPos;
+use crate::converter::common::{Convertible, ConvertibleIn};
+use crate::core::{Context, LintErrorPos};
 
 impl Convertible for SelectCase {
     fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {

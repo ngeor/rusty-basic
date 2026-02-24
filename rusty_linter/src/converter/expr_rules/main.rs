@@ -1,11 +1,11 @@
 use rusty_common::*;
 use rusty_parser::*;
 
-use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
+use crate::converter::common::{ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::{
     binary, built_in_function, function, property, unary, variable
 };
-use crate::core::LintErrorPos;
+use crate::core::{Context, LintErrorPos};
 
 //
 // ExpressionPos ConvertibleIn

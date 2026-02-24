@@ -1,6 +1,7 @@
 mod can_cast_to;
 mod casting;
 mod const_value_resolver;
+mod context;
 mod error;
 mod name_scope;
 mod qb_casting;
@@ -16,6 +17,7 @@ mod visitor;
 pub use self::can_cast_to::*;
 pub use self::casting::*;
 pub use self::const_value_resolver::*;
+pub use self::context::*;
 pub use self::error::*;
 pub use self::name_scope::*;
 pub use self::qb_casting::*;

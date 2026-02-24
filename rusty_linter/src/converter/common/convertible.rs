@@ -1,7 +1,6 @@
 use rusty_common::{AtPos, Position, Positioned};
 
-use crate::converter::common::Context;
-use crate::core::LintErrorPos;
+use crate::core::{Context, LintErrorPos};
 
 /// Convert from the current type into the target type O.
 /// By default, O is the same as the current type.

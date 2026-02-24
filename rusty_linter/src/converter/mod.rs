@@ -7,7 +7,7 @@ mod statement;
 
 use rusty_parser::Program;
 
-pub use self::common::Context;
+use crate::Context;
 use crate::converter::common::Convertible;
 use crate::core::LintErrorPos;
 use crate::pre_linter::PreLinterResult;

@@ -3,11 +3,11 @@ use rusty_parser::{
     AsBareName, BareName, ElementType, Expression, ExpressionType, HasExpressionType, Name, ToBareName, UserDefinedType, VariableInfo
 };
 
-use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
+use crate::converter::common::{ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::variable::{
     AssignToFunction, ExistingConst, ExistingVar, VarAsUserDefinedFunctionCall, VarResolve, add_as_new_implicit_var
 };
-use crate::core::{LintError, LintErrorPos};
+use crate::core::{Context, LintError, LintErrorPos};
 
 pub fn convert(
     ctx: &mut Context,

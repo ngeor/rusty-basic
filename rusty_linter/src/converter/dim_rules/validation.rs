@@ -1,8 +1,7 @@
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{AsBareName, DimVar, Parameter, TypedName, VarType};
 
-use crate::converter::common::Context;
-use crate::core::{ConstLookup, IntoTypeQualifier, LintError, LintErrorPos};
+use crate::core::{ConstLookup, Context, IntoTypeQualifier, LintError, LintErrorPos};
 
 pub fn validate<T>(
     var_name: &TypedName<T>,

@@ -1,3 +1,4 @@
+mod can_cast_to;
 mod casting;
 mod const_value_resolver;
 mod error;
@@ -8,11 +9,11 @@ mod ref_to_value_visitor;
 mod resolved_param_type;
 mod signature;
 mod string_length;
-mod traits;
 mod type_resolver;
 mod type_resolver_impl;
 mod visitor;
 
+pub use self::can_cast_to::*;
 pub use self::casting::*;
 pub use self::const_value_resolver::*;
 pub use self::error::*;
@@ -23,7 +24,6 @@ pub use self::ref_to_value_visitor::*;
 pub use self::resolved_param_type::*;
 pub use self::signature::*;
 pub use self::string_length::*;
-pub use self::traits::*;
 pub use self::type_resolver::*;
 pub use self::type_resolver_impl::*;
 pub use self::visitor::*;

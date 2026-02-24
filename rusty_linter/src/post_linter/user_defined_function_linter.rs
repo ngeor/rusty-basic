@@ -2,11 +2,11 @@ use rusty_common::*;
 use rusty_parser::*;
 
 use super::post_conversion_linter::PostConversionLinter;
-use crate::Context;
+use crate::LinterContext;
 use crate::core::*;
 
 pub struct UserDefinedFunctionLinter<'a> {
-    pub linter_context: &'a Context,
+    pub linter_context: &'a LinterContext,
 }
 
 pub fn lint_call_args(

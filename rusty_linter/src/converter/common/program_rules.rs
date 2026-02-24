@@ -4,11 +4,11 @@ use rusty_parser::{
 };
 
 use crate::converter::common::{Convertible, ConvertibleIn};
-use crate::core::{Context, IntoQualified, LintErrorPos, ScopeName};
+use crate::core::{IntoQualified, LintErrorPos, LinterContext, ScopeName};
 use crate::names::ImplicitVars;
 
 impl Convertible for Program {
-    fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {
+    fn convert(self, ctx: &mut LinterContext) -> Result<Self, LintErrorPos> {
         // collect the global statements
         let mut global_statements: Self = vec![];
         for Positioned { element, pos } in self {
@@ -36,7 +36,7 @@ impl Convertible for Program {
 impl ConvertibleIn<Position, Vec<GlobalStatementPos>> for GlobalStatement {
     fn convert_in(
         self,
-        ctx: &mut Context,
+        ctx: &mut LinterContext,
         pos: Position,
     ) -> Result<Vec<GlobalStatementPos>, LintErrorPos> {
         match self {
@@ -59,7 +59,7 @@ impl ConvertibleIn<Position, Vec<GlobalStatementPos>> for GlobalStatement {
 
 fn on_function_implementation(
     function_implementation: FunctionImplementation,
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
 ) -> Result<FunctionImplementation, LintErrorPos> {
     let FunctionImplementation {
         name: Positioned {
@@ -93,7 +93,7 @@ fn on_function_implementation(
 
 fn on_sub_implementation(
     sub_implementation: SubImplementation,
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
 ) -> Result<SubImplementation, LintErrorPos> {
     let SubImplementation {
         name,
@@ -127,7 +127,7 @@ fn on_sub_implementation(
 //      A = B + C
 fn convert_block_hoisting_implicit_vars_and_pop_scope(
     statements: Statements,
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
 ) -> Result<Statements, LintErrorPos> {
     let mut result = statements.convert(ctx)?;
     let implicit_vars = collect_implicit_vars_and_pop_scope(ctx);
@@ -147,7 +147,7 @@ fn convert_block_hoisting_implicit_vars_and_pop_scope(
 
 fn on_statement(
     statement: Statement,
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     pos: Position,
 ) -> Result<Vec<GlobalStatementPos>, LintErrorPos> {
     // a statement might be converted into multiple statements due to implicit vars
@@ -159,7 +159,7 @@ fn on_statement(
         .collect())
 }
 
-fn collect_implicit_vars_and_pop_scope(ctx: &mut Context) -> ImplicitVars {
+fn collect_implicit_vars_and_pop_scope(ctx: &mut LinterContext) -> ImplicitVars {
     // collect implicit vars
     let mut implicit_vars = ImplicitVars::new();
     implicit_vars.append(ctx.names.get_implicit_vars_mut());

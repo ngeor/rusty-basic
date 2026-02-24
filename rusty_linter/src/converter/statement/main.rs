@@ -3,10 +3,10 @@ use rusty_parser::{ExitObject, Statement};
 
 use crate::converter::common::{Convertible, ConvertibleIn, DimContext, ExprContext};
 use crate::converter::statement::{assignment, const_rules};
-use crate::core::{Context, LintError, LintErrorPos, ScopeKind};
+use crate::core::{LintError, LintErrorPos, LinterContext, ScopeKind};
 
 impl ConvertibleIn<Position> for Statement {
-    fn convert_in(self, ctx: &mut Context, pos: Position) -> Result<Self, LintErrorPos> {
+    fn convert_in(self, ctx: &mut LinterContext, pos: Position) -> Result<Self, LintErrorPos> {
         match self {
             Self::Assignment(a) => assignment::on_assignment(a, ctx, pos),
             // CONST is mapped to None and is filtered out

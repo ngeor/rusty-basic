@@ -1,5 +1,5 @@
 use rusty_common::{AtPos, CaseInsensitiveString, Position, Positioned};
-use rusty_linter::{Context, Names, ScopeName};
+use rusty_linter::{LinterContext, Names, ScopeName};
 use rusty_parser::{
     Assignment, BareName, BuiltInFunction, BuiltInSub, DimVar, Expression, ExpressionType, FileHandle, FunctionImplementation, GlobalStatement, HasExpressionType, Name, Parameter, Program, Statement, Statements, SubImplementation, TypeQualifier, UserDefinedTypes
 };
@@ -11,7 +11,7 @@ use crate::instruction_generator::subprogram_info::{
     SubprogramInfoCollector, SubprogramInfoRepository
 };
 
-pub fn unwrap_linter_context(linter_context: Context) -> (Names, UserDefinedTypes) {
+pub fn unwrap_linter_context(linter_context: LinterContext) -> (Names, UserDefinedTypes) {
     (linter_context.names, linter_context.user_defined_types)
 }
 

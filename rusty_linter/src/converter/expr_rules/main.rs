@@ -5,7 +5,7 @@ use crate::converter::common::{ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::{
     binary, built_in_function, function, property, unary, variable
 };
-use crate::core::{Context, LintErrorPos};
+use crate::core::{LintErrorPos, LinterContext};
 
 //
 // ExpressionPos ConvertibleIn
@@ -14,7 +14,7 @@ use crate::core::{Context, LintErrorPos};
 impl ConvertibleIn<ExprContext> for ExpressionPos {
     fn convert_in(
         self,
-        ctx: &mut Context,
+        ctx: &mut LinterContext,
         expr_context: ExprContext,
     ) -> Result<Self, LintErrorPos> {
         let Self { element: expr, pos } = self;
@@ -26,7 +26,7 @@ impl ConvertibleIn<ExprContext> for ExpressionPos {
 impl ConvertibleIn<ExprContext> for Box<ExpressionPos> {
     fn convert_in(
         self,
-        ctx: &mut Context,
+        ctx: &mut LinterContext,
         expr_context: ExprContext,
     ) -> Result<Self, LintErrorPos> {
         let unboxed = *self;
@@ -39,7 +39,11 @@ impl ConvertibleIn<ExprContext> for Box<ExpressionPos> {
 //
 
 impl ConvertibleIn<ExprContextPos> for Expression {
-    fn convert_in(self, ctx: &mut Context, extra: ExprContextPos) -> Result<Self, LintErrorPos> {
+    fn convert_in(
+        self,
+        ctx: &mut LinterContext,
+        extra: ExprContextPos,
+    ) -> Result<Self, LintErrorPos> {
         match self {
             // literals
             Self::SingleLiteral(_)

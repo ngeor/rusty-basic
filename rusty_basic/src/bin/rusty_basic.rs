@@ -3,7 +3,7 @@ use std::fs::File;
 
 use rusty_basic::instruction_generator::{generate_instructions, unwrap_linter_context};
 use rusty_basic::interpreter::{InterpreterTrait, new_default_interpreter};
-use rusty_linter::{Context, lint};
+use rusty_linter::{LinterContext, lint};
 use rusty_parser::{Program, parse_main_file};
 
 fn main() {
@@ -33,7 +33,7 @@ fn on_parsed(program: Program, run_options: RunOptions) {
     }
 }
 
-fn on_linted(program: Program, linter_context: Context, run_options: RunOptions) {
+fn on_linted(program: Program, linter_context: LinterContext, run_options: RunOptions) {
     let (linter_names, user_defined_types) = unwrap_linter_context(linter_context);
     let instruction_generator_result = generate_instructions(program, linter_names);
     let mut interpreter = new_default_interpreter(user_defined_types);

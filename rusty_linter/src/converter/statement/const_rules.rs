@@ -2,17 +2,17 @@ use rusty_common::*;
 use rusty_parser::*;
 
 use crate::core::{
-    CastVariant, ConstEvaluator, Context, LintError, LintErrorPos, LintResult, qualifier_of_const_variant
+    CastVariant, ConstEvaluator, LintError, LintErrorPos, LintResult, LinterContext, qualifier_of_const_variant
 };
 
-pub fn on_const(ctx: &mut Context, c: Constant) -> Result<Statement, LintErrorPos> {
+pub fn on_const(ctx: &mut LinterContext, c: Constant) -> Result<Statement, LintErrorPos> {
     let (left_side, right_side) = c.into();
     const_cannot_clash_with_existing_names(ctx, &left_side)?;
     new_const(ctx, left_side, right_side)
 }
 
 fn const_cannot_clash_with_existing_names(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     left_side: &NamePos,
 ) -> Result<(), LintErrorPos> {
     let Positioned {
@@ -32,7 +32,7 @@ fn const_cannot_clash_with_existing_names(
 }
 
 fn new_const(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     left_side: NamePos,
     right_side: ExpressionPos,
 ) -> Result<Statement, LintErrorPos> {

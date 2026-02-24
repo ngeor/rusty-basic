@@ -7,7 +7,7 @@ mod statement;
 
 use rusty_parser::Program;
 
-use crate::Context;
+use crate::LinterContext;
 use crate::converter::common::Convertible;
 use crate::core::LintErrorPos;
 use crate::pre_linter::PreLinterResult;
@@ -15,7 +15,7 @@ use crate::pre_linter::PreLinterResult;
 pub fn convert(
     program: Program,
     pre_linter_result: PreLinterResult,
-) -> Result<(Context, Program), LintErrorPos> {
-    let mut context = Context::new(pre_linter_result);
+) -> Result<(LinterContext, Program), LintErrorPos> {
+    let mut context = LinterContext::new(pre_linter_result);
     program.convert(&mut context).map(|p| (context, p))
 }

@@ -10,7 +10,7 @@ mod tests;
 use rusty_parser::Program;
 
 pub use self::core::{
-    CastVariant, Context, LintError, QBNumberCast, ScopeName, qualifier_of_variant
+    CastVariant, LintError, LinterContext, QBNumberCast, ScopeName, qualifier_of_variant
 };
 pub use self::names::Names;
 use crate::converter::convert;
@@ -18,7 +18,7 @@ use crate::core::LintErrorPos;
 use crate::post_linter::post_linter;
 use crate::pre_linter::pre_lint_program;
 
-pub fn lint(program: Program) -> Result<(Program, Context), LintErrorPos> {
+pub fn lint(program: Program) -> Result<(Program, LinterContext), LintErrorPos> {
     // first pass, get user defined types and functions/subs
     let pre_linter_result = pre_lint_program(&program)?;
     // convert to fully typed

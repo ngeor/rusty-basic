@@ -4,10 +4,10 @@ use rusty_parser::{
 };
 
 use crate::converter::common::{ConvertibleIn, ExprContextPos};
-use crate::core::{Context, LintError, LintErrorPos};
+use crate::core::{LintError, LintErrorPos, LinterContext};
 
 pub fn convert(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     extra: ExprContextPos,
     unary_operator: UnaryOperator,
     child: ExpressionPos,

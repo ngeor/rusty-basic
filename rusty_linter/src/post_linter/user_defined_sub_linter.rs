@@ -3,11 +3,11 @@ use rusty_parser::SubCall;
 
 use super::post_conversion_linter::PostConversionLinter;
 use super::user_defined_function_linter::lint_call_args;
-use crate::Context;
+use crate::LinterContext;
 use crate::core::{LintError, LintErrorPos};
 
 pub struct UserDefinedSubLinter<'a> {
-    pub linter_context: &'a Context,
+    pub linter_context: &'a LinterContext,
 }
 
 impl<'a> PostConversionLinter for UserDefinedSubLinter<'a> {

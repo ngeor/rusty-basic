@@ -7,10 +7,10 @@ use crate::converter::common::{ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::variable::{
     AssignToFunction, ExistingConst, ExistingVar, VarAsUserDefinedFunctionCall, VarResolve, add_as_new_implicit_var
 };
-use crate::core::{Context, LintError, LintErrorPos};
+use crate::core::{LintError, LintErrorPos, LinterContext};
 
 pub fn convert(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     extra: ExprContextPos,
     left_side: Box<Expression>,
     property_name: Name,
@@ -107,7 +107,7 @@ fn try_fold(left_side: &Expression, property_name: Name) -> Option<Name> {
 }
 
 fn existing_property_expression_type(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     extra: ExprContextPos,
     resolved_left_side: Expression,
     expression_type: &ExpressionType,
@@ -139,7 +139,7 @@ fn existing_property_expression_type(
 }
 
 fn existing_property_user_defined_type_name(
-    ctx: &Context,
+    ctx: &LinterContext,
     resolved_left_side: Expression,
     user_defined_type_name: &BareName,
     property_name: Name,

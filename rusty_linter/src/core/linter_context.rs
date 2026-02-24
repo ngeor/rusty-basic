@@ -4,7 +4,7 @@ use crate::core::*;
 use crate::names::Names;
 use crate::pre_linter::PreLinterResult;
 
-pub struct Context {
+pub struct LinterContext {
     pub functions: SignatureMap,
     pub subs: SignatureMap,
     pub user_defined_types: UserDefinedTypes,
@@ -12,13 +12,13 @@ pub struct Context {
     pub names: Names,
 }
 
-impl TypeResolver for Context {
+impl TypeResolver for LinterContext {
     fn char_to_qualifier(&self, ch: char) -> TypeQualifier {
         self.resolver.char_to_qualifier(ch)
     }
 }
 
-impl Context {
+impl LinterContext {
     pub fn new(pre_linter_result: PreLinterResult) -> Self {
         Self {
             functions: pre_linter_result.functions,

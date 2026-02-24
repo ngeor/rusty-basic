@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use rusty_common::*;
-use rusty_linter::{HasUserDefinedTypes, QBNumberCast};
+use rusty_linter::QBNumberCast;
 use rusty_parser::UserDefinedTypes;
 use rusty_variant::Variant;
 
@@ -81,14 +81,6 @@ pub struct Interpreter<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: 
     data_segment: DataSegment,
 
     def_seg: Option<usize>,
-}
-
-impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> HasUserDefinedTypes
-    for Interpreter<TStdlib, TStdIn, TStdOut, TLpt1>
-{
-    fn user_defined_types(&self) -> &UserDefinedTypes {
-        &self.user_defined_types
-    }
 }
 
 impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer> InterpreterTrait
@@ -504,13 +496,13 @@ impl<TStdlib: Stdlib, TStdIn: Input, TStdOut: Printer, TLpt1: Printer>
                     .map(|res| res.map_err(RuntimeError::from))
                     .collect();
                 let args = r_args.with_err_at(&pos)?;
-                let v = allocate_array(args, element_type, self.user_defined_types())
+                let v = allocate_array(args, element_type, &self.user_defined_types)
                     .with_err_at(&pos)?;
                 self.registers_mut().set_a(v);
             }
             Instruction::AllocateUserDefined(user_defined_type_name) => {
                 let v =
-                    allocate_user_defined_type(user_defined_type_name, self.user_defined_types());
+                    allocate_user_defined_type(user_defined_type_name, &self.user_defined_types);
                 self.registers_mut().set_a(v);
             }
             Instruction::VarPathName(root_path) => {

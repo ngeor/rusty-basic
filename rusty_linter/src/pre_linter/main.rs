@@ -26,11 +26,11 @@ pub fn pre_lint_program(program: &Program) -> Result<PreLinterResult, LintErrorP
     let ctx = visitor.delegate();
     ctx.post_visit_functions()?;
     ctx.post_visit_subs()?;
-    Ok(PreLinterResult::new(
-        ctx.functions.implementations(),
-        ctx.subs.implementations(),
-        ctx.user_defined_types,
-    ))
+    Ok(PreLinterResult {
+        functions: ctx.functions.implementations(),
+        subs: ctx.subs.implementations(),
+        user_defined_types: ctx.user_defined_types,
+    })
 }
 
 impl SetPosition for MainContext {

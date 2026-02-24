@@ -1,17 +1,15 @@
 use rusty_parser::{AsBareName, Expression};
 
 use super::expression_reducer::*;
-use crate::core::{HasSubprograms, LintErrorPos, binary_cast};
+use crate::Context;
+use crate::core::{LintErrorPos, binary_cast};
 
 /// Finds undefined functions and converts them to zeroes.
-pub struct UndefinedFunctionReducer<'a, R> {
-    pub linter_context: &'a R,
+pub struct UndefinedFunctionReducer<'a> {
+    pub linter_context: &'a Context,
 }
 
-impl<'a, R> ExpressionReducer for UndefinedFunctionReducer<'a, R>
-where
-    R: HasSubprograms,
-{
+impl<'a> ExpressionReducer for UndefinedFunctionReducer<'a> {
     fn visit_expression(&mut self, expression: Expression) -> Result<Expression, LintErrorPos> {
         match expression {
             Expression::BinaryExpression(op, left, right, _) => {
@@ -26,7 +24,7 @@ where
             Expression::FunctionCall(name, args) => {
                 if self
                     .linter_context
-                    .functions()
+                    .functions
                     .contains_key(name.as_bare_name())
                 {
                     Ok(Expression::FunctionCall(

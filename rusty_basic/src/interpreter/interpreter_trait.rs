@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 
-use rusty_linter::HasUserDefinedTypes;
 use rusty_variant::Variant;
 
 use crate::RuntimeErrorPos;
@@ -12,7 +11,7 @@ use crate::interpreter::io::{FileManager, Input, Printer};
 use crate::interpreter::registers::{RegisterStack, Registers};
 use crate::interpreter::screen::Screen;
 
-pub trait InterpreterTrait: HasUserDefinedTypes {
+pub trait InterpreterTrait {
     type TStdlib: Stdlib;
     type TStdIn: Input;
     type TStdOut: Printer;

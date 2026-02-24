@@ -1,16 +1,14 @@
 use rusty_parser::Program;
 
-use crate::core::{HasSubprograms, LintErrorPos, Visitor};
+use crate::Context;
+use crate::core::{LintErrorPos, Visitor};
 use crate::post_linter::expression_reducer::ExpressionReducer;
 use crate::post_linter::post_conversion_linter::PostConversionLinter;
 use crate::post_linter::{
     built_in_linter, condition_type_linter, dots_linter, for_next_counter_match_linter, label_linter, print_linter, select_case_linter, undefined_function_reducer, user_defined_function_linter, user_defined_sub_linter
 };
 
-pub fn post_linter(
-    result: Program,
-    linter_context: &impl HasSubprograms,
-) -> Result<Program, LintErrorPos> {
+pub fn post_linter(result: Program, linter_context: &Context) -> Result<Program, LintErrorPos> {
     // lint
     apply_linters(&result, linter_context)?;
     // reduce
@@ -18,10 +16,7 @@ pub fn post_linter(
     reducer.visit_program(result)
 }
 
-fn apply_linters(
-    result: &Program,
-    linter_context: &impl HasSubprograms,
-) -> Result<(), LintErrorPos> {
+fn apply_linters(result: &Program, linter_context: &Context) -> Result<(), LintErrorPos> {
     let mut linter = for_next_counter_match_linter::ForNextCounterMatch::visitor();
     linter.visit(result)?;
 

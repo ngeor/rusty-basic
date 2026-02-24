@@ -7,7 +7,7 @@ use rusty_variant::Variant;
 use crate::converter::common::{Context, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
 use crate::core::{
-    ConstLookup, HasSubprograms, IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult, qualifier_of_const_variant
+    ConstLookup, IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult, qualifier_of_const_variant
 };
 
 pub fn convert(
@@ -47,7 +47,7 @@ pub fn convert(
 }
 
 fn validate(ctx: &Context, name: &Name, pos: Position) -> Result<(), LintErrorPos> {
-    if ctx.subs().contains_key(name.as_bare_name()) {
+    if ctx.subs.contains_key(name.as_bare_name()) {
         return Err(LintError::DuplicateDefinition.at_pos(pos));
     }
 

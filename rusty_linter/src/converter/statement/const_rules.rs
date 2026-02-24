@@ -3,7 +3,7 @@ use rusty_parser::*;
 
 use crate::converter::common::Context;
 use crate::core::{
-    CastVariant, ConstEvaluator, HasSubprograms, LintError, LintErrorPos, LintResult, qualifier_of_const_variant
+    CastVariant, ConstEvaluator, LintError, LintErrorPos, LintResult, qualifier_of_const_variant
 };
 
 pub fn on_const(ctx: &mut Context, c: Constant) -> Result<Statement, LintErrorPos> {
@@ -23,8 +23,8 @@ fn const_cannot_clash_with_existing_names(
     if ctx
         .names
         .contains_any_locally_or_contains_extended_recursively(const_name.as_bare_name())
-        || ctx.subs().contains_key(const_name.as_bare_name())
-        || ctx.functions().contains_key(const_name.as_bare_name())
+        || ctx.subs.contains_key(const_name.as_bare_name())
+        || ctx.functions.contains_key(const_name.as_bare_name())
     {
         Err(LintError::DuplicateDefinition.at(const_name_pos))
     } else {

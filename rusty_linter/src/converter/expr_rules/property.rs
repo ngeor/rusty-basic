@@ -7,7 +7,7 @@ use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextP
 use crate::converter::expr_rules::variable::{
     AssignToFunction, ExistingConst, ExistingVar, VarAsUserDefinedFunctionCall, VarResolve, add_as_new_implicit_var
 };
-use crate::core::{HasUserDefinedTypes, LintError, LintErrorPos};
+use crate::core::{LintError, LintErrorPos};
 
 pub fn convert(
     ctx: &mut Context,
@@ -145,7 +145,7 @@ fn existing_property_user_defined_type_name(
     property_name: Name,
     pos: Position,
 ) -> Result<Expression, LintErrorPos> {
-    match ctx.user_defined_types().get(user_defined_type_name) {
+    match ctx.user_defined_types.get(user_defined_type_name) {
         Some(user_defined_type) => existing_property_user_defined_type(
             resolved_left_side,
             user_defined_type,

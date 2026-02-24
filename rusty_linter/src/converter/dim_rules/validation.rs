@@ -2,9 +2,7 @@ use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{AsBareName, DimVar, Parameter, TypedName, VarType};
 
 use crate::converter::common::Context;
-use crate::core::{
-    ConstLookup, HasSubprograms, HasUserDefinedTypes, IntoTypeQualifier, LintError, LintErrorPos
-};
+use crate::core::{ConstLookup, IntoTypeQualifier, LintError, LintErrorPos};
 
 pub fn validate<T>(
     var_name: &TypedName<T>,
@@ -21,12 +19,12 @@ where
     cannot_clash_with_local_constants(var_name, ctx, pos)
 }
 
-fn cannot_clash_with_subs<T: VarType, C: HasSubprograms>(
+fn cannot_clash_with_subs<T: VarType>(
     var_name: &TypedName<T>,
-    ctx: &C,
+    ctx: &Context,
     pos: Position,
 ) -> Result<(), LintErrorPos> {
-    if ctx.subs().contains_key(var_name.as_bare_name()) {
+    if ctx.subs.contains_key(var_name.as_bare_name()) {
         Err(LintError::DuplicateDefinition.at_pos(pos))
     } else {
         Ok(())
@@ -55,7 +53,7 @@ impl CannotClashWithFunctions for DimVar {
         ctx: &Context,
         pos: Position,
     ) -> Result<(), LintErrorPos> {
-        if ctx.functions().contains_key(self.as_bare_name()) {
+        if ctx.functions.contains_key(self.as_bare_name()) {
             Err(LintError::DuplicateDefinition.at_pos(pos))
         } else {
             Ok(())
@@ -102,7 +100,7 @@ where
             element: type_name,
             pos,
         }) => {
-            if ctx.user_defined_types().contains_key(type_name) {
+            if ctx.user_defined_types.contains_key(type_name) {
                 Ok(())
             } else {
                 Err(LintError::TypeNotDefined.at(pos))

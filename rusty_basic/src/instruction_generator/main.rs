@@ -12,9 +12,7 @@ use crate::instruction_generator::subprogram_info::{
 };
 
 pub fn unwrap_linter_context(linter_context: Context) -> (Names, UserDefinedTypes) {
-    let (pre_linter_result, linter_names) = linter_context.into();
-    let user_defined_types = pre_linter_result.into();
-    (linter_names, user_defined_types)
+    (linter_context.names, linter_context.user_defined_types)
 }
 
 /// Generates instructions for the given program.

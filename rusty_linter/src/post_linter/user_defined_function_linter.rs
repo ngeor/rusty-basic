@@ -2,10 +2,11 @@ use rusty_common::*;
 use rusty_parser::*;
 
 use super::post_conversion_linter::PostConversionLinter;
+use crate::Context;
 use crate::core::*;
 
-pub struct UserDefinedFunctionLinter<'a, R> {
-    pub linter_context: &'a R,
+pub struct UserDefinedFunctionLinter<'a> {
+    pub linter_context: &'a Context,
 }
 
 pub fn lint_call_args(
@@ -150,10 +151,7 @@ fn has_at_least_one_arg(opt_args: Option<&Expressions>) -> bool {
     }
 }
 
-impl<'a, R> UserDefinedFunctionLinter<'a, R>
-where
-    R: HasSubprograms,
-{
+impl<'a> UserDefinedFunctionLinter<'a> {
     fn visit_function(
         &self,
         name: &Name,
@@ -162,7 +160,7 @@ where
     ) -> Result<(), LintErrorPos> {
         let qualifier = name.qualifier().expect("Unresolved function!");
         let bare_name = name.as_bare_name();
-        match self.linter_context.functions().get(bare_name) {
+        match self.linter_context.functions.get(bare_name) {
             Some(function_signature_pos) => {
                 if function_signature_pos.element != qualifier {
                     Err(LintError::TypeMismatch.at(function_signature_pos))
@@ -194,10 +192,7 @@ where
     }
 }
 
-impl<'a, R> PostConversionLinter for UserDefinedFunctionLinter<'a, R>
-where
-    R: HasSubprograms,
-{
+impl<'a> PostConversionLinter for UserDefinedFunctionLinter<'a> {
     fn visit_expression(&mut self, expr_pos: &ExpressionPos) -> Result<(), LintErrorPos> {
         let Positioned { element: e, pos } = expr_pos;
         match e {

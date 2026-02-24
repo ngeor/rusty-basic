@@ -2,8 +2,8 @@ use rusty_common::*;
 use rusty_parser::*;
 
 use crate::core::*;
+use crate::pre_linter::ConstantMap;
 use crate::pre_linter::sub_program_context::SubprogramContext;
-use crate::pre_linter::{ConstantMap, PreLinterResult};
 
 // CONST -> stored in global_constants
 // DEFINT -> stored in resolver
@@ -20,17 +20,17 @@ struct MainContext {
     declaration_pos: Position,
 }
 
-pub fn pre_lint_program(program: &Program) -> Result<PreLinterResult, LintErrorPos> {
+pub fn pre_lint_program(program: &Program) -> Result<LinterContext, LintErrorPos> {
     let mut visitor = GlobalVisitor::new(MainContext::default());
     visitor.visit(program)?;
     let ctx = visitor.delegate();
     ctx.post_visit_functions()?;
     ctx.post_visit_subs()?;
-    Ok(PreLinterResult {
-        functions: ctx.functions.implementations(),
-        subs: ctx.subs.implementations(),
-        user_defined_types: ctx.user_defined_types,
-    })
+    Ok(LinterContext::new(
+        ctx.functions.implementations(),
+        ctx.subs.implementations(),
+        ctx.user_defined_types,
+    ))
 }
 
 impl SetPosition for MainContext {

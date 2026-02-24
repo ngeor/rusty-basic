@@ -2,7 +2,6 @@ use rusty_parser::*;
 
 use crate::core::*;
 use crate::names::Names;
-use crate::pre_linter::PreLinterResult;
 
 pub struct LinterContext {
     pub functions: SignatureMap,
@@ -19,11 +18,15 @@ impl TypeResolver for LinterContext {
 }
 
 impl LinterContext {
-    pub fn new(pre_linter_result: PreLinterResult) -> Self {
+    pub fn new(
+        functions: SignatureMap,
+        subs: SignatureMap,
+        user_defined_types: UserDefinedTypes,
+    ) -> Self {
         Self {
-            functions: pre_linter_result.functions,
-            subs: pre_linter_result.subs,
-            user_defined_types: pre_linter_result.user_defined_types,
+            functions,
+            subs,
+            user_defined_types,
             resolver: TypeResolverImpl::new(),
             names: Names::new(),
         }

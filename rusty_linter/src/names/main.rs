@@ -41,7 +41,10 @@ pub struct Names {
 /// TODO merge [ImplicitVars] into [NamesInner]
 /// TODO use bi_tuple macro
 #[derive(Default)]
-struct NamesOneLevel(NamesInner, ImplicitVars);
+struct NamesOneLevel {
+    names: NamesInner,
+    implicit_vars: ImplicitVars,
+}
 
 impl Names {
     pub fn new() -> Self {
@@ -63,22 +66,22 @@ impl Names {
     }
 
     pub fn get_implicit_vars_mut(&mut self) -> &mut ImplicitVars {
-        &mut self.current_data_mut().1
+        &mut self.current_data_mut().implicit_vars
     }
 
     pub fn names(&self) -> &NamesInner {
-        &self.current_data().0
+        &self.current_data().names
     }
 
     pub fn names_mut(&mut self) -> &mut NamesInner {
-        &mut self.current_data_mut().0
+        &mut self.current_data_mut().names
     }
 
     /// Returns the global names, but only if we are currently within a sub program.
     fn global_names(&self) -> Option<&NamesInner> {
         match &self.current_scope_name {
             ScopeName::Global => None,
-            _ => self.data.get(&ScopeName::Global).map(|x| &x.0),
+            _ => self.data.get(&ScopeName::Global).map(|x| &x.names),
         }
     }
 
@@ -210,7 +213,7 @@ impl Names {
             .data
             .get(scope_name)
             .unwrap_or_else(|| panic!("Subprogram {:?} should be resolved", scope_name));
-        match one_level.0.get_variable_info_by_name(name) {
+        match one_level.names.get_variable_info_by_name(name) {
             Some(i) => i,
             None => {
                 if scope_name != &ScopeName::Global {
@@ -219,7 +222,7 @@ impl Names {
                         .data
                         .get(&ScopeName::Global)
                         .expect("Global name scope missing!")
-                        .0
+                        .names
                         .get_variable_info_by_name(name)
                         .unwrap_or_else(|| {
                             panic!("Could not resolve {} even in global namespace", name)

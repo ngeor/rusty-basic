@@ -1,20 +1,20 @@
 use rusty_common::{AtPos, Position};
 use rusty_parser::{
-    AsBareName, BuiltInFunction, BuiltInStyle, DimType, Expression, ExpressionType, Name, TypeQualifier, VariableInfo
+    AsBareName, BuiltInFunction, BuiltInStyle, DimType, Expression, ExpressionType, Name, TypeQualifier
 };
 use rusty_variant::Variant;
 
 use crate::converter::common::{ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
 use crate::core::{
-    ConstLookup, IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult, LinterContext, qualifier_of_const_variant
+    ConstLookup, IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult, LinterContext, VariableInfo, qualifier_of_const_variant
 };
 
 pub fn convert(
     ctx: &mut LinterContext,
     extra: ExprContextPos,
     name: Name,
-    variable_info: VariableInfo,
+    expression_type: ExpressionType,
 ) -> Result<Expression, LintErrorPos> {
     // validation rules
     validate(ctx, &name, extra.pos)?;
@@ -42,7 +42,7 @@ pub fn convert(
         Ok(add_as_new_implicit_var(ctx, extra, name))
     } else {
         // repack as unresolved
-        Ok(Expression::Variable(name, variable_info))
+        Ok(Expression::Variable(name, expression_type))
     }
 }
 
@@ -70,12 +70,12 @@ pub fn add_as_new_implicit_var(
         None,
     );
 
-    let var_info = VariableInfo::new_built_in(q, false);
+    let expression_type = ExpressionType::BuiltIn(q);
     let pos = extra.pos;
     ctx.names
         .get_implicit_vars_mut()
         .push(resolved_name.clone().demand_qualified().at_pos(pos));
-    Expression::Variable(resolved_name, var_info)
+    Expression::Variable(resolved_name, expression_type)
 }
 
 pub trait VarResolve {
@@ -114,9 +114,9 @@ impl VarResolve for ExistingVar {
         name: Name,
     ) -> Result<Expression, LintErrorPos> {
         let variable_info = self.var_info.clone().unwrap();
-        let expression_type = &variable_info.expression_type;
-        let converted_name = qualify_name(expression_type, name).with_err_at(&extra.pos)?;
-        Ok(Expression::Variable(converted_name, variable_info))
+        let expression_type = variable_info.expression_type;
+        let converted_name = qualify_name(&expression_type, name).with_err_at(&extra.pos)?;
+        Ok(Expression::Variable(converted_name, expression_type))
     }
 }
 
@@ -211,15 +211,15 @@ impl VarResolve for AssignToFunction {
         if ctx.names.is_in_function(name.as_bare_name()) {
             let converted_name = try_qualify(name, function_qualifier).with_err_at(&extra.pos)?;
             let expr_type = ExpressionType::BuiltIn(function_qualifier);
-            let variable_info = VariableInfo::new_local(expr_type);
+            let variable_info = VariableInfo::new_local(expr_type.clone());
 
             // store this in the name context too to make it easier for instruction generator
             // TODO add unit test
             // TODO what if the name already exists?
             ctx.names
-                .insert_compact(converted_name.as_bare_name().clone(), variable_info.clone());
+                .insert_compact(converted_name.as_bare_name().clone(), variable_info);
 
-            let expr = Expression::Variable(converted_name, variable_info);
+            let expr = Expression::Variable(converted_name, expr_type);
 
             Ok(expr)
         } else {

@@ -1,12 +1,10 @@
 use rusty_common::{AtPos, Position};
-use rusty_parser::{
-    AsBareName, BareName, Expression, ExpressionType, Expressions, Name, VariableInfo
-};
+use rusty_parser::{AsBareName, BareName, Expression, ExpressionType, Expressions, Name};
 
 use crate::converter::common::{ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
 use crate::core::{
-    IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult, LinterContext
+    IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult, LinterContext, VariableInfo
 };
 
 pub fn convert(
@@ -116,9 +114,7 @@ impl FuncResolve for ExistingArrayWithParenthesis {
         let converted_args = args.convert_in(ctx, extra.element)?;
         // convert name
         let VariableInfo {
-            expression_type,
-            shared,
-            redim_info,
+            expression_type, ..
         } = self.var_info.clone().unwrap();
         match expression_type {
             ExpressionType::Array(element_type) => {
@@ -128,11 +124,7 @@ impl FuncResolve for ExistingArrayWithParenthesis {
                 let result_expr = Expression::ArrayElement(
                     converted_name,
                     converted_args,
-                    VariableInfo {
-                        expression_type: element_type.as_ref().clone(),
-                        shared,
-                        redim_info,
-                    },
+                    element_type.as_ref().clone(),
                 );
                 Ok(result_expr)
             }

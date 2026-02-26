@@ -1,6 +1,6 @@
 use rusty_common::{AtPos, Position};
 use rusty_parser::{
-    Expression, ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType, TypeQualifier, VariableInfo
+    Expression, ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType, TypeQualifier
 };
 
 use crate::core::{CanCastTo, LintError, LintErrorPos};
@@ -105,13 +105,7 @@ impl ArgValidation for Expressions {
 
     fn require_string_variable(&self, index: usize) -> Result<(), LintErrorPos> {
         match self.expr(index) {
-            Expression::Variable(
-                _,
-                VariableInfo {
-                    expression_type: ExpressionType::BuiltIn(TypeQualifier::DollarString),
-                    ..
-                },
-            ) => Ok(()),
+            Expression::Variable(_, ExpressionType::BuiltIn(TypeQualifier::DollarString)) => Ok(()),
             Expression::Variable(_, _) => Err(LintError::ArgumentTypeMismatch.at(&self[index])),
             _ => Err(LintError::VariableRequired.at(&self[index])),
         }
@@ -119,19 +113,8 @@ impl ArgValidation for Expressions {
 
     fn require_string_ref(&self, index: usize) -> Result<(), LintErrorPos> {
         match self.expr(index) {
-            Expression::Variable(
-                _,
-                VariableInfo {
-                    expression_type, ..
-                },
-            )
-            | Expression::ArrayElement(
-                _,
-                _,
-                VariableInfo {
-                    expression_type, ..
-                },
-            )
+            Expression::Variable(_, expression_type)
+            | Expression::ArrayElement(_, _, expression_type)
             | Expression::Property(_, _, expression_type) => {
                 if expression_type.can_cast_to(&TypeQualifier::DollarString) {
                     Ok(())
@@ -145,19 +128,8 @@ impl ArgValidation for Expressions {
 
     fn require_variable_of_built_in_type(&self, index: usize) -> Result<(), LintErrorPos> {
         match self.expr(index) {
-            Expression::Variable(
-                _,
-                VariableInfo {
-                    expression_type, ..
-                },
-            )
-            | Expression::ArrayElement(
-                _,
-                _,
-                VariableInfo {
-                    expression_type, ..
-                },
-            )
+            Expression::Variable(_, expression_type)
+            | Expression::ArrayElement(_, _, expression_type)
             | Expression::Property(_, _, expression_type) => match expression_type {
                 ExpressionType::BuiltIn(_) | ExpressionType::FixedLengthString(_) => Ok(()),
                 _ => Err(LintError::ArgumentTypeMismatch.at(&self[index])),

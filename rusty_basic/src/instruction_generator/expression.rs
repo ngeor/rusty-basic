@@ -1,4 +1,5 @@
 use rusty_common::*;
+use rusty_linter::VariableInfo;
 use rusty_parser::*;
 use rusty_variant::Variant;
 

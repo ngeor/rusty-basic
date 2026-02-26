@@ -49,19 +49,10 @@ fn lint_by_ref_arg(
         ResolvedParamType::Array(boxed_element_type) => {
             // we can only pass an array by using the array name followed by parenthesis e.g. `Menu choice$()`
             match &arg_pos.element {
-                Expression::ArrayElement(
-                    name,
-                    args,
-                    VariableInfo {
-                        expression_type, ..
-                    },
-                ) => {
+                Expression::ArrayElement(name, args, expression_type) => {
                     if args.is_empty() {
-                        let dummy_expr = Expression::Variable(
-                            name.clone(),
-                            VariableInfo::new_local(expression_type.clone()),
-                        )
-                        .at(arg_pos);
+                        let dummy_expr =
+                            Expression::Variable(name.clone(), expression_type.clone()).at(arg_pos);
                         lint_by_ref_arg(&dummy_expr, boxed_element_type.as_ref())
                     } else {
                         Err(LintError::ArgumentTypeMismatch.at(arg_pos))
@@ -126,20 +117,10 @@ fn arg_pos_to_expr_type_and_opt_args(
     arg_pos: &ExpressionPos,
 ) -> Option<(&ExpressionType, Option<&Expressions>)> {
     match &arg_pos.element {
-        Expression::Variable(
-            _,
-            VariableInfo {
-                expression_type, ..
-            },
-        )
-        | Expression::Property(_, _, expression_type) => Some((expression_type, None)),
-        Expression::ArrayElement(
-            _,
-            args,
-            VariableInfo {
-                expression_type, ..
-            },
-        ) => Some((expression_type, Some(args))),
+        Expression::Variable(_, expression_type) | Expression::Property(_, _, expression_type) => {
+            Some((expression_type, None))
+        }
+        Expression::ArrayElement(_, args, expression_type) => Some((expression_type, Some(args))),
         _ => None,
     }
 }

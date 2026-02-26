@@ -37,7 +37,6 @@ mod type_qualifier;
 mod unary_operator;
 mod user_defined_type;
 mod var_name;
-mod variable_info;
 mod while_wend;
 
 // export types
@@ -70,4 +69,3 @@ pub use self::user_defined_type::{
     Element, ElementPos, ElementType, UserDefinedType, UserDefinedTypes
 };
 pub use self::var_name::*;
-pub use self::variable_info::{RedimInfo, VariableInfo};

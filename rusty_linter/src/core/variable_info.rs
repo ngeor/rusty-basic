@@ -1,4 +1,4 @@
-use crate::{BareName, ExpressionType, TypeQualifier};
+use rusty_parser::{BareName, ExpressionType, TypeQualifier};
 
 /// Additional info for variable expression
 #[derive(Clone, Debug, PartialEq)]

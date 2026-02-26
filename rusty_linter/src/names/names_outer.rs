@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 
 use rusty_common::CaseInsensitiveString;
-use rusty_parser::{
-    AsBareName, BareName, BuiltInStyle, Name, RedimInfo, TypeQualifier, VarType, VariableInfo
-};
+use rusty_parser::{AsBareName, BareName, BuiltInStyle, Name, TypeQualifier, VarType};
 use rusty_variant::Variant;
 
-use crate::core::{ConstLookup, ScopeKind, ScopeName};
+use crate::core::{ConstLookup, RedimInfo, ScopeKind, ScopeName, VariableInfo};
 use crate::names::ImplicitVars;
 use crate::names::names_inner::NamesInner;
 use crate::names::traits::ManyNamesTrait;

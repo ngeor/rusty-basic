@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use rusty_parser::{AsBareName, BareName, Name, TypeQualifier, VariableInfo};
+use rusty_parser::{AsBareName, BareName, Name, TypeQualifier};
 use rusty_variant::Variant;
 
-use crate::core::ConstLookup;
+use crate::core::{ConstLookup, VariableInfo};
 use crate::names::name_info::NameInfo;
 use crate::names::traits::{ManyNamesTrait, SingleNameTrait};
 

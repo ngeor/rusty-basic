@@ -1,6 +1,7 @@
-use rusty_parser::{BuiltInStyle, TypeQualifier, VariableInfo};
+use rusty_parser::{BuiltInStyle, TypeQualifier};
 use rusty_variant::Variant;
 
+use crate::core::VariableInfo;
 use crate::names::compacts::Compacts;
 use crate::names::traits::SingleNameTrait;
 

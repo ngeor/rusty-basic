@@ -64,10 +64,10 @@ impl ConvertibleIn<ExprContextPos> for Expression {
                 binary::convert(ctx, extra, binary_operator, *left, *right)
             }
             // variables
-            Self::Variable(name, variable_info) => {
-                variable::convert(ctx, extra, name, variable_info)
+            Self::Variable(name, expression_type) => {
+                variable::convert(ctx, extra, name, expression_type)
             }
-            Self::ArrayElement(_name, _indices, _variable_info) => {
+            Self::ArrayElement(_name, _indices, _expression_type) => {
                 panic!(
                     "Parser is not supposed to produce any ArrayElement expressions, only FunctionCall"
                 )

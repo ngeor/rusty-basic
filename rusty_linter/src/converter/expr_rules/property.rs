@@ -1,6 +1,6 @@
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{
-    AsBareName, BareName, ElementType, Expression, ExpressionType, HasExpressionType, Name, ToBareName, UserDefinedType, VariableInfo
+    AsBareName, BareName, ElementType, Expression, ExpressionType, HasExpressionType, Name, ToBareName, UserDefinedType
 };
 
 use crate::converter::common::{ConvertibleIn, ExprContext, ExprContextPos};
@@ -48,12 +48,7 @@ pub fn convert(
 
     // functions cannot return udf so no need to check them
     match &resolved_left_side {
-        Expression::Variable(
-            _name,
-            VariableInfo {
-                expression_type, ..
-            },
-        ) => {
+        Expression::Variable(_name, expression_type) => {
             let temp_expression_type = expression_type.clone();
             existing_property_expression_type(
                 ctx,
@@ -64,13 +59,7 @@ pub fn convert(
                 true,
             )
         }
-        Expression::ArrayElement(
-            _name,
-            _indices,
-            VariableInfo {
-                expression_type, ..
-            },
-        ) => {
+        Expression::ArrayElement(_name, _indices, expression_type) => {
             let temp_expression_type = expression_type.clone();
             existing_property_expression_type(
                 ctx,

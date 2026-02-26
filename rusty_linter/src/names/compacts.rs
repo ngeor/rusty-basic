@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use rusty_parser::{BuiltInStyle, TypeQualifier, VariableInfo};
+use rusty_parser::{BuiltInStyle, TypeQualifier};
 use rusty_variant::Variant;
 
+use crate::core::VariableInfo;
 use crate::names::traits::SingleNameTrait;
 
 /// Stores information about compact variables of the same name.

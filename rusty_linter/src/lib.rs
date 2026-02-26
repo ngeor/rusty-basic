@@ -10,7 +10,7 @@ mod tests;
 use rusty_parser::Program;
 
 pub use self::core::{
-    CastVariant, LintError, LinterContext, QBNumberCast, ScopeName, qualifier_of_variant
+    CastVariant, LintError, LinterContext, QBNumberCast, RedimInfo, ScopeName, VariableInfo, qualifier_of_variant
 };
 pub use self::names::Names;
 use crate::converter::common::Convertible;

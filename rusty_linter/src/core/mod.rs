@@ -12,6 +12,7 @@ mod signature;
 mod string_length;
 mod type_resolver;
 mod type_resolver_impl;
+mod variable_info;
 mod visitor;
 
 pub use self::can_cast_to::*;
@@ -28,4 +29,5 @@ pub use self::signature::*;
 pub use self::string_length::*;
 pub use self::type_resolver::*;
 pub use self::type_resolver_impl::*;
+pub use self::variable_info::*;
 pub use self::visitor::*;

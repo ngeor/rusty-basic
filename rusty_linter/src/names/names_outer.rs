@@ -38,8 +38,6 @@ pub struct Names {
 
 /// Stores the data relevant to one level only (i.e. global symbols, or a FUNCTION, or a SUB).
 /// Collects constant and variable names in [NamesInner] and implicit variables in [ImplicitVars].
-/// TODO merge [ImplicitVars] into [NamesInner]
-/// TODO use bi_tuple macro
 #[derive(Default)]
 struct NamesOneLevel {
     names: NamesInner,

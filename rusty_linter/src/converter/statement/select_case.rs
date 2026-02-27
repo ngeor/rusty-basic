@@ -1,10 +1,10 @@
 use rusty_parser::{CaseBlock, CaseExpression, SelectCase};
 
-use crate::converter::common::{Context, Convertible, ConvertibleIn};
-use crate::core::LintErrorPos;
+use crate::converter::common::{Convertible, ConvertibleIn};
+use crate::core::{LintErrorPos, LinterContext};
 
 impl Convertible for SelectCase {
-    fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {
+    fn convert(self, ctx: &mut LinterContext) -> Result<Self, LintErrorPos> {
         let expr = self.expr.convert_in_default(ctx)?;
         let case_blocks = self.case_blocks.convert(ctx)?;
         let else_block = self.else_block.convert(ctx)?;
@@ -19,7 +19,7 @@ impl Convertible for SelectCase {
 }
 
 impl Convertible for CaseBlock {
-    fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {
+    fn convert(self, ctx: &mut LinterContext) -> Result<Self, LintErrorPos> {
         let (expression_list, statements) = self.into();
         let expression_list = expression_list.convert(ctx)?;
         let statements = statements.convert(ctx)?;
@@ -28,7 +28,7 @@ impl Convertible for CaseBlock {
 }
 
 impl Convertible for CaseExpression {
-    fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {
+    fn convert(self, ctx: &mut LinterContext) -> Result<Self, LintErrorPos> {
         match self {
             Self::Simple(e) => e.convert_in_default(ctx).map(CaseExpression::Simple),
             Self::Is(op, e) => e.convert_in_default(ctx).map(|e| Self::Is(op, e)),

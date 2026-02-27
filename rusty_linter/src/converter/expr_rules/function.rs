@@ -1,14 +1,14 @@
 use rusty_common::{AtPos, Position};
-use rusty_parser::{
-    AsBareName, BareName, Expression, ExpressionType, Expressions, Name, VariableInfo
+use rusty_parser::{AsBareName, BareName, Expression, ExpressionType, Expressions, Name};
+
+use crate::converter::common::{ConvertibleIn, ExprContext, ExprContextPos};
+use crate::converter::expr_rules::qualify_name::*;
+use crate::core::{
+    IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult, LinterContext, VariableInfo
 };
 
-use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
-use crate::converter::expr_rules::qualify_name::*;
-use crate::core::{IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult};
-
 pub fn convert(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     extra: ExprContextPos,
     name: Name,
     args: Expressions,
@@ -28,7 +28,7 @@ pub fn convert(
 }
 
 fn resolve_function(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     name: Name,
     args: Expressions,
     pos: Position,
@@ -54,11 +54,11 @@ fn resolve_function(
 }
 
 trait FuncResolve {
-    fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool;
+    fn can_handle(&mut self, ctx: &LinterContext, name: &Name) -> bool;
 
     fn resolve(
         &self,
-        ctx: &mut Context,
+        ctx: &mut LinterContext,
         extra: ExprContextPos,
         name: Name,
         args: Expressions,
@@ -78,19 +78,19 @@ impl ExistingArrayWithParenthesis {
         }
     }
 
-    fn get_var_info<'a>(ctx: &'a Context, name: &Name) -> Option<&'a VariableInfo> {
+    fn get_var_info<'a>(ctx: &'a LinterContext, name: &Name) -> Option<&'a VariableInfo> {
         Self::get_extended_var_info(ctx, name.as_bare_name())
             .or_else(|| Self::get_compact_var_info(ctx, name))
     }
 
     fn get_extended_var_info<'a>(
-        ctx: &'a Context,
+        ctx: &'a LinterContext,
         bare_name: &BareName,
     ) -> Option<&'a VariableInfo> {
         ctx.names.get_extended_var_recursively(bare_name)
     }
 
-    fn get_compact_var_info<'a>(ctx: &'a Context, name: &Name) -> Option<&'a VariableInfo> {
+    fn get_compact_var_info<'a>(ctx: &'a LinterContext, name: &Name) -> Option<&'a VariableInfo> {
         let qualifier = name.qualify(ctx);
         ctx.names
             .get_compact_var_recursively(name.as_bare_name(), qualifier)
@@ -98,14 +98,14 @@ impl ExistingArrayWithParenthesis {
 }
 
 impl FuncResolve for ExistingArrayWithParenthesis {
-    fn can_handle(&mut self, ctx: &Context, name: &Name) -> bool {
+    fn can_handle(&mut self, ctx: &LinterContext, name: &Name) -> bool {
         self.var_info = Self::get_var_info(ctx, name).cloned();
         self.is_array()
     }
 
     fn resolve(
         &self,
-        ctx: &mut Context,
+        ctx: &mut LinterContext,
         extra: ExprContextPos,
         name: Name,
         args: Expressions,
@@ -114,9 +114,7 @@ impl FuncResolve for ExistingArrayWithParenthesis {
         let converted_args = args.convert_in(ctx, extra.element)?;
         // convert name
         let VariableInfo {
-            expression_type,
-            shared,
-            redim_info,
+            expression_type, ..
         } = self.var_info.clone().unwrap();
         match expression_type {
             ExpressionType::Array(element_type) => {
@@ -126,11 +124,7 @@ impl FuncResolve for ExistingArrayWithParenthesis {
                 let result_expr = Expression::ArrayElement(
                     converted_name,
                     converted_args,
-                    VariableInfo {
-                        expression_type: element_type.as_ref().clone(),
-                        shared,
-                        redim_info,
-                    },
+                    element_type.as_ref().clone(),
                 );
                 Ok(result_expr)
             }
@@ -151,7 +145,7 @@ pub fn functions_must_have_arguments(
 }
 
 pub fn convert_function_args(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     args: Expressions,
 ) -> Result<Expressions, LintErrorPos> {
     args.convert_in(ctx, ExprContext::Argument)

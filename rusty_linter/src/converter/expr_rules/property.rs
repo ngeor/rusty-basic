@@ -1,16 +1,16 @@
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{
-    AsBareName, BareName, ElementType, Expression, ExpressionType, HasExpressionType, Name, ToBareName, UserDefinedType, VariableInfo
+    AsBareName, BareName, ElementType, Expression, ExpressionType, HasExpressionType, Name, ToBareName, UserDefinedType
 };
 
-use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
+use crate::converter::common::{ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::variable::{
     AssignToFunction, ExistingConst, ExistingVar, VarAsUserDefinedFunctionCall, VarResolve, add_as_new_implicit_var
 };
-use crate::core::{HasUserDefinedTypes, LintError, LintErrorPos};
+use crate::core::{LintError, LintErrorPos, LinterContext};
 
 pub fn convert(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     extra: ExprContextPos,
     left_side: Box<Expression>,
     property_name: Name,
@@ -48,12 +48,7 @@ pub fn convert(
 
     // functions cannot return udf so no need to check them
     match &resolved_left_side {
-        Expression::Variable(
-            _name,
-            VariableInfo {
-                expression_type, ..
-            },
-        ) => {
+        Expression::Variable(_name, expression_type) => {
             let temp_expression_type = expression_type.clone();
             existing_property_expression_type(
                 ctx,
@@ -64,13 +59,7 @@ pub fn convert(
                 true,
             )
         }
-        Expression::ArrayElement(
-            _name,
-            _indices,
-            VariableInfo {
-                expression_type, ..
-            },
-        ) => {
+        Expression::ArrayElement(_name, _indices, expression_type) => {
             let temp_expression_type = expression_type.clone();
             existing_property_expression_type(
                 ctx,
@@ -107,7 +96,7 @@ fn try_fold(left_side: &Expression, property_name: Name) -> Option<Name> {
 }
 
 fn existing_property_expression_type(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     extra: ExprContextPos,
     resolved_left_side: Expression,
     expression_type: &ExpressionType,
@@ -139,13 +128,13 @@ fn existing_property_expression_type(
 }
 
 fn existing_property_user_defined_type_name(
-    ctx: &Context,
+    ctx: &LinterContext,
     resolved_left_side: Expression,
     user_defined_type_name: &BareName,
     property_name: Name,
     pos: Position,
 ) -> Result<Expression, LintErrorPos> {
-    match ctx.user_defined_types().get(user_defined_type_name) {
+    match ctx.user_defined_types.get(user_defined_type_name) {
         Some(user_defined_type) => existing_property_user_defined_type(
             resolved_left_side,
             user_defined_type,

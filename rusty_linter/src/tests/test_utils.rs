@@ -1,14 +1,13 @@
 use rusty_parser::{Program, parse};
 
-use crate::core::{HasUserDefinedTypes, LintErrorPos};
-use crate::lint;
+use crate::core::{LintErrorPos, LinterContext, lint};
 
 /// Lints the given string and returns the results.
 ///
 /// # Panics
 ///
 /// Panics if the parser or the linter have an error.
-pub fn linter_ok_with_types(input: &str) -> (Program, impl HasUserDefinedTypes) {
+pub fn linter_ok_with_types(input: &str) -> (Program, LinterContext) {
     let program = parse(input);
     lint(program).unwrap()
 }

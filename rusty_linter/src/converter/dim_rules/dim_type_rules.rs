@@ -1,13 +1,15 @@
 use rusty_common::*;
 use rusty_parser::*;
 
-use crate::converter::common::{DimNameState, *};
-use crate::core::{IntoTypeQualifier, LintError, LintErrorPos, ValidateStringLength};
+use crate::converter::common::{Convertible, DimContext, DimNameState};
+use crate::core::{
+    IntoTypeQualifier, LintError, LintErrorPos, LinterContext, ValidateStringLength
+};
 
 pub fn on_dim_type(
     dim_type: DimType,
     bare_name: &BareName,
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     extra: DimNameState,
 ) -> Result<DimType, LintErrorPos> {
     match dim_type {
@@ -27,7 +29,7 @@ pub fn on_dim_type(
 }
 
 pub fn bare_to_dim_type<T: VarType>(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     bare_name: &BareName,
     pos: Position,
 ) -> Result<T, LintErrorPos> {
@@ -37,7 +39,7 @@ pub fn bare_to_dim_type<T: VarType>(
 }
 
 fn require_compact_can_be_defined(
-    ctx: &Context,
+    ctx: &LinterContext,
     bare_name: &BareName,
     q: TypeQualifier,
     pos: Position,
@@ -60,7 +62,7 @@ fn require_compact_can_be_defined(
 }
 
 pub fn built_in_to_dim_type<T: VarType>(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     bare_name: &BareName,
     q: TypeQualifier,
     built_in_style: BuiltInStyle,
@@ -79,7 +81,7 @@ pub fn built_in_to_dim_type<T: VarType>(
 }
 
 fn require_extended_can_be_defined(
-    ctx: &Context,
+    ctx: &LinterContext,
     bare_name: &BareName,
     pos: Position,
 ) -> Result<(), LintErrorPos> {
@@ -90,7 +92,7 @@ fn require_extended_can_be_defined(
 }
 
 fn fixed_length_string_to_dim_type(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     bare_name: &BareName,
     length_expression: &ExpressionPos,
 ) -> Result<DimType, LintErrorPos> {
@@ -103,7 +105,7 @@ fn fixed_length_string_to_dim_type(
 }
 
 pub fn user_defined_to_dim_type<T: VarType>(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     bare_name: &BareName,
     user_defined_type: BareNamePos,
     pos: Position,
@@ -113,7 +115,7 @@ pub fn user_defined_to_dim_type<T: VarType>(
 }
 
 fn array_to_dim_type(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     extra: DimNameState,
     bare_name: &BareName,
     array_dimensions: ArrayDimensions,

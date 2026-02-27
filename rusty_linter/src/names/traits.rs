@@ -1,7 +1,7 @@
-use rusty_parser::{BareName, BuiltInStyle, TypeQualifier, VariableInfo};
+use rusty_parser::{BareName, BuiltInStyle, TypeQualifier};
 use rusty_variant::Variant;
 
-use crate::core::ConstLookup;
+use crate::core::{ConstLookup, VariableInfo};
 
 pub trait SingleNameTrait {
     fn get_compact(&self, qualifier: TypeQualifier) -> Option<&VariableInfo>;

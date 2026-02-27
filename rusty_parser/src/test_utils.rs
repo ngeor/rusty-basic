@@ -472,7 +472,7 @@ macro_rules! paren_exp {
 #[macro_export]
 macro_rules! expr {
     (var($name: literal)) => {
-        Expression::Variable(Name::from($name), VariableInfo::unresolved())
+        Expression::Variable(Name::from($name), ExpressionType::Unresolved)
     };
 
     (prop($first: literal.$second: literal)) => {

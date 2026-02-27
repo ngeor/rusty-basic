@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use rusty_linter::qualifier_of_variant;
+use rusty_linter::core::qualifier_of_variant;
 use rusty_parser::{FileHandle, TypeQualifier};
 use rusty_variant::Variant;
 

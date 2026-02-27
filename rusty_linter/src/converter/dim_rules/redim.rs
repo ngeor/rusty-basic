@@ -1,13 +1,15 @@
 use rusty_common::*;
 use rusty_parser::*;
 
-use crate::converter::common::{Context, Convertible, DimNameState};
-use crate::core::{IntoTypeQualifier, LintError, LintErrorPos, ValidateStringLength};
+use crate::converter::common::{Convertible, DimNameState};
+use crate::core::{
+    IntoTypeQualifier, LintError, LintErrorPos, LinterContext, RedimInfo, ValidateStringLength, VariableInfo
+};
 
 pub fn on_redim_type(
     var_type: DimType,
     bare_name: &BareName,
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     extra: DimNameState,
 ) -> Result<(DimType, Option<RedimInfo>), LintErrorPos> {
     if let DimType::Array(array_dimensions, element_type) = var_type {
@@ -30,7 +32,7 @@ pub fn on_redim_type(
 }
 
 fn to_dim_type(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     extra: DimNameState,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
@@ -69,7 +71,7 @@ fn to_dim_type(
 }
 
 fn bare_to_dim_type(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     extra: DimNameState,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
@@ -128,7 +130,7 @@ fn bare_to_dim_type(
 }
 
 fn built_in_to_dim_type(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
     q: TypeQualifier,
@@ -178,7 +180,7 @@ fn require_built_in_array(
 }
 
 fn fixed_length_string_to_dim_type(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     extra: DimNameState,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
@@ -214,7 +216,7 @@ fn require_fixed_length_string_array(
 }
 
 fn user_defined_type_to_dim_type(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     bare_name: &BareName,
     array_dimensions: &ArrayDimensions,
     user_defined_type: BareNamePos,

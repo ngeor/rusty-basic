@@ -1,4 +1,4 @@
-use rusty_linter::QBNumberCast;
+use rusty_linter::core::QBNumberCast;
 
 use crate::RuntimeError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;

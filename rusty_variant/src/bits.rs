@@ -121,7 +121,7 @@ fn f64_to_bits_for_normalized_value(
     // insert the significant bits
     for bit in int_bits
         .into_iter()
-        .chain(fraction_bits.into_iter())
+        .chain(fraction_bits)
         .take(DOUBLE_SIGNIFICANT_BITS)
     {
         bits.push(bit);

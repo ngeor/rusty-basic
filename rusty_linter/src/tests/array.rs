@@ -116,11 +116,7 @@ fn test_passing_array_parameter_with_parenthesis() {
                     Expression::ArrayElement(
                         "choice$".into(),
                         vec![],
-                        VariableInfo {
-                            expression_type: ExpressionType::BuiltIn(TypeQualifier::DollarString),
-                            shared: false,
-                            redim_info: None
-                        }
+                        ExpressionType::BuiltIn(TypeQualifier::DollarString),
                     )
                     .at_rc(4, 10)
                 ]
@@ -149,13 +145,7 @@ fn test_passing_array_parameter_with_parenthesis() {
                         Expression::ArrayElement(
                             "choice$".into(),
                             vec![Expression::IntegerLiteral(1).at_rc(7, 22)],
-                            VariableInfo {
-                                expression_type: ExpressionType::BuiltIn(
-                                    TypeQualifier::DollarString
-                                ),
-                                shared: false,
-                                redim_info: None
-                            }
+                            ExpressionType::BuiltIn(TypeQualifier::DollarString)
                         )
                         .at_rc(7, 14)
                     )
@@ -202,15 +192,15 @@ fn test_passing_array_without_parenthesis() {
             GlobalStatement::Statement(Statement::assignment(
                 Expression::Variable(
                     "X!".into(),
-                    VariableInfo::new_local(ExpressionType::BuiltIn(TypeQualifier::BangSingle))
+                    ExpressionType::BuiltIn(TypeQualifier::BangSingle)
                 ),
                 Expression::BuiltInFunctionCall(
                     BuiltInFunction::LBound,
                     vec![
                         Expression::Variable(
                             "choice$".into(),
-                            VariableInfo::new_local(ExpressionType::Array(Box::new(
-                                ExpressionType::BuiltIn(TypeQualifier::DollarString)
+                            ExpressionType::Array(Box::new(ExpressionType::BuiltIn(
+                                TypeQualifier::DollarString
                             )))
                         )
                         .at_rc(3, 16)

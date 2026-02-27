@@ -1,7 +1,7 @@
 use rusty_common::*;
 use rusty_parser::*;
 
-use crate::core::{HasUserDefinedTypes, LintError};
+use crate::core::LintError;
 use crate::tests::test_utils::*;
 use crate::{assert_linter_err, assert_linter_ok_global_statements};
 
@@ -129,7 +129,7 @@ fn user_defined_type() {
             .at_rc(8, 5)
         ]
     );
-    let user_defined_types = user_defined_types_holder.user_defined_types();
+    let user_defined_types = user_defined_types_holder.user_defined_types;
     assert_eq!(
         user_defined_types.len(),
         1,

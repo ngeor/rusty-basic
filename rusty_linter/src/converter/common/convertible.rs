@@ -1,12 +1,11 @@
 use rusty_common::{AtPos, Position, Positioned};
 
-use crate::converter::common::Context;
-use crate::core::LintErrorPos;
+use crate::core::{LintErrorPos, LinterContext};
 
 /// Convert from the current type into the target type O.
 /// By default, O is the same as the current type.
 pub trait Convertible<O = Self>: Sized {
-    fn convert(self, ctx: &mut Context) -> Result<O, LintErrorPos>;
+    fn convert(self, ctx: &mut LinterContext) -> Result<O, LintErrorPos>;
 }
 
 // Blanket implementation for Option
@@ -15,7 +14,7 @@ impl<T, O> Convertible<Option<O>> for Option<T>
 where
     T: Convertible<O>,
 {
-    fn convert(self, ctx: &mut Context) -> Result<Option<O>, LintErrorPos> {
+    fn convert(self, ctx: &mut LinterContext) -> Result<Option<O>, LintErrorPos> {
         match self {
             Some(t) => t.convert(ctx).map(Some),
             None => Ok(None),
@@ -29,7 +28,7 @@ impl<T, O> Convertible<Vec<O>> for Vec<T>
 where
     T: Convertible<O>,
 {
-    fn convert(self, ctx: &mut Context) -> Result<Vec<O>, LintErrorPos> {
+    fn convert(self, ctx: &mut LinterContext) -> Result<Vec<O>, LintErrorPos> {
         self.into_iter().map(|t| t.convert(ctx)).collect()
     }
 }
@@ -40,7 +39,7 @@ impl<T, O> Convertible<Positioned<O>> for Positioned<T>
 where
     T: ConvertibleIn<Position, O>,
 {
-    fn convert(self, ctx: &mut Context) -> Result<Positioned<O>, LintErrorPos> {
+    fn convert(self, ctx: &mut LinterContext) -> Result<Positioned<O>, LintErrorPos> {
         let Self {
             element: statement,
             pos,
@@ -55,9 +54,9 @@ where
 /// using additional information in the value U.
 /// By default, O is the same as the current type.
 pub trait ConvertibleIn<U, O = Self>: Sized {
-    fn convert_in(self, ctx: &mut Context, value: U) -> Result<O, LintErrorPos>;
+    fn convert_in(self, ctx: &mut LinterContext, value: U) -> Result<O, LintErrorPos>;
 
-    fn convert_in_default(self, ctx: &mut Context) -> Result<O, LintErrorPos>
+    fn convert_in_default(self, ctx: &mut LinterContext) -> Result<O, LintErrorPos>
     where
         U: Default,
     {
@@ -71,7 +70,7 @@ impl<U, T, O> ConvertibleIn<U, Option<O>> for Option<T>
 where
     T: ConvertibleIn<U, O>,
 {
-    fn convert_in(self, ctx: &mut Context, extra: U) -> Result<Option<O>, LintErrorPos> {
+    fn convert_in(self, ctx: &mut LinterContext, extra: U) -> Result<Option<O>, LintErrorPos> {
         match self {
             Some(t) => t.convert_in(ctx, extra).map(Some),
             None => Ok(None),
@@ -86,7 +85,7 @@ where
     T: ConvertibleIn<U, O>,
     U: Clone,
 {
-    fn convert_in(self, ctx: &mut Context, extra: U) -> Result<Vec<O>, LintErrorPos> {
+    fn convert_in(self, ctx: &mut LinterContext, extra: U) -> Result<Vec<O>, LintErrorPos> {
         self.into_iter()
             .map(|t| t.convert_in(ctx, extra.clone()))
             .collect()

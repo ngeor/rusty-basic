@@ -1,14 +1,13 @@
 use rusty_common::Position;
 use rusty_parser::{BareName, ParamType};
 
-use crate::converter::common::Context;
 use crate::converter::dim_rules::dim_type_rules;
-use crate::core::LintErrorPos;
+use crate::core::{LintErrorPos, LinterContext};
 
 pub fn on_param_type(
     dim_type: ParamType,
     bare_name: &BareName,
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     pos: Position,
 ) -> Result<ParamType, LintErrorPos> {
     match dim_type {
@@ -26,7 +25,7 @@ pub fn on_param_type(
 }
 
 fn param_array_to_param_type(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     pos: Position,
     bare_name: &BareName,
     element_type: ParamType,

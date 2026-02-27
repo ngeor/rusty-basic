@@ -5,9 +5,7 @@ use rusty_pc::*;
 use crate::core::{name_as_tokens_p, token_to_type_qualifier};
 use crate::input::StringView;
 use crate::pc_specific::WithPos;
-use crate::{
-    BareName, Expression, ExpressionPos, ExpressionType, Name, NameAsTokens, ParserError, VariableInfo
-};
+use crate::{BareName, Expression, ExpressionPos, ExpressionType, Name, NameAsTokens, ParserError};
 
 // variable ::= <identifier-with-dots>
 //           |  <identifier-with-dots> <type-qualifier>
@@ -24,7 +22,7 @@ fn map_to_expr(name_as_tokens: NameAsTokens) -> Expression {
     if is_property_expr(&name_as_tokens) {
         map_to_property(name_as_tokens)
     } else {
-        Expression::Variable(name_as_tokens.into(), VariableInfo::unresolved())
+        Expression::Variable(name_as_tokens.into(), ExpressionType::Unresolved)
     }
 }
 
@@ -64,7 +62,7 @@ fn map_to_property(name_as_tokens: NameAsTokens) -> Expression {
         .collect();
     let mut result = Expression::Variable(
         Name::bare(BareName::new(property_names.pop_front().unwrap())),
-        VariableInfo::unresolved(),
+        ExpressionType::Unresolved,
     );
     while let Some(property_name) = property_names.pop_front() {
         let is_last = property_names.is_empty();

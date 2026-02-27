@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use rusty_parser::{BuiltInStyle, TypeQualifier, VariableInfo};
+use rusty_parser::{BuiltInStyle, TypeQualifier};
 use rusty_variant::Variant;
 
+use crate::core::VariableInfo;
 use crate::names::traits::SingleNameTrait;
 
 /// Stores information about compact variables of the same name.
@@ -10,11 +11,13 @@ use crate::names::traits::SingleNameTrait;
 /// With compact variables, it's possible to have the same name
 /// but with different types e.g. `A$` and `A%`.
 #[derive(Default)]
-pub struct Compacts(HashMap<TypeQualifier, VariableInfo>);
+pub struct Compacts {
+    map: HashMap<TypeQualifier, VariableInfo>,
+}
 
 impl SingleNameTrait for Compacts {
     fn get_compact(&self, qualifier: TypeQualifier) -> Option<&VariableInfo> {
-        self.0.get(&qualifier)
+        self.map.get(&qualifier)
     }
 
     fn get_extended(&self) -> Option<&VariableInfo> {
@@ -26,7 +29,7 @@ impl SingleNameTrait for Compacts {
     }
 
     fn collect_var_info(&self, only_shared: bool) -> Vec<(BuiltInStyle, &VariableInfo)> {
-        self.0
+        self.map
             .values()
             .filter(|v| v.shared || !only_shared)
             .map(|v| (BuiltInStyle::Compact, v))
@@ -40,7 +43,7 @@ impl SingleNameTrait for Compacts {
             .expect("Should be resolved");
 
         // if it already exists, it should be a REDIM
-        debug_assert!(match self.0.get(&q) {
+        debug_assert!(match self.map.get(&q) {
             Some(existing_v) => {
                 existing_v.redim_info.is_some()
             }
@@ -49,6 +52,6 @@ impl SingleNameTrait for Compacts {
             }
         });
 
-        self.0.insert(q, variable_info);
+        self.map.insert(q, variable_info);
     }
 }

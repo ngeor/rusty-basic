@@ -2,7 +2,7 @@ use rusty_bit_vec::{MIN_INTEGER, MIN_LONG};
 use rusty_common::*;
 
 use crate::{
-    BuiltInFunction, ExpressionType, FileHandle, HasExpressionType, Name, Operator, TypeQualifier, UnaryOperator, VariableInfo
+    BuiltInFunction, ExpressionType, FileHandle, HasExpressionType, Name, Operator, TypeQualifier, UnaryOperator
 };
 
 // TODO move traits and logic that is linter specific to linter (including CanCastTo from common)
@@ -14,7 +14,7 @@ pub enum Expression {
     StringLiteral(String),
     IntegerLiteral(i32),
     LongLiteral(i64),
-    Variable(Name, VariableInfo),
+    Variable(Name, ExpressionType),
 
     /// During parsing, arrays are also parsed as function calls.
     /// Only during linting can it be determined if it's an array or a function call.
@@ -28,7 +28,7 @@ pub enum Expression {
         // the array indices
         Expressions,
         // the type of the elements (shared refers to the array itself)
-        VariableInfo,
+        ExpressionType,
     ),
     BuiltInFunctionCall(BuiltInFunction, Expressions),
     BinaryExpression(
@@ -192,22 +192,19 @@ impl Expression {
     #[cfg(test)]
     pub fn var_unresolved(s: &str) -> Self {
         let name: Name = s.into();
-        Self::Variable(name, VariableInfo::unresolved())
+        Self::Variable(name, ExpressionType::Unresolved)
     }
 
     // TODO #[cfg(test)] but used by rusty_linter too
     pub fn var_resolved(s: &str) -> Self {
         let name: Name = s.into();
         let expression_type = name.expression_type();
-        Self::Variable(name, VariableInfo::new_local(expression_type))
+        Self::Variable(name, expression_type)
     }
 
     // TODO #[cfg(test)] but used by rusty_linter too
     pub fn var_user_defined(name: &str, type_name: &str) -> Self {
-        Self::Variable(
-            name.into(),
-            VariableInfo::new_local(ExpressionType::UserDefined(type_name.into())),
-        )
+        Self::Variable(name.into(), ExpressionType::UserDefined(type_name.into()))
     }
 
     fn flip_multiply_plus(l_op: &Operator, r_op: &Operator) -> bool {
@@ -322,21 +319,10 @@ impl HasExpressionType for Expression {
             Self::StringLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::DollarString),
             Self::IntegerLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::PercentInteger),
             Self::LongLiteral(_) => ExpressionType::BuiltIn(TypeQualifier::AmpersandLong),
-            Self::Variable(
-                _,
-                VariableInfo {
-                    expression_type, ..
-                },
-            )
+            Self::Variable(_, expression_type)
             | Self::Property(_, _, expression_type)
             | Self::BinaryExpression(_, _, _, expression_type) => expression_type.clone(),
-            Self::ArrayElement(
-                _,
-                args,
-                VariableInfo {
-                    expression_type, ..
-                },
-            ) => {
+            Self::ArrayElement(_, args, expression_type) => {
                 if args.is_empty() {
                     // this is the entire array
                     ExpressionType::Array(Box::new(expression_type.clone()))

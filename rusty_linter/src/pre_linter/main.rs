@@ -2,8 +2,8 @@ use rusty_common::*;
 use rusty_parser::*;
 
 use crate::core::*;
+use crate::pre_linter::ConstantMap;
 use crate::pre_linter::sub_program_context::SubprogramContext;
-use crate::pre_linter::{ConstantMap, PreLinterResult};
 
 // CONST -> stored in global_constants
 // DEFINT -> stored in resolver
@@ -20,13 +20,13 @@ struct MainContext {
     declaration_pos: Position,
 }
 
-pub fn pre_lint_program(program: &Program) -> Result<PreLinterResult, LintErrorPos> {
+pub fn pre_lint_program(program: &Program) -> Result<LinterContext, LintErrorPos> {
     let mut visitor = GlobalVisitor::new(MainContext::default());
     visitor.visit(program)?;
     let ctx = visitor.delegate();
     ctx.post_visit_functions()?;
     ctx.post_visit_subs()?;
-    Ok(PreLinterResult::new(
+    Ok(LinterContext::new(
         ctx.functions.implementations(),
         ctx.subs.implementations(),
         ctx.user_defined_types,
@@ -55,7 +55,7 @@ impl Visitor<FunctionDeclaration> for MainContext {
         let param_types: ResolvedParamTypes = self.resolve_parameters(params)?;
         let bare_name = name.as_bare_name();
         let q = name.qualify(&self.resolver);
-        let signature = Signature::new_function(q, param_types);
+        let signature = Signature::Function(param_types, q);
         self.functions
             .add_declaration(bare_name.clone(), signature.at_pos(self.declaration_pos))
     }
@@ -71,7 +71,7 @@ impl Visitor<FunctionImplementation> for MainContext {
         let param_types: ResolvedParamTypes = self.resolve_parameters(params)?;
         let bare_name = name.as_bare_name();
         let q = name.qualify(&self.resolver);
-        let signature = Signature::new_function(q, param_types);
+        let signature = Signature::Function(param_types, q);
         self.functions
             .add_implementation(bare_name.clone(), signature.at_pos(self.declaration_pos))
     }
@@ -86,7 +86,7 @@ impl Visitor<SubDeclaration> for MainContext {
             parameters: params,
         } = s;
         let param_types: ResolvedParamTypes = self.resolve_parameters(params)?;
-        let signature = Signature::new_sub(param_types);
+        let signature = Signature::Sub(param_types);
         self.subs
             .add_declaration(bare_name.clone(), signature.at_pos(self.declaration_pos))
     }
@@ -102,7 +102,7 @@ impl Visitor<SubImplementation> for MainContext {
             ..
         } = s;
         let param_types: ResolvedParamTypes = self.resolve_parameters(params)?;
-        let signature = Signature::new_sub(param_types);
+        let signature = Signature::Sub(param_types);
         self.subs
             .add_implementation(bare_name.clone(), signature.at_pos(self.declaration_pos))
     }

@@ -1,11 +1,11 @@
 use rusty_common::*;
 use rusty_parser::*;
 
-use crate::converter::common::{Context, ConvertibleIn, ExprContext, ExprContextPos};
+use crate::converter::common::{ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::{
     binary, built_in_function, function, property, unary, variable
 };
-use crate::core::LintErrorPos;
+use crate::core::{LintErrorPos, LinterContext};
 
 //
 // ExpressionPos ConvertibleIn
@@ -14,7 +14,7 @@ use crate::core::LintErrorPos;
 impl ConvertibleIn<ExprContext> for ExpressionPos {
     fn convert_in(
         self,
-        ctx: &mut Context,
+        ctx: &mut LinterContext,
         expr_context: ExprContext,
     ) -> Result<Self, LintErrorPos> {
         let Self { element: expr, pos } = self;
@@ -26,7 +26,7 @@ impl ConvertibleIn<ExprContext> for ExpressionPos {
 impl ConvertibleIn<ExprContext> for Box<ExpressionPos> {
     fn convert_in(
         self,
-        ctx: &mut Context,
+        ctx: &mut LinterContext,
         expr_context: ExprContext,
     ) -> Result<Self, LintErrorPos> {
         let unboxed = *self;
@@ -39,7 +39,11 @@ impl ConvertibleIn<ExprContext> for Box<ExpressionPos> {
 //
 
 impl ConvertibleIn<ExprContextPos> for Expression {
-    fn convert_in(self, ctx: &mut Context, extra: ExprContextPos) -> Result<Self, LintErrorPos> {
+    fn convert_in(
+        self,
+        ctx: &mut LinterContext,
+        extra: ExprContextPos,
+    ) -> Result<Self, LintErrorPos> {
         match self {
             // literals
             Self::SingleLiteral(_)
@@ -60,10 +64,10 @@ impl ConvertibleIn<ExprContextPos> for Expression {
                 binary::convert(ctx, extra, binary_operator, *left, *right)
             }
             // variables
-            Self::Variable(name, variable_info) => {
-                variable::convert(ctx, extra, name, variable_info)
+            Self::Variable(name, expression_type) => {
+                variable::convert(ctx, extra, name, expression_type)
             }
-            Self::ArrayElement(_name, _indices, _variable_info) => {
+            Self::ArrayElement(_name, _indices, _expression_type) => {
                 panic!(
                     "Parser is not supposed to produce any ArrayElement expressions, only FunctionCall"
                 )

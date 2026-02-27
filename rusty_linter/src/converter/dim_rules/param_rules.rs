@@ -1,13 +1,13 @@
 use rusty_common::Position;
 use rusty_parser::Parameter;
 
-use crate::converter::common::{Context, ConvertibleIn};
+use crate::converter::common::ConvertibleIn;
 use crate::converter::dim_rules::param_type_rules::on_param_type;
 use crate::converter::dim_rules::validation;
-use crate::core::LintErrorPos;
+use crate::core::{LintErrorPos, LinterContext};
 
 impl ConvertibleIn<Position> for Parameter {
-    fn convert_in(self, ctx: &mut Context, pos: Position) -> Result<Self, LintErrorPos> {
+    fn convert_in(self, ctx: &mut LinterContext, pos: Position) -> Result<Self, LintErrorPos> {
         validation::validate(&self, ctx, pos)?;
         let (bare_name, var_type) = self.into();
         let var_type = on_param_type(var_type, &bare_name, ctx, pos)?;

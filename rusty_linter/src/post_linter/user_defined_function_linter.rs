@@ -4,8 +4,8 @@ use rusty_parser::*;
 use super::post_conversion_linter::PostConversionLinter;
 use crate::core::*;
 
-pub struct UserDefinedFunctionLinter<'a, R> {
-    pub linter_context: &'a R,
+pub struct UserDefinedFunctionLinter<'a> {
+    pub linter_context: &'a LinterContext,
 }
 
 pub fn lint_call_args(
@@ -48,19 +48,10 @@ fn lint_by_ref_arg(
         ResolvedParamType::Array(boxed_element_type) => {
             // we can only pass an array by using the array name followed by parenthesis e.g. `Menu choice$()`
             match &arg_pos.element {
-                Expression::ArrayElement(
-                    name,
-                    args,
-                    VariableInfo {
-                        expression_type, ..
-                    },
-                ) => {
+                Expression::ArrayElement(name, args, expression_type) => {
                     if args.is_empty() {
-                        let dummy_expr = Expression::Variable(
-                            name.clone(),
-                            VariableInfo::new_local(expression_type.clone()),
-                        )
-                        .at(arg_pos);
+                        let dummy_expr =
+                            Expression::Variable(name.clone(), expression_type.clone()).at(arg_pos);
                         lint_by_ref_arg(&dummy_expr, boxed_element_type.as_ref())
                     } else {
                         Err(LintError::ArgumentTypeMismatch.at(arg_pos))
@@ -125,20 +116,10 @@ fn arg_pos_to_expr_type_and_opt_args(
     arg_pos: &ExpressionPos,
 ) -> Option<(&ExpressionType, Option<&Expressions>)> {
     match &arg_pos.element {
-        Expression::Variable(
-            _,
-            VariableInfo {
-                expression_type, ..
-            },
-        )
-        | Expression::Property(_, _, expression_type) => Some((expression_type, None)),
-        Expression::ArrayElement(
-            _,
-            args,
-            VariableInfo {
-                expression_type, ..
-            },
-        ) => Some((expression_type, Some(args))),
+        Expression::Variable(_, expression_type) | Expression::Property(_, _, expression_type) => {
+            Some((expression_type, None))
+        }
+        Expression::ArrayElement(_, args, expression_type) => Some((expression_type, Some(args))),
         _ => None,
     }
 }
@@ -150,10 +131,7 @@ fn has_at_least_one_arg(opt_args: Option<&Expressions>) -> bool {
     }
 }
 
-impl<'a, R> UserDefinedFunctionLinter<'a, R>
-where
-    R: HasSubprograms,
-{
+impl<'a> UserDefinedFunctionLinter<'a> {
     fn visit_function(
         &self,
         name: &Name,
@@ -162,7 +140,7 @@ where
     ) -> Result<(), LintErrorPos> {
         let qualifier = name.qualifier().expect("Unresolved function!");
         let bare_name = name.as_bare_name();
-        match self.linter_context.functions().get(bare_name) {
+        match self.linter_context.functions.get(bare_name) {
             Some(function_signature_pos) => {
                 if function_signature_pos.element != qualifier {
                     Err(LintError::TypeMismatch.at(function_signature_pos))
@@ -194,10 +172,7 @@ where
     }
 }
 
-impl<'a, R> PostConversionLinter for UserDefinedFunctionLinter<'a, R>
-where
-    R: HasSubprograms,
-{
+impl<'a> PostConversionLinter for UserDefinedFunctionLinter<'a> {
     fn visit_expression(&mut self, expr_pos: &ExpressionPos) -> Result<(), LintErrorPos> {
         let Positioned { element: e, pos } = expr_pos;
         match e {

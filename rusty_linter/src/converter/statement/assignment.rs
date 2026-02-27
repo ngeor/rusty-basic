@@ -1,12 +1,12 @@
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{Assignment, Expression, ExpressionPos, Statement};
 
-use crate::converter::common::{Context, ConvertibleIn, ExprContext};
-use crate::core::LintErrorPos;
+use crate::converter::common::{ConvertibleIn, ExprContext};
+use crate::core::{LintErrorPos, LinterContext};
 
 pub fn on_assignment(
     a: Assignment,
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     pos: Position,
 ) -> Result<Statement, LintErrorPos> {
     let (left, right) = a.into();
@@ -27,7 +27,7 @@ mod assignment_pre_conversion_validation_rules {
     use crate::core::LintError;
 
     pub fn validate(
-        ctx: &mut Context,
+        ctx: &mut LinterContext,
         left_side: &Expression,
         pos: Position,
     ) -> Result<(), LintErrorPos> {
@@ -35,7 +35,7 @@ mod assignment_pre_conversion_validation_rules {
     }
 
     fn cannot_assign_to_const(
-        ctx: &mut Context,
+        ctx: &mut LinterContext,
         input: &Expression,
         pos: Position,
     ) -> Result<(), LintErrorPos> {

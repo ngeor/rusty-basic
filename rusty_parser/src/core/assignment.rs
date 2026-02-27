@@ -148,7 +148,7 @@ mod tests {
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLM.% = 42",
                     Expression::Variable(
                         "ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLM.%".into(),
-                        VariableInfo::unresolved()
+                        ExpressionType::Unresolved
                     )
                 );
             }
@@ -295,7 +295,7 @@ mod tests {
             assert_eq!(
                 program,
                 Statement::assignment(
-                    Expression::Variable("DIM$".into(), VariableInfo::unresolved()),
+                    Expression::Variable("DIM$".into(), ExpressionType::Unresolved),
                     "hello".as_lit_expr(1, 8)
                 )
             );

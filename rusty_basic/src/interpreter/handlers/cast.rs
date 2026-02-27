@@ -1,4 +1,4 @@
-use rusty_linter::CastVariant;
+use rusty_linter::core::CastVariant;
 use rusty_parser::TypeQualifier;
 use rusty_variant::Variant;
 

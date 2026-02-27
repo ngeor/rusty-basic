@@ -37,13 +37,7 @@ impl ForNextCounterMatch {
             pos,
         } = &f.variable_name;
         match var_expr {
-            Expression::Variable(
-                _,
-                VariableInfo {
-                    expression_type: var_type,
-                    ..
-                },
-            ) => match var_type {
+            Expression::Variable(_, expression_type) => match expression_type {
                 ExpressionType::BuiltIn(TypeQualifier::DollarString) => {
                     Err(LintError::TypeMismatch.at_pos(*pos))
                 }
@@ -51,7 +45,7 @@ impl ForNextCounterMatch {
                 _ => Err(LintError::TypeMismatch.at_pos(*pos)),
             },
             _ => panic!(
-                "It should not be possible for the FOR variable to be something othe than a variable"
+                "It should not be possible for the FOR variable to be something other than a variable"
             ),
         }
     }

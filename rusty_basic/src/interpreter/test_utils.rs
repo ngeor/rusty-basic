@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 
-use rusty_linter::lint;
+use rusty_linter::core::lint;
 use rusty_parser::{UserDefinedTypes, parse_main_file};
 
 use crate::RuntimeErrorPos;

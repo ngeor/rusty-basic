@@ -1,10 +1,10 @@
 use rusty_parser::ForLoop;
 
-use crate::converter::common::{Context, Convertible, ConvertibleIn, ExprContext};
-use crate::core::LintErrorPos;
+use crate::converter::common::{Convertible, ConvertibleIn, ExprContext};
+use crate::core::{LintErrorPos, LinterContext};
 
 impl Convertible for ForLoop {
-    fn convert(self, ctx: &mut Context) -> Result<Self, LintErrorPos> {
+    fn convert(self, ctx: &mut LinterContext) -> Result<Self, LintErrorPos> {
         let variable_name = self
             .variable_name
             .convert_in(ctx, ExprContext::Assignment)?;

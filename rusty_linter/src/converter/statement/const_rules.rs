@@ -1,19 +1,18 @@
 use rusty_common::*;
 use rusty_parser::*;
 
-use crate::converter::common::Context;
 use crate::core::{
-    CastVariant, ConstEvaluator, HasSubprograms, LintError, LintErrorPos, LintResult, qualifier_of_const_variant
+    CastVariant, ConstEvaluator, LintError, LintErrorPos, LintResult, LinterContext, qualifier_of_const_variant
 };
 
-pub fn on_const(ctx: &mut Context, c: Constant) -> Result<Statement, LintErrorPos> {
+pub fn on_const(ctx: &mut LinterContext, c: Constant) -> Result<Statement, LintErrorPos> {
     let (left_side, right_side) = c.into();
     const_cannot_clash_with_existing_names(ctx, &left_side)?;
     new_const(ctx, left_side, right_side)
 }
 
 fn const_cannot_clash_with_existing_names(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     left_side: &NamePos,
 ) -> Result<(), LintErrorPos> {
     let Positioned {
@@ -23,8 +22,8 @@ fn const_cannot_clash_with_existing_names(
     if ctx
         .names
         .contains_any_locally_or_contains_extended_recursively(const_name.as_bare_name())
-        || ctx.subs().contains_key(const_name.as_bare_name())
-        || ctx.functions().contains_key(const_name.as_bare_name())
+        || ctx.subs.contains_key(const_name.as_bare_name())
+        || ctx.functions.contains_key(const_name.as_bare_name())
     {
         Err(LintError::DuplicateDefinition.at(const_name_pos))
     } else {
@@ -33,7 +32,7 @@ fn const_cannot_clash_with_existing_names(
 }
 
 fn new_const(
-    ctx: &mut Context,
+    ctx: &mut LinterContext,
     left_side: NamePos,
     right_side: ExpressionPos,
 ) -> Result<Statement, LintErrorPos> {

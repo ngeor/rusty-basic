@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 
 use rusty_common::CaseInsensitiveString;
-use rusty_parser::{
-    AsBareName, BareName, BuiltInStyle, Name, RedimInfo, TypeQualifier, VarType, VariableInfo
-};
+use rusty_parser::{AsBareName, BareName, BuiltInStyle, Name, TypeQualifier, VarType};
 use rusty_variant::Variant;
 
-use crate::core::{ConstLookup, NameContext, SubprogramName};
+use crate::core::{ConstLookup, RedimInfo, ScopeKind, ScopeName, VariableInfo};
 use crate::names::ImplicitVars;
 use crate::names::names_inner::NamesInner;
 use crate::names::traits::ManyNamesTrait;
@@ -31,56 +29,55 @@ e.g. A = 3.14 (resolves as A! by the default rules), A$ = "hello", A% = 1
 5b. An extended variable cannot co-exist with other symbols of the same name
 */
 
-type Key = Option<SubprogramName>;
-
 pub struct Names {
-    data: HashMap<Key, NamesOneLevel>,
-    current_key: Key,
+    data: HashMap<ScopeName, NamesOneLevel>,
+    current_scope_name: ScopeName,
 }
 
 /// Stores the data relevant to one level only (i.e. global symbols, or a FUNCTION, or a SUB).
 /// Collects constant and variable names in [NamesInner] and implicit variables in [ImplicitVars].
-/// TODO merge [ImplicitVars] into [NamesInner]
-/// TODO use bi_tuple macro
 #[derive(Default)]
-struct NamesOneLevel(NamesInner, ImplicitVars);
+struct NamesOneLevel {
+    names: NamesInner,
+    implicit_vars: ImplicitVars,
+}
 
 impl Names {
     pub fn new() -> Self {
-        let mut data: HashMap<Key, NamesOneLevel> = HashMap::new();
+        let mut data: HashMap<ScopeName, NamesOneLevel> = HashMap::new();
         // insert GLOBAL scope
-        data.insert(None, NamesOneLevel::default());
+        data.insert(ScopeName::Global, NamesOneLevel::default());
         Self {
             data,
-            current_key: None,
+            current_scope_name: ScopeName::Global,
         }
     }
 
     fn current_data(&self) -> &NamesOneLevel {
-        self.data.get(&self.current_key).unwrap()
+        self.data.get(&self.current_scope_name).unwrap()
     }
 
     fn current_data_mut(&mut self) -> &mut NamesOneLevel {
-        self.data.get_mut(&self.current_key).unwrap()
+        self.data.get_mut(&self.current_scope_name).unwrap()
     }
 
     pub fn get_implicit_vars_mut(&mut self) -> &mut ImplicitVars {
-        &mut self.current_data_mut().1
+        &mut self.current_data_mut().implicit_vars
     }
 
     pub fn names(&self) -> &NamesInner {
-        &self.current_data().0
+        &self.current_data().names
     }
 
     pub fn names_mut(&mut self) -> &mut NamesInner {
-        &mut self.current_data_mut().0
+        &mut self.current_data_mut().names
     }
 
     /// Returns the global names, but only if we are currently within a sub program.
     fn global_names(&self) -> Option<&NamesInner> {
-        match &self.current_key {
-            Some(_) => self.data.get(&None).map(|x| &x.0),
-            None => None,
+        match &self.current_scope_name {
+            ScopeName::Global => None,
+            _ => self.data.get(&ScopeName::Global).map(|x| &x.names),
         }
     }
 
@@ -159,40 +156,41 @@ impl Names {
     }
 
     pub fn is_in_function(&self, function_name: &BareName) -> bool {
-        match &self.current_key {
-            Some(SubprogramName::Function(f)) => f.as_bare_name() == function_name,
+        match &self.current_scope_name {
+            ScopeName::Function(f) => f.as_bare_name() == function_name,
             _ => false,
         }
     }
 
     pub fn is_in_subprogram(&self) -> bool {
-        self.current_key.is_some()
+        self.current_scope_name != ScopeName::Global
     }
 
-    pub fn get_name_context(&self) -> NameContext {
-        match &self.current_key {
-            Some(SubprogramName::Function(_)) => NameContext::Function,
-            Some(SubprogramName::Sub(_)) => NameContext::Sub,
-            None => NameContext::Global,
-        }
+    pub fn get_current_scope_kind(&self) -> ScopeKind {
+        ScopeKind::from(&self.current_scope_name)
     }
 
-    pub fn push(&mut self, subprogram_name: SubprogramName) {
-        let key = Some(subprogram_name);
+    pub fn push(&mut self, scope_name: ScopeName) {
         debug_assert!(
-            !self.data.contains_key(&key),
+            !self.data.contains_key(&scope_name),
             "should not encounter same function/sub twice!"
         );
-        self.current_key = key.clone();
-        self.data.insert(key, NamesOneLevel::default());
+        debug_assert_ne!(
+            scope_name,
+            ScopeName::Global,
+            "should not push global scope"
+        );
+        self.current_scope_name = scope_name.clone();
+        self.data.insert(scope_name, NamesOneLevel::default());
     }
 
     pub fn pop(&mut self) {
-        debug_assert!(
-            self.current_key.is_some(),
+        debug_assert_ne!(
+            self.current_scope_name,
+            ScopeName::Global,
             "should not pop context from the global level"
         );
-        self.current_key = None;
+        self.current_scope_name = ScopeName::Global;
     }
 
     pub fn find_name_or_shared_in_parent(
@@ -206,25 +204,21 @@ impl Names {
         result
     }
 
-    pub fn get_resolved_variable_info(
-        &self,
-        subprogram_name: &Option<SubprogramName>,
-        name: &Name,
-    ) -> &VariableInfo {
+    pub fn get_resolved_variable_info(&self, scope_name: &ScopeName, name: &Name) -> &VariableInfo {
         let one_level = self
             .data
-            .get(subprogram_name)
-            .unwrap_or_else(|| panic!("Subprogram {:?} should be resolved", subprogram_name));
-        match one_level.0.get_variable_info_by_name(name) {
+            .get(scope_name)
+            .unwrap_or_else(|| panic!("Subprogram {:?} should be resolved", scope_name));
+        match one_level.names.get_variable_info_by_name(name) {
             Some(i) => i,
             None => {
-                if subprogram_name.is_some() {
+                if scope_name != &ScopeName::Global {
                     // try then parent level but only for SHARED
                     let result = self
                         .data
-                        .get(&None)
+                        .get(&ScopeName::Global)
                         .expect("Global name scope missing!")
-                        .0
+                        .names
                         .get_variable_info_by_name(name)
                         .unwrap_or_else(|| {
                             panic!("Could not resolve {} even in global namespace", name)

@@ -3,19 +3,16 @@ use rusty_parser::SubCall;
 
 use super::post_conversion_linter::PostConversionLinter;
 use super::user_defined_function_linter::lint_call_args;
-use crate::core::{HasSubprograms, LintError, LintErrorPos};
+use crate::core::{LintError, LintErrorPos, LinterContext};
 
-pub struct UserDefinedSubLinter<'a, R> {
-    pub linter_context: &'a R,
+pub struct UserDefinedSubLinter<'a> {
+    pub linter_context: &'a LinterContext,
 }
 
-impl<'a, R> PostConversionLinter for UserDefinedSubLinter<'a, R>
-where
-    R: HasSubprograms,
-{
+impl<'a> PostConversionLinter for UserDefinedSubLinter<'a> {
     fn visit_sub_call(&mut self, sub_call: &SubCall, pos: Position) -> Result<(), LintErrorPos> {
         let (name, args) = sub_call.into();
-        match self.linter_context.subs().get(name) {
+        match self.linter_context.subs.get(name) {
             Some(sub_signature_pos) => {
                 lint_call_args(args, sub_signature_pos.element.param_types(), pos)
             }

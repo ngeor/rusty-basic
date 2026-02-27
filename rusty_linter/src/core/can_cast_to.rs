@@ -1,17 +1,6 @@
-use rusty_parser::{
-    Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UserDefinedTypes
-};
+use rusty_parser::{Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier};
 
-use crate::core::{ResolvedParamType, SignatureMap};
-
-pub trait HasSubprograms {
-    fn functions(&self) -> &SignatureMap;
-    fn subs(&self) -> &SignatureMap;
-}
-
-pub trait HasUserDefinedTypes {
-    fn user_defined_types(&self) -> &UserDefinedTypes;
-}
+use crate::core::ResolvedParamType;
 
 /// Checks if a type can be cast into another type.
 pub trait CanCastTo<T> {

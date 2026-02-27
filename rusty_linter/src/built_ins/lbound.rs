@@ -1,5 +1,5 @@
 use rusty_common::{AtPos, Position, Positioned};
-use rusty_parser::{Expression, ExpressionType, Expressions, TypeQualifier, VariableInfo};
+use rusty_parser::{Expression, ExpressionType, Expressions, TypeQualifier};
 
 use crate::core::{CanCastTo, LintError, LintErrorPos};
 
@@ -14,14 +14,7 @@ pub fn lint(args: &Expressions, pos: Position) -> Result<(), LintErrorPos> {
         element: first,
         pos: first_pos,
     } = args.first().unwrap();
-    if let Expression::Variable(
-        _,
-        VariableInfo {
-            expression_type: ExpressionType::Array(_),
-            ..
-        },
-    ) = first
-    {
+    if let Expression::Variable(_, ExpressionType::Array(_)) = first {
         if args.len() == 2 {
             if args[1].can_cast_to(&TypeQualifier::PercentInteger) {
                 Ok(())

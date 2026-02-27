@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use rusty_linter::QBNumberCast;
+use rusty_linter::core::QBNumberCast;
 use rusty_parser::FileHandle;
 use rusty_variant::Variant;
 

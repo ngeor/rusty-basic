@@ -200,7 +200,7 @@ dependencies = [
 
 [[package]]
 name = "rusty_basic"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "crossterm",
  "rusty_bit_vec",
@@ -213,15 +213,15 @@ dependencies = [
 
 [[package]]
 name = "rusty_bit_vec"
-version = "0.10.0"
+version = "0.11.0"
 
 [[package]]
 name = "rusty_common"
-version = "0.10.0"
+version = "0.11.0"
 
 [[package]]
 name = "rusty_linter"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "rusty_bit_vec",
  "rusty_common",
@@ -231,7 +231,7 @@ dependencies = [
 
 [[package]]
 name = "rusty_parser"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "rusty_bit_vec",
  "rusty_common",
@@ -240,11 +240,11 @@ dependencies = [
 
 [[package]]
 name = "rusty_pc"
-version = "0.10.0"
+version = "0.11.0"
 
 [[package]]
 name = "rusty_variant"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "rusty_bit_vec",
  "rusty_common",

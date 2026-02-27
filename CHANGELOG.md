@@ -2,6 +2,74 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.0] - 2026-02-27
+
+### 🚀 Features
+
+- *(pc)* Added `peek_char`
+- *(pc)* Added `one_char` and `one` text parsers
+- *(pc)* Added `many_str`
+- *(pc)* Added `specific_str`, `specific_str_ignoring`
+- *(pc)* Added FnCtxParser
+- *(pc)* Introducing ManyCtxParser
+- *(pc)* Replaced FnCtxParser with IifParser
+- *(pc)* Introducing MapToUnitParser
+- *(pc)* Introducing err_supplier
+- *(pc)* Support different context type for the inner parser of `flatten`
+- *(Makefile)* Repair executable permission issues on Samba
+
+### 🐛 Bug Fixes
+
+- *(pc)* Implement SetContext for ThenWith
+- *(ci)* Fix build workflow for PRs (#119)
+- *(ci)* Fix pipeline
+- *(ci)* Revert Clippy from Windows pipeline for now
+- *(pc)* Ensure IifCtxParser context is initialized
+
+### 🚜 Refactor
+
+- *(basic)* Improve performance of IndexedMap
+- *(pc)* Rename FlatMap to AndThen
+- *(pc)* Removed FlatMapOkNone in favor of AndThenErr
+- *(parser)* Dropped SpecificStr for simplicity
+- *(pc)* Replaced `any_char` and `peek_char` with `read_p` and `peek_p`
+- *(pc)* Replaced `one_char` and  with `one_p`
+- *(pc)* Removed `FilterPredicate`
+- *(parser)* Parse cr and crlf with the same parser
+- *(parser)* Re-introducing comparison operator token types
+- *(pc)* Remove specific_str and specific_str_ignoring
+- *(parser)* Move `keyword_ignoring` to `keyword` module
+- *(parser)* Keyword parser should not handle EOF
+- *(parser)* Remove explicit parsers outside pc package (#117)
+- *(pc)* Merge `SetContext` trait into `Parser`
+- Add dedicated whitespace module (#120)
+- *(parser)* Improve expression parsers regarding whitespace (#121)
+- *(pc)* Pass context by reference
+- *(pc)* Removed ThenWithLeft parser
+- *(pc)* Removed init_context parser
+- *(parser)* Use IifCtxParser in ParamName
+- *(pc)* Introducing MapDecorator (#122)
+- Hide Variant type from rusty_parser
+- *(linter)* Refactor types module into smaller modules
+- *(linter)* Moved variable_info to linter (#123)
+
+### ⚙️ Miscellaneous Tasks
+
+- Align module versions
+- *(linter)* Fix some clippy warnings
+- *(basic)* Fixing some clippy warnings
+- Update gitignore
+- *(basic)* Fixed a few clippy issues
+- *(pc)* Correct generic parameter name for MapErrParser
+- *(pc)* Removed unused inc_position methods of InputTrait
+- Updated gitignore
+- *(ci)* Fixing clippy warnings and add clippy to CI
+- *(pc)* Removed `and_opt` parser, adding `one_of_p`
+- Use clippy in Makefile
+- *(parser)* Break apart `expression` module to smaller files
+- *(pc)* Move no_context to its own module
+- *(pc)* Moved IifParser to its own module and renamed to IifCtxParser
+
 ## [0.10.0] - 2026-01-22
 
 ### 🚀 Features

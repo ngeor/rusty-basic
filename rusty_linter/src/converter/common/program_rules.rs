@@ -13,7 +13,7 @@ impl Convertible for Program {
         let mut global_statements: Self = vec![];
         for Positioned { element, pos } in self {
             let expanded_statements_for_element = element.convert_in(ctx, pos)?;
-            global_statements.extend(expanded_statements_for_element.into_iter());
+            global_statements.extend(expanded_statements_for_element);
         }
 
         // collect implicitly defined variables

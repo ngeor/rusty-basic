@@ -1,6 +1,6 @@
 use rusty_parser::{AsBareName, BuiltInFunction, ExpressionType, Name, ToBareName, TypeQualifier};
 
-use crate::LintError;
+use crate::core::LintError;
 
 /// Validates and normalizes the given name
 pub fn qualify_name(expression_type: &ExpressionType, name: Name) -> Result<Name, LintError> {

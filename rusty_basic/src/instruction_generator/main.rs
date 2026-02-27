@@ -1,5 +1,6 @@
 use rusty_common::{AtPos, CaseInsensitiveString, Position, Positioned};
-use rusty_linter::{LinterContext, Names, ScopeName};
+use rusty_linter::core::{LinterContext, ScopeName};
+use rusty_linter::names::Names;
 use rusty_parser::{
     Assignment, BareName, BuiltInFunction, BuiltInSub, DimVar, Expression, ExpressionType, FileHandle, FunctionImplementation, GlobalStatement, HasExpressionType, Name, Parameter, Program, Statement, Statements, SubImplementation, TypeQualifier, UserDefinedTypes
 };

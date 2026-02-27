@@ -1,4 +1,4 @@
-use rusty_linter::{CastVariant, qualifier_of_variant};
+use rusty_linter::core::{CastVariant, qualifier_of_variant};
 
 use crate::RuntimeError;
 use crate::interpreter::interpreter_trait::InterpreterTrait;

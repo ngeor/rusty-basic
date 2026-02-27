@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use rusty_common::CaseInsensitiveString;
-use rusty_linter::{QBNumberCast, ScopeName};
+use rusty_linter::core::{QBNumberCast, ScopeName};
 use rusty_parser::{BareName, BuiltInFunction, TypeQualifier};
 use rusty_variant::{UserDefinedTypeValue, VArray, Variant, bytes_to_i32, i32_to_bytes};
 

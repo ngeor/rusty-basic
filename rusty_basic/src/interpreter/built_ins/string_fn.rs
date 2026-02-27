@@ -1,4 +1,4 @@
-use rusty_linter::QBNumberCast;
+use rusty_linter::core::QBNumberCast;
 use rusty_parser::BuiltInFunction;
 use rusty_variant::Variant;
 

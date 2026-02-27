@@ -1,7 +1,6 @@
 use rusty_parser::{Program, parse};
 
-use crate::core::LintErrorPos;
-use crate::{LinterContext, lint};
+use crate::core::{LintErrorPos, LinterContext, lint};
 
 /// Lints the given string and returns the results.
 ///

@@ -1,4 +1,4 @@
-use rusty_linter::QBNumberCast;
+use rusty_linter::core::QBNumberCast;
 
 use super::peek::INDICATOR_KEYS_ADDRESS;
 use crate::RuntimeError;

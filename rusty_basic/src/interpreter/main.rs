@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use rusty_common::*;
-use rusty_linter::QBNumberCast;
+use rusty_linter::core::QBNumberCast;
 use rusty_parser::UserDefinedTypes;
 use rusty_variant::Variant;
 

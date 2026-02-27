@@ -1,5 +1,5 @@
 use rusty_common::NoPosContainer;
-use rusty_linter::lint;
+use rusty_linter::core::lint;
 use rusty_parser::{UserDefinedTypes, parse};
 
 use crate::instruction_generator::{

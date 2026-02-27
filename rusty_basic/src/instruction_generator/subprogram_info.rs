@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use rusty_common::Positioned;
-use rusty_linter::ScopeName;
+use rusty_linter::core::ScopeName;
 use rusty_parser::*;
 
 /// Holds information about a subprogram that is needed at runtime.

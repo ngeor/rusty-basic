@@ -1,8 +1,7 @@
 use rusty_parser::{AsBareName, Expression};
 
 use super::expression_reducer::*;
-use crate::LinterContext;
-use crate::core::{LintErrorPos, binary_cast};
+use crate::core::{LintErrorPos, LinterContext, binary_cast};
 
 /// Finds undefined functions and converts them to zeroes.
 pub struct UndefinedFunctionReducer<'a> {

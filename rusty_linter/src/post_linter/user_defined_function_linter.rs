@@ -2,7 +2,6 @@ use rusty_common::*;
 use rusty_parser::*;
 
 use super::post_conversion_linter::PostConversionLinter;
-use crate::LinterContext;
 use crate::core::*;
 
 pub struct UserDefinedFunctionLinter<'a> {

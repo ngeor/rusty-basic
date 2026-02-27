@@ -1,7 +1,7 @@
 use rusty_common::{Position, Positioned};
 use rusty_parser::*;
 
-use crate::LintErrorPos;
+use crate::core::LintErrorPos;
 
 /// The result of a visitor.
 pub type VisitResult = Result<(), LintErrorPos>;

@@ -3,7 +3,7 @@ use std::fs::File;
 
 use rusty_basic::instruction_generator::{generate_instructions, unwrap_linter_context};
 use rusty_basic::interpreter::{InterpreterTrait, new_default_interpreter};
-use rusty_linter::{LinterContext, lint};
+use rusty_linter::core::{LinterContext, lint};
 use rusty_parser::{Program, parse_main_file};
 
 fn main() {

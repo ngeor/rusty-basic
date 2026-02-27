@@ -1,7 +1,6 @@
 use rusty_parser::Program;
 
-use crate::LinterContext;
-use crate::core::{LintErrorPos, Visitor};
+use crate::core::{LintErrorPos, LinterContext, Visitor};
 use crate::post_linter::expression_reducer::ExpressionReducer;
 use crate::post_linter::post_conversion_linter::PostConversionLinter;
 use crate::post_linter::{

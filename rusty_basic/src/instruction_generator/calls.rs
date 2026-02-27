@@ -1,5 +1,5 @@
 use rusty_common::{AtPos, Position, Positioned};
-use rusty_linter::ScopeName;
+use rusty_linter::core::ScopeName;
 use rusty_parser::*;
 
 use crate::instruction_generator::{AddressOrLabel, Instruction, InstructionGenerator};

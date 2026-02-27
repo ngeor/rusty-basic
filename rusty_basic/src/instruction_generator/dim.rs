@@ -1,5 +1,5 @@
 use rusty_common::*;
-use rusty_linter::ScopeName;
+use rusty_linter::core::ScopeName;
 use rusty_parser::*;
 use rusty_variant::Variant;
 

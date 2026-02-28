@@ -3,7 +3,7 @@ use rusty_parser::*;
 
 use crate::converter::common::{Convertible, DimContext, DimNameState};
 use crate::core::{
-    IntoTypeQualifier, LintError, LintErrorPos, LinterContext, ValidateStringLength
+    IntoTypeQualifier, LintError, LintErrorPos, LinterContext, ValidateStringLength,
 };
 
 pub fn on_dim_type(

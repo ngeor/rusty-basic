@@ -3,7 +3,7 @@ use rusty_parser::*;
 
 use crate::converter::common::{ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::{
-    binary, built_in_function, function, property, unary, variable
+    binary, built_in_function, function, property, unary, variable,
 };
 use crate::core::{LintErrorPos, LinterContext};
 

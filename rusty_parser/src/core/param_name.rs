@@ -6,7 +6,8 @@ use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{any_symbol_of, any_token_of};
 use crate::{
-    BareNamePos, BuiltInStyle, ExpressionType, HasExpressionType, Keyword, ParserError, TypeQualifier, TypedName, VarType
+    BareNamePos, BuiltInStyle, ExpressionType, HasExpressionType, Keyword, ParserError,
+    TypeQualifier, TypedName, VarType,
 };
 
 pub type Parameter = TypedName<ParamType>;

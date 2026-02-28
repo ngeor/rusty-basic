@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{
-    BareName, Element, ElementPos, ElementType, Expression, UserDefinedType, UserDefinedTypes
+    BareName, Element, ElementPos, ElementType, Expression, UserDefinedType, UserDefinedTypes,
 };
 
 use crate::core::{ConstLookup, LintError, ValidateStringLength, VisitResult, Visitor};

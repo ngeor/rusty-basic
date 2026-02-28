@@ -7,7 +7,7 @@ use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::comma_ws;
 use crate::{
-    BuiltInSub, Expression, ExpressionPos, Expressions, FileHandle, Keyword, ParserError, Statement
+    BuiltInSub, Expression, ExpressionPos, Expressions, FileHandle, Keyword, ParserError, Statement,
 };
 
 /// Parses built-in subs with optional arguments.

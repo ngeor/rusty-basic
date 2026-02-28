@@ -22,7 +22,8 @@ use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::colon;
 use crate::{
-    BareName, BuiltInSub, DimVars, Expression, ExpressionPos, Expressions, Keyword, NamePos, Operator, ParserError, Print
+    BareName, BuiltInSub, DimVars, Expression, ExpressionPos, Expressions, Keyword, NamePos,
+    Operator, ParserError, Print,
 };
 
 pub type StatementPos = Positioned<Statement>;

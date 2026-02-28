@@ -1,6 +1,7 @@
 use rusty_common::*;
 use rusty_parser::{
-    ConditionalBlock, DoLoop, DoLoopConditionKind, DoLoopConditionPosition, Expression, ExpressionPos, ForLoop, HasExpressionType, Statements
+    ConditionalBlock, DoLoop, DoLoopConditionKind, DoLoopConditionPosition, Expression,
+    ExpressionPos, ForLoop, HasExpressionType, Statements,
 };
 use rusty_variant::Variant;
 

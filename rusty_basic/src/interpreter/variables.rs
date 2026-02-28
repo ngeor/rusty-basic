@@ -1,5 +1,5 @@
 use rusty_parser::{
-    AsBareName, BareName, DimType, DimVar, Name, ParamType, Parameter, TypeQualifier
+    AsBareName, BareName, DimType, DimVar, Name, ParamType, Parameter, TypeQualifier,
 };
 use rusty_variant::{V_FALSE, Variant};
 

@@ -5,7 +5,8 @@ use crate::core::name::{bare_name_without_dots, name_p};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::{
-    ArrayDimensions, AsBareName, BareName, BareNamePos, DimType, ExpressionType, HasExpressionType, Keyword, Name, ParamType, ParserError, ToBareName, TypeQualifier
+    ArrayDimensions, AsBareName, BareName, BareNamePos, DimType, ExpressionType, HasExpressionType,
+    Keyword, Name, ParamType, ParserError, ToBareName, TypeQualifier,
 };
 
 /// A variable name with a type.

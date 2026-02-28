@@ -2,7 +2,8 @@ use rusty_bit_vec::{MIN_INTEGER, MIN_LONG};
 use rusty_common::*;
 
 use crate::{
-    BuiltInFunction, ExpressionType, FileHandle, HasExpressionType, Name, Operator, TypeQualifier, UnaryOperator
+    BuiltInFunction, ExpressionType, FileHandle, HasExpressionType, Name, Operator, TypeQualifier,
+    UnaryOperator,
 };
 
 // TODO move traits and logic that is linter specific to linter (including CanCastTo from common)

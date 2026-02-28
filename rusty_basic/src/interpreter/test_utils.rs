@@ -8,7 +8,7 @@ use rusty_parser::{UserDefinedTypes, parse_main_file};
 use crate::RuntimeErrorPos;
 use crate::instruction_generator::test_utils::generate_instructions_str_with_types;
 use crate::instruction_generator::{
-    InstructionGeneratorResult, generate_instructions, unwrap_linter_context
+    InstructionGeneratorResult, generate_instructions, unwrap_linter_context,
 };
 use crate::interpreter::Stdlib;
 use crate::interpreter::interpreter_trait::InterpreterTrait;

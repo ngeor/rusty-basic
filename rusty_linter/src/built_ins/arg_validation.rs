@@ -1,6 +1,7 @@
 use rusty_common::{AtPos, Position};
 use rusty_parser::{
-    Expression, ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType, TypeQualifier
+    Expression, ExpressionPos, ExpressionTrait, ExpressionType, Expressions, HasExpressionType,
+    TypeQualifier,
 };
 
 use crate::core::{CanCastTo, LintError, LintErrorPos};

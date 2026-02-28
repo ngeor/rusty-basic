@@ -2,7 +2,7 @@ use rusty_common::Position;
 use rusty_parser::{BuiltInFunction, Expression, Expressions};
 
 use crate::converter::expr_rules::function::{
-    convert_function_args, functions_must_have_arguments
+    convert_function_args, functions_must_have_arguments,
 };
 use crate::core::{LintErrorPos, LinterContext};
 

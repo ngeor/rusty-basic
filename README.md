@@ -117,14 +117,3 @@ DIM A AS INTEGER
 A = 42 ' this is an integer because it's explicitly defined as such
 A$ = "hello" ' duplicate definition error here
 ```
-
-## Development
-
-The project uses the nightly toolchain currently,
-to take advantage of `rustfmt` features that are onyl available there.
-
-Additionally, building on a Mac might cause some linker errors on the current
-stable toolchain, which aren't occurring on the nightly.
-
-Tip: run tests continuously with `make watch` or
-`nodemon -e rs -x "cargo test"`.

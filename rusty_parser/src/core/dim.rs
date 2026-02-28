@@ -45,7 +45,7 @@ mod tests {
 
     use crate::test_utils::*;
     use crate::{
-        assert_parse_dim_compact, assert_parse_dim_extended_built_in, assert_parser_err, *
+        assert_parse_dim_compact, assert_parse_dim_extended_built_in, assert_parser_err, *,
     };
     #[test]
     fn test_parse_dim_extended_built_in() {

@@ -9,7 +9,7 @@ jobs:
       - name: Checkout repository code
         uses: actions/checkout@v6
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@stable
       - name: Build
         run: cargo build
       - name: Test
@@ -20,7 +20,7 @@ jobs:
       - name: Checkout repository code
         uses: actions/checkout@v6
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@stable
       - name: Build
         run: cargo build --release
       - name: Test
@@ -35,7 +35,7 @@ jobs:
       - name: Checkout repository code
         uses: actions/checkout@v6
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@stable
       - name: Build
         run: cargo build
       - name: Test
@@ -46,7 +46,7 @@ jobs:
       - name: Checkout repository code
         uses: actions/checkout@v6
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@stable
       - name: Build
         run: cargo build --release
       - name: Test

@@ -9,7 +9,7 @@ use crate::expr::{expression_pos_p, ws_expr_pos_p};
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::tokens::{
-    TokenMatcher, any_symbol_of, any_symbol_of_ws, any_token_of, comma_ws, semicolon_ws
+    TokenMatcher, any_symbol_of, any_symbol_of_ws, any_token_of, comma_ws, semicolon_ws,
 };
 use crate::*;
 

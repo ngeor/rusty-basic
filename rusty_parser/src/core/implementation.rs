@@ -68,7 +68,8 @@ mod tests {
     use super::*;
     use crate::test_utils::*;
     use crate::{
-        Expression, ExpressionType, Operator, ParamType, Parameter, Statement, assert_parser_err, parse
+        Expression, ExpressionType, Operator, ParamType, Parameter, Statement, assert_parser_err,
+        parse,
     };
 
     #[test]

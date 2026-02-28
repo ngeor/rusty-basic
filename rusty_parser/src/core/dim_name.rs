@@ -5,7 +5,8 @@ use crate::core::var_name;
 use crate::input::StringView;
 use crate::pc_specific::*;
 use crate::{
-    ArrayDimensions, BareName, BuiltInStyle, DimList, DimType, Name, ParserError, ToBareName, TypeQualifier, TypedName
+    ArrayDimensions, BareName, BuiltInStyle, DimList, DimType, Name, ParserError, ToBareName,
+    TypeQualifier, TypedName,
 };
 
 pub type DimVar = TypedName<DimType>;

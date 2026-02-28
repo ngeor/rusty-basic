@@ -14,7 +14,7 @@ use crate::interpreter::context::*;
 use crate::interpreter::data_segment::DataSegment;
 use crate::interpreter::default_stdlib::DefaultStdlib;
 use crate::interpreter::handlers::allocation::{
-    allocate_array, allocate_built_in, allocate_fixed_length_string, allocate_user_defined_type
+    allocate_array, allocate_built_in, allocate_fixed_length_string, allocate_user_defined_type,
 };
 use crate::interpreter::interpreter_trait::InterpreterTrait;
 use crate::interpreter::io::{FileManager, Input, Printer};

@@ -3,7 +3,8 @@ use rusty_linter::core::lint;
 use rusty_parser::{UserDefinedTypes, parse};
 
 use crate::instruction_generator::{
-    Instruction, InstructionGeneratorResult, InstructionPos, generate_instructions, unwrap_linter_context
+    Instruction, InstructionGeneratorResult, InstructionPos, generate_instructions,
+    unwrap_linter_context,
 };
 
 pub fn generate_instructions_str_with_types(

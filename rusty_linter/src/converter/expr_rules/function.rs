@@ -4,7 +4,8 @@ use rusty_parser::{AsBareName, BareName, Expression, ExpressionType, Expressions
 use crate::converter::common::{ConvertibleIn, ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
 use crate::core::{
-    IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult, LinterContext, VariableInfo
+    IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult, LinterContext,
+    VariableInfo,
 };
 
 pub fn convert(

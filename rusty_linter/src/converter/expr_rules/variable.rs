@@ -1,13 +1,15 @@
 use rusty_common::{AtPos, Position};
 use rusty_parser::{
-    AsBareName, BuiltInFunction, BuiltInStyle, DimType, Expression, ExpressionType, Name, TypeQualifier
+    AsBareName, BuiltInFunction, BuiltInStyle, DimType, Expression, ExpressionType, Name,
+    TypeQualifier,
 };
 use rusty_variant::Variant;
 
 use crate::converter::common::{ExprContext, ExprContextPos};
 use crate::converter::expr_rules::qualify_name::*;
 use crate::core::{
-    ConstLookup, IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult, LinterContext, VariableInfo, qualifier_of_const_variant
+    ConstLookup, IntoQualified, IntoTypeQualifier, LintError, LintErrorPos, LintResult,
+    LinterContext, VariableInfo, qualifier_of_const_variant,
 };
 
 pub fn convert(

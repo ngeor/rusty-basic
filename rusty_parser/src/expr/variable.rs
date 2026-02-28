@@ -34,19 +34,17 @@ fn is_property_expr(name_as_tokens: &NameAsTokens) -> bool {
     // leading dot cannot happen
     debug_assert!(!name_token.as_str().starts_with('.'));
 
-    for name in name_token.as_str().chars() {
-        if '.' == name {
+    for ch in name_token.as_str().chars() {
+        if ch == '.' {
             if last_was_dot {
                 // two dots in a row
                 return false;
             } else {
                 last_was_dot = true;
             }
-        } else {
-            if last_was_dot {
-                name_count += 1;
-                last_was_dot = false;
-            }
+        } else if last_was_dot {
+            name_count += 1;
+            last_was_dot = false;
         }
     }
     // at least two names and no trailing dot

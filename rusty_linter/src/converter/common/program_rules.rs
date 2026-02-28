@@ -1,6 +1,7 @@
 use rusty_common::{AtPos, Position, Positioned};
 use rusty_parser::{
-    DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement, Statements, SubImplementation
+    DimVar, FunctionImplementation, GlobalStatement, GlobalStatementPos, Program, Statement,
+    Statements, SubImplementation,
 };
 
 use crate::converter::common::{Convertible, ConvertibleIn};

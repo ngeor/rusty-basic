@@ -1,6 +1,6 @@
 use rusty_common::AtPos;
 use rusty_parser::{
-    Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UnaryOperator
+    Expression, ExpressionPos, ExpressionType, HasExpressionType, TypeQualifier, UnaryOperator,
 };
 
 use crate::converter::common::{ConvertibleIn, ExprContextPos};
